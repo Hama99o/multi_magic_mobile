@@ -159,3 +159,45 @@ gutter vanishes and the composer clips. On 18 September that was measured as a
 360 dp layout bug and a fix was already being written before a cold restart
 showed the layout was correct all along. Same class as the `adb reverse` trap —
 the app is fine and the rig is lying.
+
+## Expo Go was the harness's problem, not the app's
+
+Three of the evening's harness faults were one cause wearing different clothes,
+and all three vanish with a development build:
+
+| Under Expo Go | Why |
+|---|---|
+| Deep link resolved to the emulator | `exp://127.0.0.1:<port>` needs `adb reverse`; the app is reached by URL rather than by launching |
+| The dev menu covered the screen and swallowed taps | Expo Go's menu, not ours |
+| Back exited the app; `openLink …/--/chat` left the project | Navigation belongs to Expo Go's experience host, not to expo-router |
+| Dictation could never be witnessed | Expo Go carries no custom native modules, so `expo-speech-recognition` is simply absent |
+
+**A development build has its own package** (`co.byseven.multimagic`), so
+`launchApp` launches OUR app, Back behaves the way expo-router intends, there is
+no dev-menu overlay in front of the UI, and the speech module is in the binary.
+
+`npx expo prebuild --platform android` then `./gradlew assembleDebug`. `android/`
+is generated and gitignored — it is build output, not source, and prebuild
+regenerates it from `app.json` whenever the config changes.
+
+**The sibling predicted its own `06-people-chat` would hit the Back-exits-root
+wall before running it.** If it does, that is not a new bug: it is this one, and
+the fix is the build rather than a fourth harness patch. A prediction on the
+record before the fact is worth more than a diagnosis after it.
+
+## `pgrep -f` matches the watcher looking for the thing
+
+`until ! pgrep -f maestro; do sleep 15; done` never exits: the shell running it
+has "maestro" in its own command line, so it finds itself and waits for ever.
+A kill loop built on the same pattern kills its own shell — twice, tonight, in
+this session, and it also produced a report of "four Maestro processes" when
+none was running.
+
+For a JVM ask for the executable name, which cannot match the question:
+
+```sh
+ps -eo comm= | grep -c '^java$'
+```
+
+Narrow patterns are still fine — `pgrep -f "expo start --port 3029"` cannot
+match a watcher unless the watcher quotes it exactly.

@@ -82,9 +82,11 @@ lose.
 
 - **`QA_SEED_CMD` must be empty**, and the doctor should **fail** rather than
   warn if it is ever set.
-- **QA runs use a dedicated test account**, never his own (`hmmshl@gmail.com`,
-  id 2). A run signed in as him would write conversations into his real
-  assistant history, and a delete test would delete his real records.
+- **QA runs use a dedicated test account**, never the owner's own account. A
+  run signed in as the owner would write conversations into his real assistant
+  history, and a delete test would delete his real records. The test account's
+  address and id live in `.env` (untracked), never in this file — this repo is
+  public.
 - **No test may call account deletion against a real account.** When that
   endpoint exists, the deletion flow is exercised against a throwaway user and
   nothing else.

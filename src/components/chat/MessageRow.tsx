@@ -23,6 +23,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import type { ChatMessage, MessageLink } from "@/api/ai";
 import { SourceChips } from "./SourceChips";
+import { AnswerMarkdown, type AnswerLink } from "./AnswerMarkdown";
 import { AnswerActions } from "./AnswerActions";
 
 export function MessageRow({
@@ -30,12 +31,15 @@ export function MessageRow({
   onOpenSource,
   showUndo = false,
   onUndone,
+  onOpenLink,
 }: {
   message: ChatMessage;
   onOpenSource: (source: MessageLink) => void;
   /** True only for the NEWEST undoable reply — see AnswerActions. */
   showUndo?: boolean;
   onUndone?: (updated: ChatMessage) => void;
+  /** A link inside the answer — usually a file the assistant found. */
+  onOpenLink?: (link: AnswerLink) => void;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -79,9 +83,11 @@ export function MessageRow({
     <View style={{ paddingVertical: metrics.space.md, gap: metrics.space.xs }}>
       {/* Selectable: an answer about somebody's money is something they will
           want to copy out, and no width cap inherited from a bubble. */}
-      <Text variant="answer" selectable testID="assistant-answer">
-        {message.body}
-      </Text>
+      {/* Rendered, not printed. The assistant puts a file's download link IN
+          the answer (`Ai::Actions::FindFiles`), so printing the raw string
+          turns a file the user asked for into a filename in brackets followed
+          by a path — unreachable, with nothing on screen to say so. */}
+      <AnswerMarkdown content={message.body ?? ""} onOpenLink={onOpenLink} />
 
       {/* TWO ROWS, NEVER ONE. `sources` are the records the answer was drawn
           FROM; `links` are what it points you AT. §5b: mixing them made "What

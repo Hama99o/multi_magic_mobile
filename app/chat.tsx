@@ -31,6 +31,8 @@ import { ThinkingDots } from "@/components/chat/ThinkingDots";
 import { Composer } from "@/components/chat/Composer";
 import { EmptyState } from "@/components/chat/EmptyState";
 import { SourceSheet } from "@/components/chat/SourceSheet";
+import { FilePreview } from "@/components/chat/FilePreview";
+import type { AnswerLink } from "@/components/chat/AnswerMarkdown";
 import { SessionsSheet } from "@/components/sessions/SessionsSheet";
 import { AttachSheet } from "@/components/chat/AttachSheet";
 import { PendingFiles } from "@/components/chat/PendingFiles";
@@ -200,6 +202,7 @@ export default function Chat() {
   const [posting, setPosting] = useState(false);
   const [failedQuestion, setFailedQuestion] = useState<FailedQuestion | null>(null);
   const [openSource, setOpenSource] = useState<MessageLink | null>(null);
+  const [openFile, setOpenFile] = useState<AnswerLink | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
 
   /**
@@ -338,6 +341,7 @@ export default function Chat() {
             <MessageRow
               message={item}
               onOpenSource={setOpenSource}
+              onOpenLink={setOpenFile}
               showUndo={item.id === newestUndoableId}
               onUndone={(updated) =>
                 // Merged in place — NOT `addPending`. The reply now carries
@@ -444,6 +448,8 @@ export default function Chat() {
       </View>
 
       <SourceSheet source={openSource} onClose={() => setOpenSource(null)} />
+
+      <FilePreview link={openFile} onClose={() => setOpenFile(null)} />
 
       <AttachSheet
         visible={attachOpen}

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="256" y2="256" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#102125"/>
+      <stop offset="1" stop-color="#2d5363"/>
+    </linearGradient>
+  </defs>
+  <rect width="256" height="256" rx="58" fill="url(#bg)"/>
+  <rect x="32" y="32" width="56" height="56" rx="12" fill="#49b4e4"/>
+  <rect x="100" y="32" width="56" height="56" rx="12" fill="#77b87d"/>
+  <rect x="168" y="32" width="56" height="56" rx="12" fill="#e9ab4c"/>
+  <rect x="32" y="100" width="56" height="56" rx="12" fill="#db5d89"/>
+  <rect x="100" y="100" width="56" height="56" rx="12" fill="#bd8aca"/>
+  <rect x="168" y="100" width="56" height="56" rx="12" fill="#48aaa2"/>
+  <rect x="32" y="168" width="56" height="56" rx="12" fill="#e9df71"/>
+  <rect x="100" y="168" width="56" height="56" rx="12" fill="#e98262"/>
+  <polygon points="195.5,177.7 200.4,192.2 215.8,192.4 203.5,201.6 208.0,216.2 195.5,207.4 183.0,216.2 187.5,201.6 175.2,192.4 190.6,192.2" fill="#ffffff"/>
+</svg>

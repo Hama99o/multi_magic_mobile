@@ -1,0 +1,52 @@
+# ── Expo / React Native ──────────────────────────────────────────────────────
+node_modules/
+.expo/
+.expo-shared/
+dist/
+web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+android/
+ios/
+.gradle/
+build/
+
+# ── Secrets and machine-local config ────────────────────────────────────────
+.env
+.env.*
+!.env.example
+
+# ── Tooling ──────────────────────────────────────────────────────────────────
+coverage/
+.jest/
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+.DS_Store
+*.tsbuildinfo
+
+# ── DESIGN REFERENCES ARE NOT COMMITTED, AND THIS REPO IS WHY ───────────────
+#
+# `docs/design/**/references/` holds screenshots of OTHER COMPANIES' apps,
+# curated by Mobbin under their terms. Keeping them in a private repo as
+# internal design reference is ordinary practice; publishing them in a PUBLIC
+# repo is not ours to do.
+#
+# github.com/Hama99o/multi_magic_mobile is public, so they stay on disk and out
+# of git. Every SPEC.md cites its sources by `mobbin.com/screens/<id>`, which
+# does not expire — so the receipts survive in the text even though the images
+# do not travel.
+#
+# If this repo is made private, delete these two lines and commit them.
+docs/design/**/references/
+docs/design/_review/
+
+# Device screenshots of OUR OWN app are fine to keep, and are the evidence a
+# screen is done — but they are large and regenerate from the rig.
+docs/design/**/ours/*.png
+docs/design/**/ours/*.xml

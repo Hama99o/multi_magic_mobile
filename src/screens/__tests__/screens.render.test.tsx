@@ -280,7 +280,7 @@ const SCREENS: { name: string; element: () => ReactElement; handles: string[] }[
   { name: "change-password", element: () => <ChangePassword />, handles: ["password-current", "password-new", "password-confirm", "password-save", "password-current-reveal"] },
   { name: "ai-keys", element: () => <AiKeys />, handles: ["ai-keys-list", "ai-key-gemini", "ai-key-active-gemini", "ai-key-replace-gemini", "ai-key-remove-gemini"] },
   { name: "account", element: () => <AccountScreen />, handles: ["account-privacy", "account-delete"] },
-  { name: "delete-account", element: () => <DeleteAccount />, handles: ["delete-what-goes", "delete-unavailable"] },
+  { name: "delete-account", element: () => <DeleteAccount />, handles: ["delete-what-goes", "delete-password", "delete-confirm"] },
   { name: "privacy", element: () => <Privacy />, handles: ["privacy-title", "privacy-body", "privacy-draft-banner"] },
 ];
 
@@ -335,5 +335,39 @@ describe("the width invariant", () => {
     expect(SCREENS.every((s) => s.handles.length > 0)).toBe(true);
     expect(WIDTHS).toContain(360);
     expect(WIDTHS).toContain(800);
+  });
+});
+
+/**
+ * THE DELETION GATE, IN BOTH POSITIONS.
+ *
+ * `ACCOUNT_DELETION_AVAILABLE` flipped to true on 2026-09-19 when
+ * `DELETE /api/v1/users/me` landed (`multi_magic@56559c4`). The render table
+ * above proves the open state; this proves the shut one still works, because
+ * the constant is the only thing standing between a person and a password
+ * field that posts nowhere — and it will be shut again the first time an
+ * endpoint is rolled back.
+ *
+ * What does NOT change with the gate is the disclosure: what deletion removes
+ * and what it keeps is on screen either way, which is what both stores ask for
+ * and what a person deserves before they decide.
+ */
+describe("the deletion gate", () => {
+  it("offers the password field now that the endpoint exists", async () => {
+    renderScreen(<DeleteAccount />);
+
+    expect(await screen.findByTestId("delete-password")).toBeTruthy();
+    expect(await screen.findByTestId("delete-confirm")).toBeTruthy();
+    expect(screen.queryByTestId("delete-unavailable")).toBeNull();
+  });
+
+  it("shows the disclosure either way — that is not what the gate guards", async () => {
+    renderScreen(<DeleteAccount />);
+
+    // Named, not summarised as "your data". Tubi is the only one of eleven
+    // references that does this and it is the one that reads like it means it.
+    expect(await screen.findByTestId("delete-what-goes")).toBeTruthy();
+    expect(screen.getByText(/This cannot be undone/i)).toBeTruthy();
+    expect(screen.getByText(/What is kept/i)).toBeTruthy();
   });
 });

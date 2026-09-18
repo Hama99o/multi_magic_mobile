@@ -16,27 +16,29 @@
  * would still be in the database with a dangling `user_id`: orphaned, unowned
  * and unreachable. That is the opposite of what he asked for.
  *
- * ── WHAT THIS FILE DOES UNTIL IT LANDS ────────────────────────────────────
- * It says so, in one constant, with the citation attached — and the screen
- * reads that constant rather than discovering the truth from a 404. **Nobody is
- * walked through typing their password into a wall.** The confirm still renders
- * in full, because what deletion WOULD remove is a disclosure worth reading
- * whether or not the button works today, and both stores ask for it.
+ * ── AND IT LANDED ─────────────────────────────────────────────────────────
+ * `multi_magic@56559c4` adds the route with `destroy` and a spec that fails
+ * under `delete`. Building it found one more orphan than it was looking for:
+ * `contacts.user_id` was indexed and unowned, so every loan counterparty had
+ * been surviving deletion with a dangling `user_id`. `User#loan_contacts`
+ * closes it.
  *
- * When the endpoint lands, `ACCOUNT_DELETION_AVAILABLE` flips and
- * `deleteAccount` is already written against the shape it must have.
+ * The gate stays as a constant rather than being deleted, because the shape it
+ * guards is still the right one: the confirm renders in full either way, since
+ * what deletion WOULD remove is a disclosure worth reading whether or not the
+ * button works — and both stores ask for it.
  */
 import { http } from "./http";
 
 /**
- * Flip to `true` in the same commit that wires the endpoint.
+ * LANDED 2026-09-19 — `multi_magic@56559c4`, `DELETE /api/v1/users/me`.
  *
  * Deliberately a plain constant and not a feature flag from a server: an app
  * that asks the server whether deletion is possible cannot tell "not built yet"
  * from "the network is down", and those are opposite answers to give somebody
  * trying to leave.
  */
-export const ACCOUNT_DELETION_AVAILABLE = false;
+export const ACCOUNT_DELETION_AVAILABLE = true;
 
 export class AccountDeletionUnavailable extends Error {
   constructor() {

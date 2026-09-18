@@ -59,3 +59,7 @@ expo-env.d.ts
 # QA run artefacts — regenerate from the rig; a stale screenshot is worse than none.
 qa/reports/*.png
 qa/reports/logcat-*.txt
+
+# The device claim is machine-local state, not a fact about the repo.
+qa/reports/.claims
+qa/reports/.claims.lock

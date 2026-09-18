@@ -13,6 +13,7 @@ import {
   loadSessionEmail, loadToken, setSessionEmail, setToken, setUnauthorizedHandler,
 } from "../http";
 import { __resetFingerprintCache } from "@/lib/fingerprint";
+import { ApiShapeError } from "../parse";
 
 let mock: MockAdapter;
 
@@ -147,9 +148,10 @@ describe("isNetworkFailure", () => {
   // including our own ApiShapeError. Measured on a device: a parse failure made
   // a screen say "Could not reach MultiMagic" while the server had answered
   // that request 200 in 93 ms.
-  it("does NOT blame the network for a parse error", async () => {
-    const { ApiShapeError } = await import("../parse");
-
+  // Imported at the top, not with a dynamic `await import()` — Jest's CJS
+  // runtime cannot do those, and the failure names ES Modules rather than the
+  // line that asked for one.
+  it("does NOT blame the network for a parse error", () => {
     expect(isNetworkFailure(new ApiShapeError("message.role", null))).toBe(false);
     expect(isNetworkFailure(new Error("anything"))).toBe(false);
   });

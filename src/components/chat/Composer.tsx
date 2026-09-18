@@ -15,8 +15,9 @@
  * permission is different: the user can fix that, so it degrades to the
  * keyboard with one line of explanation (Speak's "I can't speak now").
  *
- * The `+` (attachments) is still its own row and stays disabled with a label,
- * so the pill's proportions do not change when it arrives.
+ * The `+` opens the attachment sheet when `onAttach` is given, and is disabled
+ * with a label when it is not — a screen without a session id yet has nothing
+ * to attach a file TO.
  */
 import { Pressable, TextInput, View } from "react-native";
 import { ArrowUp, Mic, Plus, Square, X } from "lucide-react-native";
@@ -29,12 +30,15 @@ export function Composer({
   onChange,
   onSend,
   busy = false,
+  onAttach,
 }: {
   value: string;
   onChange: (text: string) => void;
   onSend: () => void;
   /** A question is in flight; sending another would race it. */
   busy?: boolean;
+  /** Opens the attachment sheet. Absent means attachments are not available. */
+  onAttach?: () => void;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -101,11 +105,19 @@ export function Composer({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Attach a file (coming soon)"
-        accessibilityState={{ disabled: true }}
-        disabled
+        accessibilityLabel="Add a photo or a document"
+        accessibilityState={{ disabled: !onAttach }}
+        disabled={!onAttach}
         hitSlop={8}
-        style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center", opacity: 0.4 }}
+        onPress={onAttach}
+        style={{
+          width: 40,
+          height: 40,
+          alignItems: "center",
+          justifyContent: "center",
+          opacity: onAttach ? 1 : 0.4,
+        }}
+        testID="composer-attach"
       >
         <Plus size={22} color={colors.inkMuted} />
       </Pressable>

@@ -31,6 +31,10 @@ import { Composer } from "@/components/chat/Composer";
 import { EmptyState } from "@/components/chat/EmptyState";
 import { SourceSheet } from "@/components/chat/SourceSheet";
 import { SessionsSheet } from "@/components/sessions/SessionsSheet";
+import { AttachSheet } from "@/components/chat/AttachSheet";
+import { PendingFiles } from "@/components/chat/PendingFiles";
+import { useAttachments } from "@/hooks/useAttachments";
+import { documentsApi } from "@/api/ai";
 
 /** A question that could not be posted, kept so it is never lost. */
 interface FailedQuestion {
@@ -60,6 +64,16 @@ export default function Chat() {
     useConversation({ conversationId, channel: "MessageChannel" });
 
   const { draft, setDraft, clear } = useDraft(conversationId);
+
+  /** What the session already holds, so the cap is counted against the truth. */
+  const { data: uploaded = [] } = useQuery({
+    queryKey: ["ai", "documents", conversationId],
+    queryFn: () => documentsApi.list(conversationId as number),
+    enabled: conversationId != null,
+  });
+
+  const attachments = useAttachments(conversationId, uploaded.length);
+  const [attachOpen, setAttachOpen] = useState(false);
   const [posting, setPosting] = useState(false);
   const [failedQuestion, setFailedQuestion] = useState<FailedQuestion | null>(null);
   const [openSource, setOpenSource] = useState<MessageLink | null>(null);
@@ -231,11 +245,20 @@ export default function Chat() {
             paddingBottom: metrics.space.sm,
           }}
         >
+          <PendingFiles files={attachments.pending} onRemove={attachments.remove} />
+
+          {attachments.error ? (
+            <Text variant="caption" tone="danger" testID="attach-error">
+              {attachments.error}
+            </Text>
+          ) : null}
+
           <Composer
             value={draft}
             onChange={setDraft}
             onSend={() => void send(draft)}
             busy={posting}
+            onAttach={conversationId != null ? () => setAttachOpen(true) : undefined}
           />
           {/* Mindvalley's one line, once, under the composer. */}
           <Text variant="caption" tone="muted" style={{ textAlign: "center", color: colors.inkMuted }}>
@@ -246,6 +269,15 @@ export default function Chat() {
       </View>
 
       <SourceSheet source={openSource} onClose={() => setOpenSource(null)} />
+
+      <AttachSheet
+        visible={attachOpen}
+        fileCount={uploaded.length}
+        onClose={() => setAttachOpen(false)}
+        onPickImage={() => void attachments.pickImage()}
+        onTakePhoto={() => void attachments.takePhoto()}
+        onPickDocument={() => void attachments.pickDocument()}
+      />
 
       <SessionsSheet
         visible={sessionsOpen}

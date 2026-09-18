@@ -64,6 +64,27 @@ else
   bad "Metro not answering on :$METRO_PORT — npx expo start --port $METRO_PORT"
 fi
 
+# 6b. THE SAME TRAP AS THE API URL, ONE PORT ALONG — and it cost a whole suite.
+#
+# The deep link is `exp://127.0.0.1:$METRO_PORT`, and from inside the emulator
+# `127.0.0.1` is THE EMULATOR, not the host. `expo start --android` sets up the
+# `adb reverse` that makes it work; starting Metro on its own does not, and then
+# Expo Go fails with "Failed to download remote update" and drops to its own
+# ErrorActivity — so every flow fails on "sign-in-email is not visible", an
+# assertion that points at our screen and blames entirely the wrong thing.
+#
+# Checked AND repaired here, because a preflight that can fix a one-line
+# environment problem should.
+if adb -s "$SERIAL" reverse --list 2>/dev/null | grep -q "tcp:$METRO_PORT"; then
+  ok "adb reverse tcp:$METRO_PORT in place (the deep link can reach Metro)"
+else
+  if adb -s "$SERIAL" reverse "tcp:$METRO_PORT" "tcp:$METRO_PORT" >/dev/null 2>&1; then
+    ok "adb reverse tcp:$METRO_PORT established"
+  else
+    bad "no adb reverse for :$METRO_PORT — the deep link would resolve to the emulator itself"
+  fi
+fi
+
 # 7. Backend, checked over the LOCAL address because a shell cannot use 10.0.2.2
 code=$(curl -s -o /dev/null -w '%{http_code}' --max-time 5 "$API_URL_LOCAL/up" 2>/dev/null || echo 000)
 [ "$code" = "200" ] && ok "backend reachable ($API_URL_LOCAL/up -> $code)" \

@@ -10,7 +10,11 @@ export PATH="$HOME/.maestro/bin:$PATH"
 TAG="${1:-}"
 
 if [ "${SKIP_PREFLIGHT:-0}" != 1 ]; then
-  "$DIR/preflight.sh" || { echo "Aborting: preflight failed — that is the first finding."; exit 1; }
+  # EXIT 3, NOT 1. A blocked preflight means NOT MEASURED, which is a different
+  # fact from a failed test: no emulator, no Metro or no backend has found no
+  # bug — it has found nothing. Collapsing the two is how a green gets invented
+  # and a red gets misread, and the caller sees this code before anything else.
+  "$DIR/preflight.sh" || { echo "Aborting: preflight failed — NOT MEASURED, not failed."; exit 3; }
   echo
 fi
 

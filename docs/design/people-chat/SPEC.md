@@ -193,22 +193,39 @@ group thread is the direct thread plus a sender name above received bubbles
 `is_admin` is parsed and **not rendered**: it is the flag the add/remove UI
 would hang off, and there is no add/remove UI.
 
-### 2.4 · The bubble question — and this screen answers it differently from the assistant
+### 2.4 · The two screens MUST NOT be mistakable — his instruction, and it is a requirement
 
-`IDENTITY.md` §3 says the assistant's reply is **not** in a bubble, and gives the
-reason: *"these answers are paragraphs drawn from his own notes, loans and
-contacts… a bubble caps a paragraph's comfortable width."*
+**Hamma9900, 2026-09-18:** *"make sure the design did not mix like ai assistance
+and chat should not have same style so people did not mix, we should see the
+different."*
 
-**That reasoning does not transfer, so neither does the decision.** A message
-from a person is a remark, not a document; all eight thread references bubble
-both sides; and the serif that carries the assistant's answers
-(`IDENTITY.md` §2) exists to make a paragraph read as a document, which is the
-wrong claim about *"ok, see you at 6"*.
+The starting point was already a divergence. `IDENTITY.md` §3 says the
+assistant's reply is **not** in a bubble, and gives the reason: *"these answers
+are paragraphs drawn from his own notes, loans and contacts… a bubble caps a
+paragraph's comfortable width."* **That reasoning does not transfer** — a
+message from a person is a remark, not a document; all eight thread references
+bubble both sides; and the serif that carries the assistant's answers exists to
+make a paragraph read as a document, which is the wrong claim about *"ok, see
+you at 6"*.
 
-**So: people chat is bubbles on both sides, in the UI grotesque.** The
-divergence is deliberate and it is legible — the two screens are telling the
-truth about two different kinds of text. `MessageRow.tsx` stays the assistant's;
+**But a divergence is not the same as being unmistakable**, and his instruction
+is the stronger one. So the separation is carried by **four** signals, because
+one can be missed at a glance:
+
+| | the assistant (`app/chat.tsx`) | people (`app/chat/[id].tsx`) |
+|---|---|---|
+| **my message** | `userBubble` — a muted tint (`#2d5363`) | **solid `accent`** (`#48aaa2`), the way every reference fills the sent side with the app's own colour |
+| **their message** | **no bubble at all** — plain text on the page | an **outlined** `surface` bubble |
+| **type** | the **SERIF**, `variant="answer"` | the UI grotesque. **Nothing in `src/screens/people/` may use `variant="answer"`** |
+| **avatars** | **none**, by rule — `IDENTITY.md` §7 | everywhere: list rows, the thread header, group senders |
+
+Colour and shape are the two that read at arm's length; type and avatars are the
+two that confirm it. `MessageRow.tsx` stays the assistant's and is not touched;
 `src/screens/people/PersonMessageRow.tsx` is ours.
+
+**This is now a gate, not a preference:** the `ours/` screenshots for `DONE`
+must show the two threads side by side, and if they could be confused at a
+glance the screen is not done.
 
 ## §3 · Our decisions — the half no reference can supply
 
@@ -276,7 +293,9 @@ was built generic.
 
 ## §5 · Evidence required before `DONE`
 
-1. `ours/` at **360, 411 and 800 dp** — list and thread, dark and light.
+1. `ours/` at **360, 411 and 800 dp** — list and thread, dark and light — **and
+   the assistant's thread beside the people thread**, which is the evidence for
+   §2.4. If the two could be confused at a glance, this row is not `DONE`.
 2. The thread verified with **two accounts**, so `sent_by_me`, the double tick
    and `read` over `ConversationChannel` are observed rather than assumed. On the
    QA test account only (`qa/RIG_CONTRACT.md` §3), never his own.

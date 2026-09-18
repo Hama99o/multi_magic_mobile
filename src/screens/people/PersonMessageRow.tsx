@@ -11,9 +11,28 @@
  * assistant answer exists to make a paragraph read as a document, which is the
  * wrong claim about "ok, see you at 6".
  *
- * So the divergence is deliberate and legible: two screens telling the truth
- * about two different kinds of text. `components/chat/MessageRow.tsx` stays the
- * assistant's and is not touched.
+ * ── AND THE TWO MUST NEVER BE MISTAKEN FOR EACH OTHER ─────────────────────
+ * Hamma9900, 2026-09-18: *"the design did not mix like ai assistance and chat
+ * should not have same style so people did not mix, we should see the
+ * different."* So the divergence is not a by-product — it is a requirement,
+ * and it is carried by **four** signals rather than one, because one can be
+ * missed at a glance:
+ *
+ *   1. **Colour.** My message here is a SOLID `accent` bubble, the way every
+ *      thread reference fills the sent side with the app's own colour (X blue,
+ *      talabat orange, Instagram purple). The assistant screen's user bubble is
+ *      the muted `userBubble` tint and stays that way. Same screen shape, two
+ *      unmistakable colours.
+ *   2. **Both sides bubbled.** The assistant's answer has no bubble at all, so
+ *      a glance at the left-hand side already tells you which screen you are on.
+ *   3. **Type.** People speak in the UI grotesque; the assistant answers in the
+ *      SERIF (`variant="answer"`). Nothing in this folder may use that variant —
+ *      authorship is legible by shape before a word is read (`IDENTITY.md` §2).
+ *   4. **Avatars.** People have them, everywhere — rows, group senders, the
+ *      thread header. The assistant has none, by rule (`IDENTITY.md` §7: "No
+ *      avatar for the assistant"). Their presence IS the signal.
+ *
+ * `components/chat/MessageRow.tsx` stays the assistant's and is not touched.
  *
  * ── `sentByMe` DECIDES THE SIDE, AND THE SERVER ANSWERED IT ───────────────
  * `message_serializer.rb:25-27` derives it from the requesting user. The client
@@ -102,7 +121,14 @@ export function PersonMessageRow({
           // caps the column at METRICS.maxMeasure, so a line of chat cannot
           // run 700 dp wide. IDENTITY.md §8.
           maxWidth: "78%",
-          backgroundColor: mine ? colors.userBubble : colors.surface,
+          // SOLID accent, not the assistant's muted `userBubble` tint — signal
+          // 1 of the four in this file's header. The two screens must not be
+          // mistakable for one another.
+          backgroundColor: mine ? colors.accent : colors.surface,
+          // The received side is outlined, which the assistant's page-flow
+          // answer never is: at a glance, outlined-left means a person.
+          borderWidth: mine ? 0 : 1,
+          borderColor: colors.border,
           borderRadius: metrics.radius.lg,
           // The corner nearest its own side is squared off, which is what makes
           // a run of bubbles read as one side speaking.
@@ -113,7 +139,9 @@ export function PersonMessageRow({
           opacity: pressed ? 0.75 : pending ? 0.6 : 1,
         })}
       >
-        <Text selectable style={{ color: mine ? colors.userBubbleInk : colors.ink }}>
+        {/* Never `variant="answer"`. The serif belongs to the assistant, and
+            it is signal 3 of the four — see this file's header. */}
+        <Text selectable style={{ color: mine ? colors.onAccent : colors.ink }}>
           {message.body}
         </Text>
       </Pressable>

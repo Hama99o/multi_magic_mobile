@@ -1,0 +1,43 @@
+# The gates, in the order that fails fastest.
+#
+# `node-version-file: .nvmrc` rather than a literal: Expo 54's metro-config
+# calls `Array.prototype.toReversed`, which is Node 20+. On Node 18 the build
+# dies with "configs.toReversed is not a function" — an error naming neither
+# Node nor a version. Pinning it in one file keeps CI and a laptop honest
+# together.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests
+        run: npm test -- --ci
+
+      # The gate the others cannot stand in for: lint, tsc and jest all passed
+      # on a tree that could not bundle at all. Only an export proves Metro,
+      # Babel, NativeWind, expo-router and the config plugins agree.
+      - name: Bundle
+        run: npx expo export --platform android --output-dir /tmp/export-check
+        env:
+          EXPO_PUBLIC_API_URL: http://10.0.2.2:3001

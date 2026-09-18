@@ -1,0 +1,53 @@
+{
+  "expo": {
+    "name": "MultiMagic",
+    "slug": "multimagic-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon-1024.png",
+    "scheme": "multimagic",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "image": "./assets/splash-icon-512.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#102125"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "co.byseven.multimagic",
+      "infoPlist": {
+        "NSMicrophoneUsageDescription": "MultiMagic uses the microphone so you can dictate a question instead of typing it.",
+        "NSSpeechRecognitionUsageDescription": "Speech recognition turns what you say into text on this device, so you can dictate a question.",
+        "NSPhotoLibraryUsageDescription": "Attach a photo or a scan to a conversation so the assistant can read it.",
+        "NSCameraUsageDescription": "Take a photo of a document to attach it to a conversation."
+      }
+    },
+    "android": {
+      "package": "co.byseven.multimagic",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-foreground-1024.png",
+        "backgroundColor": "#102125"
+      },
+      "permissions": ["RECORD_AUDIO"],
+      "edgeToEdgeEnabled": true
+    },
+    "plugins": [
+      "expo-router",
+      "expo-secure-store",
+      [
+        "expo-speech-recognition",
+        {
+          "microphonePermission": "MultiMagic uses the microphone so you can dictate a question instead of typing it.",
+          "speechRecognitionPermission": "Speech recognition turns what you say into text on this device.",
+          "androidSpeechServicePackages": ["com.google.android.googlequicksearchbox"]
+        }
+      ]
+    ],
+    "experiments": { "typedRoutes": true },
+    "extra": {
+      "apiUrl": null,
+      "wsUrl": null
+    }
+  }
+}

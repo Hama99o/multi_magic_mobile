@@ -89,6 +89,7 @@ export function PersonMessageRow({
     return (
       <View
         style={{
+          width: "100%",
           alignItems: mine ? "flex-end" : "flex-start",
           paddingVertical: metrics.space.xs,
         }}
@@ -101,7 +102,17 @@ export function PersonMessageRow({
   }
 
   return (
-    <View style={{ alignItems: mine ? "flex-end" : "flex-start", paddingVertical: metrics.space.xs }}>
+    <View
+      style={{
+        // Explicit, so `maxWidth: "78%"` on the bubble below has a definite
+        // parent width to resolve against rather than depending on the row
+        // being stretched by its container. Defensive rather than a fix: the
+        // layout measured correctly without it.
+        width: "100%",
+        alignItems: mine ? "flex-end" : "flex-start",
+        paddingVertical: metrics.space.xs,
+      }}
+    >
       {senderName && !mine ? (
         <Text variant="caption" tone="muted" style={{ marginBottom: 2, marginLeft: metrics.space.sm }}>
           {senderName}
@@ -121,7 +132,20 @@ export function PersonMessageRow({
         accessibilityRole="button"
         accessibilityLabel={message.body ?? ""}
         accessibilityHint={onLongPress ? "Long press to react" : undefined}
-        style={({ pressed }) => ({
+        // ── A STATIC STYLE OBJECT, NOT THE `({ pressed }) => …` FORM ────────
+        // Measured on a device at 360 dp: with the function form the bubble's
+        // `backgroundColor` never painted. The ground sampled `#F7F9F9` where
+        // the fill should have been, while the TEXT colour — read from the same
+        // `colors` object, one line below — applied correctly as pure white.
+        // So the palette resolved; the function style did not reach the native
+        // view. White text on a white ground is an invisible message, which is
+        // the worst way for this to fail: nothing errors and the thread just
+        // looks empty.
+        //
+        // Nothing is lost by dropping it. A tap on a message does nothing here
+        // (long-press is the only gesture), so the pressed state was decoration
+        // over an interaction that does not exist.
+        style={{
           // Of the MEASURE, not of the screen: at 800 dp `ScreenContainer`
           // caps the column at METRICS.maxMeasure, so a line of chat cannot
           // run 700 dp wide. IDENTITY.md §8.
@@ -141,8 +165,8 @@ export function PersonMessageRow({
           borderBottomLeftRadius: mine ? metrics.radius.lg : metrics.radius.sm,
           paddingHorizontal: metrics.space.lg,
           paddingVertical: metrics.space.md,
-          opacity: pressed ? 0.75 : pending ? 0.6 : 1,
-        })}
+          opacity: pending ? 0.6 : 1,
+        }}
       >
         {/* Never `variant="answer"`. The serif belongs to the assistant, and
             it is signal 3 of the four — see this file's header. */}

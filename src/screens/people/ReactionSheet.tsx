@@ -148,7 +148,8 @@ export function ReactionSheet({
                 testID={`message-action-${action.key}`}
                 onPress={action.run}
                 accessibilityRole="button"
-                style={({ pressed }) => ({
+                android_ripple={{ color: colors.border }}
+                style={{
                   flexDirection: "row",
                   alignItems: "center",
                   gap: metrics.space.md,
@@ -156,8 +157,7 @@ export function ReactionSheet({
                   minHeight: metrics.touch,
                   borderTopWidth: index === 0 ? 0 : 1,
                   borderTopColor: colors.border,
-                  opacity: pressed ? 0.6 : 1,
-                })}
+                }}
               >
                 <action.icon
                   size={18}

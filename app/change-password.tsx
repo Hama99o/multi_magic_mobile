@@ -35,7 +35,7 @@ import {
   WrongCurrentPassword,
   profileApi,
 } from "@/api/profile";
-import { apiErrorMessage, isNetworkFailure } from "@/api/http";
+import { failureMessage } from "@/api/failure";
 
 function SecretField({
   label,
@@ -143,11 +143,9 @@ export default function ChangePassword() {
         // Against the field, and the session is untouched — see the header.
         setWrongCurrent(true);
       } else {
-        setError(
-          isNetworkFailure(e)
-            ? "Could not reach MultiMagic. Your password was not changed."
-            : (apiErrorMessage(e) ?? "Could not change your password."),
-        );
+        // Whatever went wrong, nothing changed — which is the fact that
+        // decides what to do next, so it is appended rather than replaced.
+        setError(`${failureMessage(e, "Could not change your password.")} Your password was not changed.`);
       }
     } finally {
       setBusy(false);

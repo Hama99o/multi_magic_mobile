@@ -65,13 +65,13 @@ export function EventRow({
       accessibilityRole="button"
       accessibilityLabel={`${event.title}, ${timeLabel(occurrence)}`}
       accessibilityHint="Opens the assistant with a question about this event"
-      style={({ pressed }) => ({
+      android_ripple={{ color: colors.border }}
+      style={{
         flexDirection: "row",
         gap: metrics.space.md,
         paddingVertical: metrics.space.md,
         minHeight: metrics.touch,
-        opacity: pressed ? 0.6 : 1,
-      })}
+      }}
     >
       <View style={{ width: 62, alignItems: "flex-start", gap: 2 }}>
         <Text variant="caption" tone="muted">

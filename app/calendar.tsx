@@ -32,7 +32,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { calendarApi, type Occurrence } from "@/api/calendar";
 import { aiApi } from "@/api/ai";
-import { isNetworkFailure } from "@/api/http";
+import { failureMessage } from "@/api/failure";
 import { useDraft } from "@/hooks/useDraft";
 import { EventRow } from "@/screens/people/EventRow";
 
@@ -173,9 +173,7 @@ export default function Calendar() {
       {error ? (
         <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
           <Text tone="muted">
-            {isNetworkFailure(error)
-              ? "Could not reach MultiMagic."
-              : "Could not load your calendar."}
+            {failureMessage(error, "Could not load your calendar.")}
           </Text>
           <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
             <Text tone="accent">Try again</Text>

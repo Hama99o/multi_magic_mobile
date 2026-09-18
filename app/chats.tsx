@@ -28,7 +28,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { subscribeToChannel } from "@/lib/cable";
 import { conversationsApi, type Conversation } from "@/api/conversations";
-import { isNetworkFailure } from "@/api/http";
+import { failureMessage } from "@/api/failure";
 import { ConversationRow } from "@/screens/people/ConversationRow";
 
 export default function Chats() {
@@ -108,9 +108,7 @@ export default function Chats() {
       {error ? (
         <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
           <Text tone="muted">
-            {isNetworkFailure(error)
-              ? "Could not reach MultiMagic."
-              : "Could not load your chats."}
+            {failureMessage(error, "Could not load your chats.")}
           </Text>
           <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
             <Text tone="accent">Try again</Text>

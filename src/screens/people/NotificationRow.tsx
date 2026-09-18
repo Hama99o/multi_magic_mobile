@@ -54,7 +54,8 @@ export function NotificationRow({
         unread ? `Unread: ${notification.title}` : notification.title
       }
       accessibilityHint="Opens the assistant with a question about this"
-      style={({ pressed }) => ({
+      android_ripple={{ color: colors.border }}
+      style={{
         flexDirection: "row",
         alignItems: "flex-start",
         gap: metrics.space.md,
@@ -63,8 +64,7 @@ export function NotificationRow({
         minHeight: metrics.touch,
         borderRadius: metrics.radius.md,
         backgroundColor: unread ? colors.surface : "transparent",
-        opacity: pressed ? 0.6 : 1,
-      })}
+      }}
     >
       {/* Nil when the app itself caused it — a reminder falling due has no
           actor (`notification_serializer.rb:16-17`), and an avatar invented for

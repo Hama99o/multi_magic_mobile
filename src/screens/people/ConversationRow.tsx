@@ -67,15 +67,15 @@ export function ConversationRow({
           ? `${conversation.displayName}, ${conversation.unreadMessages} unread`
           : conversation.displayName
       }
-      style={({ pressed }) => ({
+      android_ripple={{ color: colors.border }}
+      style={{
         flexDirection: "row",
         gap: metrics.space.md,
         paddingVertical: metrics.space.md,
         // The touch target floor applies to a whole row too, not only to icons.
         minHeight: metrics.touch,
         alignItems: "center",
-        opacity: pressed ? 0.6 : 1,
-      })}
+      }}
     >
       <Avatar
         name={conversation.displayName}

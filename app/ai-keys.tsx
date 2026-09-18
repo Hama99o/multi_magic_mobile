@@ -37,7 +37,7 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { KeyRefused, aiKeysApi, type AiKey, type AiKeyPayload } from "@/api/aiKeys";
-import { apiErrorMessage, isNetworkFailure } from "@/api/http";
+import { failureMessage } from "@/api/failure";
 
 export default function AiKeys() {
   const colors = useColors();
@@ -70,11 +70,7 @@ export default function AiKeys() {
       setRefusal(e.message);
       return;
     }
-    setFailure(
-      isNetworkFailure(e)
-        ? "Could not reach MultiMagic. Nothing was changed."
-        : (apiErrorMessage(e) ?? "Could not do that."),
-    );
+    setFailure(failureMessage(e, "Could not do that."));
   };
 
   const add = useMutation({
@@ -139,7 +135,7 @@ export default function AiKeys() {
       {error ? (
         <View style={{ gap: metrics.space.sm }}>
           <Text tone="muted">
-            {isNetworkFailure(error) ? "Could not reach MultiMagic." : "Could not load your keys."}
+            {failureMessage(error, "Could not load your keys.")}
           </Text>
           <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
             <Text tone="accent">Try again</Text>

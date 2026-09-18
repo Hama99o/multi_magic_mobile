@@ -73,13 +73,13 @@ export default function Account() {
           testID="account-privacy"
           onPress={() => router.push("/privacy")}
           accessibilityRole="button"
-          style={({ pressed }) => ({
+          android_ripple={{ color: colors.border }}
+          style={{
             flexDirection: "row",
             alignItems: "center",
             paddingHorizontal: metrics.space.lg,
             minHeight: metrics.touch,
-            opacity: pressed ? 0.6 : 1,
-          })}
+          }}
         >
           <Text style={{ flex: 1 }}>Privacy policy</Text>
           <ChevronRight size={18} color={colors.inkMuted} />
@@ -97,14 +97,14 @@ export default function Account() {
           accessibilityRole="button"
           accessibilityLabel="Delete account"
           accessibilityHint="Opens a confirmation. This cannot be undone."
-          style={({ pressed }) => ({
+          android_ripple={{ color: colors.border }}
+          style={{
             flexDirection: "row",
             alignItems: "center",
             gap: metrics.space.md,
             paddingHorizontal: metrics.space.lg,
             minHeight: metrics.touch,
-            opacity: pressed ? 0.6 : 1,
-          })}
+          }}
         >
           <Trash2 size={18} color={colors.danger} />
           {/* No chevron. Six references and not one filled button — and a

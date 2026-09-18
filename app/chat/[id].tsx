@@ -471,7 +471,17 @@ export default function PersonThread() {
         onStartReached={hasOlder ? () => void loadOlder() : undefined}
         onStartReachedThreshold={0.3}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: metrics.space.md }}
+        // IDENTITY.md §8: at 800 dp the conversation takes a measure and
+        // centres rather than stretching — the same treatment the assistant's
+        // list already has, and the one place a wide screen needs a decision
+        // instead of a resize.
+        contentContainerStyle={{
+          width: "100%",
+          maxWidth: metrics.maxMeasure,
+          alignSelf: "center",
+          flexGrow: 1,
+          paddingBottom: metrics.space.md,
+        }}
         ListEmptyComponent={
           status === "loading" ? null : status === "failed" ? (
             <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>

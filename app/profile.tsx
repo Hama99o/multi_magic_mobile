@@ -32,7 +32,7 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { profileApi, type ProfileChanges } from "@/api/profile";
-import { apiErrorMessage, isNetworkFailure } from "@/api/http";
+import { failureMessage } from "@/api/failure";
 import { API_URL } from "@/config/env";
 import { Avatar } from "@/screens/people/Avatar";
 import { PhotoSheet, type PickedPhoto } from "@/screens/account/PhotoSheet";
@@ -124,11 +124,7 @@ export default function ProfileScreen() {
   };
 
   const onFailed = (e: unknown) =>
-    setFailure(
-      isNetworkFailure(e)
-        ? "Could not reach MultiMagic. Nothing was saved."
-        : (apiErrorMessage(e) ?? "Could not save that."),
-    );
+    setFailure(failureMessage(e, "Could not save that."));
 
   const save = useMutation({
     mutationFn: (changes: ProfileChanges) => profileApi.update(profile!.id, changes),
@@ -177,7 +173,7 @@ export default function ProfileScreen() {
       {error ? (
         <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
           <Text tone="muted">
-            {isNetworkFailure(error) ? "Could not reach MultiMagic." : "Could not load your profile."}
+            {failureMessage(error, "Could not load your profile.")}
           </Text>
           <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
             <Text tone="accent">Try again</Text>
@@ -327,15 +323,15 @@ export default function ProfileScreen() {
                 testID={`profile-${row.key}`}
                 onPress={() => router.push(row.to)}
                 accessibilityRole="button"
-                style={({ pressed }) => ({
+                android_ripple={{ color: colors.border }}
+                style={{
                   flexDirection: "row",
                   alignItems: "center",
                   paddingHorizontal: metrics.space.lg,
                   minHeight: metrics.touch,
                   borderTopWidth: index === 0 ? 0 : 1,
                   borderTopColor: colors.border,
-                  opacity: pressed ? 0.6 : 1,
-                })}
+                }}
               >
                 <Text style={{ flex: 1 }}>{row.label}</Text>
                 <ChevronRight size={18} color={colors.inkMuted} />
@@ -350,15 +346,15 @@ export default function ProfileScreen() {
             testID="profile-web"
             onPress={() => void Linking.openURL(API_URL)}
             accessibilityRole="link"
-            style={({ pressed }) => ({
+            android_ripple={{ color: colors.border }}
+            style={{
               flexDirection: "row",
               alignItems: "center",
               gap: metrics.space.sm,
               marginTop: metrics.space.lg,
               minHeight: metrics.touch,
               paddingHorizontal: metrics.space.sm,
-              opacity: pressed ? 0.6 : 1,
-            })}
+            }}
           >
             <ExternalLink size={16} color={colors.inkMuted} />
             <Text tone="muted" style={{ flex: 1 }}>

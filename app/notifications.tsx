@@ -22,7 +22,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { subscribeToChannel } from "@/lib/cable";
 import { aiApi } from "@/api/ai";
-import { isNetworkFailure } from "@/api/http";
+import { failureMessage } from "@/api/failure";
 import {
   notificationsApi,
   type AppNotification,
@@ -240,9 +240,7 @@ export default function Notifications() {
       {error ? (
         <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
           <Text tone="muted">
-            {isNetworkFailure(error)
-              ? "Could not reach MultiMagic."
-              : "Could not load your notifications."}
+            {failureMessage(error, "Could not load your notifications.")}
           </Text>
           <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
             <Text tone="accent">Try again</Text>

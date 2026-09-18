@@ -185,6 +185,29 @@ wall before running it.** If it does, that is not a new bug: it is this one, and
 the fix is the build rather than a fourth harness patch. A prediction on the
 record before the fact is worth more than a diagnosis after it.
 
+## A development build needs `expo-dev-client` as a DEPENDENCY
+
+`npx expo prebuild` + `./gradlew assembleDebug` produces an APK either way, and
+without `expo-dev-client` in `package.json` what it produces is a **plain React
+Native debug app**, not an Expo dev client. That app loads
+`index.android.bundle` with entry `./index` — and this is an expo-router
+project whose entry is `expo-router/entry`, so Metro 404s and the device shows
+"Unable to load script."
+
+The symptoms point everywhere except the cause. In order, it looked like:
+
+1. a port problem (the app asks for 8081; our Metro is on 3029);
+2. a Metro-mode problem (`--dev-client` not passed);
+3. an intent-timing problem (`onNewIntent while context is not ready`).
+
+All three are real observations and none is the fault. Karwan's `package.json`
+has `expo-dev-client`; ours did not, and nothing in the build says so — the APK
+builds, installs and launches, and only fails when it tries to fetch JS.
+
+**Check the dependency before debugging the transport.** And note the APK is
+~188 MB and the build costs ~8 GB of disk, so it is not a thing to rebuild
+casually while the box is at 96%.
+
 ## `pgrep -f` matches the watcher looking for the thing
 
 `until ! pgrep -f maestro; do sleep 15; done` never exits: the shell running it

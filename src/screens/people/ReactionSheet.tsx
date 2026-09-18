@@ -90,6 +90,7 @@ export function ReactionSheet({
       >
         {/* Stops a press inside the sheet from reaching the scrim behind it. */}
         <Pressable
+          testID="reaction-sheet"
           onPress={() => {}}
           style={{
             backgroundColor: colors.ground,
@@ -109,11 +110,12 @@ export function ReactionSheet({
               padding: metrics.space.sm,
             }}
           >
-            {REACTION_EMOJI.map((emoji) => {
+            {REACTION_EMOJI.map(({ emoji, id }) => {
               const mineAlready = message.reactions.some((r) => r.emoji === emoji && r.mine);
               return (
                 <Pressable
-                  key={emoji}
+                  key={id}
+                  testID={`reaction-${id}`}
                   onPress={() => onReact(emoji)}
                   accessibilityRole="button"
                   accessibilityLabel={mineAlready ? `Remove ${emoji}` : `React ${emoji}`}
@@ -143,6 +145,7 @@ export function ReactionSheet({
             {actions.map((action, index) => (
               <Pressable
                 key={action.key}
+                testID={`message-action-${action.key}`}
                 onPress={action.run}
                 accessibilityRole="button"
                 style={({ pressed }) => ({

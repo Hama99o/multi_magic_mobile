@@ -119,6 +119,7 @@ export default function Chats() {
       ) : null}
 
       <FlatList
+        testID="chats-list"
         data={conversations}
         keyExtractor={(item) => String(item.id)}
         renderItem={({ item }) => (
@@ -139,7 +140,10 @@ export default function Chats() {
             /* Gymshark and My BMW: a heading and one line that says what will
                fill it. No icon, no illustration (IDENTITY.md §6) — and no CTA,
                because there is nothing this screen could start. */
-            <View style={{ paddingVertical: metrics.space.xl * 2, gap: metrics.space.sm }}>
+            <View
+              testID="chats-empty"
+              style={{ paddingVertical: metrics.space.xl * 2, gap: metrics.space.sm }}
+            >
               <Text variant="label">No conversations yet</Text>
               <Text tone="muted">Chats you start on MultiMagic appear here.</Text>
             </View>

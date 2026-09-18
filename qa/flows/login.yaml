@@ -1,0 +1,51 @@
+# Sign in with the QA account. Included by every other flow.
+#
+# Expo Go, not a package of our own: `launchApp` opens Expo Go's home, so the
+# project is reached by deep link. State is cleared by run.sh with `pm clear`
+# before the suite, not here — clearing per flow would re-download the bundle
+# every time and turn a 90-second suite into a ten-minute one.
+appId: ${APP_ID}
+---
+- launchApp
+- openLink: ${DEEP_LINK}
+# The bundle is fetched over the network on a cold start, and this box is not
+# fast. Waiting on EITHER end state rather than assuming signed-out.
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-email"
+    timeout: 120000
+    optional: true
+
+# Already signed in from a previous flow? Sign out, so every flow starts from
+# the same place. This replaces `pm clear`, which wiped Expo Go itself.
+- runFlow:
+    when:
+      visible:
+        id: "composer-input"
+    commands:
+      - tapOn:
+          id: "chat-open-sessions"
+      - tapOn:
+          id: "sessions-sign-out"
+      - extendedWaitUntil:
+          visible:
+            id: "sign-in-email"
+          timeout: 60000
+
+- assertVisible:
+    id: "sign-in-email"
+- tapOn:
+    id: "sign-in-email"
+- inputText: ${EMAIL}
+- tapOn:
+    id: "sign-in-password"
+- inputText: ${PASSWORD}
+- hideKeyboard
+- takeScreenshot: reports/01-sign-in-filled
+- tapOn:
+    id: "sign-in-submit"
+# The composer is the proof we are through: it only exists on the chat screen.
+- extendedWaitUntil:
+    visible:
+      id: "composer-input"
+    timeout: 60000

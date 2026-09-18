@@ -339,6 +339,52 @@ describe("delivery that does not depend on the socket", () => {
   });
 });
 
+describe("merging without expecting a reply", () => {
+  // A thread with a PERSON never produces an assistant message, so routing its
+  // sends and reactions through `addPending` would start the 3-second poll and
+  // run it the full three minutes before the timeout released it — on a mobile
+  // connection, for a thumbs-up.
+  it("does NOT start the poll", async () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() =>
+      useConversation({ conversationId: 4, channel: "ConversationChannel" }),
+    );
+    await act(async () => {});
+    latest.mockClear();
+
+    act(() => result.current.mergeMessage(message(7, "user", "a message to a person")));
+
+    expect(result.current.awaitingReply).toBe(false);
+    await act(async () => {
+      jest.advanceTimersByTime(12_000);
+    });
+    expect(latest).not.toHaveBeenCalled();
+    jest.useRealTimers();
+  });
+
+  it("still puts the message on screen", async () => {
+    const { result } = renderHook(() =>
+      useConversation({ conversationId: 4, channel: "ConversationChannel" }),
+    );
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    act(() => result.current.mergeMessage(message(7, "user", "a message to a person")));
+
+    expect(result.current.messages.map((m) => m.id)).toContain(7);
+  });
+
+  it("addPending still DOES expect one, for the assistant", async () => {
+    const { result } = renderHook(() =>
+      useConversation({ conversationId: 4, channel: "MessageChannel" }),
+    );
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    act(() => result.current.addPending(message(7, "user", "Do I owe anyone?")));
+
+    expect(result.current.awaitingReply).toBe(true);
+  });
+});
+
 describe("when the first read fails", () => {
   it("says so rather than showing an empty conversation", async () => {
     latest.mockRejectedValue(new Error("offline"));

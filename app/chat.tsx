@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
-import { MessageSquareText } from "lucide-react-native";
+import { Bell, CalendarDays, MessageSquareText, Users } from "lucide-react-native";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
@@ -36,6 +36,71 @@ import { AttachSheet } from "@/components/chat/AttachSheet";
 import { PendingFiles } from "@/components/chat/PendingFiles";
 import { useAttachments } from "@/hooks/useAttachments";
 import { documentsApi } from "@/api/ai";
+import { notificationsApi } from "@/api/notifications";
+import { conversationsApi } from "@/api/conversations";
+
+/**
+ * One quiet door in the title bar.
+ *
+ * The badge is drawn only when there is something to say — a zero rendered as
+ * "0" is a permanent red dot that teaches people to ignore the badge. Capped at
+ * 99+ so a long number cannot widen the row.
+ */
+function HeaderIcon({
+  label,
+  icon: Icon,
+  badge = 0,
+  onPress,
+  testID,
+}: {
+  label: string;
+  icon: typeof Bell;
+  badge?: number;
+  onPress: () => void;
+  testID: string;
+}) {
+  const colors = useColors();
+  const metrics = useMetrics();
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={badge > 0 ? `${label}, ${badge} unread` : label}
+      hitSlop={6}
+      onPress={onPress}
+      style={{
+        width: metrics.touch,
+        height: metrics.touch,
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+      testID={testID}
+    >
+      <Icon size={21} color={colors.inkMuted} />
+      {badge > 0 ? (
+        <View
+          style={{
+            position: "absolute",
+            top: 6,
+            right: 4,
+            minWidth: 16,
+            height: 16,
+            borderRadius: 8,
+            paddingHorizontal: 4,
+            backgroundColor: colors.accent,
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+          testID={`${testID}-badge`}
+        >
+          <Text variant="caption" tone="onAccent" style={{ fontSize: 10, lineHeight: 13 }}>
+            {badge > 99 ? "99+" : badge}
+          </Text>
+        </View>
+      ) : null}
+    </Pressable>
+  );
+}
 
 /** A question that could not be posted, kept so it is never lost. */
 interface FailedQuestion {
@@ -81,7 +146,7 @@ export default function Chat() {
     },
     [user?.id],
   );
-  const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addPending, resync } =
+  const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addPending, mergeMessage, resync } =
     useConversation({ conversationId, channel: "MessageChannel" });
 
   const { draft, setDraft, clear } = useDraft(conversationId);
@@ -109,6 +174,29 @@ export default function Chat() {
 
   const attachments = useAttachments(conversationId, uploaded.length);
   const [attachOpen, setAttachOpen] = useState(false);
+
+  /**
+   * The two badges.
+   *
+   * Counted by the endpoints that exist to count, NOT by `index.length`: both
+   * indexes are paginated at 20, so counting a page caps the badge at 20 and
+   * pays for a page of bodies to draw one number.
+   *
+   * And the names are a trap worth naming: `unread_messages_count` on the
+   * CONVERSATIONS endpoint counts THREADS with something unread, while the
+   * field of the same name on a row counts MESSAGES in that thread. One name,
+   * two meanings, one endpoint apart. The icon wants threads.
+   */
+  const { data: unreadNotifications = 0 } = useQuery<number>({
+    queryKey: ["notifications", "unreadCount"],
+    queryFn: notificationsApi.unreadCount,
+  });
+  const { data: unread } = useQuery({
+    queryKey: ["conversations", "unreadCount"],
+    queryFn: conversationsApi.unreadCount,
+  });
+  // THREADS with something unread, not messages — see the note above.
+  const unreadChats = unread?.unreadConversations ?? 0;
   const [posting, setPosting] = useState(false);
   const [failedQuestion, setFailedQuestion] = useState<FailedQuestion | null>(null);
   const [openSource, setOpenSource] = useState<MessageLink | null>(null);
@@ -198,23 +286,42 @@ export default function Chat() {
           }}
         >
           <Text variant="title">Assistant</Text>
-          {/* The title bar carries a list icon; an app with one destination does
-              not need a persistent drawer. Sign out lives inside the sheet. */}
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel="Conversations"
-            hitSlop={8}
-            onPress={() => setSessionsOpen(true)}
-            style={{
-              width: metrics.touch,
-              height: metrics.touch,
-              alignItems: "center",
-              justifyContent: "center",
-            }}
-            testID="chat-open-sessions"
-          >
-            <MessageSquareText size={22} color={colors.ink} />
-          </Pressable>
+
+          {/* The doors out of here.
+              QUIET, per IDENTITY.md §7: outline glyphs, muted, the touch floor
+              as the tap target, no labels, and no accent anywhere except a badge
+              that actually has something to say. An affordance can be findable
+              without being loud. */}
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <HeaderIcon
+              label="Chats"
+              icon={Users}
+              badge={unreadChats}
+              onPress={() => router.push("/chats")}
+              testID="chat-open-chats"
+            />
+            <HeaderIcon
+              label="Notifications"
+              icon={Bell}
+              badge={unreadNotifications}
+              onPress={() => router.push("/notifications")}
+              testID="chat-open-notifications"
+            />
+            <HeaderIcon
+              label="Calendar"
+              icon={CalendarDays}
+              onPress={() => router.push("/calendar")}
+              testID="chat-open-calendar"
+            />
+            {/* This one stays last and is the assistant's own: an app with one
+                destination does not need a persistent drawer. */}
+            <HeaderIcon
+              label="Conversations"
+              icon={MessageSquareText}
+              onPress={() => setSessionsOpen(true)}
+              testID="chat-open-sessions"
+            />
+          </View>
         </View>
 
         <FlatList
@@ -227,9 +334,11 @@ export default function Chat() {
               onOpenSource={setOpenSource}
               showUndo={item.id === newestUndoableId}
               onUndone={(updated) =>
-                // Merged in place: the reply now carries `undone_at`, so the
-                // offer cannot be made twice.
-                addPending(updated)
+                // Merged in place — NOT `addPending`. The reply now carries
+                // `undone_at`; nothing new is being waited for, and claiming
+                // otherwise would start a three-minute poll for an answer that
+                // has already arrived.
+                mergeMessage(updated)
               }
             />
           )}

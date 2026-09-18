@@ -184,12 +184,14 @@ export default function Calendar() {
       ) : null}
 
       <FlatList
+        testID="calendar-list"
         data={isLoading || error ? [] : rows}
         keyExtractor={(row) => row.key}
         renderItem={({ item }) => {
           if (item.kind === "day") {
             return (
               <Text
+                testID={item.isToday ? "calendar-day-today" : `calendar-day-${item.key}`}
                 variant="label"
                 tone={item.isToday ? "accent" : "muted"}
                 style={{ paddingTop: metrics.space.lg, paddingBottom: metrics.space.xs }}
@@ -200,7 +202,11 @@ export default function Calendar() {
           }
           if (item.kind === "nothing") {
             return (
-              <Text tone="muted" style={{ paddingVertical: metrics.space.md }}>
+              <Text
+                testID="calendar-nothing-today"
+                tone="muted"
+                style={{ paddingVertical: metrics.space.md }}
+              >
                 Nothing today.
               </Text>
             );

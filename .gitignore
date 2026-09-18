@@ -56,3 +56,6 @@ docs/design/**/ours/*.xml
 
 expo-env.d.ts
 # @end expo-cli
+# QA run artefacts — regenerate from the rig; a stale screenshot is worse than none.
+qa/reports/*.png
+qa/reports/logcat-*.txt

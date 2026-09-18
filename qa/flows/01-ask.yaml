@@ -1,0 +1,40 @@
+# THE FLOW THAT IS THE PRODUCT, and the only one that exercises the socket.
+#
+# `POST /api/v1/ai/show` returns 202 and the answer is broadcast later over
+# ActionCable. So this asserts three separate things, in order:
+#
+#   1. the question is on screen IMMEDIATELY (drawn from the 202's own id);
+#   2. the thinking indicator appears where the answer will go;
+#   3. an answer actually ARRIVES — which no unit test can prove, because they
+#      all mock the cable.
+#
+# If only one flow ever exists in this repo, it is this one.
+appId: ${APP_ID}
+tags:
+  - smoke
+---
+- runFlow: login.yaml
+- takeScreenshot: reports/02-chat-empty
+# The empty state offers questions about the user's own data.
+- assertVisible:
+    id: "chat-empty"
+- tapOn: "Do I owe anyone money?"
+
+# 1. The question appears before any answer exists.
+- assertVisible: "Do I owe anyone money?"
+- takeScreenshot: reports/03-question-posted
+
+# 2. Dots where the answer will be.
+- assertVisible:
+    id: "thinking"
+
+# 3. The answer lands. Generous, because a RAG turn plus a provider call is
+#    genuinely slow — but far short of the composer's own 3-minute release, so
+#    a timeout here means "it did not arrive", not "we were impatient".
+- extendedWaitUntil:
+    notVisible:
+      id: "thinking"
+    timeout: 120000
+- assertVisible:
+    id: "assistant-answer"
+- takeScreenshot: reports/04-answer-arrived

@@ -90,25 +90,20 @@ export default function PersonThread() {
   const title = params.name ?? "Chat";
 
   /**
-   * ── ONE COST, NAMED RATHER THAN HIDDEN ────────────────────────────────────
-   * `addPending` is the hook's only way to merge a message into the transcript,
-   * and it also sets `awaitingReply` (`useConversation.ts:161-166`). That flag
-   * clears only on an **assistant** message newer than the last pending id
-   * (lines 138 and 211) — and a thread with a person never has one. So every
-   * send, edit, reaction and delete starts the 3-second resync poll and it runs
-   * for its full three minutes (`REPLY_TIMEOUT_MS`).
+   * `mergeMessage`, never `addPending` — and the difference is a poll storm.
    *
-   * That is **correct and self-healing** — it is exactly the poll that
-   * guarantees a sent message appears even when the socket is dead — but it is
-   * not free on a mobile connection, and a reaction does not need it.
+   * `addPending` also sets `awaitingReply`, which clears only on an ASSISTANT
+   * message newer than the last pending id — and a thread with a person never
+   * produces one. Routing a send, an edit or a thumbs-up through it would start
+   * the 3-second resync poll and run it the full three minutes before the
+   * timeout released it, on a mobile connection, for a reaction.
    *
-   * The fix is one merge-only entry point on `useConversation`, and that file
-   * belongs to the other session, so it is reported rather than taken. Until
-   * then this is the right trade: a wasted poll costs data, and the alternative
-   * — reconciling a local override map against the server's copy — costs
-   * correctness, which is the one thing a chat cannot spend.
+   * This screen documented that cost rather than editing somebody else's file;
+   * the other session has since landed `mergeMessage` for exactly this, so the
+   * cost is now taken rather than carried. Nothing here expects a reply, so
+   * nothing here calls `addPending`.
    */
-  const { messages, status, hasOlder, loadOlder, addPending, resync } = useConversation({
+  const { messages, status, hasOlder, loadOlder, mergeMessage, resync } = useConversation({
     conversationId: Number.isFinite(conversationId) ? conversationId : null,
     // See this file's header. NOT ConversationChannel.
     channel: "MessageChannel",
@@ -207,7 +202,7 @@ export default function PersonThread() {
       setEditing(null);
       setDraft("");
       try {
-        addPending(await threadApi.edit(conversationId, target.id, body));
+        mergeMessage(await threadApi.edit(conversationId, target.id, body));
       } catch {
         // Put it back in the composer rather than losing the words.
         setDraft(body);
@@ -224,7 +219,7 @@ export default function PersonThread() {
       const saved = await threadApi.send(conversationId, body);
       // Merged by the server's own id, so the MessageChannel echo of the same
       // message lands on top of it rather than appearing twice.
-      addPending(saved);
+      mergeMessage(saved);
       setOutbox((current) => current.filter((item) => item.key !== key));
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
     } catch {
@@ -234,7 +229,7 @@ export default function PersonThread() {
         current.map((item) => (item.key === key ? { ...item, failed: true } : item)),
       );
     }
-  }, [draft, conversationId, editing, addPending, queryClient]);
+  }, [draft, conversationId, editing, mergeMessage, queryClient]);
 
   const retry = useCallback(
     async (item: Outgoing) => {
@@ -242,7 +237,7 @@ export default function PersonThread() {
         current.map((row) => (row.key === item.key ? { ...row, failed: false } : row)),
       );
       try {
-        addPending(await threadApi.send(conversationId, item.body));
+        mergeMessage(await threadApi.send(conversationId, item.body));
         setOutbox((current) => current.filter((row) => row.key !== item.key));
       } catch {
         setOutbox((current) =>
@@ -250,7 +245,7 @@ export default function PersonThread() {
         );
       }
     },
-    [conversationId, addPending],
+    [conversationId, mergeMessage],
   );
 
   const react = useCallback(
@@ -262,13 +257,13 @@ export default function PersonThread() {
         // One endpoint both adds and removes — the same emoji twice takes it
         // back (`routes.rb:295`). The response is the whole updated message,
         // so the counts come back rather than being guessed at.
-        addPending(await threadApi.react(conversationId, target.id, emoji));
+        mergeMessage(await threadApi.react(conversationId, target.id, emoji));
       } catch {
         // The chip simply does not change. A failed reaction is not worth an
         // error banner over somebody's conversation.
       }
     },
-    [sheetFor, conversationId, addPending],
+    [sheetFor, conversationId, mergeMessage],
   );
 
   const removeMessage = useCallback(async () => {
@@ -278,11 +273,11 @@ export default function PersonThread() {
     try {
       // Comes back `deleted: true` with `body: null` — the row keeps its place,
       // because "a hole in the thread reads as a bug".
-      addPending(await threadApi.remove(conversationId, target.id));
+      mergeMessage(await threadApi.remove(conversationId, target.id));
     } catch {
       // Nothing changes on screen, which is the truth.
     }
-  }, [sheetFor, conversationId, addPending]);
+  }, [sheetFor, conversationId, mergeMessage]);
 
   /**
    * The message the UNREAD divider sits above, fixed on first load.
@@ -403,13 +398,13 @@ export default function PersonThread() {
         />
 
         <View style={{ flex: 1 }}>
-          <Text variant="label" numberOfLines={1} style={{ fontSize: 17 }}>
+          <Text testID="thread-title" variant="label" numberOfLines={1} style={{ fontSize: 17 }}>
             {detail?.displayName ?? title}
           </Text>
           {/* Typing replaces the subtitle rather than adding a row, so the
               header does not change height and shove the thread down. */}
           {typingName ? (
-            <Text variant="caption" tone="accent">
+            <Text testID="thread-typing" variant="caption" tone="accent">
               {isGroup ? `${typingName} is typing…` : "typing…"}
             </Text>
           ) : detail?.isOnline ? (
@@ -421,6 +416,7 @@ export default function PersonThread() {
       </View>
 
       <FlatList
+        testID="thread-list"
         ref={listRef}
         data={rows}
         keyExtractor={(row) => row.key}

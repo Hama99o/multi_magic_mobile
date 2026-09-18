@@ -251,6 +251,7 @@ export default function Notifications() {
       ) : null}
 
       <FlatList
+        testID="notifications-list"
         data={rows}
         keyExtractor={(row) => row.key}
         renderItem={({ item }) =>
@@ -280,7 +281,7 @@ export default function Notifications() {
         ListEmptyComponent={
           isLoading || error ? null : (
             // One line, no icon — IDENTITY.md §6.
-            <View style={{ paddingVertical: metrics.space.xl * 2 }}>
+            <View testID="notifications-empty" style={{ paddingVertical: metrics.space.xl * 2 }}>
               <Text tone="muted">You&apos;re all caught up.</Text>
             </View>
           )

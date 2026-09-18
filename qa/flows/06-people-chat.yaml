@@ -1,0 +1,137 @@
+# PEOPLE CHAT — and the one assertion here that no unit test in this repo can make.
+#
+# `docs/design/people-chat/SPEC.md` §0.2: the server broadcasts every message
+# TWICE, and the ConversationChannel copy is rendered with `user: nil`, so
+# `sent_by_me` is false for everybody on that stream — the sender included. A
+# thread fed from it draws every message on the LEFT. Every unit test in this
+# repo mocks the cable, so not one of them can catch that; only a device with a
+# live socket can. Hence `msg-mine-*` / `msg-theirs-*` in the handles: the side
+# a message lands on is the assertion, not a detail of it.
+#
+# ── FLOW_REGISTER note — lift verbatim into the "Notes" column ──────────────
+# COVERS: the chat list renders rows from `GET /conversations` with a name
+# (which comes from `user.fullname`, NOT the null `title` of a direct chat) and
+# an unread badge; opening a thread fires `mark_read` and the badge clears on
+# return; a message SENDS over HTTP and appears on the RIGHT — the `sent_by_me`
+# trap above; the long-press sheet opens with six emoji and the action menu;
+# a reaction chip appears under the bubble and the same emoji again removes it
+# (the endpoint is a toggle, `routes.rb:295`).
+#
+# CANNOT TELL YOU:
+#  · **Whether the screen is REACHABLE.** It arrives by deep link because the
+#    header icons in `app/chat.tsx` do not exist yet. When they land, replace
+#    the `openLink` below with a tap on the chats icon — until then a PASS here
+#    says the screen works, not that a user can get to it.
+#  · **Whether an incoming message from ANOTHER PERSON renders on the left,**
+#    which is the half of the `sent_by_me` trap that matters most. That needs a
+#    second signed-in account and the rig has NONE. The left side is asserted
+#    only if the QA account's history already contains somebody else's message,
+#    which is luck, not coverage.
+#  · **Whether the double tick is correct.** `read_at` is nil unless EVERY other
+#    member has read past it, so a one-account run can never make it non-nil.
+#  · **Whether the UNREAD divider is placed right**, which needs a thread that
+#    is genuinely unread on arrival — i.e. a second account to send into it.
+#  · Anything about groups. The QA account has no group thread.
+appId: ${APP_ID}
+tags:
+  - people
+---
+- runFlow: login.yaml
+
+# Reached by deep link, NOT by tapping — see the header. This line is the one
+# that should change first when the entry points land.
+- openLink: ${DEEP_LINK}/--/chats
+- extendedWaitUntil:
+    visible:
+      id: "chats-list"
+    timeout: 60000
+- takeScreenshot: reports/06-chats-list
+
+# An empty list is a legitimate state and NOT a failure: the app cannot start a
+# conversation (no people picker in v1), so a fresh QA account has none. The run
+# stops here rather than asserting into an empty screen — and says so.
+- runFlow:
+    when:
+      visible:
+        id: "chats-empty"
+    commands:
+      - takeScreenshot: reports/06-chats-empty-no-threads
+      # NOT a pass and NOT a failure: nothing was measured past this point.
+      # Seed a thread from the web as the QA account, then re-run.
+      - assertVisible: "Chats you start on MultiMagic appear here."
+
+- runFlow:
+    when:
+      notVisible:
+        id: "chats-empty"
+    commands:
+      # ── The thread ──────────────────────────────────────────────────────
+      - tapOn:
+          id: "chat-row-.*"
+      - extendedWaitUntil:
+          visible:
+            id: "thread-list"
+          timeout: 30000
+      - assertVisible:
+          id: "thread-title"
+      - takeScreenshot: reports/07-thread-open
+
+      # ── SEND, and land on the RIGHT ─────────────────────────────────────
+      # This is the assertion the file exists for.
+      - tapOn:
+          id: "people-composer-input"
+      # Labelled, because this WRITES INTO A REAL CONVERSATION on his real
+      # MultiMagic — the QA account's own, never his (RIG_CONTRACT §3). A run
+      # that leaves anonymous text in a thread is indistinguishable from a
+      # person having sent it.
+      - inputText: "[qa] automated test message"
+      - hideKeyboard
+      - tapOn:
+          id: "people-composer-send"
+      # `msg-mine-*` — if the ConversationChannel copy were feeding this
+      # screen, the message would render as `msg-theirs-*` and this fails.
+      - extendedWaitUntil:
+          visible:
+            id: "msg-mine-.*"
+          timeout: 30000
+      - takeScreenshot: reports/08-thread-sent-right-side
+
+      # ── React, and take it back ─────────────────────────────────────────
+      - longPressOn:
+          id: "msg-mine-.*"
+      - assertVisible:
+          id: "reaction-sheet"
+      - takeScreenshot: reports/09-reaction-sheet
+      - tapOn:
+          id: "reaction-thumbs-up"
+      - extendedWaitUntil:
+          notVisible:
+            id: "reaction-sheet"
+          timeout: 10000
+      - assertVisible: "👍"
+      - takeScreenshot: reports/10-reaction-chip
+
+      # The toggle: the same emoji again removes it. One endpoint, no separate
+      # remove — and if a DELETE ever appears in the client, this fails.
+      - longPressOn:
+          id: "msg-mine-.*"
+      - tapOn:
+          id: "reaction-thumbs-up"
+      - extendedWaitUntil:
+          notVisible: "👍"
+          timeout: 15000
+      - takeScreenshot: reports/11-reaction-removed
+
+      # ── THE SEPARATION GATE, as evidence rather than as prose ───────────
+      # `docs/design/people-chat/SPEC.md` §2.4 — his instruction: the two
+      # threads must not be mistakable. These two screenshots are the pair
+      # that gets assembled side by side; if they could be confused at a
+      # glance, row 12 is not DONE. No assertion can judge that — a person
+      # looks at the pair. That is the point.
+      - takeScreenshot: reports/12-separation-people-thread
+      - openLink: ${DEEP_LINK}/--/chat
+      - extendedWaitUntil:
+          visible:
+            id: "composer-input"
+          timeout: 30000
+      - takeScreenshot: reports/13-separation-assistant-thread

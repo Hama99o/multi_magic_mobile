@@ -60,6 +60,7 @@ export function EventRow({
 
   return (
     <Pressable
+      testID={`calendar-event-${occurrence.key}`}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${event.title}, ${timeLabel(occurrence)}`}
@@ -90,7 +91,9 @@ export function EventRow({
           <Text variant="label" numberOfLines={2} style={{ flex: 1, fontSize: 15 }}>
             {event.title}
           </Text>
-          {event.recurrence ? <Repeat size={13} color={colors.inkMuted} /> : null}
+          {event.recurrence ? (
+            <Repeat testID="event-repeats" size={13} color={colors.inkMuted} />
+          ) : null}
         </View>
 
         {/* The field that decides whether he needs to leave now. */}

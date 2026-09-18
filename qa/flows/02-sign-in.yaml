@@ -1,0 +1,48 @@
+# Sign in, including the case a screenshot exists to catch.
+#
+# A tree can tell you a button is there. It told us that once while the button
+# had no background, no height and no padding, and was invisible white text on
+# a light ground. So this flow asserts what it can AND photographs the screen,
+# and the screenshot is the artefact — not the assertion.
+appId: ${APP_ID}
+tags:
+  - smoke
+---
+- launchApp
+- openLink: ${DEEP_LINK}
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-email"
+    timeout: 90000
+- takeScreenshot: reports/10-sign-in-empty
+
+# Enabled from the start and validates on press — the decision the references
+# disagreed on. A disabled button with no explanation is the commonest reason
+# somebody believes a login is broken.
+- tapOn:
+    id: "sign-in-submit"
+- assertVisible:
+    id: "sign-in-error"
+- takeScreenshot: reports/11-sign-in-empty-error
+
+# A wrong password must read as a wrong password — never as a connection
+# problem, and never as the rate limit.
+- tapOn:
+    id: "sign-in-email"
+- inputText: "nobody@example.com"
+- tapOn:
+    id: "sign-in-password"
+- inputText: "definitely-not-the-password"
+- hideKeyboard
+- tapOn:
+    id: "sign-in-submit"
+- extendedWaitUntil:
+    visible: "That email and password do not match."
+    timeout: 30000
+- takeScreenshot: reports/12-sign-in-401
+
+# The two ways out are both present and both reachable.
+- assertVisible:
+    id: "sign-in-forgot"
+- assertVisible:
+    id: "sign-in-create-account"

@@ -1,0 +1,53 @@
+# The one destructive path in the app, and the sentence that makes it safe.
+#
+# His requirement, in his words: "deleting session did not delete data of apps
+# like loan, contact etc." The guarantee holds in code by SCOPING — a chunk from
+# a Note or a Loan carries no conversation_id, so the delete cannot reach it —
+# and the confirm's whole job is to SAY so at the moment somebody is deciding.
+#
+# This flow stops at the confirm and presses "Keep it". It asserts the copy and
+# does not delete: the assertion is about what the dialog says, and actually
+# destroying a conversation on every run would make the suite worse, not better.
+appId: ${APP_ID}
+tags:
+  - smoke
+  - destructive
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-open-sessions"
+- assertVisible:
+    id: "sessions-sheet"
+- takeScreenshot: reports/30-sessions
+
+# The safe action is FIRST in the menu. Offering it before the destructive one
+# is what makes the confirm rare, and a confirm somebody reads once a month is
+# read, while one they dismiss daily is not.
+- tapOn:
+    id: "sessions-new"
+- extendedWaitUntil:
+    visible:
+      id: "composer-input"
+    timeout: 30000
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn:
+    below:
+      id: "sessions-sheet"
+    id: "session-menu-.*"
+    optional: true
+- assertVisible: "Clear messages"
+- assertVisible: "Empties this chat. Its files stay."
+- takeScreenshot: reports/31-row-menu
+- tapOn: "Delete"
+
+# THE GUARANTEE. Both halves: the question, and the sentence naming what is
+# NOT touched. It names the four apps rather than saying "your data".
+- assertVisible:
+    id: "delete-confirm"
+- assertVisible: "Your notes, contacts, loans and money are not touched."
+- takeScreenshot: reports/32-delete-confirm
+- tapOn:
+    id: "delete-confirm-cancel"
+- assertNotVisible:
+    id: "delete-confirm"

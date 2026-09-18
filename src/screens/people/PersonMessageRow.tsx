@@ -109,6 +109,11 @@ export function PersonMessageRow({
       ) : null}
 
       <Pressable
+        // `mine`/`theirs` in the handle, so a flow can assert WHICH SIDE a
+        // message landed on — the exact thing the ConversationChannel
+        // `sent_by_me` trap would have got wrong, and the one bug no unit
+        // test in this repo can catch.
+        testID={`msg-${mine ? "mine" : "theirs"}-${message.id}`}
         onLongPress={onLongPress}
         // Long-press only: a tap on a message does nothing, and giving it a
         // press state would promise otherwise.
@@ -221,6 +226,7 @@ export function PersonMessageRow({
           an optimistic bubble. */}
       {failed ? (
         <Pressable
+          testID="msg-retry"
           onPress={onRetry}
           accessibilityRole="button"
           style={{

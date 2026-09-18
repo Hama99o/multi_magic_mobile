@@ -66,8 +66,21 @@ export interface UseConversationResult {
   awaitingReply: boolean;
   hasOlder: boolean;
   loadOlder: () => Promise<void>;
-  /** Show a just-posted question immediately, before the server echoes it. */
+  /**
+   * Show a just-posted QUESTION immediately, and start waiting for an answer.
+   * Only for a turn that expects an assistant reply.
+   */
   addPending: (message: ChatMessage) => void;
+  /**
+   * Merge a message in WITHOUT claiming a reply is coming.
+   *
+   * A thread with a person never produces an assistant message, so routing its
+   * sends, edits, reactions and deletes through `addPending` would start the
+   * 3-second resync poll and run it for the full three minutes before the
+   * timeout released it — on a mobile connection, for a thumbs-up. Correct and
+   * self-healing, and still a poll storm on the screen people use most.
+   */
+  mergeMessage: (message: ChatMessage) => void;
   /** The reply did not arrive — the server said so over the socket, or we gave
    *  up waiting. */
   failed: boolean;
@@ -158,12 +171,19 @@ export function useConversation({
     }
   }, [messages, hasOlder]);
 
-  const addPending = useCallback((message: ChatMessage) => {
+  const mergeMessage = useCallback((message: ChatMessage) => {
     setMessages((current) => merge(current, [message]));
-    askedAfterIdRef.current = message.id;
-    setAwaitingReply(true);
-    setFailed(false);
   }, []);
+
+  const addPending = useCallback(
+    (message: ChatMessage) => {
+      mergeMessage(message);
+      askedAfterIdRef.current = message.id;
+      setAwaitingReply(true);
+      setFailed(false);
+    },
+    [mergeMessage],
+  );
 
   // Opening a different conversation starts over.
   useEffect(() => {
@@ -273,6 +293,7 @@ export function useConversation({
   }, [awaitingReply]);
 
   return {
-    messages, status, awaitingReply, hasOlder, loadOlder, addPending, failed, resync,
+    messages, status, awaitingReply, hasOlder, loadOlder,
+    addPending, mergeMessage, failed, resync,
   };
 }

@@ -1,0 +1,84 @@
+# CALENDAR — the agenda, and the honest limit of what a flow can prove here.
+#
+# The correction this screen is built on (`docs/design/calendar/SPEC.md` §0) is
+# that recurrence is arithmetic, not rows: a yearly birthday is ONE row dated
+# 1990, and an agenda built on the flat `/events` list shows it in 1990 or not
+# at all. The unit test pins that we call `upcoming`. **What no test can pin is
+# whether his real calendar actually contains a recurring event** — so the
+# recurrence assertion below is conditional, and says so rather than passing
+# vacuously.
+#
+# ── FLOW_REGISTER note — lift verbatim into the "Notes" column ──────────────
+# COVERS: the agenda renders from `GET /events/upcoming?days=7`; TODAY is always
+# present, with either its events or the single line "Nothing today." — his
+# instruction, and the one place this app disagrees with Teams and Google Home,
+# which print an empty line under every empty day; a day heading names the day
+# AND the date; tapping an event composes a question in the assistant and does
+# NOT send it; a recurring event carries the ↻ glyph WHEN one is in the window.
+#
+# CANNOT TELL YOU:
+#  · **Whether the screen is REACHABLE** — deep link, same as the other two.
+#  · **Whether a 1990 birthday resolves to this year.** That is the entire point
+#    of the endpoint correction and this flow CANNOT assert it: it would need a
+#    recurring event whose original date is in the past and whose next
+#    occurrence falls inside seven days, and the rig cannot create one — writing
+#    to his real calendar is out (`RIG_CONTRACT.md` §3). `event-repeats` is
+#    asserted only IF such an event is already there. **The real proof is
+#    `src/api/__tests__/calendar.test.ts`, which pins that we ask `upcoming` and
+#    that a 1990 `starts_on` comes back `on` a 2026 date.** A green run here is
+#    not evidence about recurrence.
+#  · **Whether the colour bar is the EVENT's colour** rather than the id
+#    fallback. Both render; only a screenshot compared against the web tells
+#    them apart, and no assertion can.
+#  · **Whether the ordering is right** — all-day before timed within a day. The
+#    server sorts it and the client is asserted not to re-sort, but a run only
+#    sees the order it was given.
+#  · Anything past seven days, or anything about creating an event: there is no
+#    create path in this app, deliberately.
+appId: ${APP_ID}
+tags:
+  - people
+---
+- runFlow: login.yaml
+
+- openLink: ${DEEP_LINK}/--/calendar
+- extendedWaitUntil:
+    visible:
+      id: "calendar-list"
+    timeout: 60000
+- assertVisible: "What's next"
+
+# TODAY IS ALWAYS THERE. Whether it has events or not, the heading exists —
+# this is the assertion that separates our agenda from every reference's.
+- assertVisible:
+    id: "calendar-day-today"
+- takeScreenshot: reports/19-calendar-agenda
+
+# An empty today says so, in one line, and the day after still lists its events.
+- runFlow:
+    when:
+      visible:
+        id: "calendar-nothing-today"
+    commands:
+      - assertVisible: "Nothing today."
+      - takeScreenshot: reports/20-calendar-nothing-today
+
+- runFlow:
+    when:
+      notVisible:
+        id: "calendar-nothing-today"
+    commands:
+      # ── Tapping an event asks about it, composed and not sent ───────────
+      - tapOn:
+          id: "calendar-event-.*"
+      - extendedWaitUntil:
+          visible:
+            id: "composer-input"
+          timeout: 30000
+      - assertVisible: "Tell me about.*"
+      # The same negative as the notification tap: nothing was asked.
+      - assertNotVisible:
+          id: "thinking"
+      - assertNotVisible:
+          id: "assistant-answer"
+      - takeScreenshot: reports/21-event-question-composed-not-sent

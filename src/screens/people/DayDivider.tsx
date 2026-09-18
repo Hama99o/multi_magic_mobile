@@ -62,6 +62,7 @@ export function UnreadDivider() {
 
   return (
     <View
+      testID="unread-divider"
       style={{
         flexDirection: "row",
         alignItems: "center",

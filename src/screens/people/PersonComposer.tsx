@@ -82,6 +82,7 @@ export function PersonComposer({
         }}
       >
         <TextInput
+          testID="people-composer-input"
           value={value}
           onChangeText={onChange}
           placeholder={editing ? "Edit message" : "Message"}
@@ -113,6 +114,7 @@ export function PersonComposer({
       </View>
 
       <Pressable
+        testID="people-composer-send"
         onPress={onSend}
         disabled={!canSend}
         accessibilityRole="button"

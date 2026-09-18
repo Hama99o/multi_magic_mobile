@@ -45,6 +45,7 @@ export function NotificationRow({
 
   return (
     <Pressable
+      testID={`notification-row-${notification.id}`}
       onPress={onPress}
       onLongPress={onLongPress}
       delayLongPress={350}
@@ -93,6 +94,7 @@ export function NotificationRow({
 
       {unread ? (
         <View
+          testID={`notification-unread-${notification.id}`}
           style={{
             width: 8,
             height: 8,

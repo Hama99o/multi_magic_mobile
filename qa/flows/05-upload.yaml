@@ -1,0 +1,29 @@
+# Attaching a file to a conversation.
+#
+# The picker offers `AiDocument::ALLOWED_EXTENSIONS` — nine types — and NOT what
+# `Ai::FileExtractor` can read, which is wider. Offering the extractor's list
+# produces a file the picker accepted and the server then 422s.
+#
+# The system file picker is outside the app, so this flow asserts the sheet that
+# opens onto it — the three ways a person actually has a file on a phone — and
+# the count against the cap. Driving the Android picker itself is a separate
+# problem and a flaky one; what is ours to get right is the sheet.
+appId: ${APP_ID}
+tags:
+  - smoke
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "composer-attach"
+- assertVisible:
+    id: "attach-sheet"
+- assertVisible: "Photo"
+- assertVisible: "Camera"
+- assertVisible: "Document"
+# "PDF or CSV" — the sheet says what it accepts rather than letting somebody
+# find out at the 422.
+- assertVisible: "PDF or CSV"
+- takeScreenshot: reports/40-attach-sheet
+- pressKey: Back
+- assertVisible:
+    id: "composer-input"

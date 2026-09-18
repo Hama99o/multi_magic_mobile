@@ -1,0 +1,29 @@
+# The mic: present when the device can dictate, ABSENT when it cannot.
+#
+# Not "disabled" — absent. A disabled mic invites a tap that can never work and
+# gives no reason, and on a cheap Android with no recogniser installed that is a
+# real state rather than a hypothetical.
+#
+# UNDER EXPO GO THIS FLOW PROVES THE ABSENT HALF ONLY, and that is worth saying
+# out loud rather than dressing up: Expo Go carries no custom native modules, so
+# `expo-speech-recognition` is missing and `available` is false by the only path
+# available. The PRESENT half — and the permission dialog, which is the part no
+# unit test reaches — needs a development build.
+appId: ${APP_ID}
+tags:
+  - dictation
+---
+- runFlow: login.yaml
+- assertVisible:
+    id: "composer-input"
+# The composer still works completely without a recogniser: this is the
+# degradation, and it has to be silent rather than broken.
+- tapOn:
+    id: "composer-input"
+- inputText: "typed, because there is no mic here"
+- hideKeyboard
+- assertVisible:
+    id: "composer-send"
+- takeScreenshot: reports/20-composer-no-mic
+- assertNotVisible:
+    id: "composer-mic"

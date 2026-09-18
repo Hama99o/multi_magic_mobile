@@ -97,7 +97,17 @@ export interface ConversationList {
  * server takes any string (`reactions_controller.rb:12`), so this is a client
  * choice that can widen later without a deploy on the other side.
  */
-export const REACTION_EMOJI = ["👍", "❤️", "😂", "😮", "😢", "🙏"] as const;
+export const REACTION_EMOJI = [
+  // `id` is the Maestro handle. An emoji cannot be one: a flow selector has to
+  // survive being typed into a YAML file, grepped for, and read in a failure
+  // message — `reaction-thumbs-up` does all three and `reaction-👍` does none.
+  { emoji: "👍", id: "thumbs-up" },
+  { emoji: "❤️", id: "heart" },
+  { emoji: "😂", id: "laugh" },
+  { emoji: "😮", id: "wow" },
+  { emoji: "😢", id: "sad" },
+  { emoji: "🙏", id: "thanks" },
+] as const;
 
 /**
  * An avatar arrives as a URL from `get_photo_url`, but a notification's actor

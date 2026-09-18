@@ -59,6 +59,7 @@ export function ConversationRow({
 
   return (
     <Pressable
+      testID={`chat-row-${conversation.id}`}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={
@@ -100,6 +101,7 @@ export function ConversationRow({
 
           {unread ? (
             <View
+              testID={`chat-unread-${conversation.id}`}
               style={{
                 minWidth: 20,
                 height: 20,

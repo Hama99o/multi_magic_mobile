@@ -1,0 +1,115 @@
+# NOTIFICATIONS — and the assertion that matters is what the tap does NOT do.
+#
+# His instruction is that a notification "redirects on chat to ask", and the
+# architecture follows from `path` being a WEB route this app has no screen for.
+# So a tap must land in the composer with a question **composed and not sent** —
+# because a tap that fires it spends one of the 15-per-minute
+# (`ai_controller.rb:5`) on a guess about what he meant.
+#
+# "Composed and not sent" is a negative, and a negative is the kind of thing a
+# flow is good at and a unit test is not: the unit test can prove `setDraft` was
+# called, and only a device can prove nothing was POSTed behind it.
+#
+# ── FLOW_REGISTER note — lift verbatim into the "Notes" column ──────────────
+# COVERS: the list renders from `GET /notifications` grouped `Today`/`Earlier`;
+# an unread row carries BOTH signals (the dot and the tinted background); a tap
+# marks it read and the dot goes; the tap lands in the ASSISTANT's composer with
+# the question present and **no answer and no thinking indicator**, which is the
+# proof it was not sent; `Mark all as read` clears every dot at once.
+#
+# CANNOT TELL YOU:
+#  · **Whether the screen is REACHABLE** — it arrives by deep link, because the
+#    bell in `app/chat.tsx` does not exist yet. A PASS says the screen works,
+#    not that anybody can open it. Swap the `openLink` for a tap on the bell the
+#    day it lands.
+#  · **Whether a LIVE notification arrives over `NotificationChannel`.** That
+#    needs something on the backend to generate one for the QA account mid-run —
+#    a loan falling due, somebody sharing an event. Nothing in this rig can
+#    cause that, so the live path is asserted by `src/api/__tests__/` against a
+#    frame shape and by nothing at all against a real socket.
+#  · **Whether `Clear read notifications` spares the unread ones.** The endpoint
+#    scopes it (`notifications_controller.rb:41`) and the unit test pins the
+#    contract, but exercising it here would delete rows from a real account to
+#    prove a negative, so the flow stops at the confirm and cancels.
+#  · Anything about the avatar, unless the QA account happens to have a
+#    notification with an actor. Most are system-generated and have none.
+appId: ${APP_ID}
+tags:
+  - people
+---
+- runFlow: login.yaml
+
+- openLink: ${DEEP_LINK}/--/notifications
+- extendedWaitUntil:
+    visible:
+      id: "notifications-list"
+    timeout: 60000
+- takeScreenshot: reports/14-notifications-list
+
+# Empty is legitimate — a quiet account has no notifications. NOT MEASURED past
+# here, which is a different fact from "passed".
+- runFlow:
+    when:
+      visible:
+        id: "notifications-empty"
+    commands:
+      - takeScreenshot: reports/14-notifications-empty
+      - assertVisible: "You're all caught up."
+
+- runFlow:
+    when:
+      notVisible:
+        id: "notifications-empty"
+    commands:
+      - assertVisible: "Today"
+
+      # ── THE TAP COMPOSES, AND DOES NOT SEND ─────────────────────────────
+      - tapOn:
+          id: "notification-row-.*"
+      - extendedWaitUntil:
+          visible:
+            id: "composer-input"
+          timeout: 30000
+      # The question is there…
+      - assertVisible: "What is this about:.*"
+      # …and NOTHING was asked. No dots where an answer would be, and no
+      # answer. If the tap ever starts sending, these two are what fail.
+      - assertNotVisible:
+          id: "thinking"
+      - assertNotVisible:
+          id: "assistant-answer"
+      - takeScreenshot: reports/15-question-composed-not-sent
+
+      # ── Back, and the row it came from is read ──────────────────────────
+      - back
+      - extendedWaitUntil:
+          visible:
+            id: "notifications-list"
+          timeout: 30000
+      - takeScreenshot: reports/16-notification-marked-read
+
+      # ── Mark all as read ────────────────────────────────────────────────
+      # Only when there is still an unread dot to clear; otherwise the button
+      # is not rendered and tapping it would fail for the wrong reason.
+      - runFlow:
+          when:
+            visible:
+              id: "notification-unread-.*"
+          commands:
+            - tapOn: "Mark all as read"
+            - extendedWaitUntil:
+                notVisible:
+                  id: "notification-unread-.*"
+                timeout: 20000
+            - takeScreenshot: reports/17-all-marked-read
+
+      # ── The destructive one is OPENED and CANCELLED, never confirmed ────
+      # It would delete rows from a real account to prove a negative. The
+      # confirm's wording is the thing worth asserting: the scope is the whole
+      # safety of the action, so it has to be in the question.
+      - tapOn: "Clear read notifications"
+      - assertVisible: "Anything still unread stays where it is."
+      - takeScreenshot: reports/18-clear-confirm-wording
+      - tapOn: "Cancel"
+      - assertVisible:
+          id: "notifications-list"

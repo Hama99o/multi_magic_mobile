@@ -25,6 +25,7 @@ import { aiApi, type ChatMessage, type MessageLink } from "@/api/ai";
 import { isRateLimited, isNetworkFailure, apiErrorMessage } from "@/api/http";
 import { useConversation } from "@/hooks/useConversation";
 import { useDraft } from "@/hooks/useDraft";
+import { loadRememberedSession, rememberSession } from "@/lib/rememberedSession";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { ThinkingDots } from "@/components/chat/ThinkingDots";
 import { Composer } from "@/components/chat/Composer";
@@ -53,23 +54,57 @@ export default function Chat() {
   });
 
   /**
-   * A session chosen from the sheet wins over the server's default. Null means
-   * "whatever the server says is current", which is also the state after a
-   * delete — the server hands back the session to fall back to.
+   * A session chosen on THIS device wins over the server's default.
+   *
+   * `ai/conversation` returns the session most recently talked in ACROSS EVERY
+   * CLIENT, which is the right default on a first launch and the wrong one
+   * afterwards — a question asked from the laptop would silently move the phone
+   * to a different conversation mid-thread. So the choice is remembered per
+   * user and the server's answer is only the fallback.
    */
   const [chosenId, setChosenId] = useState<number | null>(null);
   const conversationId = chosenId ?? sessionId ?? null;
   const [sessionsOpen, setSessionsOpen] = useState(false);
+
+  // Restore this device's choice once, before the server's default is used.
+  useEffect(() => {
+    if (!user?.id) return;
+    void loadRememberedSession(user.id).then((id) => {
+      if (id) setChosenId(id);
+    });
+  }, [user?.id]);
+
+  const chooseSession = useCallback(
+    (id: number) => {
+      setChosenId(id);
+      if (user?.id) void rememberSession(user.id, id);
+    },
+    [user?.id],
+  );
   const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addPending, resync } =
     useConversation({ conversationId, channel: "MessageChannel" });
 
   const { draft, setDraft, clear } = useDraft(conversationId);
 
-  /** What the session already holds, so the cap is counted against the truth. */
+  /**
+   * What the session already holds, so the cap is counted against the truth.
+   *
+   * ── POLLED WHILE ANYTHING IS PENDING ──────────────────────────────────────
+   * A file is extracted and embedded by a background job, so it arrives
+   * `pending` and becomes `ready` or `failed` later, with nothing pushed over
+   * the socket to say so. Without this the chip a user just uploaded says
+   * "pending" for ever, and — worse — they ask a question about a document the
+   * assistant cannot see yet, with nothing on screen to explain why.
+   *
+   * 2.5 s is the web's interval (`AI_ASSISTANT.md` §9). Polling STOPS once
+   * nothing is pending, so an idle chat makes no requests.
+   */
   const { data: uploaded = [] } = useQuery({
     queryKey: ["ai", "documents", conversationId],
     queryFn: () => documentsApi.list(conversationId as number),
     enabled: conversationId != null,
+    refetchInterval: (query) =>
+      (query.state.data ?? []).some((d) => d.status === "pending") ? 2_500 : false,
   });
 
   const attachments = useAttachments(conversationId, uploaded.length);
@@ -78,6 +113,18 @@ export default function Chat() {
   const [failedQuestion, setFailedQuestion] = useState<FailedQuestion | null>(null);
   const [openSource, setOpenSource] = useState<MessageLink | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+
+  /**
+   * ONLY THE MOST RECENT undoable reply gets the button.
+   *
+   * `AI_ASSISTANT.md` §Undo: a stack of reversals is a second thing to learn,
+   * and the mistake somebody wants gone is almost always the one they are
+   * looking at. The serializer says what is POSSIBLE; choosing which one to
+   * offer is the UI's job.
+   */
+  const newestUndoableId = [...messages]
+    .reverse()
+    .find((m) => m.undoable && !m.undoneAt)?.id ?? null;
 
   const send = useCallback(
     async (body: string) => {
@@ -107,6 +154,8 @@ export default function Chat() {
           reactions: [],
           links: [],
           sources: [],
+          undoable: false,
+          undoneAt: null,
         });
       } catch (e) {
         // The question comes BACK, into the composer and onto the screen. The
@@ -172,7 +221,18 @@ export default function Chat() {
           ref={listRef}
           data={messages}
           keyExtractor={(m) => String(m.id)}
-          renderItem={({ item }) => <MessageRow message={item} onOpenSource={setOpenSource} />}
+          renderItem={({ item }) => (
+            <MessageRow
+              message={item}
+              onOpenSource={setOpenSource}
+              showUndo={item.id === newestUndoableId}
+              onUndone={(updated) =>
+                // Merged in place: the reply now carries `undone_at`, so the
+                // offer cannot be made twice.
+                addPending(updated)
+              }
+            />
+          )}
           onContentSizeChange={scrollToEnd}
           // Older history by cursor, pulled in as the reader reaches the top.
           onStartReached={hasOlder ? () => void loadOlder() : undefined}
@@ -283,7 +343,7 @@ export default function Chat() {
         visible={sessionsOpen}
         activeId={conversationId}
         onClose={() => setSessionsOpen(false)}
-        onOpenSession={setChosenId}
+        onOpenSession={chooseSession}
         onSignOut={() => {
           setSessionsOpen(false);
           void useAuthStore.getState().signOut().then(() => router.replace("/sign-in"));

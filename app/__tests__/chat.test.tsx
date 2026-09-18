@@ -29,6 +29,7 @@ function message(id: number, role: "user" | "assistant", body: string, sources: 
     id, conversationId: 4, role, body, createdAt: "2026-09-18T10:00:00Z",
     deleted: false, userId: role === "user" ? 2 : null, sentByMe: role === "user",
     editedAt: null, readAt: null, reactions: [], links: [], sources,
+    undoable: false, undoneAt: null,
   } as ChatMessage;
 }
 

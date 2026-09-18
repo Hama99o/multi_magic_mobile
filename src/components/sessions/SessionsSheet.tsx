@@ -27,8 +27,11 @@ import { isToday } from "@/lib/relativeTime";
 import { SessionRow } from "./SessionRow";
 import { RenameDialog } from "./RenameDialog";
 import { DeleteConfirm } from "./DeleteConfirm";
+import { InstructionsDialog, ScopeDialog } from "./SessionOptionsDialogs";
 
-type Pending = { kind: "rename" | "delete" | "menu"; session: AiSession } | null;
+type Pending =
+  | { kind: "rename" | "delete" | "menu" | "instructions" | "scope"; session: AiSession }
+  | null;
 
 export function SessionsSheet({
   visible,
@@ -74,6 +77,25 @@ export function SessionsSheet({
       setPending(null);
     },
     onError: (e) => setError(apiErrorMessage(e) ?? "Could not rename that conversation."),
+  });
+
+  const setInstructions = useMutation({
+    mutationFn: ({ id, instructions }: { id: number; instructions: string }) =>
+      sessionsApi.update(id, { instructions }),
+    onSuccess: () => {
+      void refresh();
+      setPending(null);
+    },
+    onError: (e) => setError(apiErrorMessage(e) ?? "Could not save those instructions."),
+  });
+
+  const setScope = useMutation({
+    mutationFn: ({ id, apps }: { id: number; apps: string[] }) => sessionsApi.update(id, { apps }),
+    onSuccess: () => {
+      void refresh();
+      setPending(null);
+    },
+    onError: (e) => setError(apiErrorMessage(e) ?? "Could not change what this chat searches."),
   });
 
   const clear = useMutation({
@@ -253,6 +275,32 @@ export function SessionsSheet({
 
               <Pressable
                 accessibilityRole="button"
+                onPress={() => setPending({ kind: "scope", session: pending.session })}
+                style={{ minHeight: metrics.touch, justifyContent: "center" }}
+                testID="session-menu-scope"
+              >
+                <Text>Search in</Text>
+                <Text variant="caption" tone="muted">
+                  {pending.session.apps.length === 0
+                    ? "All apps"
+                    : `${pending.session.apps.length} apps`}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => setPending({ kind: "instructions", session: pending.session })}
+                style={{ minHeight: metrics.touch, justifyContent: "center" }}
+                testID="session-menu-instructions"
+              >
+                <Text>How to answer</Text>
+                <Text variant="caption" tone="muted">
+                  {pending.session.instructions ? "Set" : "Not set"}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
                 onPress={() => setPending({ kind: "delete", session: pending.session })}
                 style={{ minHeight: metrics.touch, justifyContent: "center" }}
                 testID="session-menu-delete"
@@ -272,6 +320,24 @@ export function SessionsSheet({
         onSave={(title) =>
           pending && rename.mutate({ id: pending.session.id, title })
         }
+      />
+
+      <InstructionsDialog
+        visible={pending?.kind === "instructions"}
+        initial={pending?.session.instructions ?? ""}
+        busy={setInstructions.isPending}
+        onCancel={() => setPending(null)}
+        onSave={(instructions) =>
+          pending && setInstructions.mutate({ id: pending.session.id, instructions })
+        }
+      />
+
+      <ScopeDialog
+        visible={pending?.kind === "scope"}
+        initial={pending?.session.apps ?? []}
+        busy={setScope.isPending}
+        onCancel={() => setPending(null)}
+        onSave={(apps) => pending && setScope.mutate({ id: pending.session.id, apps })}
       />
 
       <DeleteConfirm

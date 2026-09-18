@@ -23,9 +23,18 @@ import type { MessageLink } from "@/api/ai";
 
 export function SourceChips({
   sources,
+  label = "From",
   onOpen,
 }: {
   sources: MessageLink[];
+  /**
+   * "From" for records the answer was drawn FROM; "Created" for records the
+   * answer MADE. `AI_ASSISTANT.md` §5b keeps the two apart on purpose — a
+   * confirmation is not an answer from data, and citing the wrong thing is
+   * worse than citing nothing. They arrive in separate fields (`sources` and
+   * `links`) and must never be merged into one row.
+   */
+  label?: string;
   onOpen: (source: MessageLink) => void;
 }) {
   const colors = useColors();
@@ -34,6 +43,10 @@ export function SourceChips({
   if (sources.length === 0) return null;
 
   return (
+    <View style={{ gap: 2 }}>
+      <Text variant="caption" tone="muted">
+        {label}
+      </Text>
     <ScrollView
       horizontal
       showsHorizontalScrollIndicator={false}
@@ -68,5 +81,6 @@ export function SourceChips({
         </Pressable>
       ))}
     </ScrollView>
+    </View>
   );
 }

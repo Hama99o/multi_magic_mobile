@@ -1,6 +1,27 @@
 /**
  * A LIVE TRANSCRIPT — the one piece of real engineering in this app.
  *
+ * ── THE CHANNEL IS THE FAST PATH, NEVER THE ONLY ONE ──────────────────────
+ * This is the rule multi_magic arrived at after shipping the other version, and
+ * it is written into `AI_ASSISTANT.md` §11: a socket that is down loses
+ * everything broadcast while it was, and that used to mean "a question with no
+ * bubble and a spinner that only a reload could clear".
+ *
+ * So the socket is treated as an OPTIMISATION over HTTP, not as the delivery
+ * mechanism. Three things run alongside it, all of them here:
+ *
+ *   1. while a reply is pending, the transcript is re-read every 3 s;
+ *   2. it is re-read on every (re)connect and whenever the app returns to the
+ *      foreground;
+ *   3. a reply that never comes releases the composer after 3 minutes, rather
+ *      than leaving somebody looking at dots for ever.
+ *
+ * The web verified the consequence with every cable socket force-closed: the
+ * question still appears and the answer still lands in about three seconds.
+ * Without this an answer that arrives while the phone is asleep is simply lost
+ * until the user restarts the app — and on a phone that is the normal case
+ * rather than the edge one.
+ *
  * ── The problem it solves ─────────────────────────────────────────────────
  * `POST /api/v1/ai/show` returns 202. It SAVES the question and enqueues
  * `Ai::RagChat`; the answer is broadcast later over ActionCable. So a composer
@@ -19,8 +40,15 @@
  * are the same code, differing only in which channel carries the live events.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { AppState, type AppStateStatus } from "react-native";
 import { subscribeToChannel, type ChannelParams } from "@/lib/cable";
 import { messagesApi, type ChatMessage } from "@/api/ai";
+
+/** While waiting for a reply we also ask the API, so a lost broadcast cannot
+ *  strand the chat. `AI_ASSISTANT.md` §11. */
+const RESYNC_MS = 3_000;
+/** Longest we keep waiting before giving the composer back. */
+const REPLY_TIMEOUT_MS = 180_000;
 
 export type ConversationStatus = "loading" | "ready" | "failed";
 
@@ -40,7 +68,8 @@ export interface UseConversationResult {
   loadOlder: () => Promise<void>;
   /** Show a just-posted question immediately, before the server echoes it. */
   addPending: (message: ChatMessage) => void;
-  /** The reply did not arrive — the server said so over the socket. */
+  /** The reply did not arrive — the server said so over the socket, or we gave
+   *  up waiting. */
   failed: boolean;
   resync: () => Promise<void>;
 }
@@ -84,6 +113,15 @@ export function useConversation({
   const conversationRef = useRef(conversationId);
   conversationRef.current = conversationId;
 
+  /**
+   * The id of the question we are waiting on an answer to.
+   *
+   * `awaitingReply` must clear on ANY assistant message newer than it, whatever
+   * brought it — socket frame, 3-second poll, or a resync on waking. Clearing
+   * only on a socket frame is what made a delivered answer still look pending.
+   */
+  const askedAfterIdRef = useRef(0);
+
   const resync = useCallback(async () => {
     const id = conversationRef.current;
     if (id == null) return;
@@ -95,7 +133,11 @@ export function useConversation({
       setMessages((current) => merge(current, page.messages));
       setHasOlder(page.hasMore);
       setStatus("ready");
-      if (page.messages.some((m) => m.role === "assistant")) setAwaitingReply(false);
+      // Newer than the question, not merely present: an older assistant message
+      // already on screen must not be read as this question's answer.
+      if (page.messages.some((m) => m.role === "assistant" && m.id > askedAfterIdRef.current)) {
+        setAwaitingReply(false);
+      }
     } catch {
       setStatus((current) => (current === "ready" ? current : "failed"));
     }
@@ -118,6 +160,7 @@ export function useConversation({
 
   const addPending = useCallback((message: ChatMessage) => {
     setMessages((current) => merge(current, [message]));
+    askedAfterIdRef.current = message.id;
     setAwaitingReply(true);
     setFailed(false);
   }, []);
@@ -165,7 +208,7 @@ export function useConversation({
             const parsed = messagesApi.parseOne(payload.message);
             if (parsed.conversationId !== conversationRef.current) return;
             setMessages((current) => merge(current, [parsed]));
-            if (parsed.role === "assistant") {
+            if (parsed.role === "assistant" && parsed.id > askedAfterIdRef.current) {
               setAwaitingReply(false);
               setFailed(false);
             }
@@ -184,6 +227,50 @@ export function useConversation({
       params ?? undefined,
     );
   }, [conversationId, channel, channelParamsKey, resync]);
+
+  /**
+   * While a reply is pending, ask the API as well as listening.
+   *
+   * Not a fallback that runs "if the socket fails" — there is no reliable way
+   * to know that it has. It runs alongside, and whichever arrives first clears
+   * the wait.
+   */
+  useEffect(() => {
+    if (!awaitingReply) return;
+    const timer = setInterval(() => void resync(), RESYNC_MS);
+    return () => clearInterval(timer);
+  }, [awaitingReply, resync]);
+
+  /**
+   * Back from the background: pick up whatever was missed.
+   *
+   * `lib/cable.ts` reopens a dropped socket on the same signal, but that only
+   * helps if the socket had actually dropped. A phone that was asleep for a
+   * minute may hold a socket the OS quietly stopped delivering to, so the
+   * transcript is re-read regardless.
+   */
+  useEffect(() => {
+    const sub = AppState.addEventListener("change", (status: AppStateStatus) => {
+      if (status === "active") void resync();
+    });
+    return () => sub.remove();
+  }, [resync]);
+
+  /**
+   * Give the composer back after three minutes.
+   *
+   * A job can genuinely take a while, so this is long. But dots that never stop
+   * are indistinguishable from a lost reply, and the one thing a person cannot
+   * do with them is decide what to do next.
+   */
+  useEffect(() => {
+    if (!awaitingReply) return;
+    const timer = setTimeout(() => {
+      setAwaitingReply(false);
+      setFailed(true);
+    }, REPLY_TIMEOUT_MS);
+    return () => clearTimeout(timer);
+  }, [awaitingReply]);
 
   return {
     messages, status, awaitingReply, hasOlder, loadOlder, addPending, failed, resync,

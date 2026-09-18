@@ -13,7 +13,7 @@
  * top, which it does on every reply.
  */
 import { Pressable, View } from "react-native";
-import { MoreVertical } from "lucide-react-native";
+import { Filter, MoreVertical, NotebookPen } from "lucide-react-native";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { categoryColorFor } from "@/theme/tokens";
@@ -75,7 +75,20 @@ export function SessionRow({
           <Text variant="caption" tone="muted">
             {relativeTime(session.updatedAt)}
           </Text>
-          <Text numberOfLines={1}>{session.title}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.xs }}>
+            <Text numberOfLines={1} style={{ flexShrink: 1 }}>
+              {session.title}
+            </Text>
+            {/* A funnel when the chat is narrowed to some apps, and a pen when
+                it carries standing instructions — both are settings that change
+                every answer and are otherwise invisible from the list. */}
+            {session.apps.length > 0 ? (
+              <Filter size={13} color={colors.inkMuted} testID={`session-scoped-${session.id}`} />
+            ) : null}
+            {session.instructions ? (
+              <NotebookPen size={13} color={colors.inkMuted} testID={`session-instructed-${session.id}`} />
+            ) : null}
+          </View>
           <Text variant="caption" tone="muted">
             {counts}
           </Text>

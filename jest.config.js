@@ -42,6 +42,7 @@ module.exports = {
       "@react-navigation|" +
       "expo-modules-core|" +
       "expo-constants|" +
+      "expo-clipboard|" +
       "expo-crypto|" +
       "expo-font|" +
       "expo-image|" +

@@ -25,6 +25,7 @@ function message(id: number, role: "user" | "assistant", body: string): ChatMess
     createdAt: "2026-09-18T10:00:00Z", deleted: false,
     userId: role === "user" ? 2 : null, sentByMe: role === "user",
     editedAt: null, readAt: null, reactions: [], links: [], sources: [],
+    undoable: false, undoneAt: null,
   };
 }
 
@@ -34,7 +35,7 @@ function rawMessage(id: number, role: string, body: string, conversationId = 4) 
     id, conversation_id: conversationId, user_id: role === "user" ? 2 : null, role, body,
     created_at: "2026-09-18T10:00:00Z", deleted: false,
     sent_by_me: role === "user", edited_at: null, read_at: null,
-    reactions: [], links: [], sources: [],
+    reactions: [], links: [], sources: [], undoable: false, undone_at: null,
   };
 }
 
@@ -225,6 +226,116 @@ describe("older history", () => {
     });
 
     expect(result.current.messages.map((m) => m.id)).toEqual([10]);
+  });
+});
+
+// ── THE CHANNEL IS THE FAST PATH, NEVER THE ONLY ONE ────────────────────────
+//
+// AI_ASSISTANT.md §11. The web shipped the other version first and it meant "a
+// question with no bubble and a spinner that only a reload could clear". These
+// are the three things that replaced it.
+describe("delivery that does not depend on the socket", () => {
+  it("re-reads the transcript every 3s while a reply is pending", async () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() =>
+      useConversation({ conversationId: 4, channel: "MessageChannel" }),
+    );
+    await act(async () => {});
+    latest.mockClear();
+
+    act(() => result.current.addPending(message(7, "user", "And Husna?")));
+
+    await act(async () => {
+      jest.advanceTimersByTime(3_000);
+    });
+    expect(latest).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      jest.advanceTimersByTime(3_000);
+    });
+    expect(latest).toHaveBeenCalledTimes(2);
+
+    jest.useRealTimers();
+  });
+
+  it("stops polling once nothing is pending", async () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() =>
+      useConversation({ conversationId: 4, channel: "MessageChannel" }),
+    );
+    await act(async () => {});
+    latest.mockClear();
+
+    // Never asked anything: an idle chat must not poll.
+    await act(async () => {
+      jest.advanceTimersByTime(12_000);
+    });
+
+    expect(latest).not.toHaveBeenCalled();
+    expect(result.current.awaitingReply).toBe(false);
+    jest.useRealTimers();
+  });
+
+  // Dots that never stop are indistinguishable from a lost reply, and the one
+  // thing somebody cannot do with them is decide what to do next.
+  it("gives the composer back after three minutes", async () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() =>
+      useConversation({ conversationId: 4, channel: "MessageChannel" }),
+    );
+    await act(async () => {});
+
+    act(() => result.current.addPending(message(7, "user", "And Husna?")));
+    expect(result.current.awaitingReply).toBe(true);
+
+    await act(async () => {
+      jest.advanceTimersByTime(180_000);
+    });
+
+    expect(result.current.awaitingReply).toBe(false);
+    expect(result.current.failed).toBe(true);
+    jest.useRealTimers();
+  });
+
+  // Clearing only on a socket frame is what made a delivered answer still look
+  // pending: the poll brought it, so the poll has to clear the wait.
+  it("clears the wait when a POLL brings the answer, not only a socket frame", async () => {
+    jest.useFakeTimers();
+    const { result } = renderHook(() =>
+      useConversation({ conversationId: 4, channel: "MessageChannel" }),
+    );
+    await act(async () => {});
+    act(() => result.current.addPending(message(7, "user", "And Husna?")));
+
+    latest.mockResolvedValue({
+      messages: [message(7, "user", "And Husna?"), message(8, "assistant", "She owes you 200.")],
+      hasMore: false,
+    });
+    await act(async () => {
+      jest.advanceTimersByTime(3_000);
+    });
+
+    expect(result.current.awaitingReply).toBe(false);
+    jest.useRealTimers();
+  });
+
+  // An assistant message OLDER than the question is not this question's answer.
+  it("is not fooled by an older assistant message already on screen", async () => {
+    latest.mockResolvedValue({
+      messages: [message(1, "assistant", "an older answer")],
+      hasMore: false,
+    });
+    const { result } = renderHook(() =>
+      useConversation({ conversationId: 4, channel: "MessageChannel" }),
+    );
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    act(() => result.current.addPending(message(7, "user", "And Husna?")));
+    await act(async () => {
+      listener().onConnected?.();
+    });
+
+    expect(result.current.awaitingReply).toBe(true);
   });
 });
 

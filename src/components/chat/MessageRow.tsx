@@ -23,13 +23,19 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import type { ChatMessage, MessageLink } from "@/api/ai";
 import { SourceChips } from "./SourceChips";
+import { AnswerActions } from "./AnswerActions";
 
 export function MessageRow({
   message,
   onOpenSource,
+  showUndo = false,
+  onUndone,
 }: {
   message: ChatMessage;
   onOpenSource: (source: MessageLink) => void;
+  /** True only for the NEWEST undoable reply — see AnswerActions. */
+  showUndo?: boolean;
+  onUndone?: (updated: ChatMessage) => void;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -76,7 +82,20 @@ export function MessageRow({
       <Text variant="answer" selectable testID="assistant-answer">
         {message.body}
       </Text>
-      <SourceChips sources={message.sources} onOpen={onOpenSource} />
+
+      {/* TWO ROWS, NEVER ONE. `sources` are the records the answer was drawn
+          FROM; `links` are the records it CREATED. `AI_ASSISTANT.md` §5b:
+          mixing them made "What is Husna's birthday?" cite a taxi fare, and a
+          confirmation is not an answer from data. A reply that created
+          something cites nothing, and shows what it made instead. */}
+      <SourceChips sources={message.sources} label="From" onOpen={onOpenSource} />
+      <SourceChips sources={message.links} label="Created" onOpen={onOpenSource} />
+
+      <AnswerActions
+        message={message}
+        showUndo={showUndo}
+        onUndone={(updated) => onUndone?.(updated)}
+      />
     </View>
   );
 }

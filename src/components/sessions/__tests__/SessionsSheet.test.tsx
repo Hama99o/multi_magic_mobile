@@ -12,7 +12,7 @@ function session(over: Partial<AiSession> = {}): AiSession {
   return {
     id: 4, title: "Money", messageCount: 12, documentCount: 3,
     createdAt: "2026-09-01T09:00:00Z", updatedAt: new Date().toISOString(),
-    instructions: null, ...over,
+    instructions: null, apps: [], ...over,
   };
 }
 

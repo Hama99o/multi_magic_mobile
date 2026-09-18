@@ -9,7 +9,12 @@
  *
  * Progress lives on the chip and not in a modal, so a 9 MB PDF can climb while
  * the question is still being typed.
+ *
+ * **The strip collapses past two.** A session may hold twenty files, and twenty
+ * chips would push the composer off the screen — which on a 360 dp phone means
+ * the thing the user came to do disappears behind the things they added to it.
  */
+import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { X } from "lucide-react-native";
 import { Text } from "@/components/reusables/text";
@@ -26,7 +31,13 @@ export function PendingFiles({
   const colors = useColors();
   const metrics = useMetrics();
 
+  const [expanded, setExpanded] = useState(false);
+
   if (files.length === 0) return null;
+
+  const VISIBLE = 2;
+  const hidden = files.length - VISIBLE;
+  const shown = expanded || hidden <= 0 ? files : files.slice(0, VISIBLE);
 
   return (
     <ScrollView
@@ -35,7 +46,7 @@ export function PendingFiles({
       contentContainerStyle={{ gap: metrics.space.sm, paddingHorizontal: metrics.space.xs }}
       testID="pending-files"
     >
-      {files.map((file) => (
+      {shown.map((file) => (
         <View
           key={file.key}
           style={{
@@ -75,6 +86,27 @@ export function PendingFiles({
           </Pressable>
         </View>
       ))}
+
+      {hidden > 0 && !expanded ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Show ${hidden} more files`}
+          onPress={() => setExpanded(true)}
+          style={{
+            justifyContent: "center",
+            minHeight: 40,
+            paddingHorizontal: metrics.space.md,
+            borderRadius: metrics.radius.pill,
+            borderWidth: 1,
+            borderColor: colors.border,
+          }}
+          testID="pending-files-more"
+        >
+          <Text variant="caption" tone="muted">
+            +{hidden} more
+          </Text>
+        </Pressable>
+      ) : null}
     </ScrollView>
   );
 }

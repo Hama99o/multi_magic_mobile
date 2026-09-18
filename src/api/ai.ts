@@ -85,6 +85,22 @@ export interface ChatMessage {
    * instead. Empty array means no row at all — never an empty "Sources" heading.
    */
   sources: MessageLink[];
+  /**
+   * This reply WROTE something and it can still be taken back.
+   *
+   * The assistant acts on a sentence, and a sentence is easy to read wrong —
+   * `Ai::Undo`'s own header gives the example: *"I sent 10 to Anisa"* recorded
+   * as a loan leaves a debt on the user's books that nobody owes. So every turn
+   * that writes also records how to reverse itself.
+   *
+   * Only the MOST RECENT undoable reply is offered. A stack of reversals is a
+   * second thing to learn, and the mistake somebody wants gone is almost always
+   * the one they are looking at. The serializer says what is possible; the UI
+   * decides which one to show.
+   */
+  undoable: boolean;
+  /** Set once it has been taken back, so the offer is not made twice. */
+  undoneAt: string | null;
 }
 
 export interface AiSession {
@@ -94,7 +110,19 @@ export interface AiSession {
   documentCount: number;
   updatedAt: string;
   createdAt: string;
+  /**
+   * Standing instructions for THIS chat — "this chat is about my flat
+   * renovation, answer in French". Empty by default; capped server-side at
+   * 2000 chars so it cannot crowd out the retrieved data.
+   */
   instructions: string | null;
+  /**
+   * Which apps this chat searches. **Empty means all of them**, which is the
+   * default — not "none". `Ai::AppScope` drops unknown keys rather than
+   * raising, because the list comes from a client and a stale app name should
+   * narrow nothing.
+   */
+  apps: string[];
 }
 
 export interface AiDocument {
@@ -187,6 +215,8 @@ function parseMessage(payload: unknown): ChatMessage {
     reactions: optArr(record.reactions).map(parseReaction),
     links: optArr(record.links).map(parseLink),
     sources: optArr(record.sources).map(parseLink),
+    undoable: typeof record.undoable === "boolean" ? record.undoable : false,
+    undoneAt: optStr(record.undone_at),
   };
 }
 
@@ -200,6 +230,7 @@ function parseSession(payload: unknown): AiSession {
     createdAt: str(record.created_at, "session.created_at"),
     updatedAt: str(record.updated_at, "session.updated_at"),
     instructions: optStr(record.instructions),
+    apps: optArr(record.apps).filter((a): a is string => typeof a === "string"),
   };
 }
 
@@ -246,6 +277,35 @@ export const aiApi = {
       conversationId: id(record.conversation_id, "ask.conversation_id"),
       userMessageId: id(record.user_message_id, "ask.user_message_id"),
     };
+  },
+};
+
+export const undoApi = {
+  /**
+   * Take back what an assistant reply wrote — `POST /api/v1/ai/undos`.
+   *
+   * The plan lives in the database and is treated as a REQUEST, never as
+   * permission: the server re-checks that the model is on its allowlist and
+   * that the record still belongs to this user before touching anything, and
+   * the whole thing is one transaction, so a partial failure changes nothing.
+   *
+   * Returns how many records were reversed, and the updated message — which
+   * now carries `undone_at`, so the offer cannot be made twice.
+   */
+  undo: async (messageId: number): Promise<{ undoneCount: number; message: ChatMessage }> => {
+    const res = await http.post("/api/v1/ai/undos", { message_id: messageId });
+    const record = obj(res.data, "undo");
+    return {
+      undoneCount: num(record.undone_count, "undo.undone_count"),
+      message: parseMessage(record.message),
+    };
+  },
+};
+
+export const feedbackApi = {
+  /** A thumb on an answer. Upserted server-side, so pressing again replaces. */
+  rate: async (messageId: number, rating: "positive" | "negative"): Promise<void> => {
+    await http.post("/api/v1/ai/feedbacks", { message_id: messageId, rating });
   },
 };
 
@@ -314,6 +374,22 @@ export const sessionsApi = {
 
   rename: async (sessionId: number, title: string): Promise<AiSession> => {
     const res = await http.patch(`/api/v1/ai/sessions/${sessionId}`, { title });
+    return parseSession(obj(res.data, "session").session);
+  },
+
+  /**
+   * Standing instructions and/or search scope.
+   *
+   * The server decides what changed with `params.key?`, NOT presence — because
+   * `instructions: ''` has to mean "clear them" and `apps: []` has to mean
+   * "search everything". Sending only truthy values would make both
+   * uncleanable, so whatever the caller passes goes up as-is.
+   */
+  update: async (
+    sessionId: number,
+    changes: { title?: string; instructions?: string; apps?: string[] },
+  ): Promise<AiSession> => {
+    const res = await http.patch(`/api/v1/ai/sessions/${sessionId}`, changes);
     return parseSession(obj(res.data, "session").session);
   },
 

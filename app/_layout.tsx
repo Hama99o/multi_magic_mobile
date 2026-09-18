@@ -15,6 +15,7 @@ import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as SplashScreen from "expo-splash-screen";
 import { wireAuthStore, useAuthStore } from "@/stores/auth.store";
+import { useThemeStore } from "@/stores/theme.store";
 import { loadToken } from "@/api/http";
 import { TOKENS } from "@/theme/tokens";
 
@@ -43,6 +44,10 @@ export default function RootLayout() {
       // A token in the keystore means a session to restore. Anything else —
       // including a keystore that cannot be read — means signed out, which is
       // recoverable by signing in.
+      // The theme is read BEFORE the first paint. A theme that arrives a frame
+      // late is a white flash on a dark app, which is the one moment it is most
+      // obvious.
+      await useThemeStore.getState().hydrate();
       const token = await loadToken();
       useAuthStore.setState({ status: token ? "signedIn" : "signedOut" });
       setReady(true);

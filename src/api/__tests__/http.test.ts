@@ -142,6 +142,26 @@ describe("telling failures apart", () => {
   });
 });
 
+describe("isNetworkFailure", () => {
+  // It used to be `!e.response`, true of ANY thrown object without one —
+  // including our own ApiShapeError. Measured on a device: a parse failure made
+  // a screen say "Could not reach MultiMagic" while the server had answered
+  // that request 200 in 93 ms.
+  it("does NOT blame the network for a parse error", async () => {
+    const { ApiShapeError } = await import("../parse");
+
+    expect(isNetworkFailure(new ApiShapeError("message.role", null))).toBe(false);
+    expect(isNetworkFailure(new Error("anything"))).toBe(false);
+  });
+
+  it("still recognises a real transport failure", async () => {
+    mock.onGet("/gone").networkError();
+    const offline = await http.get("/gone").catch((e) => e);
+
+    expect(isNetworkFailure(offline)).toBe(true);
+  });
+});
+
 describe("the session email", () => {
   it("round-trips, because the cable looks the user up by it", async () => {
     await setSessionEmail("person@example.com");

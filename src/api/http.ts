@@ -160,10 +160,27 @@ export function isRateLimited(error: unknown): boolean {
   return (error as AxiosError | undefined)?.response?.status === 429;
 }
 
-/** The request reached nobody — no response at all, as opposed to a refusal. */
+/**
+ * The request reached nobody — no response at all, as opposed to a refusal.
+ *
+ * ── IT MUST BE AN AXIOS ERROR, and that check was missing ─────────────────
+ * This used to be `Boolean(e && !e.response)`, which is true of ANY thrown
+ * object that happens to lack a `.response` — including our own
+ * `ApiShapeError`. Measured on a device: a parse failure made the chats screen
+ * say "Could not reach MultiMagic" while the server had answered that exact
+ * request **200 in 93 ms**.
+ *
+ * Which is precisely the failure this file's header complains about Karwan
+ * shipping — telling somebody to check their connection when the connection is
+ * fine — reproduced here by a guard that was too generous about what counts as
+ * a network error. `isAxiosError` is the distinction: a transport failure comes
+ * from the transport, and everything else is a bug in us.
+ */
 export function isNetworkFailure(error: unknown): boolean {
-  const e = error as AxiosError | undefined;
-  return Boolean(e && !e.response);
+  const e = error as (AxiosError & { isAxiosError?: boolean }) | undefined;
+  if (!e || typeof e !== "object") return false;
+  if (e.isAxiosError !== true) return false;
+  return !e.response;
 }
 
 /**

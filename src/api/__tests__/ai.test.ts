@@ -166,6 +166,21 @@ describe("the message parser", () => {
 
   // An id arriving as a string breaks the cable subscription and the cursor
   // silently — `"7" !== 7`. Better to hear about it at the boundary.
+  // ── role IS NULL FOR EVERY MESSAGE A PERSON SENDS ────────────────────────
+  //
+  // Only assistant turns carry one, and the serializer emits the field
+  // unconditionally, so it arrives as null rather than absent. `str()` threw on
+  // it and took all of people chat with it.
+  it("accepts a null role, because a person's message has none", async () => {
+    mock.onGet("/api/v1/conversations/4/messages").reply(200, {
+      messages: [message(5, "user", "hello", { role: null })],
+      meta: { pagy: { pages: 1 } },
+    });
+
+    const [m] = (await messagesApi.latest(4)).messages;
+    expect(m.role).toBe("user");
+  });
+
   it("REFUSES a stringified id instead of coercing it", async () => {
     mock.onGet("/api/v1/conversations/4/messages").reply(200, {
       messages: [message("7" as unknown as number, "user", "hi")],

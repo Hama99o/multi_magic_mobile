@@ -198,7 +198,23 @@ function optArr(value: unknown): unknown[] {
 
 function parseMessage(payload: unknown): ChatMessage {
   const record = obj(payload, "message");
-  const role = str(record.role, "message.role");
+  /**
+   * `role` IS NULL FOR EVERY MESSAGE A PERSON SENDS.
+   *
+   * Only assistant turns carry one, and `message_serializer.rb:11` emits the
+   * field unconditionally — so it arrives as `null` rather than absent, and
+   * `str()` is the one guard in `parse.ts` that will not take that. Verified
+   * against the running server: three messages in a real human thread, all
+   * `role => None`.
+   *
+   * The irony is worth keeping, because this class of thing recurs: this file's
+   * own header says the message type is deliberately NOT narrowed to the
+   * assistant's subset, "because narrowing here would mean re-parsing the same
+   * payload a second way the moment people chat arrives". Every field honoured
+   * that except this one, which got narrowed by assuming a string is always
+   * there. The assistant always has a role; a person never does.
+   */
+  const role = optStr(record.role) ?? "user";
   return {
     id: id(record.id, "message.id"),
     conversationId: id(record.conversation_id, "message.conversation_id"),

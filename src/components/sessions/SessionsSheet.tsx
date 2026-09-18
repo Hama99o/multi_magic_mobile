@@ -29,6 +29,7 @@ import { SessionRow } from "./SessionRow";
 import { RenameDialog } from "./RenameDialog";
 import { DeleteConfirm } from "./DeleteConfirm";
 import { InstructionsDialog, ScopeDialog } from "./SessionOptionsDialogs";
+import { ThemeRow } from "./ThemeRow";
 
 type Pending =
   | { kind: "rename" | "delete" | "menu" | "instructions" | "scope"; session: AiSession }
@@ -234,9 +235,23 @@ export function SessionsSheet({
                 gap: metrics.space.xs,
               }}
             >
-              <Text variant="label" tone="muted" style={{ paddingHorizontal: metrics.space.sm }}>
+              <ThemeRow />
+
+              <Text variant="label" tone="muted" style={{ paddingHorizontal: metrics.space.sm, paddingTop: metrics.space.sm }}>
                 Account
               </Text>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  onClose();
+                  router.push("/profile");
+                }}
+                style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }}
+                testID="sessions-profile"
+              >
+                <Text>Your profile</Text>
+              </Pressable>
 
               <Pressable
                 accessibilityRole="button"

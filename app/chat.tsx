@@ -12,7 +12,8 @@
  * stays on screen with a Retry under it.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FlatList, View } from "react-native";
+import { FlatList, Pressable, View } from "react-native";
+import { MessageSquareText } from "lucide-react-native";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
@@ -29,6 +30,7 @@ import { ThinkingDots } from "@/components/chat/ThinkingDots";
 import { Composer } from "@/components/chat/Composer";
 import { EmptyState } from "@/components/chat/EmptyState";
 import { SourceSheet } from "@/components/chat/SourceSheet";
+import { SessionsSheet } from "@/components/sessions/SessionsSheet";
 
 /** A question that could not be posted, kept so it is never lost. */
 interface FailedQuestion {
@@ -46,7 +48,14 @@ export default function Chat() {
     queryFn: aiApi.currentSessionId,
   });
 
-  const conversationId = sessionId ?? null;
+  /**
+   * A session chosen from the sheet wins over the server's default. Null means
+   * "whatever the server says is current", which is also the state after a
+   * delete — the server hands back the session to fall back to.
+   */
+  const [chosenId, setChosenId] = useState<number | null>(null);
+  const conversationId = chosenId ?? sessionId ?? null;
+  const [sessionsOpen, setSessionsOpen] = useState(false);
   const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addPending, resync } =
     useConversation({ conversationId, channel: "MessageChannel" });
 
@@ -126,15 +135,23 @@ export default function Chat() {
           }}
         >
           <Text variant="title">Assistant</Text>
-          <Button
-            label="Sign out"
-            tone="neutral"
-            block={false}
-            onPress={() => {
-              void useAuthStore.getState().signOut().then(() => router.replace("/sign-in"));
+          {/* The title bar carries a list icon; an app with one destination does
+              not need a persistent drawer. Sign out lives inside the sheet. */}
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Conversations"
+            hitSlop={8}
+            onPress={() => setSessionsOpen(true)}
+            style={{
+              width: metrics.touch,
+              height: metrics.touch,
+              alignItems: "center",
+              justifyContent: "center",
             }}
-            testID="chat-sign-out"
-          />
+            testID="chat-open-sessions"
+          >
+            <MessageSquareText size={22} color={colors.ink} />
+          </Pressable>
         </View>
 
         <FlatList
@@ -229,6 +246,17 @@ export default function Chat() {
       </View>
 
       <SourceSheet source={openSource} onClose={() => setOpenSource(null)} />
+
+      <SessionsSheet
+        visible={sessionsOpen}
+        activeId={conversationId}
+        onClose={() => setSessionsOpen(false)}
+        onOpenSession={setChosenId}
+        onSignOut={() => {
+          setSessionsOpen(false);
+          void useAuthStore.getState().signOut().then(() => router.replace("/sign-in"));
+        }}
+      />
     </Screen>
   );
 }

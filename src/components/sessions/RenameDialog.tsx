@@ -1,0 +1,103 @@
+/**
+ * Rename a conversation.
+ *
+ * The first question titles a session automatically (`Ai::Sessions.autotitle`),
+ * so this exists for when that first question was a bad name for the thread —
+ * not because sessions arrive untitled.
+ *
+ * The 60-character cap is the server's (`TITLE_LIMIT`) and is enforced HERE, so
+ * a long title is trimmed by the field rather than rejected by a round trip.
+ */
+import { useEffect, useState } from "react";
+import { Modal, Pressable, View } from "react-native";
+import { Text } from "@/components/reusables/text";
+import { Button } from "@/components/reusables/button";
+import { Input } from "@/components/reusables/input";
+import { useColors, useMetrics } from "@/hooks/useColors";
+import { LIMITS } from "@/api/ai";
+
+export function RenameDialog({
+  visible,
+  initialTitle,
+  busy,
+  onCancel,
+  onSave,
+}: {
+  visible: boolean;
+  initialTitle: string;
+  busy?: boolean;
+  onCancel: () => void;
+  onSave: (title: string) => void;
+}) {
+  const colors = useColors();
+  const metrics = useMetrics();
+  const [title, setTitle] = useState(initialTitle);
+
+  // Reopening on a different row must not show the previous row's title.
+  useEffect(() => {
+    if (visible) setTitle(initialTitle);
+  }, [visible, initialTitle]);
+
+  if (!visible) return null;
+
+  const trimmed = title.trim();
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: "rgba(0,0,0,0.6)",
+          alignItems: "center",
+          justifyContent: "center",
+          padding: metrics.space.lg,
+        }}
+      >
+        <View
+          style={{
+            width: "100%",
+            maxWidth: 420,
+            backgroundColor: colors.ground,
+            borderRadius: metrics.radius.lg,
+            padding: metrics.space.xl,
+            gap: metrics.space.lg,
+          }}
+          testID="rename-dialog"
+        >
+          <Text variant="title">Rename conversation</Text>
+
+          <Input
+            label="Name"
+            value={title}
+            onChangeText={setTitle}
+            maxLength={LIMITS.titleLimit}
+            autoFocus
+            returnKeyType="done"
+            onSubmitEditing={() => trimmed && onSave(trimmed)}
+            testID="rename-input"
+          />
+
+          <View style={{ gap: metrics.space.sm }}>
+            <Button
+              label="Save"
+              busy={busy}
+              disabled={trimmed.length === 0}
+              onPress={() => onSave(trimmed)}
+              testID="rename-save"
+            />
+            <Pressable
+              accessibilityRole="button"
+              onPress={onCancel}
+              disabled={busy}
+              hitSlop={8}
+              style={{ minHeight: metrics.touch, alignItems: "center", justifyContent: "center" }}
+              testID="rename-cancel"
+            >
+              <Text tone="muted">Cancel</Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}

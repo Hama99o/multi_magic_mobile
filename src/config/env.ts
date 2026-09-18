@@ -74,6 +74,25 @@ export const WS_URL =
   fromExtra("wsUrl") ||
   `${API_URL.replace(/^http/, "ws")}/cable`;
 
+/**
+ * THE SAME HOST, FOR A SHELL RATHER THAN FOR THE APP.
+ *
+ * `10.0.2.2` is the emulator's alias for the host machine and it is the right
+ * value for the APP: it is identical on every machine AND on every network, so
+ * it survives the switch from office WiFi to a weekend hotspot, and it works
+ * with no network at all. A stale LAN IP makes every request fail in a way that
+ * looks exactly like an app bug.
+ *
+ * But a shell script on the host cannot reach `10.0.2.2` — that alias only
+ * exists inside the emulator. So anything checking "is the backend up?" from a
+ * terminal needs this one instead. Two values for one host, because two very
+ * different things are asking.
+ */
+export const API_URL_LOCAL =
+  process.env.EXPO_PUBLIC_API_URL_LOCAL?.trim() ||
+  fromExtra("apiUrlLocal") ||
+  API_URL.replace("10.0.2.2", "localhost");
+
 /** So a screen can say which backend it is talking to when something is wrong. */
 export const ENVIRONMENT_LABEL =
   API_URL.includes("10.0.2.2") || API_URL.includes("localhost") || API_URL.includes("127.0.0.1")

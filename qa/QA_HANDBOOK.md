@@ -78,3 +78,27 @@ The first run reported five "runtime errors" that were the `am` command's own
 startup lines: the grep matched `AndroidRuntime`, which is a tag, not a
 severity. It matches `E AndroidRuntime` and `FATAL EXCEPTION` now. A rig that
 cries wolf is a rig whose output gets skimmed.
+
+## Stage individual paths — a directory is not a path
+
+Three sessions share this repo and all three swept each other's in-flight work
+into their own commits today. `git add -A` was the first cause; the fix looked
+obvious, and the obvious fix was not enough.
+
+**`git add qa/flows` took another session's three new flows with it.** A
+directory is not a path — it is *a set that grows*, so staging one stages
+whatever anybody else put in it since you last looked. Name every file:
+
+```sh
+git add qa/run.sh qa/preflight.sh qa/QA_HANDBOOK.md    # yes
+git add qa/ ; git add -A ; git commit -a               # no, no, no
+```
+
+And check what actually staged before writing the message — `git diff --cached
+--name-only` — because the difference between what you meant to stage and what
+you staged is exactly the thing this rule exists to catch.
+
+The cost is not only tidiness. One sweep put a personal email address into a
+public repo. Another **hid a session's finished work from the session chasing
+it** — the header icons existed for half an hour while being asked for twice,
+because they had been committed under somebody else's name.

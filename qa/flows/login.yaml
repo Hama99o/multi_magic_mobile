@@ -25,6 +25,13 @@ appId: ${APP_ID}
     commands:
       - tapOn:
           id: "chat-open-sessions"
+      # The sheet slides up. Without this the next tap fires while it is still
+      # animating and Maestro reports "Element not found: sessions-sign-out" —
+      # which reads as a missing button rather than as a missing wait.
+      - extendedWaitUntil:
+          visible:
+            id: "sessions-sheet"
+          timeout: 20000
       - tapOn:
           id: "sessions-sign-out"
       - extendedWaitUntil:

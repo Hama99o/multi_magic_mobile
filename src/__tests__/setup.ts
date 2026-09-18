@@ -57,3 +57,27 @@ jest.mock("react-native-safe-area-context", () =>
 jest.mock("@react-native-async-storage/async-storage", () =>
   require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
 );
+
+/**
+ * `expo-speech-recognition` is a native module: importing it under Jest throws
+ * "Cannot find native module 'ExpoSpeechRecognition'" before any assertion
+ * runs, and it takes down every suite that renders the composer — not just the
+ * ones about dictation.
+ *
+ * The defaults describe a working device (a recogniser present, permission
+ * granted) because that is the case most screens are rendered in. A suite about
+ * dictation itself mocks `@/hooks/useSpeechToText` instead, which is the seam
+ * where the interesting states live.
+ */
+jest.mock("expo-speech-recognition", () => ({
+  ExpoSpeechRecognitionModule: {
+    start: jest.fn(),
+    stop: jest.fn(),
+    abort: jest.fn(),
+    requestPermissionsAsync: jest.fn(async () => ({ granted: true, status: "granted" })),
+    getPermissionsAsync: jest.fn(async () => ({ granted: true, status: "granted" })),
+    getSpeechRecognitionServices: jest.fn(() => ["com.google.android.googlequicksearchbox"]),
+    getSupportedLocales: jest.fn(async () => ({ locales: [], installedLocales: [] })),
+  },
+  useSpeechRecognitionEvent: jest.fn(),
+}));

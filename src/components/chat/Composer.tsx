@@ -8,17 +8,21 @@
  *
  * Tolan's `✕` inside the field clears a draft.
  *
- * ── What is deliberately not here yet ─────────────────────────────────────
- * The `+` (attachments) and the mic (dictation) are their own rows on the
- * board. They are rendered as DISABLED with an accessible label rather than
- * omitted, so the pill's proportions are the real ones now and the screen does
- * not visibly rearrange when they arrive. The mic specifically must be ABSENT
- * rather than disabled when a device has no recogniser — that is a decision for
- * the dictation row, and it is why this one does not pretend to own it.
+ * ── The mic is ABSENT, not disabled, when the device cannot dictate ───────
+ * A disabled mic invites a tap that can never work and gives no reason. On a
+ * cheap Android with no recogniser installed that is a real state, not a
+ * hypothetical — so `available: false` renders nothing at all. A REFUSED
+ * permission is different: the user can fix that, so it degrades to the
+ * keyboard with one line of explanation (Speak's "I can't speak now").
+ *
+ * The `+` (attachments) is still its own row and stays disabled with a label,
+ * so the pill's proportions do not change when it arrives.
  */
 import { Pressable, TextInput, View } from "react-native";
-import { ArrowUp, Plus, X } from "lucide-react-native";
+import { ArrowUp, Mic, Plus, Square, X } from "lucide-react-native";
+import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import { LANGUAGES, useSpeechToText } from "@/hooks/useSpeechToText";
 
 export function Composer({
   value,
@@ -34,9 +38,54 @@ export function Composer({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+
+  const speech = useSpeechToText((final) => {
+    // APPENDED, never replacing. Someone who typed half a question and dictated
+    // the rest must keep both halves.
+    onChange(value ? `${value.trim()} ${final}` : final);
+  });
+
   const canSend = value.trim().length > 0 && !busy;
 
   return (
+    <View style={{ gap: metrics.space.xs }}>
+      {/* Interim words while listening: proof it is hearing them, and NOT part
+          of the committed text until the recogniser says they are final. */}
+      {speech.listening ? (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: metrics.space.sm,
+            paddingHorizontal: metrics.space.md,
+          }}
+          testID="composer-listening"
+        >
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.danger }} />
+          <Text variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1 }}>
+            {speech.interim || "Listening…"}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Cancel dictation"
+            hitSlop={8}
+            onPress={speech.cancel}
+            testID="composer-dictation-cancel"
+          >
+            <X size={16} color={colors.inkMuted} />
+          </Pressable>
+        </View>
+      ) : null}
+
+      {/* Speak's fallback: a refusal degrades to the keyboard WITH a reason,
+          rather than a mic that silently does nothing. */}
+      {speech.refused ? (
+        <Text variant="caption" tone="muted" style={{ paddingHorizontal: metrics.space.md }} testID="composer-mic-refused">
+          I can&apos;t listen without the microphone. You can still type, or allow it in
+          Settings.
+        </Text>
+      ) : null}
+
     <View
       style={{
         flexDirection: "row",
@@ -94,6 +143,30 @@ export function Composer({
         </Pressable>
       ) : null}
 
+      {/* ABSENT, not disabled, when the device has no recogniser. */}
+      {speech.available ? (
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={speech.listening ? "Stop dictating" : `Dictate in ${LANGUAGES.find((l) => l.code === speech.lang)?.label ?? speech.lang}`}
+          hitSlop={8}
+          onPress={() => (speech.listening ? speech.stop() : void speech.start())}
+          onLongPress={() => {
+            // Long press switches language and remembers it — the web keeps the
+            // same preference in localStorage.
+            const next = LANGUAGES.find((l) => l.code !== speech.lang);
+            if (next) speech.setLang(next.code);
+          }}
+          style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+          testID="composer-mic"
+        >
+          {speech.listening ? (
+            <Square size={18} color={colors.danger} fill={colors.danger} />
+          ) : (
+            <Mic size={22} color={colors.inkMuted} />
+          )}
+        </Pressable>
+      ) : null}
+
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Send"
@@ -114,6 +187,7 @@ export function Composer({
       >
         <ArrowUp size={20} color={canSend ? colors.onAccent : colors.inkMuted} />
       </Pressable>
+    </View>
     </View>
   );
 }

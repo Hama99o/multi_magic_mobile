@@ -72,6 +72,19 @@ gone. A cold relaunch at the same density rendered perfectly. Set once, wait,
 **read the value back**, relaunch, then judge. Without that discipline the first
 finding of the day would have been a bug report about code that was fine.
 
+## React Native caches window dimensions at startup
+
+Both MultiMagic sessions measured the same phantom 360 dp bug — content
+overflowing right, the gutter gone, the composer clipped — and both were
+measuring their own `wm density` change rather than the app. **RN reads the
+window once at startup**, so a density changed underneath it leaves every
+layout computed against the old one.
+
+**Force-stop and relaunch after every `wm density` or `wm size`, then judge.**
+Two sessions lost the same hour to this on the same evening; it belongs beside
+the `adb reverse` note because it is the same shape — an instrument reporting
+truthfully about a state that no longer exists.
+
 ## Match the severity marker, not the tag
 
 The first run reported five "runtime errors" that were the `am` command's own

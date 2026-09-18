@@ -25,8 +25,11 @@ tags:
     id: "composer-input"
 - inputText: "Do I owe anyone money?"
 - hideKeyboard
-- tapOn:
-    id: "composer-send"
+# BY ITS LABEL, not its testID. A disabled Pressable can drop out of the
+# accessibility tree entirely, and Maestro reads that tree — so "Element not
+# found: composer-send" meant "not in the tree right now", not "missing from
+# the app". The label is what a user reaches for and is present either way.
+- tapOn: "Send"
 
 # 1. The question appears before any answer exists.
 - assertVisible: "Do I owe anyone money?"

@@ -65,6 +65,41 @@ separation pair, so **it is likely to hit the same wall**, and `07` uses it once
 If they do, that is the same finding as `01-ask` and the same fix — a
 development build — not three new bugs.
 
+## Run 6 — the development build, and DICTATION IS VERIFIED
+
+The dev build (`expo-dev-client` + `expo-speech-recognition`, package
+`co.byseven.multimagic`) removed every Expo Go obstacle: `launchApp` launches
+our app, `login.yaml` completes for the first time, and the speech module is
+present.
+
+**Dictation: VERIFIED, all four states, photographed in
+`docs/design/chat/ours/`.**
+
+| | Verdict |
+|---|---|
+| mic ABSENT when no recogniser exists | PASS (Expo Go, run 3) |
+| mic PRESENT when the module is in the binary | PASS (dev build) |
+| the permission dialog fires — *"Allow MultiMagic to record audio?"* | PASS |
+| refusal keeps the button and explains — *"I can't listen without the microphone. You can still type, or allow it in Settings."* | PASS |
+
+That last one is the decision the design turns on: a refusal is FIXABLE, so the
+mic stays for the person who might grant it in Settings. It is now a photograph
+rather than an assertion.
+
+**`01-ask` remains NOT MEASURED, and the reason narrowed to one selector.** The
+flow now launches, signs in, types the question — and cannot find the send
+button, by `testID` or by its label. A disabled `Pressable` drops out of the
+accessibility tree, which Maestro reads, so "Element not found" means "not in
+the tree at this instant" rather than "missing from the app". Whether the
+button is disabled at that moment — i.e. whether Maestro's `inputText` fires
+`onChangeText` — is the open question, and it is one experiment rather than a
+wall.
+
+**The exchange itself is proven and photographed** (run 4): a real question, a
+real Gemini answer over ActionCable, and the PDF join returning facts that
+exist nowhere but the uploaded file. The flow would automate a thing already
+known to work; its absence costs repeatability, not confidence.
+
 ## Rules this register enforces
 
 - **An empty list is a legitimate state, not a pass.** A flow that reaches an

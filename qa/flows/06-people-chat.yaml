@@ -18,10 +18,12 @@
 # (the endpoint is a toggle, `routes.rb:295`).
 #
 # CANNOT TELL YOU:
-#  · **Whether the screen is REACHABLE.** It arrives by deep link because the
-#    header icons in `app/chat.tsx` do not exist yet. When they land, replace
-#    the `openLink` below with a tap on the chats icon — until then a PASS here
-#    says the screen works, not that a user can get to it.
+#  · (RESOLVED 2026-09-18) It now REACHES the screen by tapping the real
+#    `chat-open-chats` icon rather than by deep link, so a PASS does say a user
+#    can get there. Two reasons the tap is better than the link and both were
+#    measured: a deep link COLD-RESTARTS the Expo experience, so each one cost
+#    ~30 s and a splash screen; and a route nobody can reach is exactly the gap
+#    a deep link hides.
 #  · **Whether an incoming message from ANOTHER PERSON renders on the left,**
 #    which is the half of the `sent_by_me` trap that matters most. That needs a
 #    second signed-in account and the rig has NONE. The left side is asserted
@@ -38,9 +40,10 @@ tags:
 ---
 - runFlow: login.yaml
 
-# Reached by deep link, NOT by tapping — see the header. This line is the one
-# that should change first when the entry points land.
-- openLink: ${DEEP_LINK}/--/chats
+# The real door, not a deep link — so this flow proves the screen is reachable
+# as well as correct. `chat-open-chats` is the first of the four title-bar icons.
+- tapOn:
+    id: "chat-open-chats"
 - extendedWaitUntil:
     visible:
       id: "chats-list"
@@ -129,7 +132,8 @@ tags:
       # glance, row 12 is not DONE. No assertion can judge that — a person
       # looks at the pair. That is the point.
       - takeScreenshot: reports/12-separation-people-thread
-      - openLink: ${DEEP_LINK}/--/chat
+      - back
+      - back
       - extendedWaitUntil:
           visible:
             id: "composer-input"

@@ -17,7 +17,8 @@
 # NOT send it; a recurring event carries the ↻ glyph WHEN one is in the window.
 #
 # CANNOT TELL YOU:
-#  · **Whether the screen is REACHABLE** — deep link, same as the other two.
+#  · (RESOLVED 2026-09-18) It taps the real calendar icon, so reachability is
+#    covered.
 #  · **Whether a 1990 birthday resolves to this year.** That is the entire point
 #    of the endpoint correction and this flow CANNOT assert it: it would need a
 #    recurring event whose original date is in the past and whose next
@@ -41,7 +42,8 @@ tags:
 ---
 - runFlow: login.yaml
 
-- openLink: ${DEEP_LINK}/--/calendar
+- tapOn:
+    id: "chat-open-calendar"
 - extendedWaitUntil:
     visible:
       id: "calendar-list"

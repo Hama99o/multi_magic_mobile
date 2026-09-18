@@ -18,10 +18,8 @@
 # proof it was not sent; `Mark all as read` clears every dot at once.
 #
 # CANNOT TELL YOU:
-#  · **Whether the screen is REACHABLE** — it arrives by deep link, because the
-#    bell in `app/chat.tsx` does not exist yet. A PASS says the screen works,
-#    not that anybody can open it. Swap the `openLink` for a tap on the bell the
-#    day it lands.
+#  · (RESOLVED 2026-09-18) The bell exists and this flow taps it, so a PASS now
+#    covers reachability too.
 #  · **Whether a LIVE notification arrives over `NotificationChannel`.** That
 #    needs something on the backend to generate one for the QA account mid-run —
 #    a loan falling due, somebody sharing an event. Nothing in this rig can
@@ -39,7 +37,8 @@ tags:
 ---
 - runFlow: login.yaml
 
-- openLink: ${DEEP_LINK}/--/notifications
+- tapOn:
+    id: "chat-open-notifications"
 - extendedWaitUntil:
     visible:
       id: "notifications-list"

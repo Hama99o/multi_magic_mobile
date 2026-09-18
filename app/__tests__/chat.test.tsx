@@ -20,7 +20,7 @@ jest.mock("@/hooks/useConversation", () => ({
 
 /* eslint-disable import/first */
 import Chat from "../chat";
-import { aiApi, type ChatMessage } from "@/api/ai";
+import { aiApi, documentsApi, type ChatMessage } from "@/api/ai";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -82,6 +82,9 @@ beforeEach(async () => {
   };
   mockUseConversation.mockImplementation(() => conversation);
   jest.spyOn(aiApi, "currentSessionId").mockResolvedValue(4);
+  // Derived suggestions read from these; empty is the default, which is the
+  // state an account with nothing in it is actually in.
+  jest.spyOn(documentsApi, "list").mockResolvedValue([]);
   jest.spyOn(aiApi, "ask").mockResolvedValue({ conversationId: 4, userMessageId: 11 });
 });
 
@@ -92,26 +95,44 @@ afterEach(() => {
 });
 
 describe("the empty state", () => {
-  it("offers questions about the user's OWN data, not a greeting", async () => {
+  it("says what the assistant answers FROM, without inventing a question", async () => {
     renderChat();
 
     await waitFor(() => expect(screen.getByTestId("chat-empty")).toBeTruthy());
-    // Answering from his own data is the entire difference between this and any
-    // chat app he could install instead, so the empty state says so.
-    expect(screen.getByText("Do I owe anyone money?")).toBeTruthy();
+    expect(screen.getByText(/Ask about anything you have kept in MultiMagic/)).toBeTruthy();
   });
 
-  it("asks an example when it is tapped", async () => {
+  // ── NO SUGGESTIONS IS A LEGITIMATE STATE ──────────────────────────────────
+  //
+  // His instruction: the prompts must be linked to his data and "should not be
+  // a random thing". An account with nothing in it gets NO suggestions rather
+  // than three invented ones — because a question the app suggested, answered
+  // with "I could not find anything", is worse than no suggestion at all.
+  it("offers NOTHING when there is nothing to derive from", async () => {
+    renderChat();
+
+    await waitFor(() => expect(screen.getByTestId("chat-empty")).toBeTruthy());
+    expect(screen.queryAllByTestId("chat-prompt")).toHaveLength(0);
+  });
+
+  it("asks a derived suggestion when it is tapped", async () => {
+    (documentsApi.list as jest.Mock).mockResolvedValue([
+      { id: 1, filename: "payslip.pdf", contentType: "application/pdf", byteSize: 10, status: "ready" },
+    ]);
     renderChat();
     await waitForSession();
-    await waitFor(() => expect(screen.getByTestId("chat-empty")).toBeTruthy());
 
+    await waitFor(() => expect(screen.getByText("What does payslip.pdf say?")).toBeTruthy());
     await act(async () => {
-      fireEvent.press(screen.getByText("Do I owe anyone money?"));
+      fireEvent.press(screen.getByText("What does payslip.pdf say?"));
     });
 
+    // The question asked is the derived one, verbatim.
     await waitFor(() =>
-      expect(aiApi.ask).toHaveBeenCalledWith({ conversationId: 4, body: "Do I owe anyone money?" }),
+      expect(aiApi.ask).toHaveBeenCalledWith({
+        conversationId: 4,
+        body: "What does payslip.pdf say?",
+      }),
     );
   });
 });

@@ -25,6 +25,7 @@ import { aiApi, type ChatMessage, type MessageLink } from "@/api/ai";
 import { isRateLimited, isNetworkFailure, apiErrorMessage } from "@/api/http";
 import { useConversation } from "@/hooks/useConversation";
 import { useDraft } from "@/hooks/useDraft";
+import { useStarterPrompts } from "@/hooks/useStarterPrompts";
 import { loadRememberedSession, rememberSession } from "@/lib/rememberedSession";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { ThinkingDots } from "@/components/chat/ThinkingDots";
@@ -173,6 +174,9 @@ export default function Chat() {
     refetchInterval: (query) =>
       (query.state.data ?? []).some((d) => d.status === "pending") ? 2_500 : false,
   });
+
+  // Derived from what this user actually has — never a written list.
+  const { prompts } = useStarterPrompts(conversationId);
 
   const attachments = useAttachments(conversationId, uploaded.length);
   const [attachOpen, setAttachOpen] = useState(false);
@@ -374,7 +378,7 @@ export default function Chat() {
                 <Button label="Try again" tone="neutral" onPress={() => void resync()} />
               </View>
             ) : (
-              <EmptyState onPick={(q) => void send(q)} />
+              <EmptyState onPick={(q) => void send(q)} prompts={prompts} />
             )
           }
           ListFooterComponent={

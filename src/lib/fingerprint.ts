@@ -24,27 +24,39 @@
  *             in its own comment, and says that not doing this rejected every
  *             browser connection as a stolen token).
  *
- * ── Why this is a random UUID and not a device fingerprint ────────────────
- * The web computes one from canvas rendering, user agent, screen geometry and
- * hardware concurrency (`multi_magic/app/javascript/lib/fingerprint.ts`). We do
- * NOT port that, and the web file itself explains why we don't have to:
+ * ── Why this is a random UUID and not a derived fingerprint ──────────────
+ * The web computes its value from `navigator.userAgent`, the language, the
+ * timezone, `screen.width x height x colorDepth`, `hardwareConcurrency`,
+ * `deviceMemory` and an offscreen **canvas render**, hashed together
+ * (`multi_magic/app/javascript/lib/fingerprint.ts`). We do not port that, and
+ * on a phone there is nothing to port it FROM — no canvas, no `navigator`.
  *
- *     "This is intentionally NOT a secret — its purpose is to differentiate
- *      browsers/devices, not to authenticate users. The server stores a
- *      SHA-256 hash of this value."
+ * What the server actually needs is a value that is STABLE and DISTINCT, not
+ * one that is DERIVED: `jwt_revoked?` only ever compares it for equality. A
+ * random UUID in the keystore is both, and it is better than a derived value
+ * here — an OS update that changed the user agent, or a display-size setting,
+ * would change a derived fingerprint and lock someone out of their own account
+ * with nothing on screen to explain why.
  *
- * The server needs it STABLE and DISTINCT. It does not need it DERIVED. A
- * random UUID persisted once is both, and it is better than a derived value on
- * a phone: an OS update that changes the user agent, or a display-size setting,
- * would change a derived fingerprint and lock the user out of their own account
- * with no way to understand why.
+ * NOTE, corrected 2026-09-18: an earlier version of this comment repeated the
+ * web file's own header, which says the value "is intentionally NOT a secret"
+ * and that "the server stores a SHA-256 hash of this value". **That second
+ * claim is false** — `db/schema.rb:144` types
+ * `allowlisted_jwts.device_fingerprint` as a plain string; only
+ * `trusted_devices.fingerprint_digest` is hashed. So this file does not rest
+ * on how the server stores the value, because we cannot claim that. What makes
+ * it safe on OUR side is SecureStore, which is under this app's control.
  *
- * ── Two rules, both from the web's own comments ───────────────────────────
+ * The general lesson, worth keeping: a docstring is a claim about code, not the
+ * code. That header says "random"; the function computes a canvas hash.
+ *
+ * ── Two rules ─────────────────────────────────────────────────────────────
  * 1. STABLE ACROSS RESTARTS. Hence SecureStore, not memory.
- * 2. NEVER CLEARED ON LOGOUT. The web says: "The fingerprint is intentionally
- *    NOT cleared on logout — doing so would cause a re-authentication cycle if
- *    a user clears and re-logs in the same browser." `signOut` in `api/auth.ts`
- *    clears the token and deliberately leaves this alone.
+ * 2. NEVER CLEARED ON LOGOUT. Clearing it mints a new value on the next
+ *    launch, which the server compares against the one bound to the reissued
+ *    token — a re-authentication cycle for someone who signed out and back in
+ *    on the same device. `signOut` in `api/auth.ts` clears the token and
+ *    deliberately leaves this alone.
  */
 import * as SecureStore from "expo-secure-store";
 import * as Crypto from "expo-crypto";

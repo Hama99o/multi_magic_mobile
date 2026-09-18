@@ -23,8 +23,18 @@ ship, not from taste.
 1. **Download the images; never link them.** Mobbin's image URLs **expire after
    30 days**. The `mobbin.com/screens/<id>` link stays in the SPEC as the
    citation; that one does not expire.
-2. **This repo stays private.** The references are other companies' app
-   screenshots under Mobbin's terms.
+2. **This repo is PUBLIC**, so the reference images are **gitignored** rather
+   than committed — they are other companies' app screenshots under Mobbin's
+   terms, fine as internal reference and not ours to publish.
+   `docs/design/**/references/` is in `.gitignore` and `git ls-files` confirms
+   no `.webp` is tracked. Each SPEC cites its sources by
+   `mobbin.com/screens/<id>`, which does not expire, so the receipts survive in
+   the text.
+   *(This rule said "stays private" until 2026-09-18. It was written before he
+   created the repo, and it was wrong for most of the day — the setup was
+   correct throughout and only the sentence was stale. A rule file with an
+   expired rule in it is the same shape as the tsconfig exclusion whose reason
+   had expired: caught by a session reading it, not by me.)*
 3. **Every "how we code it" names real identifiers** — a token, a component, a
    file and a line. A spec that names no identifier is a wish.
 4. **`DONE` needs three things**: `ours/` holding a device screenshot at **360,

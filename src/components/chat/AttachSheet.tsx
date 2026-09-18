@@ -11,6 +11,7 @@
  * the limit with no warning is a surprise.
  */
 import { Modal, Pressable, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Camera, FileText, Image as ImageIcon } from "lucide-react-native";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -33,6 +34,7 @@ export function AttachSheet({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const insets = useSafeAreaInsets();
 
   if (!visible) return null;
 
@@ -56,6 +58,8 @@ export function AttachSheet({
             borderTopLeftRadius: metrics.radius.lg,
             borderTopRightRadius: metrics.radius.lg,
             padding: metrics.space.lg,
+            // Measured on a device: the last row sat under the gesture bar.
+            paddingBottom: metrics.space.lg + insets.bottom,
             gap: metrics.space.sm,
             width: "100%",
             maxWidth: metrics.maxMeasure,

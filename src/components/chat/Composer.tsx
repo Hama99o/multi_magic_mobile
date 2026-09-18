@@ -125,7 +125,10 @@ export function Composer({
       <TextInput
         value={value}
         onChangeText={onChange}
-        placeholder="Ask about your notes, money, contacts…"
+        // Short enough to stay on ONE line at 360 dp: the long version
+        // wrapped, which made the pill taller and left the + floating against
+        // two lines of grey text.
+        placeholder="Ask anything…"
         placeholderTextColor={colors.inkMuted}
         accessibilityLabel="Your question"
         multiline

@@ -84,12 +84,17 @@ export function MessageRow({
       </Text>
 
       {/* TWO ROWS, NEVER ONE. `sources` are the records the answer was drawn
-          FROM; `links` are the records it CREATED. `AI_ASSISTANT.md` §5b:
-          mixing them made "What is Husna's birthday?" cite a taxi fare, and a
-          confirmation is not an answer from data. A reply that created
-          something cites nothing, and shows what it made instead. */}
+          FROM; `links` are what it points you AT. §5b: mixing them made "What
+          is Husna's birthday?" cite a taxi fare, and a confirmation is not an
+          answer from data.
+
+          The second row is labelled "Open", not "Created" — measured on a
+          device: the missing-API-key reply attaches `links` as a POINTER to the
+          AI keys page, and "Created / AI keys" reads as though the assistant
+          had just made something. `links` carries both created records and
+          plain navigation, so only the weaker word is true of both. */}
       <SourceChips sources={message.sources} label="From" onOpen={onOpenSource} />
-      <SourceChips sources={message.links} label="Created" onOpen={onOpenSource} />
+      <SourceChips sources={message.links} label="Open" onOpen={onOpenSource} />
 
       <AnswerActions
         message={message}

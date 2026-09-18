@@ -27,10 +27,67 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {
-  ExpoSpeechRecognitionModule,
-  useSpeechRecognitionEvent,
-} from "expo-speech-recognition";
+
+/**
+ * LOADED DEFENSIVELY, AND THE REASON IS A BUG THIS ALREADY CAUSED.
+ *
+ * `expo-speech-recognition` is a custom native module. A static
+ * `import { … } from "expo-speech-recognition"` throws
+ * `Cannot find native module 'ExpoSpeechRecognition'` at MODULE SCOPE wherever
+ * the binary does not carry it — and because the throw happens on import, it
+ * does not disable dictation: it takes down every module in the chain. Measured
+ * on a device: `chat.tsx` lost its default export entirely and the route failed
+ * to render, with an error naming a file two imports away from the screen.
+ *
+ * That happens in Expo Go, which bundles no custom native modules, and it would
+ * happen in any build where the plugin had not been applied. Either way the
+ * honest behaviour is the one this hook already describes — `available: false`,
+ * so the composer renders NO mic — and it could never run, because the import
+ * failed first.
+ *
+ * So the module is required inside a try, and its absence is just another
+ * unavailable recogniser.
+ */
+interface SpeechResultEvent {
+  isFinal: boolean;
+  results?: { transcript: string }[];
+}
+interface SpeechErrorEvent {
+  error: string;
+}
+/** The three events this hook listens to, with the payload each carries. */
+interface SpeechEventMap {
+  result: SpeechResultEvent;
+  end: null;
+  error: SpeechErrorEvent;
+}
+
+interface SpeechModule {
+  ExpoSpeechRecognitionModule: {
+    start: (options: Record<string, unknown>) => void;
+    stop: () => void;
+    abort: () => void;
+    requestPermissionsAsync: () => Promise<{ granted: boolean }>;
+    getSpeechRecognitionServices: () => string[];
+  };
+  useSpeechRecognitionEvent: <K extends keyof SpeechEventMap>(
+    event: K,
+    handler: (e: SpeechEventMap[K]) => void,
+  ) => void;
+}
+
+let speech: SpeechModule | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  speech = require("expo-speech-recognition") as SpeechModule;
+} catch {
+  speech = null;
+}
+
+const ExpoSpeechRecognitionModule = speech?.ExpoSpeechRecognitionModule ?? null;
+/** A no-op subscription when there is no module, so the hook order is stable. */
+const useSpeechRecognitionEvent: SpeechModule["useSpeechRecognitionEvent"] =
+  speech?.useSpeechRecognitionEvent ?? (() => {});
 
 const LANG_KEY = "mm-stt-lang";
 
@@ -89,6 +146,11 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
 
   useEffect(() => {
     void (async () => {
+      // No native module at all — Expo Go, or a build without the plugin.
+      if (!ExpoSpeechRecognitionModule) {
+        setAvailable(false);
+        return;
+      }
       try {
         // Android can genuinely have no recogniser installed. iOS always has
         // the Speech framework, so an empty list there is not a refusal.
@@ -141,6 +203,7 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
   }, []);
 
   const start = useCallback(async () => {
+    if (!ExpoSpeechRecognitionModule) return;
     cancelledRef.current = false;
     try {
       const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
@@ -166,6 +229,7 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
   }, [lang]);
 
   const stop = useCallback(() => {
+    if (!ExpoSpeechRecognitionModule) return;
     // `stop` lets the recogniser deliver its final result; `abort` discards it.
     try {
       ExpoSpeechRecognitionModule.stop();
@@ -178,6 +242,7 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
     cancelledRef.current = true;
     setInterim("");
     setListening(false);
+    if (!ExpoSpeechRecognitionModule) return;
     try {
       ExpoSpeechRecognitionModule.abort();
     } catch {

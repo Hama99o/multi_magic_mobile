@@ -34,6 +34,13 @@ case "${1:-all}" in
     curl -s --max-time 2 "http://localhost:$METRO_PORT/status" | grep -q packager \
       || ( cd "$DIR/.." && nohup npx expo start --port "$METRO_PORT" >/dev/null 2>&1 & )
     echo "up: $AVD on $SERIAL, Metro :$METRO_PORT";;
+  install)
+    # The dev build, onto whatever device is up. Needs the box; everything
+    # before it does not, which is why the APK is built ahead of the claim.
+    [ -f "$DIR/../$DEV_BUILD_APK" ] || { echo "no APK at $DEV_BUILD_APK — build it first:"; \
+      echo "  npx expo prebuild --platform android && (cd android && ./gradlew assembleDebug)"; exit 1; }
+    adb -s "$SERIAL" install -r "$DIR/../$DEV_BUILD_APK" || exit 1
+    echo "installed $DEV_BUILD_ID — run flows with USE_DEV_BUILD=1";;
   down)
     adb -s "$SERIAL" emu kill >/dev/null 2>&1
     pgrep -f "expo start --port $METRO_PORT" | while read -r p; do kill "$p" 2>/dev/null; done

@@ -28,10 +28,37 @@ METRO_PORT="${METRO_PORT:-3029}"
 API_URL="${API_URL:-http://10.0.2.2:3001}"
 API_URL_LOCAL="${API_URL_LOCAL:-http://localhost:3001}"
 
-# Expo Go, because dictation's native module needs a dev build we do not have.
-# The app is reached by deep link rather than by launching a package of its own.
-APP_ID="${APP_ID:-host.exp.exponent}"
-DEEP_LINK="${DEEP_LINK:-exp://127.0.0.1:$METRO_PORT}"
+# ── WHICH BINARY THE FLOWS DRIVE ────────────────────────────────────────────
+#
+# Expo Go was the harness's problem rather than the app's, and all of it is one
+# consequence of not having our own package:
+#
+#   * the deep link resolves to the EMULATOR without `adb reverse`;
+#   * Expo Go's dev menu covers the screen and swallows taps;
+#   * Back exits the app, because the assistant is the ROOT route and Expo Go
+#     owns the stack above it;
+#   * and no custom native module is present at all, so dictation can never be
+#     witnessed — only its absence.
+#
+# The development build has its own package, so `launchApp` launches OUR app,
+# Back behaves the way expo-router intends, there is no menu in front of the UI,
+# and `expo-speech-recognition` is in the binary (verified: 146 matches for
+# ExpoSpeechRecognition in classes16.dex).
+#
+# Build it with:  npx expo prebuild --platform android && (cd android && ./gradlew assembleDebug)
+DEV_BUILD_APK="${DEV_BUILD_APK:-android/app/build/outputs/apk/debug/app-debug.apk}"
+DEV_BUILD_ID="${DEV_BUILD_ID:-co.byseven.multimagic}"
+
+# `USE_DEV_BUILD=1` drives our own app; anything else falls back to Expo Go, so
+# the rig still runs on a machine where nobody has built one.
+if [ "${USE_DEV_BUILD:-0}" = 1 ]; then
+  APP_ID="${APP_ID:-$DEV_BUILD_ID}"
+  # Its own scheme (app.json `scheme`), and it launches directly — no Metro URL.
+  DEEP_LINK="${DEEP_LINK:-multimagic://}"
+else
+  APP_ID="${APP_ID:-host.exp.exponent}"
+  DEEP_LINK="${DEEP_LINK:-exp://127.0.0.1:$METRO_PORT}"
+fi
 
 # ── THE RULE THAT MAKES THIS A RIG AND NOT A HAZARD ─────────────────────────
 # Karwan's rig seeds and resets its database safely, because its dev data is

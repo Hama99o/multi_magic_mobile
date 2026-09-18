@@ -1,69 +1,97 @@
-# Sign in with the QA account. Included by every other flow.
+# END signed in on the assistant, whatever state the app was left in.
 #
-# Expo Go, not a package of our own: `launchApp` opens Expo Go's home, so the
-# project is reached by deep link. State is cleared by run.sh with `pm clear`
-# before the suite, not here — clearing per flow would re-download the bundle
-# every time and turn a 90-second suite into a ten-minute one.
+# ── Why this does not force a signed-OUT state first ──────────────────────
+# It used to: sign out if a session was open, then sign in, so every flow
+# started identically. That is tidy and it was wrong twice over.
+#
+# Expo Go restores the route the app was last on, so a launch can land on
+# /chats or /calendar. Then neither the sign-in field nor the composer is
+# present, the sign-out branch is skipped, and the flow fails asserting a
+# sign-in screen on an app that is signed in and merely somewhere else — an
+# assertion naming our login while the real state is a restored route.
+#
+# What every flow actually needs is a signed-in assistant. So: back out of
+# wherever we are, and sign in only if we are not already.
 appId: ${APP_ID}
 ---
 - launchApp
 - openLink: ${DEEP_LINK}
 
-# Expo Go's developer menu opens on gestures Maestro produces, and it covers the
-# whole screen while swallowing every tap underneath. Measured: the sessions
-# sheet "failed to open" three flows running, and the app was fine the whole
-# time — the menu was simply on top of it. Dismissed here rather than in each
-# flow, because it can appear at any launch.
+# The bundle is fetched over the network on a cold start and this box is slow.
+# Wait on EITHER end state rather than assuming which one.
+- extendedWaitUntil:
+    visible:
+      id: "composer-input"
+    timeout: 120000
+    optional: true
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-email"
+    timeout: 30000
+    optional: true
+
+# Expo Go's developer menu opens on gestures Maestro produces and covers the
+# screen while swallowing every tap under it. Measured: three flows "failed to
+# open" a sheet that was rendering perfectly behind the menu.
 - runFlow:
     when:
       visible: "This is the developer menu"
     commands:
       - tapOn: "Continue"
-# The bundle is fetched over the network on a cold start, and this box is not
-# fast. Waiting on EITHER end state rather than assuming signed-out.
-- extendedWaitUntil:
-    visible:
-      id: "sign-in-email"
-    timeout: 120000
-    optional: true
 
-# Already signed in from a previous flow? Sign out, so every flow starts from
-# the same place. This replaces `pm clear`, which wiped Expo Go itself.
+# Signed in but on another screen: ONE Back, and only one.
+#
+# Two wrong answers were tried and both are worth recording, because each
+# looked obviously right:
+#
+#   - `repeat: 3` Back presses — the assistant is the ROOT route, so Back EXITS
+#     the app. The "harmless" repeat walked Expo Go out to the launcher, and the
+#     flow then failed asserting a sign-in screen with no app running at all.
+#   - `openLink: ${DEEP_LINK}/--/chat` — Expo Go treats that as a new experience
+#     URL rather than a route within the running one, and lands on its own home
+#     screen. Further from the app, not nearer.
+#
+# One Back escapes a pushed screen, which is the only case this needs to handle,
+# and cannot exit from the assistant because the guard below re-checks.
 - runFlow:
     when:
-      visible:
+      notVisible:
         id: "composer-input"
+      visible:
+        id: "chat-open-sessions"
     commands:
-      - tapOn:
-          id: "chat-open-sessions"
-      # The sheet slides up. Without this the next tap fires while it is still
-      # animating and Maestro reports "Element not found: sessions-sign-out" —
-      # which reads as a missing button rather than as a missing wait.
+      - pressKey: Back
       - extendedWaitUntil:
           visible:
-            id: "sessions-sheet"
+            id: "composer-input"
           timeout: 20000
-      - tapOn:
-          id: "sessions-sign-out"
+          optional: true
+
+# Only sign in if we are not already. The composer is the proof of arrival: it
+# exists on no other screen.
+- runFlow:
+    when:
+      notVisible:
+        id: "composer-input"
+    commands:
       - extendedWaitUntil:
           visible:
             id: "sign-in-email"
           timeout: 60000
+      - tapOn:
+          id: "sign-in-email"
+      - inputText: ${EMAIL}
+      - tapOn:
+          id: "sign-in-password"
+      - inputText: ${PASSWORD}
+      - hideKeyboard
+      - takeScreenshot: reports/01-sign-in-filled
+      - tapOn:
+          id: "sign-in-submit"
+      - extendedWaitUntil:
+          visible:
+            id: "composer-input"
+          timeout: 60000
 
 - assertVisible:
-    id: "sign-in-email"
-- tapOn:
-    id: "sign-in-email"
-- inputText: ${EMAIL}
-- tapOn:
-    id: "sign-in-password"
-- inputText: ${PASSWORD}
-- hideKeyboard
-- takeScreenshot: reports/01-sign-in-filled
-- tapOn:
-    id: "sign-in-submit"
-# The composer is the proof we are through: it only exists on the chat screen.
-- extendedWaitUntil:
-    visible:
-      id: "composer-input"
-    timeout: 60000
+    id: "composer-input"

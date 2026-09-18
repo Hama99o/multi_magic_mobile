@@ -14,11 +14,19 @@ tags:
   - smoke
 ---
 - runFlow: login.yaml
-- takeScreenshot: reports/02-chat-empty
-# The empty state offers questions about the user's own data.
-- assertVisible:
-    id: "chat-empty"
-- tapOn: "Do I owe anyone money?"
+- takeScreenshot: reports/02-chat-before-asking
+
+# TYPED, not tapped from the empty state. Two reasons, both learned the hard
+# way: the QA account's conversation accumulates messages across runs, so the
+# empty state is not there after the first pass; and the starter prompts are
+# DERIVED now, so an account with nothing to derive from legitimately offers
+# none. A flow that depends on either is asserting the fixture, not the product.
+- tapOn:
+    id: "composer-input"
+- inputText: "Do I owe anyone money?"
+- hideKeyboard
+- tapOn:
+    id: "composer-send"
 
 # 1. The question appears before any answer exists.
 - assertVisible: "Do I owe anyone money?"

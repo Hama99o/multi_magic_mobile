@@ -8,6 +8,17 @@ appId: ${APP_ID}
 ---
 - launchApp
 - openLink: ${DEEP_LINK}
+
+# Expo Go's developer menu opens on gestures Maestro produces, and it covers the
+# whole screen while swallowing every tap underneath. Measured: the sessions
+# sheet "failed to open" three flows running, and the app was fine the whole
+# time — the menu was simply on top of it. Dismissed here rather than in each
+# flow, because it can appear at any launch.
+- runFlow:
+    when:
+      visible: "This is the developer menu"
+    commands:
+      - tapOn: "Continue"
 # The bundle is fetched over the network on a cold start, and this box is not
 # fast. Waiting on EITHER end state rather than assuming signed-out.
 - extendedWaitUntil:

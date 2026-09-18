@@ -16,6 +16,7 @@
  */
 import { useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, View } from "react-native";
+import { router } from "expo-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react-native";
 import { Text } from "@/components/reusables/text";
@@ -214,15 +215,51 @@ export function SessionsSheet({
               testID="sessions-new"
             />
 
-            <Pressable
-              accessibilityRole="button"
-              onPress={onSignOut}
-              hitSlop={8}
-              style={{ minHeight: metrics.touch, alignItems: "center", justifyContent: "center" }}
-              testID="sessions-sign-out"
+            {/* ── ACCOUNT ─────────────────────────────────────────────────
+                Under its own heading and BELOW a divider, deliberately apart
+                from the conversation list above it.
+
+                Two rows from here sits "delete a conversation", which is safe
+                by construction: the confirm exists to say that notes, contacts,
+                loans and money are untouched. Deleting the ACCOUNT is the
+                opposite — it is those records. They must not read as siblings,
+                so this one does not live inside the list of conversations; it
+                lives under a heading that names what it is about, and it opens
+                its own SCREEN rather than a dialog. */}
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: colors.border,
+                paddingTop: metrics.space.md,
+                gap: metrics.space.xs,
+              }}
             >
-              <Text tone="muted">Sign out</Text>
-            </Pressable>
+              <Text variant="label" tone="muted" style={{ paddingHorizontal: metrics.space.sm }}>
+                Account
+              </Text>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={() => {
+                  onClose();
+                  router.push("/account");
+                }}
+                style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }}
+                testID="sessions-account"
+              >
+                <Text>Privacy and account</Text>
+              </Pressable>
+
+              <Pressable
+                accessibilityRole="button"
+                onPress={onSignOut}
+                hitSlop={8}
+                style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }}
+                testID="sessions-sign-out"
+              >
+                <Text tone="muted">Sign out</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
       </View>

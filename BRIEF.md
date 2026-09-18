@@ -30,7 +30,7 @@ Verified by reading `~/Apps/Personal/multi_magic`:
 | **The answer arrives over ActionCable** | `app/channels/message_channel.rb` — `ai_controller#question` **enqueues** `Ai::RagChat`; the reply is broadcast, not returned |
 | Sessions — list, create, rename, delete, clear | `api/v1/ai/sessions` (`index create update destroy`, `POST :clear` on member) |
 | **Files in a session** | `api/v1/ai/sessions/:id/documents` (`index create destroy`) — this is the upload path, and uploads are **per session** |
-| Provider | **DeepSeek**, with local embeddings and RAG over the user's own `ai_chunks` |
+| Provider | **Google (Gemini)** by default — with local embeddings and RAG over the user's own `ai_chunks`. **Corrected 2026-09-18 and this cell was wrong for a day:** `Ai::Config.default_provider` tests Gemini FIRST and falls through to DeepSeek only when no Gemini key is present, and `.env.production` sets both with `AI_CHAT_PROVIDER` unset — so questions and retrieved passages reach `generativelanguage.googleapis.com`. A user who has added their own key gets that provider instead. Caught in a privacy draft by the multi_magic session and again in this file by a mobile session; **I wrote "DeepSeek" from the docs and never read `config.rb`.** Naming the wrong company on a privacy page is the most consequential error that page can carry. |
 | Auth | the existing MultiMagic login |
 
 **The single most important consequence: the reply is asynchronous.** The app

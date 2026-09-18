@@ -1,0 +1,44 @@
+# THE COMPOSER MUST SURVIVE THE KEYBOARD.
+#
+# The field somebody is typing into is the one thing that cannot be hidden, and
+# on iOS nothing resizes the window — without `KeyboardAvoidingView` the
+# keyboard sits straight over the composer. Android's resize masks the mistake,
+# which is exactly why this is asserted rather than eyeballed on one platform.
+#
+# What it can prove on an emulator: that with the keyboard raised, the field,
+# its send button and its attach button are all still on screen and hittable.
+# What it cannot: how it looks on iOS, and whether a FLOATING keyboard (Gboard's
+# mode on this AVD) behaves the same — a floating keyboard produces no inset at
+# all, so it is the easy case, not the hard one.
+appId: ${APP_ID}
+tags:
+  - smoke
+  - keyboard
+---
+- runFlow: login.yaml
+
+- tapOn:
+    id: "composer-input"
+- inputText: "does the composer stay above the keyboard"
+
+# All three still visible WITH the keyboard up. If the composer had been pushed
+# under it, these are the assertions that would fail.
+- assertVisible:
+    id: "composer-input"
+- assertVisible:
+    id: "composer-send"
+- assertVisible:
+    id: "composer-attach"
+- takeScreenshot: reports/50-keyboard-up
+
+# The clear control appears only with a draft, and must be reachable too.
+- assertVisible:
+    id: "composer-clear"
+- tapOn:
+    id: "composer-clear"
+- hideKeyboard
+
+# And the draft survives the keyboard closing rather than being dropped with it.
+- assertVisible:
+    id: "composer-input"
+- takeScreenshot: reports/51-keyboard-down

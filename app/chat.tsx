@@ -275,7 +275,13 @@ export default function Chat() {
   }, [awaitingReply, scrollToEnd]);
 
   return (
-    <Screen measure={false}>
+    /* `avoidKeyboard` — and this screen is the one that most needed it and was
+       the only one without it. On Android the window resizes, which masks the
+       omission; on iOS nothing resizes and the keyboard sits straight over the
+       composer, so the field somebody is typing into is the thing they cannot
+       see. The three auth screens had it from the start; the screen people type
+       in most did not. */
+    <Screen measure={false} avoidKeyboard>
       <View style={{ flex: 1, gap: metrics.space.sm }}>
         <View
           style={{

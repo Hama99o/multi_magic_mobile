@@ -15,8 +15,9 @@ let mock: MockAdapter;
 const USER = {
   id: 2,
   email: "person@example.com",
-  first_name: "Hamma",
-  last_name: null,
+  firstname: "Hamma",
+  lastname: null,
+  fullname: "Hamma",
 };
 
 beforeEach(() => {

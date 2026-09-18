@@ -34,3 +34,17 @@ export function __clearSecureStore(): void {
  * cares about the log can spy on it.
  */
 jest.spyOn(console, "warn").mockImplementation(() => {});
+
+/**
+ * `useSafeAreaInsets` throws outside a provider, and `ScreenContainer` calls it
+ * — so every screen test would fail on "No safe area value available" rather
+ * than on anything it was testing. The library ships this mock for exactly
+ * that, and it reports real inset numbers, so a test can still catch a screen
+ * that ignores them.
+ */
+// `.default` — the library ships the mock as an ES default export, so requiring
+// the module object gives you `{ default: {...} }` and every hook reads as
+// undefined ("useSafeAreaInsets is not a function").
+jest.mock("react-native-safe-area-context", () =>
+  require("react-native-safe-area-context/jest/mock").default,
+);

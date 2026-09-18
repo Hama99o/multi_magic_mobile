@@ -31,8 +31,18 @@ import { id, obj, optStr, str } from "./parse";
 export interface CurrentUser {
   id: number;
   email: string;
+  /**
+   * `firstname`/`lastname`/`fullname` — ONE word, no underscore.
+   *
+   * The columns are spelled that way and `UserSerializer` passes the spelling
+   * straight through (`user_serializer.rb:62-72`). Reading `first_name` here
+   * returned null for every user while `tsc` and the tests stayed green,
+   * because the parser tolerates a missing optional string. Checked against the
+   * serializer rather than guessed from the convention.
+   */
   firstName: string | null;
   lastName: string | null;
+  fullName: string | null;
 }
 
 /**
@@ -61,8 +71,9 @@ export function parseUser(payload: unknown): CurrentUser {
   return {
     id: id(record.id, "user.id"),
     email: str(record.email, "user.email"),
-    firstName: optStr(record.first_name),
-    lastName: optStr(record.last_name),
+    firstName: optStr(record.firstname),
+    lastName: optStr(record.lastname),
+    fullName: optStr(record.fullname),
   };
 }
 
@@ -118,4 +129,67 @@ export async function signOut(): Promise<void> {
     // NOTE: the device fingerprint is deliberately NOT cleared here. See
     // `lib/fingerprint.ts` — clearing it causes a re-authentication cycle.
   }
+}
+
+/**
+ * Create an account — his instruction of 18 Sept, *"create account should also
+ * work."*
+ *
+ * `POST /users/signup` -> `registrations#create`, confirmed against
+ * `bin/rails routes`. Params are nested under `user` and use the same
+ * one-word spelling as the serializer: `firstname`, `lastname`.
+ *
+ * Devise signs the new user in, so the JWT arrives in the same header as on
+ * login and is stored the same way. If it does not, this throws rather than
+ * returning a user with no session — the same reasoning as `signIn`.
+ */
+export async function signUp(params: {
+  firstname: string;
+  lastname: string;
+  email: string;
+  password: string;
+}): Promise<CurrentUser> {
+  const response = await http.post("/users/signup", {
+    user: {
+      firstname: params.firstname.trim(),
+      lastname: params.lastname.trim(),
+      email: params.email.trim(),
+      password: params.password,
+      password_confirmation: params.password,
+      agreed_to_terms: true,
+    },
+  });
+
+  const headers = response.headers as Record<string, unknown>;
+  const authorization = headers.authorization ?? headers.Authorization;
+  if (typeof authorization !== "string" || authorization.trim() === "") {
+    throw new MissingTokenError();
+  }
+
+  const user = parseUser(response.data);
+  await setToken(authorization);
+  await setSessionEmail(user.email);
+  return user;
+}
+
+/**
+ * Ask for a reset link.
+ *
+ * `PUT /api/v1/users/reset_password` — **not** the `resources :passwords` at
+ * `routes.rb:16`, which is SafeZone's password VAULT
+ * (`/api/v1/safezone_app/passwords`) and nothing to do with signing in. The
+ * spec guessed from the route declaration without its namespace and flagged
+ * that it had; `bin/rails routes | grep password` settled it.
+ *
+ * Note the verb: PUT, not POST.
+ *
+ * ── It cannot tell you whether the address exists, and that is deliberate ──
+ * The server does `user&.reset_password!` then `head :ok`
+ * (`users_controller.rb:72-76`) — 200 either way. So the screen has nothing to
+ * branch on even if it wanted to, and the honest copy is the only copy: "if
+ * that address has an account, we have sent it a link." An app that
+ * distinguishes the two tells a stranger which emails have accounts.
+ */
+export async function requestPasswordReset(email: string): Promise<void> {
+  await http.put("/api/v1/users/reset_password", { email: email.trim() });
 }

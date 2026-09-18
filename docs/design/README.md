@@ -79,7 +79,9 @@ forty.
 | 10 | **Notifications** | `api/v1/notifications` + `notification_channel` | `RESEARCHING` → [`notifications/`](notifications/SPEC.md) | **a tap composes a question, it does not open a record** — `path` is a web route and this app has no record screens |
 | 11 | **Calendar — the important view** | `api/v1/calendar_app/events` | `RESEARCHING` → [`calendar/`](calendar/SPEC.md) | agenda, never a month grid; the first thing I would cut if time gets tight |
 | 12 | **People chat** — threads with humans | `resources :conversations` + `messages` + `reactions` + `mark_read` + `unread_messages_count` · `ConversationChannel` | `RESEARCHING` → [`people-chat/`](people-chat/SPEC.md) | **the same model as the assistant, separated by one boolean** (`is_ai`) — so it is ~30% more work, not double, IF Phase 1 is built generic |
-| 13 | Error & empty states | — | `SPECIFIED` in each | 429, `aiError` over the socket, no recogniser, permission refused, offline |
+| 13 | **Privacy policy** — rendered in the app | **none exists** — no route, no page | **`SPECIFIED`** → [`account/`](account/SPEC.md) | **a store requirement**, both stores; the text is his to approve and I draft it from what the code does |
+| 14 | **Delete account — everything** | **`BLOCKED`: the endpoint does not exist.** `users_controller.rb:134` is a commented-out attempt that used **`delete`, not `destroy`** — which would orphan all 57 dependents | **`SPECIFIED`** → [`account/`](account/SPEC.md) | small red row, heavy confirm, password retyped. Also a store requirement |
+| 15 | Error & empty states | — | `SPECIFIED` in each | 429, `aiError` over the socket, no recogniser, permission refused, offline |
 
 **Not in this app, deliberately:** read-aloud, the actions UI (*"create a
 note"*), the global minimised window, page context. All exist on the web

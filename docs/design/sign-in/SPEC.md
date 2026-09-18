@@ -29,18 +29,43 @@ strict about before the server has had its say.
 ## Our decisions
 
 - **Create an account: IN.** His instruction, 18 Sept — *"create account should
-  also work."* The endpoint exists: **`POST /users/signup`**
-  (`registrations#create`). Upside's *"New to X? Create an account"* above the
+  also work."* **`POST /users/signup`** (`registrations#create`), confirmed
+  against `bin/rails routes`. It takes `user: { firstname, lastname, email,
+  password, password_confirmation, agreed_to_terms }` — **one word, no
+  underscore**, which is also how `UserSerializer` spells them coming back
+  (`user_serializer.rb:62-72`). Reading `first_name` returns null silently. Upside's *"New to X? Create an account"* above the
   button is the placement we take. Its own screen, not a toggle on this one — a
   form that changes what its fields mean under the same title is the commonest
   way people submit the wrong one.
-- **Forgot password: IN, in the app.** Also his instruction. `resources
-  :passwords` exists (`config/routes.rb:16`) — **confirm the exact path with
-  `bin/rails routes | grep password` before wiring it**, because I read the
-  route declaration and not its namespace. Two screens: ask for the email, then
-  *"we sent you a link"*. **The success screen must not say whether the address
-  was known** — an app that distinguishes them tells a stranger which emails
-  have accounts.
+- **Forgot password: IN, in the app.** Also his instruction.
+
+  **CORRECTED 2026-09-18, after running `bin/rails routes | grep password` as
+  this spec asked.** The guess was wrong in the way it warned it might be:
+  `resources :passwords` at `routes.rb:16` is **SafeZone's password VAULT** —
+  it resolves to `/api/v1/safezone_app/passwords` and has nothing to do with
+  signing in. Wiring a reset screen to it would have posted the user's email
+  address into their own encrypted password store.
+
+  The real endpoints:
+
+  | | |
+  |---|---|
+  | Ask for a link | **`PUT /api/v1/users/reset_password`** — note the verb |
+  | Set the new password | `PUT /api/v1/users/reset_password_confirmation` (`token` + `password`) |
+
+  Two screens: ask for the email, then *"we sent you a link"*. **The success
+  screen must not say whether the address was known** — an app that
+  distinguishes them tells a stranger which emails have accounts.
+
+  **And the server already guarantees this, so the screen only has to not undo
+  it:** `users_controller.rb:72-76` is `user&.reset_password!` followed by
+  `head :ok` — a safe-navigation call and an unconditional 200. There is no
+  branch to leak even if the screen wanted one.
+
+  The confirmation screen is **NOT in v1**: the reset link opens the web app,
+  which already has that form. Deep-linking it into the phone would mean
+  handling a `reset_password_token` in a URL scheme for a screen the user
+  reaches once.
 - **`POST /users/login` is rate-limited 10 per 3 minutes.** On 429 the screen
   says *"too many attempts — try again in a few minutes"*, never *"wrong
   password"*, which is both wrong and the more alarming of the two.

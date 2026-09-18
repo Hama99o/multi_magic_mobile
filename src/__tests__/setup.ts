@@ -48,3 +48,12 @@ jest.spyOn(console, "warn").mockImplementation(() => {});
 jest.mock("react-native-safe-area-context", () =>
   require("react-native-safe-area-context/jest/mock").default,
 );
+
+/**
+ * AsyncStorage is a native module, so importing it in a test throws before any
+ * assertion runs. The library ships this mock for exactly that; it keeps an
+ * in-memory store, so `useDraft` is genuinely exercised rather than stubbed.
+ */
+jest.mock("@react-native-async-storage/async-storage", () =>
+  require("@react-native-async-storage/async-storage/jest/async-storage-mock"),
+);

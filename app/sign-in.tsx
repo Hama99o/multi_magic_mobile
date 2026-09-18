@@ -73,7 +73,10 @@ export default function SignIn() {
 
   return (
     <Screen scroll avoidKeyboard>
-      <View style={{ flex: 1, justifyContent: "center", gap: metrics.space.xl, paddingVertical: metrics.space.xl }}>
+      {/* Anchored near the top rather than vertically centred. `justifyContent:
+          "center"` left a quarter of a 2400 px screen as empty sky above the
+          title — calm in a screenshot, slightly abandoned in a hand. */}
+      <View style={{ flex: 1, gap: metrics.space.xl, paddingTop: metrics.space.xl * 2, paddingBottom: metrics.space.xl }}>
         <View style={{ gap: metrics.space.sm }}>
           <Text variant="title">Sign in</Text>
           <Text tone="muted">Your notes, money, contacts and calendar — answered.</Text>
@@ -95,21 +98,35 @@ export default function SignIn() {
             testID="sign-in-email"
           />
 
-          <Input
-            label="Password"
-            value={password}
-            onChangeText={(t) => {
-              setPassword(t);
-              if (error) setError(null);
-            }}
-            secure
-            autoCapitalize="none"
-            autoComplete="current-password"
-            textContentType="password"
-            returnKeyType="go"
-            onSubmitEditing={() => void submit()}
-            testID="sign-in-password"
-          />
+          <View style={{ gap: metrics.space.xs }}>
+            <Input
+              label="Password"
+              value={password}
+              onChangeText={(t) => {
+                setPassword(t);
+                if (error) setError(null);
+              }}
+              secure
+              autoCapitalize="none"
+              autoComplete="current-password"
+              textContentType="password"
+              returnKeyType="go"
+              onSubmitEditing={() => void submit()}
+              testID="sign-in-password"
+            />
+
+            {/* Directly under the password, where the need actually arises, and
+                in the ACCENT. A muted-grey recovery link is an affordance that
+                denies being one — and this is the link somebody reaches for at
+                the moment they are already stuck. */}
+            <View style={{ alignItems: "flex-end" }}>
+              <Link href="/forgot-password" asChild>
+                <Text variant="caption" tone="accent" testID="sign-in-forgot">
+                  Forgot your password?
+                </Text>
+              </Link>
+            </View>
+          </View>
 
           {error ? (
             <Text variant="caption" tone="danger" testID="sign-in-error">
@@ -118,34 +135,27 @@ export default function SignIn() {
           ) : null}
         </View>
 
-        <View style={{ gap: metrics.space.lg }}>
-          <View style={{ flexDirection: "row", justifyContent: "center", gap: metrics.space.xs }}>
-            <Text variant="caption" tone="muted">
-              New here?
+        {/* GoPro's rule: the button says what it does, because it is the only
+            method on offer. */}
+        <Button
+          label="Sign in with email"
+          busy={busy}
+          onPress={() => void submit()}
+          testID="sign-in-submit"
+        />
+
+        {/* The alternative DESTINATION, not a recovery path — so it sits apart
+            from the form, at the bottom, and is differentiated from the link
+            above by position rather than by colour. */}
+        <View style={{ flexDirection: "row", justifyContent: "center", gap: metrics.space.xs }}>
+          <Text variant="caption" tone="muted">
+            New here?
+          </Text>
+          <Link href="/sign-up" asChild>
+            <Text variant="caption" tone="accent" testID="sign-in-create-account">
+              Create an account
             </Text>
-            <Link href="/sign-up" asChild>
-              <Text variant="caption" tone="accent" testID="sign-in-create-account">
-                Create an account
-              </Text>
-            </Link>
-          </View>
-
-          {/* GoPro's rule: the button says what it does, because it is the only
-              method on offer. */}
-          <Button
-            label="Sign in with email"
-            busy={busy}
-            onPress={() => void submit()}
-            testID="sign-in-submit"
-          />
-
-          <View style={{ alignItems: "center" }}>
-            <Link href="/forgot-password" asChild>
-              <Text variant="caption" tone="muted" testID="sign-in-forgot">
-                Forgot your password?
-              </Text>
-            </Link>
-          </View>
+          </Link>
         </View>
       </View>
     </Screen>

@@ -1,72 +1,234 @@
 /**
- * PLACEHOLDER — the real chat is the next screen, per
- * `docs/design/chat/SPEC.md`.
+ * The conversation — `docs/design/chat/SPEC.md`. This is the app.
  *
- * It is not empty on purpose. Sign-in cannot be tested end to end against a
- * screen that only says "coming soon": this one resolves the current session id
- * over the API and opens the socket, so reaching it proves the whole spine —
- * fingerprint, token, cable URL, subscription — actually works on a device,
- * which no unit test can establish.
+ * ── The one fact that shapes everything ───────────────────────────────────
+ * The reply does not come back from the request. `POST /api/v1/ai/show` returns
+ * **202**: the question is saved and `Ai::RagChat` is enqueued, and the answer
+ * is broadcast over ActionCable later. So this screen posts, shows the question
+ * at once, and renders the answer when it lands — and survives the socket
+ * dropping by re-reading the transcript on reconnect (`useConversation`).
+ *
+ * A question must **never vanish into an optimistic bubble**: on failure it
+ * stays on screen with a Retry under it.
  */
-import { View } from "react-native";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { FlatList, View } from "react-native";
 import { router } from "expo-router";
 import { useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
-import { useMetrics } from "@/hooks/useColors";
+import { useColors, useMetrics } from "@/hooks/useColors";
 import { useAuthStore } from "@/stores/auth.store";
-import { aiApi } from "@/api/ai";
+import { aiApi, type ChatMessage, type MessageLink } from "@/api/ai";
+import { isRateLimited, isNetworkFailure, apiErrorMessage } from "@/api/http";
 import { useConversation } from "@/hooks/useConversation";
+import { useDraft } from "@/hooks/useDraft";
+import { MessageRow } from "@/components/chat/MessageRow";
+import { ThinkingDots } from "@/components/chat/ThinkingDots";
+import { Composer } from "@/components/chat/Composer";
+import { EmptyState } from "@/components/chat/EmptyState";
+import { SourceSheet } from "@/components/chat/SourceSheet";
+
+/** A question that could not be posted, kept so it is never lost. */
+interface FailedQuestion {
+  body: string;
+  reason: string;
+}
 
 export default function Chat() {
+  const colors = useColors();
   const metrics = useMetrics();
   const user = useAuthStore((s) => s.user);
-  const signOut = useAuthStore((s) => s.signOut);
 
-  const { data: sessionId, error } = useQuery({
+  const { data: sessionId } = useQuery({
     queryKey: ["ai", "currentSession"],
     queryFn: aiApi.currentSessionId,
   });
 
-  const { messages, status } = useConversation({
-    conversationId: sessionId ?? null,
-    channel: "MessageChannel",
-  });
+  const conversationId = sessionId ?? null;
+  const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addPending, resync } =
+    useConversation({ conversationId, channel: "MessageChannel" });
+
+  const { draft, setDraft, clear } = useDraft(conversationId);
+  const [posting, setPosting] = useState(false);
+  const [failedQuestion, setFailedQuestion] = useState<FailedQuestion | null>(null);
+  const [openSource, setOpenSource] = useState<MessageLink | null>(null);
+  const listRef = useRef<FlatList<ChatMessage>>(null);
+
+  const send = useCallback(
+    async (body: string) => {
+      if (conversationId == null || posting) return;
+      const question = body.trim();
+      if (!question) return;
+
+      setFailedQuestion(null);
+      setPosting(true);
+      clear();
+
+      try {
+        const { userMessageId } = await aiApi.ask({ conversationId, body: question });
+        // Drawn immediately from the server's OWN id, so when the socket echoes
+        // the same message it merges rather than appearing twice.
+        addPending({
+          id: userMessageId,
+          conversationId,
+          role: "user",
+          body: question,
+          createdAt: new Date().toISOString(),
+          deleted: false,
+          userId: user?.id ?? null,
+          sentByMe: true,
+          editedAt: null,
+          readAt: null,
+          reactions: [],
+          links: [],
+          sources: [],
+        });
+      } catch (e) {
+        // The question comes BACK, into the composer and onto the screen. The
+        // one thing this must never do is swallow it.
+        setDraft(question);
+        setFailedQuestion({
+          body: question,
+          reason: isRateLimited(e)
+            ? "You have asked a lot in a short time. Try again in a minute."
+            : isNetworkFailure(e)
+              ? "Could not reach MultiMagic. Your question is still here."
+              : (apiErrorMessage(e) ?? "That did not send."),
+        });
+      } finally {
+        setPosting(false);
+      }
+    },
+    [conversationId, posting, clear, addPending, setDraft, user],
+  );
+
+  // Follow new messages. `onContentSizeChange` rather than an effect on
+  // `messages`, because the list has not laid out when the array changes.
+  const scrollToEnd = useCallback(() => {
+    listRef.current?.scrollToEnd({ animated: true });
+  }, []);
+
+  useEffect(() => {
+    if (awaitingReply) scrollToEnd();
+  }, [awaitingReply, scrollToEnd]);
 
   return (
-    <Screen scroll>
-      <View style={{ flex: 1, justifyContent: "center", gap: metrics.space.lg }}>
-        <Text variant="title">Assistant</Text>
-
-        <View style={{ gap: metrics.space.xs }}>
-          <Text tone="muted" testID="chat-signed-in-as">
-            Signed in{user?.email ? ` as ${user.email}` : ""}.
-          </Text>
-          <Text tone="muted" testID="chat-session">
-            {error
-              ? "Could not reach MultiMagic."
-              : sessionId
-                ? `Session ${sessionId} · transcript ${status} · ${messages.length} messages`
-                : "Opening your session…"}
-          </Text>
+    <Screen measure={false}>
+      <View style={{ flex: 1, gap: metrics.space.sm }}>
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-between",
+            paddingVertical: metrics.space.md,
+          }}
+        >
+          <Text variant="title">Assistant</Text>
+          <Button
+            label="Sign out"
+            tone="neutral"
+            block={false}
+            onPress={() => {
+              void useAuthStore.getState().signOut().then(() => router.replace("/sign-in"));
+            }}
+            testID="chat-sign-out"
+          />
         </View>
 
-        <Text variant="answer">
-          The conversation goes here. This placeholder exists so signing in can be proved
-          end to end — reaching it means the token, the device fingerprint and the socket
-          all worked.
-        </Text>
-
-        <Button
-          label="Sign out"
-          tone="neutral"
-          onPress={() => {
-            void signOut().then(() => router.replace("/sign-in"));
+        <FlatList
+          ref={listRef}
+          data={messages}
+          keyExtractor={(m) => String(m.id)}
+          renderItem={({ item }) => <MessageRow message={item} onOpenSource={setOpenSource} />}
+          onContentSizeChange={scrollToEnd}
+          // Older history by cursor, pulled in as the reader reaches the top.
+          onStartReached={hasOlder ? () => void loadOlder() : undefined}
+          onStartReachedThreshold={0.3}
+          showsVerticalScrollIndicator={false}
+          // §8: the conversation takes a measure and centres on a tablet. A
+          // full-width line of serif text at 800 dp is unreadable.
+          contentContainerStyle={{
+            width: "100%",
+            maxWidth: metrics.maxMeasure,
+            alignSelf: "center",
+            flexGrow: 1,
           }}
-          testID="chat-sign-out"
+          ListEmptyComponent={
+            status === "loading" ? null : status === "failed" ? (
+              <View style={{ gap: metrics.space.md, paddingVertical: metrics.space.xl }}>
+                <Text tone="muted" testID="chat-load-failed">
+                  Could not load this conversation.
+                </Text>
+                <Button label="Try again" tone="neutral" onPress={() => void resync()} />
+              </View>
+            ) : (
+              <EmptyState onPick={(q) => void send(q)} />
+            )
+          }
+          ListFooterComponent={
+            <View style={{ gap: metrics.space.sm }}>
+              {awaitingReply ? <ThinkingDots /> : null}
+
+              {failed ? (
+                <View style={{ gap: metrics.space.sm }} testID="chat-answer-failed">
+                  <Text variant="caption" tone="danger">
+                    That question did not get an answer.
+                  </Text>
+                  <Button
+                    label="Ask again"
+                    tone="neutral"
+                    block={false}
+                    onPress={() => {
+                      const last = [...messages].reverse().find((m) => m.role === "user");
+                      if (last?.body) void send(last.body);
+                    }}
+                  />
+                </View>
+              ) : null}
+
+              {failedQuestion ? (
+                <View style={{ gap: metrics.space.sm }} testID="chat-send-failed">
+                  <Text variant="caption" tone="danger">
+                    {failedQuestion.reason}
+                  </Text>
+                  <Button
+                    label="Retry"
+                    tone="neutral"
+                    block={false}
+                    onPress={() => void send(failedQuestion.body)}
+                  />
+                </View>
+              ) : null}
+            </View>
+          }
         />
+
+        <View
+          style={{
+            width: "100%",
+            maxWidth: metrics.maxMeasure,
+            alignSelf: "center",
+            gap: metrics.space.xs,
+            paddingBottom: metrics.space.sm,
+          }}
+        >
+          <Composer
+            value={draft}
+            onChange={setDraft}
+            onSend={() => void send(draft)}
+            busy={posting}
+          />
+          {/* Mindvalley's one line, once, under the composer. */}
+          <Text variant="caption" tone="muted" style={{ textAlign: "center", color: colors.inkMuted }}>
+            Answers come from your MultiMagic data and can be wrong. Check anything that
+            matters.
+          </Text>
+        </View>
       </View>
+
+      <SourceSheet source={openSource} onClose={() => setOpenSource(null)} />
     </Screen>
   );
 }

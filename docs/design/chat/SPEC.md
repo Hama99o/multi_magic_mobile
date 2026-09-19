@@ -308,3 +308,20 @@ this file: the inversion in point (3) above drawn rather than argued, the three
 shapes side by side with what each costs and breaks, a recommendation, and the
 naming question as two columns of example sentences. Short enough to decide
 from.
+
+## Dismissal — the scrim closes, the sheet does not
+
+Tapping the dark area **outside** the source preview sheet closes it. Tapping the sheet itself,
+including its padding and any gap between rows, does **nothing**.
+
+Unchanged on 2026-09-19, when the scrim was restructured: this sheet already
+behaved this way, by way of an inner Pressable that swallowed the tap. That
+Pressable is gone and the behaviour is the same, now as a consequence of the
+layout rather than of a handler.
+
+**And the scrim is a SIBLING of the sheet, never its parent** (`SourceSheet.tsx`). This is
+not a layout preference: a named accessibility element groups its children, so a
+`Pressable` labelled "Close" wrapping the content made the whole modal announce
+as one "Close" button with every row inside it unreachable — on iOS, absolutely.
+`docs/ACCESSIBILITY.md` N1, and `src/__tests__/a11y.test.tsx` fails if any
+container with a name acquires a control inside it again.

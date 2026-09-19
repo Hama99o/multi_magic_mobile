@@ -71,3 +71,22 @@ This section was missing (README rule 3) and is written from what exists.
   did not anticipate: the chip says so and the screen polls, because otherwise a
   person asks about a document the assistant cannot see yet with nothing on
   screen to explain why.
+
+## Dismissal — the scrim closes, the sheet does not
+
+Tapping the dark area **outside** the attach sheet closes it. Tapping the sheet itself,
+including its padding and any gap between rows, does **nothing**.
+
+**This changed on 2026-09-19 and it changed in the direction of the rule.**
+Before that, the sheet's body sat *inside* the dismiss target, so a tap on its
+own padding propagated to the scrim and closed it. That was accidental rather
+than designed — the other sheets never behaved that way — and it is gone. If it
+comes back as a report that the sheet "stopped closing", this line is the
+answer: it is closing exactly where it always should have.
+
+**And the scrim is a SIBLING of the sheet, never its parent** (`AttachSheet.tsx`). This is
+not a layout preference: a named accessibility element groups its children, so a
+`Pressable` labelled "Close" wrapping the content made the whole modal announce
+as one "Close" button with every row inside it unreachable — on iOS, absolutely.
+`docs/ACCESSIBILITY.md` N1, and `src/__tests__/a11y.test.tsx` fails if any
+container with a name acquires a control inside it again.

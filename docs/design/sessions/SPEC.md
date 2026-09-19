@@ -125,3 +125,22 @@ Divergences from the decisions above are recorded below, not folded in.
   `SAFE_SENTENCE` was evaluated at import — before the stored language is
   read — so it would have stayed English in a French app while every test
   passed, because the tests compared against the same constant.
+
+## Dismissal — the scrim closes, the sheet does not
+
+Tapping the dark area **outside** the conversation row menu closes it. Tapping the sheet itself,
+including its padding and any gap between rows, does **nothing**.
+
+**This changed on 2026-09-19 and it changed in the direction of the rule.**
+Before that, the sheet's body sat *inside* the dismiss target, so a tap on its
+own padding propagated to the scrim and closed it. That was accidental rather
+than designed — the other sheets never behaved that way — and it is gone. If it
+comes back as a report that the sheet "stopped closing", this line is the
+answer: it is closing exactly where it always should have.
+
+**And the scrim is a SIBLING of the sheet, never its parent** (`SessionsSheet.tsx`). This is
+not a layout preference: a named accessibility element groups its children, so a
+`Pressable` labelled "Close" wrapping the content made the whole modal announce
+as one "Close" button with every row inside it unreachable — on iOS, absolutely.
+`docs/ACCESSIBILITY.md` N1, and `src/__tests__/a11y.test.tsx` fails if any
+container with a name acquires a control inside it again.

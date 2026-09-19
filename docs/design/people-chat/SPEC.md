@@ -365,3 +365,20 @@ the prop's absence, and its header says it cannot see the defect: Jest has no
 platform, and every part of this was correct in the tree. **The proof the
 gesture works is `06-people-chat` on a device, which has not run since the
 fix.** Nothing here should be read as standing in for that.
+
+## Dismissal — the scrim closes, the sheet does not
+
+Tapping the dark area **outside** the reaction sheet closes it. Tapping the sheet itself,
+including its padding and any gap between rows, does **nothing**.
+
+Unchanged on 2026-09-19, when the scrim was restructured: this sheet already
+behaved this way, by way of an inner Pressable that swallowed the tap. That
+Pressable is gone and the behaviour is the same, now as a consequence of the
+layout rather than of a handler.
+
+**And the scrim is a SIBLING of the sheet, never its parent** (`ReactionSheet.tsx`). This is
+not a layout preference: a named accessibility element groups its children, so a
+`Pressable` labelled "Close" wrapping the content made the whole modal announce
+as one "Close" button with every row inside it unreachable — on iOS, absolutely.
+`docs/ACCESSIBILITY.md` N1, and `src/__tests__/a11y.test.tsx` fails if any
+container with a name acquires a control inside it again.

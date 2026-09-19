@@ -233,3 +233,20 @@ replacing it with "Something went wrong".
   widths in both schemes, a photo taken and surviving a restart, and a
   deliberately bad API key showing the provider's own refusal. Only §5.2 has a
   test, and only its API half (`src/api/__tests__/profile.test.ts`).
+
+## Dismissal — the scrim closes, the sheet does not
+
+Tapping the dark area **outside** the photo sheet closes it. Tapping the sheet itself,
+including its padding and any gap between rows, does **nothing**.
+
+Unchanged on 2026-09-19, when the scrim was restructured: this sheet already
+behaved this way, by way of an inner Pressable that swallowed the tap. That
+Pressable is gone and the behaviour is the same, now as a consequence of the
+layout rather than of a handler.
+
+**And the scrim is a SIBLING of the sheet, never its parent** (`PhotoSheet.tsx`). This is
+not a layout preference: a named accessibility element groups its children, so a
+`Pressable` labelled "Close" wrapping the content made the whole modal announce
+as one "Close" button with every row inside it unreachable — on iOS, absolutely.
+`docs/ACCESSIBILITY.md` N1, and `src/__tests__/a11y.test.tsx` fails if any
+container with a name acquires a control inside it again.

@@ -18,13 +18,36 @@
  *
  * Run: node scripts/build-privacy.mjs
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SOURCE = join(root, "docs/PRIVACY.draft.md");
 const OUT = join(root, "src/content/privacy.generated.ts");
+
+/**
+ * THE SOURCE OF TRUTH IS THE BACKEND'S COPY, and this is where the phone's
+ * copy is held to it.
+ *
+ * `multi_magic@46092f8` publishes the policy at `GET /api/v1/legal/privacy`,
+ * because both stores require a URL a reviewer can open without an account and
+ * only the web can serve one. The phone still BUNDLES the text — its screen has
+ * to work with no network and must never show a reviewer a 404 — so there are
+ * two renderings of one document.
+ *
+ * Two renderings of one file is fine. Two DOCUMENTS would not be: a policy that
+ * disagrees with itself between a phone and a website is the one place where
+ * that is not cosmetic. So when the backend is checked out beside this repo,
+ * the build refuses to generate from a copy that has drifted from it.
+ *
+ * On a machine that has only this repo — CI, or anybody's laptop — the check
+ * cannot run, and it says so rather than passing quietly. The sha below is the
+ * other half: it is the same twelve characters `Legal::Policy.sha` computes, so
+ * the two copies can be compared wherever both are reachable.
+ */
+const BACKEND_SOURCE = join(root, "..", "multi_magic", "docs/PRIVACY.draft.md");
 
 /** The heading that starts everything the published page must not contain. */
 export const NOTES_HEADING = "### Notes for Hamma9900, not for the published page";
@@ -67,8 +90,28 @@ export function isDraft(markdown) {
   return /^#\s.*\bDRAFT\b/m.test(markdown);
 }
 
+/** The twelve characters `Legal::Policy.sha` computes from the same text.
+ *  Verified equal on 2026-09-19: both sides say `852ca75a38c3`. */
+export function shaOf(text) {
+  return createHash("sha256").update(text).digest("hex").slice(0, 12);
+}
+
 function main() {
   const source = readFileSync(SOURCE, "utf8");
+
+  if (existsSync(BACKEND_SOURCE)) {
+    if (readFileSync(BACKEND_SOURCE, "utf8") !== source) {
+      throw new Error(
+        "build-privacy: docs/PRIVACY.draft.md differs from multi_magic's copy, " +
+          "which is the source of truth. Copy it across before generating — " +
+          "a phone and a website must not carry different privacy policies.",
+      );
+    }
+  } else {
+    console.log("build-privacy: multi_magic is not checked out beside this repo, so the");
+    console.log("               phone's copy could NOT be checked against the source.");
+  }
+
   const text = publishedPart(source);
 
   if (text.includes("Hamma9900")) {
@@ -89,6 +132,13 @@ function main() {
 
 /** True while the text still says DRAFT. Drives the banner on \`app/privacy.tsx\`. */
 export const PRIVACY_IS_DRAFT = ${isDraft(source)};
+
+/**
+ * The same twelve characters \`Legal::Policy.sha\` computes on the backend, which
+ * publishes this document at \`GET /api/v1/legal/privacy\`. It is how a bundled
+ * copy and a served one can be shown to be the same document.
+ */
+export const PRIVACY_SHA = ${JSON.stringify(shaOf(text))};
 
 export const PRIVACY_TEXT = ${JSON.stringify(text)};
 `,

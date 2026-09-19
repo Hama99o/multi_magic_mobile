@@ -15,7 +15,8 @@
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { PRIVACY_IS_DRAFT, PRIVACY_TEXT } from "../privacy.generated";
+import { createHash } from "node:crypto";
+import { PRIVACY_IS_DRAFT, PRIVACY_SHA, PRIVACY_TEXT } from "../privacy.generated";
 import { parseMarkdown, parseInline, UNSUPPORTED } from "@/screens/account/Markdown";
 
 const ROOT = join(__dirname, "../../..");
@@ -40,6 +41,23 @@ describe("the generated text tracks its source", () => {
 
   it("knows it is still a draft, from the document's own title line", () => {
     expect(PRIVACY_IS_DRAFT).toBe(/^#\s.*\bDRAFT\b/m.test(SOURCE));
+  });
+
+  /**
+   * The phone bundles the text; the backend serves it at
+   * `GET /api/v1/legal/privacy` and returns the same twelve characters as
+   * `sha`. That is how two renderings of one document can be shown to be one
+   * document — and it is checked here rather than trusted, because a sha that
+   * is only generated proves nothing about the words it claims to describe.
+   *
+   * `scripts/build-privacy.mjs` also refuses to generate from a copy that has
+   * drifted, whenever multi_magic is checked out beside this repo. This test is
+   * the half that runs everywhere.
+   */
+  it("carries the sha the backend publishes for the same text", () => {
+    const expected = createHash("sha256").update(PRIVACY_TEXT).digest("hex").slice(0, 12);
+    expect(PRIVACY_SHA).toBe(expected);
+    expect(PRIVACY_SHA).toMatch(/^[0-9a-f]{12}$/);
   });
 });
 

@@ -83,10 +83,14 @@ export function Composer({
           <Text variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1 }}>
             {speech.interim || t("composer.listening")}
           </Text>
+          {/* 32 x 32 before this. The row it sits in has no height of its own,
+              so a bigger BOX would push the composer down by 20 dp the moment
+              dictation starts; slop costs nothing and the only neighbour it
+              reaches is the interim text, which is not pressable. */}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t("composer.cancelDictation")}
-            hitSlop={8}
+            hitSlop={16}
             onPress={speech.cancel}
             testID="composer-dictation-cancel"
           >

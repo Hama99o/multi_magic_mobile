@@ -77,10 +77,16 @@ export function PendingFiles({
                   : describeSize(file.size)}
             </Text>
           </View>
+          {/* 16 dp icon in a Pressable with no box of its own: 32 x 32 with
+              `hitSlop={8}`, against a 48 floor, on the control that DISCARDS
+              a queued file. 16 gets it to 48 x 48 and costs no layout at all
+              — the chip is 40 high with 12 of padding beside it, and the only
+              thing the slop reaches is the filename, which is not pressable.
+              Growing the box instead would widen every chip. */}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={t("files.remove", { name: file.name })}
-            hitSlop={8}
+            hitSlop={16}
             onPress={() => onRemove(file.key)}
             testID={`pending-file-remove-${file.key}`}
           >

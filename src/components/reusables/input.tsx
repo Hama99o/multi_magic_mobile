@@ -80,13 +80,23 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           }}
         />
 
+        {/* Was `hitSlop={12}` over a bare icon: 44 high, and 12 dp of it
+            reaching LEFT across the text field. A Pressable that is a later
+            sibling wins the overlap, so the last 12 dp of every password field
+            was silently a reveal button. Box growth instead, and the slop that
+            remains points away from the field. `alignSelf: "stretch"` is free
+            — the row is already `minHeight: touch`. */}
         {secure ? (
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={revealed ? t("password.hidePassword") : t("password.showPassword")}
-            hitSlop={12}
+            hitSlop={{ top: 0, bottom: 0, left: 0, right: 8 }}
             onPress={() => setRevealed((v) => !v)}
-            style={{ paddingLeft: metrics.space.sm }}
+            style={{
+              alignSelf: "stretch",
+              justifyContent: "center",
+              paddingHorizontal: metrics.space.md,
+            }}
           >
             {revealed ? (
               <EyeOff size={20} color={colors.inkMuted} />

@@ -85,12 +85,22 @@ function SecretField({
         />
         {/* Five of six references have this, and it is the only defence
             against a typo you cannot see. */}
+        {/* 34 x 34 before this, and the neighbour here is the FIELD — so slop
+            is the wrong tool twice over: this Pressable is the later sibling,
+            so its hit area wins the overlap and quietly eats the last 8 dp of
+            the password field. The box grows instead. `alignSelf: "stretch"`
+            is free height: the row is already `minHeight: touch`. */}
         <Pressable
           testID={`${testID}-reveal`}
           onPress={() => setShown((s) => !s)}
           accessibilityRole="button"
           accessibilityLabel={shown ? t("password.hide", { label }) : t("password.show", { label })}
-          hitSlop={8}
+          hitSlop={{ top: 0, bottom: 0, left: 0, right: 8 }}
+          style={{
+            alignSelf: "stretch",
+            justifyContent: "center",
+            paddingHorizontal: metrics.space.md,
+          }}
         >
           {shown ? (
             <EyeOff size={18} color={colors.inkMuted} />

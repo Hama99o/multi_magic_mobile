@@ -283,6 +283,10 @@ export function PersonMessageRow({
           // English. Naming it here means the label cannot quietly become
           // whatever the layout puts inside next.
           accessibilityLabel={t("thread.notSent")}
+          // 32 high and no slop — under the 48 floor, on the only way back
+          // from a message that did not send. Vertical only: nothing above or
+          // below this is pressable, and the row is as wide as its own text.
+          hitSlop={{ top: 8, bottom: 8 }}
           style={{
             flexDirection: "row",
             alignItems: "center",

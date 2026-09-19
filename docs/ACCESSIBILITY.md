@@ -360,33 +360,60 @@ note and that document's own instruction.
 `tokens.ts:77` sets `touch: 48`, and `button.tsx`'s header calls it *"the
 touch-target floor"*. It is honoured by every control built through `Button`,
 `Input` and the row components, and it is not a rule anything enforces, so the
-icon-only controls drifted. Effective size is the box plus `hitSlop` on each
-side; measured from source, so treat these as candidates for a device rather
-than as verdicts.
+icon-only controls drifted.
 
-**The three destructive ones first, because they are the ones that matter and
-they are also among the four smallest — which is the wrong way round.**
+**Corrected 2026-09-19 by e7, and the correction matters more than the
+numbers.** The first pass measured **the icon plus `hitSlop`** and did not see
+the Pressable's own box. Most of these controls have one — `minHeight: 32`, a
+row of icon-and-text, `width: metrics.touch` — so the table ranked by glyph
+size and put three controls that already clear the floor at the top of the
+list, while `pending-file-remove` sat mid-table at the same number it really
+has. Effective size is **box + slop**, and the box is in the style prop.
 
-| Control | Box | hitSlop | Effective | |
+Measured from source; a device still gets the final word.
+
+| Control | Box | slop | Effective | |
 |---|---|---|---|---|
-| `ai-key-remove` (`ai-keys.tsx:231`) | icon 13 | 8 | **29** | **removes a provider key** |
-| `pending-file-remove` (`PendingFiles.tsx:80`) | icon 16 | 8 | **32** | **removes a queued file** |
-| `answer-undo` (`AnswerActions.tsx:117`) | icon 15 | 10 | **35** | **undoes what an answer created** |
-| `msg-retry` (`PersonMessageRow.tsx:254`) | `minHeight: 32` | none | **32 high** | e7's file — reported, not touched |
-| `Freshness.tsx:47` | icon 18 | 6 | **30** | |
-| `composer-dictation-cancel` (`Composer.tsx:86`) | icon 16 | 8 | **32** | cancels dictation |
-| header icons (`chat.tsx:72`) | icon 21 | 6 | **33** | the app's main navigation |
-| reveal (`change-password.tsx:88`) | icon 18 | 8 | **34** | |
-| `session-menu` (`SessionRow.tsx:98`) | icon 20 | 8 | **36** | |
-| `answer-*` (`AnswerActions.tsx:87`) | icon 17 | 10 | **37** | copy / read aloud |
-| `file-preview-close`, `sessions-close` | icon 22 | 10 | **42** | |
-| reveal (`input.tsx:84`) | icon 20 | 12 | **44** | closest to the floor |
+| `pending-file-remove` (`PendingFiles.tsx`) | none — icon 16 | **16** | **48 × 48** | **removes a queued file** · fixed |
+| `composer-dictation-cancel` (`Composer.tsx`) | none — icon 16 | **16** | **48 × 48** | cancels dictation · fixed |
+| `msg-retry` (`PersonMessageRow.tsx`) | `minHeight: 32` | **8 vert.** | **48 high** | the only way back from a failed send · fixed |
+| reveal (`change-password.tsx`) | **stretch + padH 12** | 8 right | **48 × 50** | fixed |
+| reveal (`input.tsx`) | **stretch + padH 12** | 8 right | **48 × 52** | fixed |
+| `ai-key-remove` (`ai-keys.tsx`) | `minHeight: 32`, icon + text | 8 | 48 × ~78 | **already met the floor** |
+| `answer-undo` (`AnswerActions.tsx`) | `minHeight: 36`, padH 8, icon + text | 10 | 56 × ~87 | **already met the floor** |
+| `answer-*` copy / rate (`AnswerActions.tsx`) | 36 × 36 | 10 | 56 | already met |
+| `Freshness.tsx` refresh | `touch` × `touch` | 6 | 60 | already met |
+| header icons (`chat.tsx`) | `touch` × `touch` | 6 | 60 | already met |
+| `session-menu` (`SessionRow.tsx`) | `touch` × `touch` | 8 | 64 | already met |
+| `sessions-close`, `file-preview-close` | `touch` × `touch` | 10 | 68 | already met |
 
-Nothing here is fixed, deliberately: `hitSlop` is cheap to raise and every one
-of these sits inside a laid-out row, so **whether raising it makes two adjacent
-targets overlap is a layout question and Jest has no layout.** The pattern is
-worth a decision rather than twelve separate patches — raising the floor inside
-the icon-button pattern itself would fix them together.
+**Five were genuinely under the floor, not twelve, and only one of the three
+called destructive was among them.** All five are fixed.
+
+### The choice between slop and box is not taste
+
+`hitSlop` is invisible, so two adjacent slop regions can overlap — and when
+they do, **the later sibling wins**, because hit-testing walks children in
+reverse order. A laid-out box cannot overlap its neighbour in a flex row. So:
+
+- **Neighbour inert → slop.** `pending-file-remove` and
+  `composer-dictation-cancel` sit beside text nobody can press. Slop reaches
+  48 at no layout cost, where growing the box would widen every file chip and
+  push the composer down 20 dp the moment dictation starts.
+- **Neighbour interactive → box.** Both password reveals sit against the text
+  field. `alignSelf: "stretch"` is free height, since the row is already
+  `minHeight: touch`.
+
+### And asking that question found a bug
+
+Both reveals had slop pointing **left, across the field**. The Pressable is
+the later sibling, so it won the overlap: **the last 12 dp of every password
+field in the app was silently a reveal button** (`input.tsx`), and the last
+8 dp in change-password. Nobody reported it because the failure is a keyboard
+that does not appear when you tap the end of what you typed.
+
+Both now point away from the field. Neither `hitSlop` nor the floor would have
+surfaced this — the question that did was *what does this overlap?*
 
 ---
 

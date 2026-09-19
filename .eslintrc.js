@@ -4,9 +4,16 @@
  * NOT CARRIED OVER: Karwan's `no-restricted-syntax` ban on physical spacing
  * utilities (`pl-`, `mr-`, `text-left`…). That rule exists because Karwan ships
  * Pashto and Dari and a physical utility does not flip under RTL, so it ships a
- * mirrored bug. This app is English and LTR — `config/locales/` in multi_magic
- * holds only `en.yml` — so the same rule here would be cargo: a warning with no
- * failure behind it, which teaches people to ignore warnings.
+ * mirrored bug. This app ships English and French (`docs/LANGUAGES.md`) and
+ * BOTH ARE LTR, so the same rule here would be cargo: a warning with no failure
+ * behind it, which teaches people to ignore warnings.
+ *
+ * The premise above used to read "this app is English — `config/locales/` in
+ * multi_magic holds only `en.yml`". That stopped being true when French landed
+ * (`049079e`) and nothing noticed, because the CONCLUSION did not change: this
+ * decision turns on direction, not on how many languages there are. Written out
+ * so the next reader knows what would flip it — **the first RTL language brings
+ * this rule back**, and counting locales will not tell you when that happens.
  */
 module.exports = {
   extends: ["expo"],

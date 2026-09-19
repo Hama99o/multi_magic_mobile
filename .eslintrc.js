@@ -84,6 +84,41 @@ module.exports = {
        * `t()` argument sits under a CallExpression and a template of names has
        * no literal at all.
        */
+      /**
+       * A `selectable` TEXT EATS THE LONG PRESS AROUND IT.
+       *
+       * On Android a selectable `Text` opens the platform's text-selection
+       * ActionMode on long press and consumes the gesture, so an enclosing
+       * `Pressable`'s `onLongPress` never fires. In `PersonMessageRow` that
+       * made reacting to a message IMPOSSIBLE on Android — long-pressing a
+       * bubble gave Copy · Share · Select all — while the handler, the sheet
+       * and even the `accessibilityHint` describing the gesture were all
+       * present and correct.
+       *
+       * No test in this repo could see it. Jest has no platform: both the
+       * prop and the handler are right in the tree, and only the OS knows it
+       * got there first. QA found it on a device, two screens into a flow.
+       *
+       * `selectable` on its own is fine and is used in four other places —
+       * the assistant's answers, the user's question bubble, the privacy
+       * text — none of which sits under a long press. This rule is about the
+       * COMBINATION. If a bubble needs both, the copy action belongs in the
+       * menu the long press opens, which is where every reference puts it.
+       *
+       * The selector over-approximates on purpose: `:has()` searches the whole
+       * subtree, so it flags a `selectable` anywhere inside an element that
+       * long-presses ANYWHERE, not only one wrapped directly by it. The tight
+       * form — `:has(> JSXOpeningElement > JSXAttribute[…])` — silently matches
+       * NOTHING in this esquery, which is worse than loose: it is a rule that
+       * lints clean because it never fires. Found by planting the prop back and
+       * watching the first version of this rule say nothing.
+       */
+      {
+        selector:
+          "JSXElement:has(JSXAttribute[name.name='onLongPress']) JSXAttribute[name.name='selectable']",
+        message:
+          "A `selectable` Text inside a long-pressable element eats the long press on Android — the platform's text-selection menu takes the gesture and onLongPress never runs. Offer Copy in the menu the long press opens instead. See src/screens/people/PersonMessageRow.tsx and docs/design/people-chat/SPEC.md.",
+      },
       {
         selector:
           "JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > ConditionalExpression > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > LogicalExpression > Literal[value=/[A-Za-z]{3,}/]",

@@ -171,8 +171,26 @@ export function PersonMessageRow({
         }}
       >
         {/* Never `variant="answer"`. The serif belongs to the assistant, and
-            it is signal 3 of the four — see this file's header. */}
-        <Text selectable style={{ color: mine ? colors.onAccent : colors.ink }}>
+            it is signal 3 of the four — see this file's header.
+
+            ── AND NOT `selectable`, WHICH TOOK THE REACTION GESTURE ────────
+            On Android a selectable Text starts the platform's text-selection
+            ActionMode on long press and CONSUMES the gesture, so the
+            `onLongPress` above never ran: long-pressing a message opened
+            Copy · Share · Select all and reacting was impossible on the
+            platform — a feature he asked for by name. QA caught it on a
+            device (`06-people-chat`, `not-met/step-028-*.png`); nothing in
+            Jest can see it, because both the handler and the prop are
+            perfectly correct in the tree and only the OS knows it got there
+            first.
+
+            Dropping the prop rather than moving the gesture, because it was
+            never a decision: the SPEC does not mention it, all three reaction
+            references use long press to a menu, and OUR menu already carries
+            Copy (`ReactionSheet.tsx:68`). It was redundant with the thing it
+            was destroying. The cost is selecting PART of a message, which no
+            reference offers either. */}
+        <Text style={{ color: mine ? colors.onAccent : colors.ink }}>
           {message.body}
         </Text>
       </Pressable>

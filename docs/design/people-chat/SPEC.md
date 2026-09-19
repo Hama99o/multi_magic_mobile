@@ -325,3 +325,43 @@ Checked by the verifier session against `main` at `971f951`.
    still arriving after reconnect — that is the `onConnected` resync, and it is
    the only claim in this file that cannot be checked by looking.
 4. `npx tsc --noEmit` and the Jest suites for `src/api/conversations.ts`.
+
+### Divergence note — 2026-09-19, later: reacting was impossible on Android
+
+**A product defect, found on a device, and `06-people-chat`'s FAIL was about
+the app rather than the flow.**
+
+§2.2 says the long press opens the sheet and the press is the toggle. The
+handler was wired, `ReactionSheet` existed, and the `accessibilityHint`
+announced the gesture. **None of it could run.** The bubble rendered the
+message body as `<Text selectable>` *inside* the `Pressable` carrying
+`onLongPress`; on Android a selectable Text opens the platform's text-selection
+ActionMode on long press and consumes the gesture. Long-pressing a message gave
+**Copy · Share · Select all**, and reacting — something he asked for by name —
+could not be done at all on the platform the app ships on.
+
+**The prop is dropped rather than the gesture moved**, and Rule Zero settles it
+rather than taste: `selectable` was never a decision — this SPEC never mentions
+it, and no reference relies on the OS's text selection. All three reaction
+references (WhatsApp, X, Believe) use long press → menu, X's menu is
+Reply · Copy · Delete, and **our sheet already carries Copy**
+(`ReactionSheet.tsx:68`). The prop was redundant with the menu it was
+destroying.
+
+**The trade, said plainly: the whole reaction feature against selecting PART of
+a message.** Copying a whole message still works, from the menu, one tap
+further than before. Copying half a sentence is gone, and no reference in this
+file offers it either.
+
+**What guards it, and what does not.** `no-restricted-syntax` in `.eslintrc.js`
+now errors on a `selectable` inside a long-pressable element — the class, not
+the instance, on the gate everybody runs. It was written, planted, and **found
+to be silently matching nothing** in its first form (`:has(> JSXOpeningElement
+> …)` is not supported by this esquery, so it linted clean by never firing);
+the loose form is the one that shipped.
+
+`src/screens/people/__tests__/PersonMessageRow.test.tsx` holds the wiring and
+the prop's absence, and its header says it cannot see the defect: Jest has no
+platform, and every part of this was correct in the tree. **The proof the
+gesture works is `06-people-chat` on a device, which has not run since the
+fix.** Nothing here should be read as standing in for that.

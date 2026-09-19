@@ -278,3 +278,66 @@ guards against is an iOS one, and iOS has no build, no simulator and no rig
 here, so it remains unverified on the platform where it is real.** That
 distinction is the finding; "it worked" and "it was needed" are two different
 statements and this run only supports the first.
+
+---
+
+## The picture pass — 2026-09-19, where it actually got to
+
+| combination | screens |
+|---|---|
+| `360-light-en` | **complete, 9 of 9** |
+| `360-dark-en` | **complete, 9 of 9** |
+| `411-light-en` | **complete, 9 of 9** |
+| `411-dark-en` | **complete, 9 of 9** |
+| `800-light-en` | **NOT ATTEMPTED** |
+| `800-dark-en` | **NOT ATTEMPTED** |
+| `360-light-fr` | **NOT ATTEMPTED** |
+| `360-dark-fr` | **NOT ATTEMPTED** |
+
+Nine screens per combination: chat, sessions, people-chat, notifications,
+calendar, account, profile, upload, sign-in. Device handed to `hatiwal-73` at
+this point for two flows on a 1.1.0 build sitting at Apple and Google; the 800
+and French sets are **not attempted**, which is a named gap and not a silent
+one. Tree at `dc20652`.
+
+### The pass photographed a defect it had manufactured itself
+
+Twice, and the second one reached the owner.
+
+`qa/screens.sh` sets the width by changing the device's density, then the
+night mode, then runs the flow. The force-stop originally sat **inside**
+`set_width`, ahead of the night-mode change — so the app survived the last
+configuration change and rendered at the OLD density inside the NEW window.
+The 360 dark set came out with text cut off mid-word at the right edge and the
+header missing its fourth icon. **It looks exactly like a real 360 dp overflow
+bug**, and it was about to be filed into `ours/`, which is the evidence `DONE`
+is defined against.
+
+Moving the force-stop after every configuration change fixed 360. It did
+**not** fix 800, and the four-second settle behind it was the reason: 360
+changes density alone, 800 changes **size and density together**, and the
+display is still reconfiguring when the app comes up. That set was worse —
+clipped vertically as well as horizontally — and one of its pictures reached
+Hamma9900, who photographed the sign-in screen and sent it up as a product
+defect. It is not one: force-stop, relaunch at the same Override, and sign-in
+renders perfectly.
+
+**Every 800 picture was deleted rather than captioned.** A picture that looks
+like a defect IS a defect report to whoever finds it next.
+
+The fix is an instrument, not a longer timer: the app is launched, and nothing
+is shot until its own window bounds **agree** with the width the device was
+set to. It belongs in the rig rather than in this pass — the next session to
+change a display will hit the same thing and will not know to look.
+
+Beside it, `rc=$?` after a pipe was reading `tail`'s status, which is always
+0, so **every combination would have reported complete**, including the ones
+that were not. Runs now record `rc` AND how many of the nine screens landed.
+
+### Load is the limiting factor on this box, and it is now measured
+
+At load **15.5** the Pixel Launcher itself ANR'd and a flow died on a system
+dialog that reads exactly like a failed assertion. At **7.5**, twelve flows
+ran clean. The pass now **refuses to start above 12** and writes the load at
+run start into `qa/reports/screens.jsonl` beside the screen count, so the line
+can be moved on evidence rather than on taste.

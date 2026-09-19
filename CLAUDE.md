@@ -113,10 +113,25 @@ as `git add -A`, arriving through the working tree instead of the index. Say
 what you saw and let them land it. This happened twice tonight in opposite
 directions.
 
-**Pathspec does not help inside a file.** Two sessions editing the same file
-cannot be separated by naming paths at all, so the only thing that works is one
-of them landing or reverting before the other stages. Ask, and say which files
-you are mid-edit in when you report progress.
+**Pathspec separates sessions BETWEEN files and cannot separate them INSIDE
+one.** Two sessions editing one file cannot be told apart by naming paths at
+all, so one of them has to land or revert before the other stages.
+
+**And a key and its callers are one change — land them in one commit.** A string
+that exists and a string that is used are not two pieces of work that can be
+sequenced across two sessions. This is the rule rather than "be careful",
+because careful is what both sessions were being when it happened: one of them
+staged two locale files by name, read `git diff --cached`, and took three keys a
+sibling had written but whose callers were still unstaged. Main then carried
+three keys nothing called, which is `docs/TESTING.md` §8's exact failure, eleven
+minutes after the warning about this hole was written into this file by the
+session that then fell into it.
+
+The window is between "I need these files" and "go", and **a message cannot
+close it, because both messages are true when they are sent.** What closes it is
+the change being indivisible. What caught it in eleven minutes rather than a day
+was the backward check from `32fcb34` — a key nothing calls — going red by
+itself.
 
 The cost is not tidiness. One sweep put a personal email address into a public
 repo. Another hid a session's finished work from the session chasing it — the

@@ -113,11 +113,19 @@ unambiguous without a device.
 
 ## NEEDS A DEVICE — reasoned from source, not witnessed
 
-### N1 · The scrim wraps the sheet, and on iOS that may collapse it
+### N1 · The scrim wraps the sheet — in EVERY sheet in the app
 
-`PhotoSheet.tsx:103` and `ReactionSheet.tsx:87`. The dismiss scrim is a
-`Pressable` with `accessibilityLabel={t("common.close")}`, `flex: 1`, **and the
-sheet's content as its children.** Per React Native's own documentation an
+`AttachSheet.tsx:56`, `SourceSheet.tsx:45`, `SessionsSheet.tsx:304`,
+`PhotoSheet.tsx:103`, `ReactionSheet.tsx:87`. **Five, not the two this section
+first claimed.** The dismiss scrim is a `Pressable` with
+`accessibilityLabel={t("common.close")}`, `flex: 1`, **and the sheet's content
+as its children.**
+
+*Three of the five were found by the static check in the gate and not by the
+hand-read that wrote this entry. The first pass grepped for the press-swallowing
+child; `SourceSheet` calls `e.stopPropagation()` instead, so it looked different
+while being identical. A grep for one spelling of an idea finds one spelling of
+an idea.* Per React Native's own documentation an
 accessibility element groups its children into a single selectable component,
 and on iOS that is absolute. If it behaves as documented, VoiceOver announces
 one "Close" button for the entire modal and **the photo rows and the six
@@ -204,14 +212,22 @@ children, and `AnswerMarkdown` renders `accessibilityRole="link"` pressables
 inside answers (the assistant puts a file's download link *in* the answer). That
 would have made every link in every answer unreachable. So the name goes on one
 text block, never the container, and it skips a block containing a link, because
-a label REPLACES what is read and would bury the link inside a sentence. The
-test that guards it asserts the link is still there after the attribution.
+a label REPLACES what is read and would bury the link inside a sentence.
+
+**And the test written to guard that cannot actually catch it — measured, not
+assumed.** `announce.test.tsx` asserts a link inside an answer is still reachable
+after attribution; the naive container fix was planted and it stayed green,
+because RNTL does not emulate native grouping. The static check that replaced it
+catches a name on a container that LEXICALLY holds a control (planted in
+`Composer.tsx`, watched to fire) and is blind to `AnswerMarkdown`'s own shape,
+which builds its children into an array. So this one is held by discipline —
+name a leaf, never a container — and `docs/TESTING.md` §9 is the entry.
 
 ---
 
 ## DESIGN DECISIONS — his call, not mine
 
-### D3 · A destructive long press that nothing announces, under a hint about something else
+### D3 · A destructive long press announced under a hint about something else — FIXED in `2d7e6aa`
 
 `app/notifications.tsx:293` — long-pressing a notification row calls
 `confirmRemove`. `NotificationRow.tsx:58` carries
@@ -220,6 +236,13 @@ with a question about this"*. That describes the **tap**. So the only announced
 affordance is the non-destructive one, and the destructive one is announced
 nowhere — a screen reader user is not merely uninformed about the long press,
 they have been told the row does something else.
+
+**Settled as a defect rather than a decision, and fixed by e7 in `2d7e6aa`:**
+`notifications.hint` now names both actions — *"Opens the assistant with a
+question about this. Long press to delete it."* The line between this and the
+rest of the section is worth keeping: a hint that describes the *wrong* action
+is wrong whatever convention the app later adopts, so it did not need the
+decision. What the convention should be still does.
 
 This is the opposite arrangement to the composer's mic (D4), and between them
 they make the point: **this app has three long-press gestures and no convention

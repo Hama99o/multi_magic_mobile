@@ -161,6 +161,104 @@ describe("every control a person can press has a name", () => {
   });
 });
 
+/**
+ * ── THE CHECK THAT THE OBVIOUS TEST CANNOT BE ─────────────────────────────
+ *
+ * A name on a container is a GROUPING change: an accessibility element groups
+ * its children, so naming a wrapper hides every control inside it. That is
+ * `docs/ACCESSIBILITY.md` N1, and it is also the shape an accessibility FIX
+ * takes when somebody wants to attribute or describe a region.
+ *
+ * `announce.test.tsx` has a test asserting a link inside an answer is still
+ * reachable after the answer was attributed. **That test does not catch this,
+ * and it was verified not to**: the naive container fix was planted and it
+ * stayed green. RNTL builds a JS tree and does not emulate the native grouping,
+ * so a query finds children that VoiceOver would never reach. A render test
+ * cannot see this class at all, which is why the check is static.
+ */
+function namedContainersHidingControls(): string[] {
+  const findings: string[] = [];
+  for (const dir of ["app", "src"]) {
+    for (const file of sourceFiles(path.join(ROOT, dir))) {
+      const code = fs.readFileSync(file, "utf8");
+      const ast = parse(code, { sourceType: "module", plugins: ["typescript", "jsx"] });
+      const visit = {
+        JSXElement(p: any) {
+          const el = p.node.openingElement;
+          const tag = tagName(el.name);
+          const attr = (k: string) =>
+            el.attributes.find((a: any) => a.type === "JSXAttribute" && a.name.name === k);
+          const named = Boolean(attr("accessibilityLabel"));
+          if (!named) return;
+          // An accessibility element: a Pressable (true by default) or anything
+          // explicitly marked `accessible` / `accessible={true}`.
+          const acc = attr("accessible");
+          const explicit =
+            acc && (acc.value === null || acc.value?.expression?.value === true);
+          if (!INTERACTIVE.has(tag) && !explicit) return;
+
+          let buried = false;
+          const look = (n: any, top = false) => {
+            if (buried || !n || typeof n !== "object") return;
+            if (!top && n.type === "JSXElement") {
+              const child = tagName(n.openingElement.name);
+              const role = n.openingElement.attributes.find(
+                (a: any) => a.type === "JSXAttribute" && a.name.name === "accessibilityRole",
+              );
+              const roleValue = role?.value?.value;
+              if (INTERACTIVE.has(child) || child === "Button" || roleValue === "link") {
+                buried = true;
+                return;
+              }
+            }
+            for (const key of Object.keys(n)) {
+              if (key === "loc") continue;
+              const value = (n as any)[key];
+              if (Array.isArray(value)) value.forEach((c: any) => look(c));
+              else if (value && typeof value.type === "string") look(value);
+            }
+          };
+          look(p.node, true);
+          if (buried) findings.push(`${path.relative(ROOT, file)}:${el.loc.start.line} <${tag}>`);
+        },
+      };
+      (traverse as any).default?.(ast, visit) ?? (traverse as any)(ast, visit);
+    }
+  }
+  return findings;
+}
+
+describe("a name on a container hides the controls inside it", () => {
+  /**
+   * The five entries below are `docs/ACCESSIBILITY.md` N1: EVERY modal sheet in
+   * this app dismisses through a full-screen Pressable labelled "Close" that has
+   * the sheet's own contents as its children. It is NOT fixed here — the repair is structural, it changes two modals whose
+   * `ours/` screenshots are part of their DONE, and there is no iOS in this rig
+   * to watch it with. So they are pinned rather than hidden.
+   *
+   * Three of the five were found by THIS check and not by the hand-read that
+   * wrote N1 up — the first pass grepped for the press-swallowing child and
+   * SourceSheet stops propagation instead, so it looked different while being
+   * the same. That is the argument for the static walk in one line.
+   *
+   * This is a debt register, not an allowlist. Every site is written up with a
+   * reason and an owner, and the point of pinning them is that a THIRD one, or
+   * an `accessible` added to any container, turns this red immediately — which
+   * is the case that arrives disguised as an accessibility fix.
+   */
+  it("finds only the five sheet scrims written up as N1", () => {
+    expect(namedContainersHidingControls().sort()).toEqual(
+      [
+        "src/components/chat/AttachSheet.tsx:56 <Pressable>",
+        "src/components/chat/SourceSheet.tsx:45 <Pressable>",
+        "src/components/sessions/SessionsSheet.tsx:304 <Pressable>",
+        "src/screens/account/PhotoSheet.tsx:103 <Pressable>",
+        "src/screens/people/ReactionSheet.tsx:87 <Pressable>",
+      ].sort(),
+    );
+  });
+});
+
 // ── The names that are computed, not written ───────────────────────────────
 describe("a computed name survives the component changing shape", () => {
   it("Button keeps its name while busy", () => {

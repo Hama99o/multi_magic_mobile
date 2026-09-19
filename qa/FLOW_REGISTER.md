@@ -364,7 +364,7 @@ list with the real gaps is how the real gaps stop being read.
 | bucket | count | what it means |
 |---|---|---|
 | **BACKLOG** | **25** | reachable on the QA account, and nothing has ever touched it |
-| unreachable | 18 | needs a server made to fail, a second signed-in account, or a lost network — states this rig cannot produce **against his real backend** |
+| unreachable | 18 | needs a server made to fail, a second signed-in account, or a lost network — states this rig cannot produce **against his real backend**. See the note below: this does not mean *uncovered* |
 | unit-only | 17 | counters, captions and containers, not interactive controls; the render tests cover them more cheaply and at three widths |
 | forbidden | 1 | `delete-account-confirm` — `RIG_CONTRACT.md` §3 forbids pressing it |
 
@@ -372,6 +372,27 @@ Each entry carries its own reason in `flow_lint.py`, so the next session can
 disagree with a judgement rather than with a bucket. **Anything unclassified
 defaults to BACKLOG**, deliberately: the failure this check exists to catch is
 a gap that looked like coverage, so the default must not be "probably fine".
+
+### "Unreachable by the rig" is not "uncovered", and I had them collapsed
+
+The middle bucket says where a state **cannot be reached from a flow**. It says
+nothing about whether the behaviour is tested, and reading it as "nobody covers
+this" is wrong in both directions — it would excuse a real gap and it would
+claim credit for work living somewhere else.
+
+`msg-retry` is the case that showed it. It sits in that bucket correctly: a
+person presses retry when a send has failed, and this rig cannot make his
+backend fail. That ruled out a flow and stopped there. What the bucket could
+not say is that a **component test** can pass the failure in directly, which is
+the better home rather than the consolation one — da took it on 2026-09-19 and
+found something no flow would have: a failed message must show **no tick**.
+`mine && isLastSent && !pending && !failed` makes the receipt and the failure
+mutually exclusive by construction, and if that drifts the row tells somebody
+their message arrived when it did not, on the one element they would act on.
+Nothing had ever asserted it.
+
+So an entry in that bucket is a question — *where is this covered instead?* —
+not an answer.
 
 ### The backlog, worked rather than listed
 

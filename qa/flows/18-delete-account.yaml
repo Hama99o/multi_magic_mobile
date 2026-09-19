@@ -1,0 +1,109 @@
+# DELETE ACCOUNT — the disclosure, the gate, and the way out. Never the button.
+#
+# `docs/design/account/SPEC.md`. The endpoint landed (`DELETE /api/v1/users/me`,
+# `multi_magic@56559c4`) and `ACCOUNT_DELETION_AVAILABLE` flipped to true on
+# 2026-09-19. The gate stays as a constant because the shape it guards is right
+# either way: nobody should be walked through typing a password into a wall.
+#
+# ── BOTH STATES OF THE GATE ARE ASSERTED, AND NEITHER IS CONFIRMED ───────
+# Open: the password field and "Keep my account" are there; the flow taps the
+# way OUT and nothing else. Shut: the plain apology is there and no password
+# field is. The flow does not assume which — a rollback shuts it again — and
+# photographs whichever it finds under a filename that says so.
+#
+# THE PASSWORD FIELD IS NEVER FILLED. The confirm button is disabled until it
+# is, so it can never become enabled here; and `RIG_CONTRACT.md` §3 is explicit
+# that no test calls account deletion against a real account. When that path
+# is exercised it is against a throwaway user, by hand, and not by this rig.
+#
+# ── WHAT IT DOES ASSERT IS THE DISCLOSURE ────────────────────────────────
+# What goes — six lines, each mapping to a `dependent: :destroy` on User — and
+# what is kept, with the reason, because "everything" with an unstated
+# exception is the kind a regulator finds. Both stores ask for exactly this.
+#
+# ── AND THAT IT DOES NOT LOOK LIKE THE CONVERSATION DELETE ───────────────
+# His instruction. No assertion can judge resemblance; 91 here and `04`'s
+# 32-delete-confirm are the pair a person compares. What a flow CAN say is
+# structural: this is a SCREEN with a title, not a dialog over the sheet, and
+# the sessions confirm's question is nowhere on it.
+appId: ${APP_ID}
+tags:
+  - account
+  - destructive
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn:
+    id: "sessions-account"
+- extendedWaitUntil:
+    visible:
+      id: "account-delete"
+    timeout: 30000
+# The warning arrives BEFORE the tap (Wabi's caption).
+- assertVisible: "This removes everything and cannot be undone.*"
+- tapOn:
+    id: "account-delete"
+- extendedWaitUntil:
+    visible:
+      id: "delete-what-goes"
+    timeout: 30000
+
+# ── The disclosure ───────────────────────────────────────────────────────
+- assertVisible: "Delete your account"
+- assertVisible: "This cannot be undone."
+- assertVisible: "What is deleted"
+- assertVisible: "Every conversation, and the files uploaded into them"
+- assertVisible: "Your notes and documents"
+- assertVisible: "Your contacts"
+- assertVisible: "Your expenses, incomes, loans and budgets"
+- assertVisible: "Your calendar events"
+- assertVisible: "Saved devices, sign-in history and API keys"
+- assertVisible: "What is kept"
+- assertVisible: "What the assistant cost — which provider ran, and how many tokens. Your name is removed from those rows, and they hold no part of any question or answer."
+# Not the sessions confirm: its question is not here.
+- assertNotVisible:
+    id: "delete-confirm-question"
+- takeScreenshot: reports/91-delete-account-disclosure
+
+# ── The gate, shut ───────────────────────────────────────────────────────
+- runFlow:
+    when:
+      visible:
+        id: "delete-unavailable"
+    commands:
+      - assertVisible: "Not available in the app yet"
+      - assertNotVisible:
+          id: "delete-password"
+      - takeScreenshot: reports/92-delete-account-gate-SHUT
+      - tapOn: "Back"
+
+# ── The gate, open: the field, the way out, and nothing typed ────────────
+- runFlow:
+    when:
+      notVisible:
+        id: "delete-unavailable"
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: "delete-password"
+          direction: DOWN
+          timeout: 20000
+      - assertVisible: "Type your password to confirm"
+      - assertVisible:
+          id: "delete-password"
+      - assertVisible: "Keep my account"
+      - takeScreenshot: reports/92-delete-account-gate-OPEN
+      # THE ONLY TAP ON THIS SCREEN. The safe way out is a plain row, not a
+      # competing button.
+      - tapOn: "Keep my account"
+
+# Back on Account, account intact — and the next flow's sign-in is the proof
+# the account still exists.
+- extendedWaitUntil:
+    visible:
+      id: "account-delete"
+    timeout: 20000
+- tapOn: "Back"
+- assertVisible:
+    id: "composer-input"

@@ -10,7 +10,7 @@
  * than only at the point of refusal — "17 of 20 files" is information; meeting
  * the limit with no warning is a surprise.
  */
-import { Modal, Pressable, View } from "react-native";
+import { Modal, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Camera, FileText, Image as ImageIcon } from "lucide-react-native";
@@ -53,12 +53,18 @@ export function AttachSheet({
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t("common.close")}
-        onPress={onClose}
-        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}
-      >
+      {/* THE SCRIM IS A SIBLING, NOT A PARENT — docs/ACCESSIBILITY.md N1.
+          A named accessibility element groups its children, so a labelled
+          Pressable WRAPPING the sheet made the whole modal read as one "Close"
+          button and every row inside it unreachable. Behind the content it
+          dismisses exactly as before and names only itself. */}
+      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("common.close")}
+          onPress={onClose}
+          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" }}
+        />
         <View
           style={{
             backgroundColor: colors.ground,
@@ -128,7 +134,7 @@ export function AttachSheet({
             </Pressable>
           ))}
         </View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }

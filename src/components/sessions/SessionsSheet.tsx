@@ -15,7 +15,7 @@
  * once a month is read, while one they dismiss daily is not.
  */
 import { useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -301,12 +301,18 @@ export function SessionsSheet({
       {/* The row menu. Clear FIRST — see the header. */}
       {pending?.kind === "menu" ? (
         <Modal visible transparent animationType="fade" onRequestClose={() => setPending(null)}>
-          <Pressable
-            accessibilityRole="button"
-            accessibilityLabel={t("common.close")}
-            onPress={() => setPending(null)}
-            style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: metrics.space.xl }}
-          >
+          {/* THE SCRIM IS A SIBLING, NOT A PARENT — docs/ACCESSIBILITY.md N1.
+          A named accessibility element groups its children, so a labelled
+          Pressable WRAPPING the sheet made the whole modal read as one "Close"
+          button and every row inside it unreachable. Behind the content it
+          dismisses exactly as before and names only itself. */}
+          <View style={{ flex: 1, justifyContent: "center", padding: metrics.space.xl }}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("common.close")}
+              onPress={() => setPending(null)}
+              style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" }}
+            />
             <View
               style={{
                 backgroundColor: colors.ground,
@@ -381,7 +387,7 @@ export function SessionsSheet({
                 <Text tone="danger">{t("sessions.delete")}</Text>
               </Pressable>
             </View>
-          </Pressable>
+          </View>
         </Modal>
       ) : null}
 

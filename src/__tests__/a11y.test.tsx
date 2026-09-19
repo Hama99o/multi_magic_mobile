@@ -230,32 +230,19 @@ function namedContainersHidingControls(): string[] {
 
 describe("a name on a container hides the controls inside it", () => {
   /**
-   * The five entries below are `docs/ACCESSIBILITY.md` N1: EVERY modal sheet in
-   * this app dismisses through a full-screen Pressable labelled "Close" that has
-   * the sheet's own contents as its children. It is NOT fixed here — the repair is structural, it changes two modals whose
-   * `ours/` screenshots are part of their DONE, and there is no iOS in this rig
-   * to watch it with. So they are pinned rather than hidden.
+   * This was a debt register of five sheets — every modal in the app dismissed
+   * through a full-screen Pressable labelled "Close" with its own contents as
+   * children, so on iOS the whole modal read as one button and the rows inside
+   * were unreachable. `docs/ACCESSIBILITY.md` N1.
    *
-   * Three of the five were found by THIS check and not by the hand-read that
-   * wrote N1 up — the first pass grepped for the press-swallowing child and
-   * SourceSheet stops propagation instead, so it looked different while being
-   * the same. That is the argument for the static walk in one line.
-   *
-   * This is a debt register, not an allowlist. Every site is written up with a
-   * reason and an owner, and the point of pinning them is that a THIRD one, or
-   * an `accessible` added to any container, turns this red immediately — which
-   * is the case that arrives disguised as an accessibility fix.
+   * It is empty because the scrims are siblings now, not parents. The list stays
+   * asserted as empty rather than deleted: the shape is easy to write by
+   * accident and arrives disguised as an accessibility fix, which is how it
+   * nearly came back while the answer was being attributed to its speaker
+   * (`docs/TESTING.md` §9).
    */
-  it("finds only the five sheet scrims written up as N1", () => {
-    expect(namedContainersHidingControls().sort()).toEqual(
-      [
-        "src/components/chat/AttachSheet.tsx:56 <Pressable>",
-        "src/components/chat/SourceSheet.tsx:45 <Pressable>",
-        "src/components/sessions/SessionsSheet.tsx:304 <Pressable>",
-        "src/screens/account/PhotoSheet.tsx:103 <Pressable>",
-        "src/screens/people/ReactionSheet.tsx:87 <Pressable>",
-      ].sort(),
-    );
+  it("finds none — every sheet scrim is a sibling now", () => {
+    expect(namedContainersHidingControls()).toEqual([]);
   });
 });
 

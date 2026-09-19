@@ -11,7 +11,7 @@
  * refuse. Refusal is not an error state either: the sheet simply closes, and
  * the photo stays what it was.
  */
-import { Modal, Pressable, View } from "react-native";
+import { Modal, Pressable, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Camera, Images, Trash2 } from "lucide-react-native";
@@ -100,21 +100,23 @@ export function PhotoSheet({
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <Pressable
-        onPress={onClose}
-        accessibilityRole="button"
-        accessibilityLabel={t("common.close")}
-        style={{ flex: 1, backgroundColor: "#00000088", justifyContent: "flex-end" }}
-      >
+      {/* THE SCRIM IS A SIBLING, NOT A PARENT — docs/ACCESSIBILITY.md N1.
+          A named accessibility element groups its children, so a labelled
+          Pressable WRAPPING the sheet made the whole modal read as one "Close"
+          button and every row inside it unreachable. Behind the content it
+          dismisses exactly as before and names only itself. */}
+      <View style={{ flex: 1, justifyContent: "flex-end" }}>
         <Pressable
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel={t("common.close")}
+          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "#00000088" }}
+        />
+        {/* A sibling scrim cannot be reached through the content, so nothing
+            needs to swallow a press here any more — and a plain View is not
+            an accessibility element, so it is not a focus stop either. */}
+        <View
           testID="photo-sheet"
-          onPress={() => {}}
-          // Exists ONLY to stop a press reaching the scrim behind it. A Pressable
-          // is an accessibility element by default (Pressable.js:245,
-          // `accessible: accessible !== false`), so without this it is a focus
-          // stop with no name — and on iOS an accessibility element groups its
-          // children, which would hide every row inside it.
-          accessible={false}
           style={{
             backgroundColor: colors.ground,
             borderTopLeftRadius: metrics.radius.lg,
@@ -155,8 +157,8 @@ export function PhotoSheet({
               </Pressable>
             ))}
           </View>
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }

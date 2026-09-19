@@ -118,9 +118,9 @@ unambiguous without a device.
 
 ---
 
-## NEEDS A DEVICE — reasoned from source, not witnessed
+## FIXED FROM SOURCE — but not witnessed on the platform that had the defect
 
-### N1 · The scrim wraps the sheet — in EVERY sheet in the app
+### N1 · The scrim wrapped the sheet, in EVERY sheet — FIXED
 
 `AttachSheet.tsx:56`, `SourceSheet.tsx:45`, `SessionsSheet.tsx:304`,
 `PhotoSheet.tsx:103`, `ReactionSheet.tsx:87`. **Five, not the two this section
@@ -138,10 +138,17 @@ and on iOS that is absolute. If it behaves as documented, VoiceOver announces
 one "Close" button for the entire modal and **the photo rows and the six
 reaction emoji are not reachable at all.**
 
-### What it would cost, and why it is probably iOS only
+### Costed first, then built
 
-Costed because "pinned for later" with no number attached is how five screens
-stay broken. It is **one shape, five times** — every scrim is
+It was pinned as too structural to touch without a device. Costing it changed
+the decision, and Hamma9901's reasoning is worth keeping because it inverts the
+obvious one: **the platform where the defect is real is the one we cannot test,
+so this ships unverified either way — the only question is which unverified
+state ships.** A scrim that is a sibling rather than a parent is correct under
+both platforms' models, so waiting for a probe that can only speak about Android
+would not have informed the choice.
+
+It was **one shape, five times** — every scrim is
 `style={{ flex: 1, backgroundColor: <translucent>, justifyContent: "flex-end" }}`
 (SessionsSheet's menu uses `"center"`) with the sheet as its children. The three
 variants differ only in what stops a tap inside the sheet from reaching the
@@ -168,8 +175,23 @@ becomes an absolutely-positioned sibling *behind* the content.
 </View>
 ```
 
-The inner press-swallowing `Pressable`s then have nothing to swallow and go —
-including the two F4 touched, so that fix is subsumed rather than duplicated.
+The inner press-swallowing `Pressable`s then had nothing to swallow and are
+gone — including the two F4 touched, so that fix is subsumed rather than
+duplicated. Applied to all five; all five were the same shape, so there was
+nothing to stop at.
+
+**One behaviour change fell out of it, and it is an improvement nobody asked
+for.** In `AttachSheet` and `SessionsSheet` the content was a plain `View`
+*inside* the scrim Pressable, so a tap on the sheet's own padding propagated to
+the scrim and closed it. With the scrim behind the content that tap now does
+nothing, which is what the other three already did by way of their swallowing
+Pressable. Worth knowing before anybody reads it as a regression.
+
+**What is proven and what is not.** The static check in the gate now finds zero
+named containers holding controls, and it was re-planted — one scrim reverted to
+being a parent, watched to name the line, restored. Lint, typecheck, 568 tests
+and the bundle are green. **None of that is a screen reader.** The defect was
+iOS-only by the reading below, and nothing here has been in front of VoiceOver.
 
 **The `ours/` screenshots should not need retaking**, and that is the claim to
 check rather than trust: the scrim covers the same area in the same colour, the
@@ -190,14 +212,17 @@ groups its children, full stop.
 So the expected result is **broken on iOS, fine on Android** — and iOS is the
 platform with no build, no simulator and no rig here.
 
-**The probe that settles it**, handed to e0 as a device item: open the attach
-sheet with TalkBack on and swipe right through it. If *Take a photo*, *Choose a
-photo* and *Choose a file* each take focus and read out, Android does not group
-and this finding narrows to iOS, where it stays real and unverifiable in this
-rig. If instead the whole sheet reads as one "Close" button, the source reading
-above is wrong and this becomes the most urgent item in the audit, because it
-would then be five screens a blind user cannot operate on the platform we
-actually ship to first.
+**The probe still runs, and its job has changed.** It was going to decide
+whether to build the fix; the fix is built, so it now confirms the rows are
+reachable on the repaired build, and a pass proves the change is not harmful
+rather than that it was necessary. e0 has it: attach sheet, TalkBack on, swipe
+right, expect *Photo*, *Camera* and *Document* as three separate stops.
+
+**And the reading above is a reading.** Four sessions tonight reasoned correctly
+from source and were wrong about the device, which is this repo's §5 in its
+plainest form. "Probably Android-safe" is sourced from a Java file and not from
+a phone, and it should be repeated to anybody as exactly that until the probe
+comes back.
 
 ### N2 · A correct hint pointing at an unreachable gesture
 
@@ -211,9 +236,9 @@ eats the long press, which is the Copy · Share · Select all in
 This is the sharpest case in the audit and worth keeping after it is fixed. The
 string was untranslated; then it was translated; and throughout, it described an
 action that could not be performed. **The hint was never the thing that was
-wrong**, and no gate at any point touched it. Being fixed by e7 (drop
-`selectable`; the reaction sheet already offers Copy); the gesture stays
-unverified until `06` re-runs.
+wrong**, and no gate at any point touched it. **Fixed by e7 in `67f698b`** — `selectable` dropped; the reaction sheet already
+offers Copy, so the prop was redundant with the menu it was destroying. The
+gesture itself stays unverified until `06-people-chat` re-runs on the device.
 
 ---
 

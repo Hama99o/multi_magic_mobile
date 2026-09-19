@@ -12,7 +12,7 @@
  * action for anyone who wants the real record, and the primary experience stays
  * in the app.
  */
-import { Linking, Modal, Pressable, ScrollView, View } from "react-native";
+import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
@@ -42,15 +42,21 @@ export function SourceSheet({
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={t("common.close")}
-        onPress={onClose}
-        style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}
-      >
-        {/* Stops a tap inside the sheet from closing it. */}
+      {/* THE SCRIM IS A SIBLING, NOT A PARENT — docs/ACCESSIBILITY.md N1.
+          A named accessibility element groups its children, so a labelled
+          Pressable WRAPPING the sheet made the whole modal read as one "Close"
+          button and every row inside it unreachable. Behind the content it
+          dismisses exactly as before and names only itself. */}
+      <View style={{ flex: 1, justifyContent: "flex-end" }}>
         <Pressable
-          onPress={(e) => e.stopPropagation()}
+          accessibilityRole="button"
+          accessibilityLabel={t("common.close")}
+          onPress={onClose}
+          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" }}
+        />
+        {/* A sibling scrim cannot be reached through the content, so nothing
+            needs to stop a tap here any more. */}
+        <View
           style={{
             backgroundColor: colors.ground,
             borderTopLeftRadius: metrics.radius.lg,
@@ -103,8 +109,8 @@ export function SourceSheet({
               testID="source-sheet-open"
             />
           ) : null}
-        </Pressable>
-      </Pressable>
+        </View>
+      </View>
     </Modal>
   );
 }

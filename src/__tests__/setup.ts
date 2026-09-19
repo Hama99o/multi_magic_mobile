@@ -85,3 +85,32 @@ jest.mock("expo-speech-recognition", () => ({
   },
   useSpeechRecognitionEvent: jest.fn(),
 }));
+
+/**
+ * `expo-audio` and `expo-speech` are native modules too, and the read-aloud
+ * store requires both inside a try for the same reason as the recogniser: a
+ * binary without them must render NO control, not crash the chat. Under Jest
+ * the real modules would throw at import, which is the "absent" case — so the
+ * mocks describe a device that HAS both, and a suite about absence isolates
+ * the store with a module that throws.
+ *
+ * The player is a small stateful fake: `play`/`pause`/`seekTo` update the
+ * fields a listener would see, and `__emit` lets a test deliver a status
+ * event, so the store is exercised through the surface it uses on a phone.
+ */
+// The factory is ONE `require`, deliberately: babel-plugin-jest-hoist refuses
+// any identifier in a mock factory that is not on its allowlist, and a TYPE
+// counts — `Record<string, unknown>` in a parameter annotation is the
+// identifier `Record`, which fails the whole FILE to load (17 suites, with an
+// error naming neither the type nor the factory). `require` is allowed, so the
+// fake lives in a module that may use types freely.
+jest.mock("expo-audio", () => require("./mocks/expoAudio"));
+
+jest.mock("expo-speech", () => ({
+  speak: jest.fn(),
+  stop: jest.fn(async () => {}),
+  pause: jest.fn(async () => {}),
+  resume: jest.fn(async () => {}),
+  isSpeakingAsync: jest.fn(async () => false),
+  maxSpeechInputLength: 4000,
+}));

@@ -190,6 +190,21 @@ http.interceptors.request.use(async (config) => {
   return config;
 });
 
+/**
+ * The two headers every request carries, for something that fetches a URL
+ * ITSELF rather than through `http` — a native audio player handed a source.
+ * Same values the interceptor attaches, from the same caches, so a player and
+ * a request cannot disagree about who is signed in.
+ */
+export async function authHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = {
+    "X-Device-Fingerprint": await getDeviceFingerprint(),
+  };
+  const token = await loadToken();
+  if (token) headers.Authorization = token;
+  return headers;
+}
+
 /** The server's error sentence, when it sent one. */
 export function apiErrorMessage(error: unknown): string | null {
   const data = (error as AxiosError | undefined)?.response?.data;

@@ -95,7 +95,11 @@ const ExpoSpeechRecognitionModule = speech?.ExpoSpeechRecognitionModule ?? null;
 const useSpeechRecognitionEvent: SpeechModule["useSpeechRecognitionEvent"] =
   speech?.useSpeechRecognitionEvent ?? (() => {});
 
-const LANG_KEY = "mm-stt-lang";
+/** Exported: the read-aloud store reads the same preference for the device
+ *  voice's language — the language somebody speaks to it in is the best
+ *  guess for the language it should speak back. */
+export const STT_LANG_KEY = "mm-stt-lang";
+const LANG_KEY = STT_LANG_KEY;
 
 /** The web hook defaults to `fr-FR` (`useSpeechToText.ts:70`); the corpus is
  *  largely French even though the interface is English. Match it. */

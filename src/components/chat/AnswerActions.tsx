@@ -24,6 +24,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { feedbackApi, undoApi, type ChatMessage } from "@/api/ai";
 import { apiErrorMessage } from "@/api/http";
+import { ReadAloudButtons, ReadAloudNotice } from "./ReadAloud";
 
 export function AnswerActions({
   message,
@@ -102,6 +103,10 @@ export function AnswerActions({
         {iconButton("up", "Good answer", ThumbsUp, () => void rate("positive"), rating === "positive")}
         {iconButton("down", "Bad answer", ThumbsDown, () => void rate("negative"), rating === "negative")}
 
+        {/* Read aloud — behind READ_ALOUD_ENABLED; renders nothing until it
+            flips. See ReadAloud.tsx. */}
+        <ReadAloudButtons message={message} />
+
         {message.undoneAt ? (
           <Text variant="caption" tone="muted" testID="answer-undone">
             Taken back
@@ -140,6 +145,8 @@ export function AnswerActions({
           Copied
         </Text>
       ) : null}
+
+      <ReadAloudNotice message={message} />
 
       {error ? (
         <Text variant="caption" tone="danger" testID="answer-undo-error">

@@ -51,6 +51,8 @@ module.exports = {
       "expo-haptics|" +
       "expo-secure-store|" +
       "expo-speech-recognition|" +
+      "expo-speech|" +
+      "expo-audio|" +
       "expo-document-picker|" +
       "expo-image-picker|" +
       "expo-splash-screen|" +

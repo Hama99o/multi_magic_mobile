@@ -96,8 +96,12 @@ export function PersonMessageRow({
           paddingVertical: metrics.space.xs,
         }}
       >
+        {/* Its own key rather than the assistant's `answer.deleted`, which
+            reads identically today: the two surfaces are separate by design
+            (this file's header), and a person deleting their own message is a
+            different event from an assistant message being removed. */}
         <Text variant="caption" tone="muted" style={{ fontStyle: "italic" }}>
-          This message was deleted
+          {t("thread.deleted")}
         </Text>
       </View>
     );
@@ -273,6 +277,12 @@ export function PersonMessageRow({
           testID="msg-retry"
           onPress={onRetry}
           accessibilityRole="button"
+          // Explicit, because the child Text WAS this control's entire
+          // accessible name — and while that text was an English literal, a
+          // French screen reader read the only name this button had in
+          // English. Naming it here means the label cannot quietly become
+          // whatever the layout puts inside next.
+          accessibilityLabel={t("thread.notSent")}
           style={{
             flexDirection: "row",
             alignItems: "center",
@@ -283,7 +293,7 @@ export function PersonMessageRow({
         >
           <RefreshCw size={13} color={colors.danger} />
           <Text variant="caption" tone="danger">
-            Not sent. Tap to retry.
+            {t("thread.notSent")}
           </Text>
         </Pressable>
       ) : null}

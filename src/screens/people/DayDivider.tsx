@@ -9,6 +9,7 @@
  * they open a thread with nine new messages in it.
  */
 import { View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 
@@ -59,6 +60,7 @@ export function DayDivider({ label }: { label: string }) {
 export function UnreadDivider() {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
 
   return (
     <View
@@ -71,8 +73,16 @@ export function UnreadDivider() {
       }}
     >
       <View style={{ flex: 1, height: 1, backgroundColor: colors.accent, opacity: 0.4 }} />
-      <Text variant="caption" tone="accent" style={{ letterSpacing: 1 }}>
-        UNREAD
+      {/* The capitals are a STYLE, not the string. Written as a literal in
+          English this was the one word on this screen a French reader saw in
+          English, and `textTransform` also spares French an all-caps
+          accented word, which several fonts render badly. */}
+      <Text
+        variant="caption"
+        tone="accent"
+        style={{ letterSpacing: 1, textTransform: "uppercase" }}
+      >
+        {t("thread.unread")}
       </Text>
       <View style={{ flex: 1, height: 1, backgroundColor: colors.accent, opacity: 0.4 }} />
     </View>

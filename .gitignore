@@ -93,3 +93,9 @@ qa/reports/bundle-check.out
 # `flow_lint.py` is a script, but it gets imported as a module when a check is
 # probed from a one-liner. The bytecode cache is not the repo's business.
 qa/__pycache__/
+
+# The picture pass writes a line per combination here — load at run start,
+# rc, and how many of the nine screens landed. Machine-local run history, like
+# the device claim: the numbers that had to survive (load 15.5 produced an ANR,
+# 7.5 ran twelve flows clean) are in FLOW_REGISTER and QA_HANDBOOK instead.
+qa/reports/screens.jsonl

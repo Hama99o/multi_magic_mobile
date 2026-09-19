@@ -46,9 +46,18 @@ yarn-error.*
 docs/design/**/references/
 docs/design/_review/
 
-# Device screenshots of OUR OWN app are fine to keep, and are the evidence a
-# screen is done — but they are large and regenerate from the rig.
-docs/design/**/ours/*.png
+# ── `ours/` IS TRACKED, AND THAT IS THE POINT ───────────────────────────────
+# It used to be ignored here, on the reasoning that screenshots are large and
+# regenerate from the rig. Both halves are true and the conclusion was wrong:
+# `docs/design/README.md` §4 defines DONE as `ours/` holding a device
+# screenshot at 360, 411 and 800 — and a definition that points at files git
+# will delete on `git clean -x` is not a definition. 3.2 MB across 26 files
+# today; the whole nine-screen pass adds under ten.
+#
+# Decided 2026-09-19 by Hamma9901, narrowly: the PNGs only.
+#
+# The .xml view-hierarchy dumps stay out. They are a full text dump of a real
+# session's screen — every label, every value — and this repo is public.
 docs/design/**/ours/*.xml
 
 # @generated expo-cli sync-2b81b286409207a5da26e14c78851eb30d8ccbdb

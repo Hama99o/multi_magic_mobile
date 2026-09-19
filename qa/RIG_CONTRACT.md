@@ -94,3 +94,57 @@ lose.
 That third point is why this file exists at all: the instruction was *"do not
 disturb each other"*, and the worst thing either app could disturb is not the
 other app.
+
+---
+
+## 4 · THE BACKEND IS BROUGHT UP BY THE RIG, AND TWO THINGS ARE NEVER DONE TO IT
+
+His instruction, 2026-09-19: *"for both Karwan and MultiMagic, always use
+Docker Compose."*
+
+One honest distinction first, because pretending otherwise would be a gesture
+rather than a practice: **there is no service in this repo to containerise.**
+This is an Expo app. Metro and an Android emulator do not sensibly live in
+Docker, and a Dockerfile here would be a file that exists to satisfy a sentence.
+
+What the instruction means for the rig is real and was missing: **a run must
+never depend on a human having remembered to start the API.** `multi_magic` is
+already fully composed — web, cable, worker, postgres, redis — so
+`qa/preflight.sh` brings it up itself from `$MM_COMPOSE_FILE` (configurable;
+the two repos sit side by side on this box and may not elsewhere), waits by
+**polling `/up` and the compose health checks rather than sleeping**, and when
+it cannot, **names the service that is down** instead of saying "API not
+reachable" and sending the next person to look at the app.
+
+### 4a · Never `docker compose down -v`, anywhere on this box
+
+Not in this repo, not in `multi_magic`, not in Karwan's. A volume on this
+machine is the only copy of real data. Nothing under `qa/` issues a `down` of
+any kind: the only verbs are `up -d`, `ps`, `logs` and a read-only `exec … psql`.
+
+### 4b · Never let the rig migrate `multi_magic_development`
+
+This one is not hypothetical, and it is not visible from the outside. The
+`web` service's own command in `docker-compose.yml` is
+
+```
+bundle install && bin/rails db:prepare && bin/rails server -b 0.0.0.0
+```
+
+so **starting the stack migrates**, and the database it migrates is
+`multi_magic_development` — his real notes, contacts, loans and calendar. A
+migration a sibling landed and nobody applied would be applied by a rig at 3am
+with nobody watching.
+
+So preflight brings up **postgres and redis only**, waits for their health
+checks, and compares **every file in `db/migrate/` against `schema_migrations`**
+before `web` is allowed to start. Any pending migration is a **FAIL** that names
+the files and stops there. A human runs migrations against that database; a QA
+rig never does.
+
+*(Every version, not `max(version)`: a migration numbered below the newest
+applied one is exactly the case a high-water mark misses.)*
+
+The rig also touches nothing when the backend is **already answering** — `up -d`
+on a running stack can recreate a container under whoever is using it, and there
+is nothing to gain.

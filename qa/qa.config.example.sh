@@ -33,6 +33,47 @@ API_URL_LOCAL="${API_URL_LOCAL:-http://localhost:3001}"
 APP_ID="${APP_ID:-host.exp.exponent}"
 DEEP_LINK="${DEEP_LINK:-exp://127.0.0.1:$METRO_PORT}"
 
+# ── THE BACKEND IS BROUGHT UP, NOT ASSUMED ──────────────────────────────────
+# Hamma9900: *"for both Karwan and MultiMagic, always use Docker Compose."*
+#
+# There is no service in THIS repo to containerise — Metro and an emulator do
+# not sensibly live in Docker, and pretending otherwise would be a gesture. What
+# the instruction means for the rig is that a run must never depend on a human
+# having remembered to start the API. `multi_magic` is already fully composed —
+# web, cable, worker, postgres, redis — so preflight brings it up itself.
+#
+# The path is configurable rather than assumed: this box keeps the two repos
+# side by side, another may not.
+MM_COMPOSE_FILE="${MM_COMPOSE_FILE:-$HOME/Apps/Personal/multi_magic/docker-compose.yml}"
+
+# The services the rig actually needs. `node` (Vite, for the WEB front end) is
+# deliberately absent: the phone never loads it, and starting it costs an
+# `npm install` on a cold container for nothing.
+MM_COMPOSE_SERVICES="${MM_COMPOSE_SERVICES:-postgres redis web cable worker}"
+
+# How long to wait for `/up` after starting it. A cold `web` runs `bundle
+# install` before Rails boots, which is minutes, not seconds — and the wait is
+# a POLL of the health endpoint, never a sleep, so a warm start costs one probe.
+MM_COMPOSE_TIMEOUT="${MM_COMPOSE_TIMEOUT:-300}"
+
+# ── TWO THINGS THE RIG MUST NEVER DO TO THAT STACK ──────────────────────────
+#
+# 1. `docker compose down -v` — ANYWHERE on this box, not just here. A volume
+#    on this machine is the only copy of real data. Nothing in `qa/` issues a
+#    `down` of any kind: the only verbs are `up -d`, `ps` and `logs`.
+#
+# 2. Migrate his development database. This one is not hypothetical and it is
+#    not obvious: the `web` service's own command is
+#
+#      bundle install && bin/rails db:prepare && bin/rails server
+#
+#    so STARTING the stack runs `db:prepare` against `multi_magic_development`,
+#    which holds his real notes, contacts, loans and calendar. If a sibling has
+#    landed a migration that nobody has applied, an unattended preflight at 3am
+#    would apply it to his real data. So preflight checks for pending
+#    migrations FIRST, with postgres up and `web` still stopped, and fails
+#    rather than starting the thing that would migrate.
+
 # ── THE RULE THAT MAKES THIS A RIG AND NOT A HAZARD ─────────────────────────
 # Karwan's rig seeds and resets its database safely, because its dev data is
 # fixtures. OURS IS HIS REAL MULTIMAGIC — his notes, contacts, loans, expenses

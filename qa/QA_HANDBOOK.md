@@ -33,6 +33,34 @@ download remote update", drops to its own error screen, and **every flow fails
 on `sign-in-email is not visible`** — an assertion pointing at our screen while
 blaming entirely the wrong thing. The preflight now checks it and repairs it.
 
+## The backend starts itself — and the one thing that stops it
+
+His instruction: *"for both Karwan and MultiMagic, always use Docker Compose."*
+There is nothing in **this** repo to containerise — an Expo app is Metro and an
+emulator, neither of which sensibly lives in Docker. What it means here is that
+**a run never waits on a human having started the API.**
+
+`preflight.sh` brings `multi_magic` up from `$MM_COMPOSE_FILE` when `/up` does
+not answer, polls the health checks rather than sleeping, and on failure names
+the service that is down — `web is not running` sends you somewhere; "API not
+reachable" sends you to the app, which is the wrong place.
+
+Two things it will not do, both in `RIG_CONTRACT.md` §4:
+
+- **No `docker compose down -v`, anywhere on this box.** A volume here is the
+  only copy of real data. The rig's only verbs are `up -d`, `ps`, `logs` and a
+  read-only `psql`.
+- **It will not migrate his development database.** The `web` service's command
+  is `bundle install && bin/rails db:prepare && rails server`, so *starting the
+  stack migrates* — against `multi_magic_development`, which is his real data.
+  So postgres and redis come up first, every file in `db/migrate/` is checked
+  against `schema_migrations`, and a pending migration is a **FAIL that names
+  the files** with `web` left stopped. A human runs those; a rig never does.
+
+**If preflight stops with pending migrations,** that is not a rig fault and not
+something to work around. Tell whoever landed the migration. Applying it is a
+decision about his real records.
+
 ## The rig may never seed or reset the database
 
 Karwan's rig seeds safely because its dev data is fixtures. **Ours is the

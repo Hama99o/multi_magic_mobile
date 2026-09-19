@@ -12,7 +12,9 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 const mockSpeech = {
   available: true, status: "idle", listening: false, interim: "",
   lang: "fr-FR", setLang: jest.fn(), start: jest.fn(), stop: jest.fn(),
-  cancel: jest.fn(), refused: false, problem: null,
+  // `as string | null` — without it the literal infers as `null`, and a test
+  // that sets a problem sentence fails to compile rather than to run.
+  cancel: jest.fn(), refused: false, problem: null as string | null,
 };
 let mockOnFinalCapture: ((text: string) => void) | null = null;
 

@@ -1,10 +1,27 @@
 # Asks for `multi_magic` — the backend this app has no session on
 
 The `multi_magic` session that took these closed on the evening of 2026-09-18.
-Nothing here is built. **Whoever next opens a session in `multi_magic` starts
-from this file**, in this order.
+
+**BOTH ARE BUILT — 2026-09-19.** They were picked up from this file, in this
+order, by the mobile session. The asks are kept rather than deleted: what was
+asked for and what arrived are two facts, and a file that erases the first
+cannot be checked against the second.
 
 ## 1 · Account deletion — `DELETE /api/v1/users/me` (store requirement)
+
+> **ANSWERED 2026-09-19 — `multi_magic@56559c4`, mobile `f761470`.** `destroy`,
+> self-scoped, no id in the route, password re-asked and a wrong one answered
+> 422 rather than 401. Verified in both directions: 8 of 8 pass, and swapping
+> in `delete` fails 4 including the ActiveStorage join.
+>
+> **The plant found one orphan nobody had asked about.** `contacts.user_id` was
+> indexed and `Contact` declared `belongs_to :user`, but nothing on `User`
+> pointed at it — `has_many :contacts` is remapped to `ContactApp::Contact`, a
+> different class — so every loan counterparty was surviving deletion with a
+> dangling owner. `User#loan_contacts` closes it.
+>
+> `ACCOUNT_DELETION_AVAILABLE` is now `true`; the mobile render table caught
+> the flip by itself before the screen was touched.
 
 No endpoint exists. `config/routes.rb:265` is `resources :users, only:
 %i[index show update]`. `app/controllers/api/v1/users_controller.rb:134` holds a
@@ -27,6 +44,19 @@ mobile screen is built and gated on `ACCOUNT_DELETION_AVAILABLE = false`; one
 constant flips when the route lands.
 
 ## 2 · Per-app record counts — `GET /api/v1/me/summary`
+
+> **ANSWERED 2026-09-19 — `multi_magic@39ec585`, mobile `ec6f09e`.** Nine apps,
+> one COUNT each, keys matching `Ai::AppCatalog::APPS`. **Soft deletes are
+> excluded**, so nobody is offered a question about notes they threw away.
+> Integers only and the spec asserts the shape, so a `?include=titles` would
+> fail it.
+>
+> **Zero and "not enabled" are the same thing, because the concept does not
+> exist**: `users.applications` is a jsonb column nothing in `app/` reads.
+> Written down so the next person does not go looking.
+>
+> Wired into `useStarterPrompts.ts`, ranked BELOW the two sources that carry a
+> concrete noun — a count can name an app but never a record.
 
 For the assistant's empty state. Hamma9900: *"the three prompts which show for
 first conversation should be linked to its data — it should not be a random

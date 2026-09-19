@@ -195,7 +195,9 @@ export function useConversation({
   // Opening a different conversation starts over.
   useEffect(() => {
     setMessages([]);
-    setStatus(conversationId == null ? "loading" : "loading");
+    // Was `conversationId == null ? "loading" : "loading"` — both branches the
+    // same value, so the ternary said nothing and read as though it did.
+    setStatus("loading");
     setAwaitingReply(false);
     setFailed(false);
     if (conversationId != null) void resync();

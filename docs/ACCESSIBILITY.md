@@ -404,6 +404,13 @@ reverse order. A laid-out box cannot overlap its neighbour in a flex row. So:
   field. `alignSelf: "stretch"` is free height, since the row is already
   `minHeight: touch`.
 
+**And a scalar `hitSlop={n}` is a claim that all four sides are empty.** Where
+any side faces something pressable, write the object form and put a `0` on
+that side. The full directional rule lives in
+`src/components/reusables/input.tsx`, next to the control it was learned on —
+not in a doc, because the person about to reintroduce it is reading a
+component.
+
 ### And asking that question found a bug
 
 Both reveals had slop pointing **left, across the field**. The Pressable is

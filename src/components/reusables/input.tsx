@@ -80,12 +80,33 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
           }}
         />
 
-        {/* Was `hitSlop={12}` over a bare icon: 44 high, and 12 dp of it
-            reaching LEFT across the text field. A Pressable that is a later
-            sibling wins the overlap, so the last 12 dp of every password field
-            was silently a reveal button. Box growth instead, and the slop that
-            remains points away from the field. `alignSelf: "stretch"` is free
-            — the row is already `minHeight: touch`. */}
+        {/* ── WHICH DIRECTION MAY `hitSlop` POINT? ─────────────────────
+            Only at space nothing else can be pressed.
+
+              toward the screen edge or the container's own padding — always
+              toward a neighbour nobody can press (text, an icon, a spacer) — fine
+              toward ANOTHER PRESSABLE — never
+              toward a TEXT INPUT — never, and this is the one that bites
+
+            **A scalar `hitSlop={n}` is a claim that all four sides are
+            empty.** When any side faces something pressable, write the object
+            form and put a 0 on that side. When two hit areas overlap, the
+            LATER SIBLING WINS — hit-testing walks children in reverse order —
+            so the control declared last silently takes the other's edge.
+
+            This exact field is why the rule is written here. It was
+            `hitSlop={12}` over a bare icon: 44 high, and 12 dp of it reaching
+            left across the text input. The reveal is the later sibling, so
+            **the last 12 dp of every password field in the app was a reveal
+            button.** Nobody would ever file that — it looks like a typo in
+            your own password, or a keyboard that did not open.
+
+            No gate can catch it: whether two hit areas overlap is a question
+            about layout, and Jest has none. The comment is the instrument.
+
+            So: the box grows instead (`alignSelf: "stretch"` is free height,
+            the row is already `minHeight: touch`), and the slop that remains
+            points right, at the container's padding. */}
         {secure ? (
           <Pressable
             accessibilityRole="button"

@@ -89,7 +89,11 @@ function SecretField({
             is the wrong tool twice over: this Pressable is the later sibling,
             so its hit area wins the overlap and quietly eats the last 8 dp of
             the password field. The box grows instead. `alignSelf: "stretch"`
-            is free height: the row is already `minHeight: touch`. */}
+            is free height: the row is already `minHeight: touch`.
+
+            The directional rule this comes from — which way slop may point,
+            and why a scalar `hitSlop={n}` claims all four sides are empty —
+            is written once, in `components/reusables/input.tsx`. */}
         <Pressable
           testID={`${testID}-reveal`}
           onPress={() => setShown((s) => !s)}

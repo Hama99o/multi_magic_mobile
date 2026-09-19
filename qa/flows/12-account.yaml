@@ -107,3 +107,60 @@ tags:
 - tapOn: "Back"
 - assertVisible:
     id: "composer-input"
+
+# ── THE LANGUAGE SWITCH, AND IT IS NOT ON THIS SCREEN ────────────────────
+# It sits in the SESSIONS SHEET beside the theme, under Appearance — not on
+# the account screen, which is where `account/SPEC.md`'s references put
+# settings. Recorded as a dated divergence note in that SPEC rather than
+# moved; the theme chooser was already in the sheet and the pair belongs
+# together. e7 landed it at `049079e`.
+#
+# ── WHAT THIS ASSERTS AND WHAT IT REFUSES TO ─────────────────────────────
+# That the control exists, that both options are there, and that choosing one
+# MARKS IT SELECTED — which is the app's own record of the choice, not a guess
+# from what the screen happens to say. It deliberately does NOT assert that
+# some other screen's words changed: that is a translation test, it belongs in
+# `keys.test.ts` where every key is resolved through the real i18next
+# instance, and asserting one French sentence here would prove one key rather
+# than the switch.
+#
+# EACH LABEL STAYS IN ITS OWN LANGUAGE whichever way the app is set — English
+# reads "English" and Français reads "Français" in both states — so neither
+# assertion below depends on the language the flow starts in.
+- tapOn:
+    id: "chat-open-sessions"
+- scrollUntilVisible:
+    element:
+      id: "language-row"
+    direction: DOWN
+    timeout: 20000
+- assertVisible:
+    id: "theme-row"
+- assertVisible:
+    id: "language-en"
+- assertVisible:
+    id: "language-fr"
+- takeScreenshot: reports/71-language-row
+
+# French, and the app's own mark of it.
+- tapOn:
+    id: "language-fr"
+- assertVisible:
+    id: "language-fr"
+    selected: true
+- takeScreenshot: reports/72-language-fr
+
+# ── AND IT PUTS ENGLISH BACK, BECAUSE THE CHOICE OUTLIVES THE RUN ────────
+# It persists in AsyncStorage under `mm-language` AND on the server as
+# `users.lang`, so a flow that leaves the QA account in French leaves every
+# later flow asserting English copy against a French screen. Same reasoning as
+# `04` deleting the conversation it creates.
+- tapOn:
+    id: "language-en"
+- assertVisible:
+    id: "language-en"
+    selected: true
+- tapOn:
+    id: "sessions-close"
+- assertVisible:
+    id: "composer-input"

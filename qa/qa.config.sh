@@ -101,6 +101,44 @@ MM_COMPOSE_TIMEOUT="${MM_COMPOSE_TIMEOUT:-300}"
 #    migrations FIRST, with postgres up and `web` still stopped, and fails
 #    rather than starting the thing that would migrate.
 
+# ── A DISPLAY CHANGE IS NOT DONE WHEN adb RETURNS ───────────────────────────
+# This lives here rather than in one script because the next session to change
+# a size or a density will hit it and will not know to look.
+#
+# `wm size` and `wm density` return immediately; the display keeps
+# reconfiguring afterwards, and an app launched into that window lays itself
+# out at the OLD geometry inside the NEW one. What that produces is not a
+# crash and not a blank screen — it is a perfectly sharp screenshot of text
+# clipped mid-letter, vertically as well as horizontally. It looks exactly
+# like a real overflow bug at that width.
+#
+# On 2026-09-19 it produced two sets of nine pictures, and one of them reached
+# Hamma9900, who photographed the sign-in screen and sent it up as a product
+# defect. It is not one: force-stop, relaunch at the same Override, and the
+# screen renders perfectly.
+#
+# Changing density ALONE settles in a few seconds. Changing SIZE AND DENSITY
+# together does not, and no sleep is the right length — so this asks the window
+# instead. Call it after every configuration change, before anything is
+# measured or photographed.
+#
+#   wait_for_geometry <expected-width-px> [app-id] [deep-link]
+wait_for_geometry() {
+  local want="$1" app="${2:-$APP_ID}" link="${3:-${DEEP_LINK:-}}" n=0 got=""
+  [ -n "$link" ] && adb -s "$SERIAL" shell am start -a android.intent.action.VIEW \
+      -d "$link" "$app" >/dev/null 2>&1
+  until [ "$n" -ge 40 ]; do
+    adb -s "$SERIAL" shell uiautomator dump /sdcard/geom.xml >/dev/null 2>&1
+    got=$(adb -s "$SERIAL" shell cat /sdcard/geom.xml 2>/dev/null \
+          | grep -oE 'bounds="\[0,0\]\[[0-9]+,[0-9]+\]"' | head -1 \
+          | grep -oE '\[[0-9]+,[0-9]+\]$' | tr -d '[]' | cut -d, -f1)
+    [ -n "$got" ] && [ "$got" = "$want" ] && return 0
+    n=$((n + 1)); sleep 3
+  done
+  echo "  window reports ${got:-nothing}px, asked for ${want}px" >&2
+  return 1
+}
+
 # ── THE RULE THAT MAKES THIS A RIG AND NOT A HAZARD ─────────────────────────
 # Karwan's rig seeds and resets its database safely, because its dev data is
 # fixtures. OURS IS HIS REAL MULTIMAGIC — his notes, contacts, loans, expenses

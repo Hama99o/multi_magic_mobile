@@ -40,20 +40,8 @@ reset_device() {
 }
 trap reset_device EXIT
 
-wait_for_geometry() {   # $1 = the width in px the device was just set to
-  local want="$1" n=0 got=""
-  adb -s "$SERIAL" shell am start -a android.intent.action.VIEW -d "$DL" "$APP_ID" >/dev/null 2>&1
-  until [ "$n" -ge 40 ]; do
-    adb -s "$SERIAL" shell uiautomator dump /sdcard/geom.xml >/dev/null 2>&1
-    got=$(adb -s "$SERIAL" shell cat /sdcard/geom.xml 2>/dev/null \
-          | grep -oE 'bounds="\[0,0\]\[[0-9]+,[0-9]+\]"' | head -1 \
-          | grep -oE '\[[0-9]+,[0-9]+\]$' | tr -d '[]' | cut -d, -f1)
-    [ -n "$got" ] && [ "$got" = "$want" ] && { echo "  window agrees at ${got}px after $((n*3))s"; return 0; }
-    n=$((n+1)); sleep 3
-  done
-  echo "  window reports ${got:-nothing}px, asked for ${want}px"
-  return 1
-}
+# `wait_for_geometry` now lives in qa.config.sh, sourced above — every script
+# that changes a display needs it, not just this one.
 
 # ── LOAD IS THE LIMITING FACTOR ON THIS BOX, AND IT IS MEASURED ──────────
 # At load 15.5 the Pixel Launcher itself ANR'd and a flow died on a dialog that

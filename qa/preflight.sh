@@ -50,6 +50,27 @@ fi
 others=$(pgrep -af qemu-system 2>/dev/null | sed -n 's/.*-avd \([A-Za-z0-9_]*\).*/\1/p' | grep -v "^$AVD$" || true)
 [ -n "$others" ] && warn "another AVD is running: $others (not ours — leave it alone)" || ok "no foreign AVD in the way"
 
+# 4b. A LEFTOVER DISPLAY OVERRIDE, which is the state that fakes a layout bug.
+#
+# `wm size` / `wm density` overrides survive the session that set them. A run
+# that starts on someone else's leftover Override measures a width nobody
+# chose — and if the app was started before the override settled, it renders
+# at the old geometry inside the new window and photographs as clipped text.
+# That is not a crash and not a blank screen; it is a sharp picture of a bug
+# that does not exist, and one of them reached the owner on 2026-09-19.
+#
+# Reported rather than reset: an override may be exactly what the session
+# holding the device wants. What must not happen is inheriting one silently.
+ovr=$(adb -s "$SERIAL" shell wm size 2>/dev/null | grep -i override | tr -d '\r')
+ovd=$(adb -s "$SERIAL" shell wm density 2>/dev/null | grep -i override | tr -d '\r')
+if [ -n "$ovr" ] || [ -n "$ovd" ]; then
+  warn "the display carries an override: ${ovr:-size native}; ${ovd:-density native}"
+  warn "  if it is not yours, `wm size reset` and `wm density reset` before trusting"
+  warn "  any screenshot — and call wait_for_geometry after changing either."
+else
+  ok "display is at its native size and density (no inherited override)"
+fi
+
 # 5. The emulator networking trap, checked the right way round
 if echo "$API_URL" | grep -qiE '127\.0\.0\.1|localhost'; then
   bad "API_URL is $API_URL — from an emulator that is the EMULATOR itself. Use 10.0.2.2."

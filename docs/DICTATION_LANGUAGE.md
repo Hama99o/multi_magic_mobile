@@ -158,3 +158,73 @@ jobs, and the phone you are holding does exactly the same thing.
 
 Nothing above is built. The words in the bold column are a starting point for
 yours, and the drawings are drawings.
+
+*(Section 4 was added later the same day, when the accessibility audit found
+that the mic is one of three long presses and the other two disagree with it
+and with each other.)*
+
+---
+
+## 4 · Three long presses, three different treatments
+
+**Added 2026-09-19 from the accessibility audit (`docs/ACCESSIBILITY.md`).
+Section 1 turned out to be one third of a larger question, and the larger
+question is worth settling once.**
+
+The app has exactly three long-press gestures. Each is handled differently,
+and no two agree.
+
+| Where | What it does | What a screen reader is told | What the screen shows |
+|---|---|---|---|
+| A notification row | **Deletes the notification** (with a confirm) | *"Opens the assistant with a question about this"* — the **tap**, not this | nothing |
+| A message bubble | Opens the reaction sheet | *"Long press to react"* — correct | nothing |
+| The composer mic | Switches the dictation language | nothing about the gesture; the label names the **language** | nothing |
+
+One gesture described right, one described as something else, one not
+described at all. Read down the last column: **no long press in this app is
+visible to anybody.**
+
+### One of these is a defect, not a decision
+
+The notification row's hint describes the tap while the long press deletes.
+Whatever convention gets chosen below, *a hint that describes the wrong action
+is wrong* — a person is being told a control does one thing while it does
+another, and the one it actually does is the destructive one. That is worth
+fixing on its own, tonight, rather than waiting on a convention.
+
+The other two are genuinely a decision.
+
+### The convention, three ways
+
+**A · Every long press gets a hint, and nothing else changes.** Cheapest —
+three strings, no layout. It makes the gestures discoverable to screen readers
+and to nobody else, which formalises the inversion Section 1 is about rather
+than fixing it. The mic keeps a setting that sighted users cannot find.
+
+**B · Every long press gets a hint AND a visible partner.** A `⋯` on a
+notification row, the reaction chips already visible under a bubble, a
+language tag by the mic. Honest and expensive: three controls on three
+crowded rows, and the composer has no width for its one (Section 2, shape A).
+
+**C · No long press does anything a person cannot reach another way**, and the
+hint says the other way. Deletion moves to the row's own menu; reacting keeps
+the long press *and* the sheet reachable by tapping an existing chip; the mic's
+language moves to the listening line (Section 2, shape B) or to settings. The
+long press survives as a shortcut for people who know it, and nothing is only
+reachable through it.
+
+### What I would do
+
+**C, with A as the floor.** A long press is the only gesture in this app with
+no visible affordance at all, and the deletion case shows why that matters:
+the most destructive action on the notifications screen is reachable by an
+accident of holding a finger still, described to a screen reader as something
+else, and drawn nowhere. Making every gesture reachable another way is the
+only version that is true for people who cannot long-press at all — a tremor,
+a switch control, a stylus.
+
+A is the floor because it costs three strings and can ship tonight; it just
+should not be mistaken for the answer.
+
+**And fix the notification hint regardless**, because it is wrong under all
+three.

@@ -89,3 +89,7 @@ docs/read-aloud/samples/
 # The bundle gate writes Metro's response here to be read after a failure.
 # Regenerates on every run and can be 13 MB of JavaScript on a pass.
 qa/reports/bundle-check.out
+
+# `flow_lint.py` is a script, but it gets imported as a module when a check is
+# probed from a one-liner. The bytecode cache is not the repo's business.
+qa/__pycache__/

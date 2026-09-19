@@ -150,6 +150,28 @@ orders all-day events first within their day, the column reads top-to-bottom as
 | the tap | `useDraft(conversationId).setDraft(...)` then `router.push("/chat")` |
 | colour | `event.color` → the bar; `inkMuted` for time and location; `accent` for today's heading |
 
+### Divergence note — 2026-09-19, SPEC versus code
+
+Checked by the verifier session against `main` at `971f951`.
+
+- **Not a `SectionList`.** `app/calendar.tsx:184` is a `FlatList` over one flat
+  array of rows typed `{ kind: "day" } | { kind: "event" }` (`:44`), with the
+  day rows spliced in by the screen. Same picture on screen; different
+  identifier, and no `sections=` to key on `on`.
+- **`src/screens/people/DayHeading.tsx` does not exist.** The heading text is
+  computed by `headingFor(on, today)` in `app/calendar.tsx:50-63` — `Today ·
+  Thu 18 Sep`, `Tomorrow · …`, or the date — and rendered inline with
+  `testID="calendar-day-today"` for today and `calendar-day-<key>` otherwise
+  (`:192`). Rule 3 of `docs/design/README.md` wants the real file named.
+- **The colour bar has a fallback the SPEC does not mention.**
+  `EventRow.tsx:58` is `event.color ?? categoryColorFor(event.id)`. Both render
+  identically to a test, which is why `08-calendar`'s register row says the
+  bar's provenance is not covered.
+- Holds: `upcoming(days = 7)`, `str()` for the composite occurrence id
+  (`src/api/calendar.ts:97`), `useDraft(...).setDraft` then
+  `router.push("/chat")` (`app/calendar.tsx:99-101`), `accent` for today's
+  heading (`:194`).
+
 ## §5 · The honest note, carried forward
 
 **This is the row I would cut first if time runs short**, and that has been said

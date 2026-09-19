@@ -173,6 +173,26 @@ I have not touched it. The change is one `<Pressable>` per destination in their
 header row; whoever makes it should make all three at once, and it should be
 theirs or arbitrated, not mine taken quietly.
 
+### Divergence note — 2026-09-19, SPEC versus code
+
+Checked by the verifier session against `main` at `971f951`.
+
+- **§5 is resolved and reads as open.** The doors exist: `chat-open-chats`,
+  `chat-open-notifications` and `chat-open-calendar` in `app/chat.tsx`, added
+  by `70c68b6`, and `07-notifications` arrives by tapping the bell. The
+  paragraph about `app/chat.tsx:203-217` being frozen is history now.
+- **§4's avatar line names the wrong identifier.** It says
+  `` `${BASE_URL}${actor.avatar}` ``; the code is `absoluteUrl(optStr(record.avatar))`
+  in `src/api/notifications.ts:77`, borrowed from `src/api/conversations.ts:117`.
+  Same effect — the path is absolute by the time it leaves the API layer —
+  but the SPEC should name the function that does it.
+- Holds: `FlatList` (`app/notifications.tsx:251`); `list · unreadCount ·
+  markRead · markAllRead · remove · clearRead` (`src/api/notifications.ts:100-160`);
+  `Today` / `Earlier` from `createdAt` via `isToday` (`:169-178`);
+  `subscribeToChannel<NotificationEvent>("NotificationChannel", …)` with no
+  params (`:78`); the tap sets the draft and pushes `/chat` (`:103-105`).
+  The row's title is two lines (`numberOfLines={2}`), the body one.
+
 ## §6 · Evidence required before `DONE`
 
 1. `ours/` at 360, 411, 800 dp, dark and light.

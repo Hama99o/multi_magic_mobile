@@ -291,6 +291,28 @@ or `app/chat.tsx` is edited.** `messagesApi` and `useConversation` are consumed
 exactly as the assistant consumes them, which is the check that Phase 1 really
 was built generic.
 
+### Divergence note — 2026-09-19, SPEC versus code
+
+Checked by the verifier session against `main` at `971f951`.
+
+- **`conversationsApi` does not carry `send · edit · remove · react`.** Those
+  four live on a second object, `threadApi`, in `src/api/conversations.ts:223`;
+  `conversationsApi` (`:162`) keeps `list · show · markRead · unreadCount ·
+  clearForMe`. One file, two names — the table should name both.
+- **`mark_read` goes over HTTP, not `performOnChannel`.** The thread calls
+  `conversationsApi.markRead` on open (`app/chat/[id].tsx:129`, and the header
+  says why: "a message may not ride the socket"). `performOnChannel` is used
+  for `typing` only (`:190`). The SPEC's `performOnChannel(…, "mark_read", …)`
+  describes a path the code deliberately does not take.
+- **"Nothing in `app/chat.tsx` is edited" was true for Phase 2 and is not true
+  now**: `70c68b6` added the three title-bar doors, on his instruction. The
+  claim that `useConversation` and `messagesApi` are consumed unchanged still
+  holds (`app/chat/[id].tsx:106-109`, `channel: "MessageChannel"`).
+- Holds: `useQuery(["conversations"])` → `conversationsApi.list()`
+  (`app/chats.tsx:39-41`); `useLocalSearchParams` (`app/chat/[id].tsx:81`);
+  `subscribeToChannel("ConversationChannel", …)` (`:161`); the four `screens/
+  people/*` files; `absoluteUrl` (`conversations.ts:117`).
+
 ## §5 · Evidence required before `DONE`
 
 1. `ours/` at **360, 411 and 800 dp** — list and thread, dark and light — **and

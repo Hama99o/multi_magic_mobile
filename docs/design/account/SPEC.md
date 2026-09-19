@@ -212,3 +212,24 @@ version that cannot show a 404 to a store reviewer.
   whether the usage ledger should be deleted outright rather than detached.
 - **The entry point**, same as rows 10–12: `app/account.tsx` needs one row in
   the sessions sheet, which is the other session's file.
+
+### Divergence note — 2026-09-19, SPEC versus code
+
+Checked by the verifier session against `main` at `971f951`.
+
+- **§7 is stale in two of its three lines.** The endpoint landed:
+  `multi_magic@56559c4` adds `DELETE /api/v1/users/me` with `destroy`, and
+  `ACCOUNT_DELETION_AVAILABLE` is `true` since `f761470`
+  (`src/api/account.ts:41`). The entry point exists: `sessions-account` in
+  `src/components/sessions/SessionsSheet.tsx:263`, under its own "Account"
+  heading below a divider, as §3.1 asked. Only his approval of the privacy text
+  is still open — `PRIVACY_IS_DRAFT` is `true` and the banner renders. The board
+  in `docs/design/README.md` still says `BLOCKED` on row 14 for the same stale
+  reason.
+- **§5 holds**, with one identifier changed today: the confirm button is
+  `delete-account-confirm`, not `delete-confirm`. The sessions dialog used the
+  same handle for its container, and the two deletes this SPEC exists to keep
+  apart were indistinguishable to a test. `DeleteConfirm.tsx` is now
+  `delete-conversation-*`.
+- Flows: `12-account`, `17-privacy`, `18-delete-account` (`qa/FLOW_REGISTER.md`,
+  Run 7). `18` asserts both states of the gate and never fills the password.

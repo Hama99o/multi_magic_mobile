@@ -8,7 +8,7 @@
  * The 60-character cap is the server's (`TITLE_LIMIT`) and is enforced HERE, so
  * a long title is trimmed by the field rather than rejected by a round trip.
  */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { KeyboardAvoidingView, Modal, Pressable, View } from "react-native";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
@@ -17,14 +17,37 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { LIMITS } from "@/api/ai";
 import { useTranslation } from "react-i18next";
 
-export function RenameDialog({
-  visible,
+/**
+ * ── THE GATE IS THE MOUNT, NOT AN EFFECT ──────────────────────────────────
+ * This used to be `useState(seed)` plus an effect re-seeding it whenever
+ * `visible` or the seed changed, which the React Compiler (SDK 57) rejects as
+ * a setState inside an effect — rightly: it is a render, then a second render
+ * to correct it.
+ *
+ * The shape that needs no correcting is to let the state EXIST only while the
+ * dialog does. The wrapper holds no state and returns null when closed, so
+ * every open constructs the body fresh; `key` on the seed covers the case the
+ * effect's dependency array covered — a seed that changes while the dialog is
+ * already open starts it over. Two rows with the same seed do not remount, and
+ * do not need to: the state already equals it.
+ */
+export function RenameDialog({ visible, initialTitle, ...rest }: {
+  visible: boolean;
+  initialTitle: string;
+  busy?: boolean;
+  onCancel: () => void;
+  onSave: (title: string) => void;
+}) {
+  if (!visible) return null;
+  return <RenameDialogBody key={initialTitle} initialTitle={initialTitle} {...rest} />;
+}
+
+function RenameDialogBody({
   initialTitle,
   busy,
   onCancel,
   onSave,
 }: {
-  visible: boolean;
   initialTitle: string;
   busy?: boolean;
   onCancel: () => void;
@@ -35,12 +58,6 @@ export function RenameDialog({
   const { t } = useTranslation();
   const [title, setTitle] = useState(initialTitle);
 
-  // Reopening on a different row must not show the previous row's title.
-  useEffect(() => {
-    if (visible) setTitle(initialTitle);
-  }, [visible, initialTitle]);
-
-  if (!visible) return null;
 
   const trimmed = title.trim();
 

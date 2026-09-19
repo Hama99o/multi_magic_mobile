@@ -23,7 +23,7 @@
  * web's `lib/apps.ts` — the same word means the same thing everywhere, and a
  * key this app invented would simply be dropped server-side.
  */
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   KeyboardAvoidingView, Modal, Pressable, ScrollView, TextInput, View,
 } from "react-native";
@@ -87,14 +87,37 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
   );
 }
 
-export function InstructionsDialog({
-  visible,
+/**
+ * ── THE GATE IS THE MOUNT, NOT AN EFFECT ──────────────────────────────────
+ * This used to be `useState(seed)` plus an effect re-seeding it whenever
+ * `visible` or the seed changed, which the React Compiler (SDK 57) rejects as
+ * a setState inside an effect — rightly: it is a render, then a second render
+ * to correct it.
+ *
+ * The shape that needs no correcting is to let the state EXIST only while the
+ * dialog does. The wrapper holds no state and returns null when closed, so
+ * every open constructs the body fresh; `key` on the seed covers the case the
+ * effect's dependency array covered — a seed that changes while the dialog is
+ * already open starts it over. Two rows with the same seed do not remount, and
+ * do not need to: the state already equals it.
+ */
+export function InstructionsDialog({ visible, initial, ...rest }: {
+  visible: boolean;
+  initial: string;
+  busy?: boolean;
+  onCancel: () => void;
+  onSave: (instructions: string) => void;
+}) {
+  if (!visible) return null;
+  return <InstructionsDialogBody key={initial} initial={initial} {...rest} />;
+}
+
+function InstructionsDialogBody({
   initial,
   busy,
   onCancel,
   onSave,
 }: {
-  visible: boolean;
   initial: string;
   busy?: boolean;
   onCancel: () => void;
@@ -105,11 +128,6 @@ export function InstructionsDialog({
   const { t } = useTranslation();
   const [text, setText] = useState(initial);
 
-  useEffect(() => {
-    if (visible) setText(initial);
-  }, [visible, initial]);
-
-  if (!visible) return null;
 
   return (
     <Sheet onClose={onCancel}>
@@ -160,14 +178,37 @@ export function InstructionsDialog({
   );
 }
 
-export function ScopeDialog({
-  visible,
+/**
+ * ── THE GATE IS THE MOUNT, NOT AN EFFECT ──────────────────────────────────
+ * This used to be `useState(seed)` plus an effect re-seeding it whenever
+ * `visible` or the seed changed, which the React Compiler (SDK 57) rejects as
+ * a setState inside an effect — rightly: it is a render, then a second render
+ * to correct it.
+ *
+ * The shape that needs no correcting is to let the state EXIST only while the
+ * dialog does. The wrapper holds no state and returns null when closed, so
+ * every open constructs the body fresh; `key` on the seed covers the case the
+ * effect's dependency array covered — a seed that changes while the dialog is
+ * already open starts it over. Two rows with the same seed do not remount, and
+ * do not need to: the state already equals it.
+ */
+export function ScopeDialog({ visible, initial, ...rest }: {
+  visible: boolean;
+  initial: string[];
+  busy?: boolean;
+  onCancel: () => void;
+  onSave: (apps: string[]) => void;
+}) {
+  if (!visible) return null;
+  return <ScopeDialogBody key={initial.join(",")} initial={initial} {...rest} />;
+}
+
+function ScopeDialogBody({
   initial,
   busy,
   onCancel,
   onSave,
 }: {
-  visible: boolean;
   initial: string[];
   busy?: boolean;
   onCancel: () => void;
@@ -178,11 +219,6 @@ export function ScopeDialog({
   const { t } = useTranslation();
   const [selected, setSelected] = useState<string[]>(initial);
 
-  useEffect(() => {
-    if (visible) setSelected(initial);
-  }, [visible, initial]);
-
-  if (!visible) return null;
 
   const toggle = (key: string) =>
     setSelected((current) =>

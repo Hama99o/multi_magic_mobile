@@ -1,40 +1,53 @@
-# `docker compose up` from THIS folder starts the backend this app talks to.
+# `docker compose up` here runs THIS app — Metro, the dev server that serves the
+# JavaScript to a phone or an emulator. Nothing else. The backend has its own
+# compose next door in `multi_magic`; this file deliberately does not start it,
+# because one command should do one thing and "up" in the mobile folder should
+# mean the mobile app.
 #
-# There is nothing in this repository to containerise. It is an Expo / React
-# Native client: it builds to an APK or an iOS build, and Metro plus an Android
-# emulator cannot live in a container in any way that helps — adb, the file
-# watcher and the device all sit on the host.
+#   docker compose up            Metro, in the foreground, QR code and all
+#   docker compose up -d         same, in the background
+#   docker compose logs -f       the QR and the bundler output
+#   docker compose down          stop it
 #
-# What `docker compose up` here DOES do is remove the step everybody forgets:
-# it brings up `multi_magic`, the Rails backend, so the phone has something to
-# talk to. That backend is fully composed already — web, cable, worker,
-# postgres, redis — and this file simply includes it, so there is one command
-# and one answer to "is it up?" whichever folder you are standing in.
+# Scan the QR with Expo Go, or point the emulator at it. The phone and this
+# machine have to be on the same network — the hotspot counts.
 #
-#   docker compose up -d      the backend, in the background
-#   docker compose ps         what is actually running
-#   docker compose logs -f web
-#   docker compose down       stop it; the data stays
-#
-# NEVER `docker compose down -v`. The volumes hold the only copy of the
-# development database — his real notes, contacts, loans and documents.
-#
-# Then start Metro on the host, which is the half that cannot be containerised:
-#
-#   npx expo start --port 3029 --dev-client     for the emulator
-#   npx expo start --lan --go                   for a phone on the same network
-#
-# The path below assumes `multi_magic` sits beside this repo, which is how the
-# Apps folder is laid out. If it does not, compose says so plainly rather than
-# starting half a stack.
-# The project NAME matters more than it looks: without it, compose would name
-# the stack after THIS folder and create a second, empty copy of every service
-# beside the one already running — two postgres containers fighting for one
-# port, and the app talking to whichever won. `name:` pins both folders to the
-# same stack, so `up` here attaches to what is already running rather than
-# duplicating it, and `ps` answers about the real thing.
-name: "multi_magic"
+# The backend, when you want it:  docker compose -f ../multi_magic/docker-compose.yml up -d
+# And never with `-v` on that one: its volumes hold the only copy of the
+# development database.
+name: "multi_magic_mobile"
 
-include:
-  - path: "../multi_magic/docker-compose.yml"
-    project_directory: "../multi_magic"
+services:
+  metro:
+    image: "node:22-bookworm-slim"
+    working_dir: "/app"
+
+    # Host networking, and it is not laziness. Metro has to be reachable at this
+    # machine's own LAN address for a phone to load from it, and the Android
+    # emulator reaches the host at 10.0.2.2 — both of which stop being true the
+    # moment the process sits behind a bridge with its own address.
+    network_mode: "host"
+
+    # The repo itself, and `node_modules` with it: the host installed them on
+    # Linux, which is what this image is, so there is nothing to rebuild.
+    volumes:
+      - ".:/app"
+
+    environment:
+      # Where the app looks for MultiMagic. The default is the real backend, so
+      # a phone works with nothing else running. Point it at the local stack
+      # with:  EXPO_PUBLIC_API_URL=http://10.0.2.2:3001 docker compose up
+      EXPO_PUBLIC_API_URL: "${EXPO_PUBLIC_API_URL:-https://www.multimagics.com}"
+      EXPO_NO_TELEMETRY: "1"
+      # Metro writes here; without it the container falls back to / and fails.
+      HOME: "/app/.docker-home"
+
+    # 8081 is Expo's own default and is chosen here to stay out of the way:
+    # 3029 belongs to the emulator's Metro and 3030 to whatever is serving a
+    # phone. Override with METRO_PORT if all three are ever up at once.
+    command: >
+      npx expo start --lan --go --port ${METRO_PORT:-8081}
+
+    stdin_open: true
+    tty: true
+    restart: "no"

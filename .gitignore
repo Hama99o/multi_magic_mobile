@@ -84,3 +84,4 @@ qa/reports/.claims.lock
 # this repo is public. On disk to be listened to; SAMPLES.md says how to remake
 # them.
 docs/read-aloud/samples/
+.docker-home/

@@ -19,6 +19,37 @@ module.exports = {
   extends: ["expo"],
   rules: {
     /**
+     * ── ADDING A RULE BELOW? IT OWES TWO THINGS ──────────────────────────
+     *
+     * 1. **A fixture in `eslint-fixtures/`** containing exactly the shape it
+     *    forbids. `src/__tests__/eslintRules.test.ts` lints them and fails if
+     *    a rule has gone quiet — and an assertion there counts the selectors
+     *    in the resolved config, so a rule arriving without a fixture turns
+     *    the suite red rather than sitting silent.
+     *
+     *    This is not ceremony. One rule here shipped with a selector this
+     *    esquery does not support: it matched NOTHING, forever, and linted
+     *    perfectly clean while doing so. A rule that cannot fire is
+     *    indistinguishable from a rule that passes, in CI, in a diff and in
+     *    review, and worse than no rule, because it occupies the slot where
+     *    somebody would otherwise notice the gap.
+     *
+     * 2. **A `DOES NOT COVER:` paragraph** naming the shapes of the same bug
+     *    it cannot see. A fixture proves a rule CAN fire; that paragraph says
+     *    what firing does not mean. `49a0a7a` added the accessibility rule
+     *    and fixed two hints in one file; three English literals in visible
+     *    `<Text>` survived it, one two lines away, because a `<Text>` child
+     *    is not an attribute. A gate aimed at one shape of a bug will watch
+     *    the other shape walk past it in the same file on the same day.
+     *
+     * And the blind spots stay in these paragraphs rather than in
+     * `clean.tsx`: **a blind spot in a fixture named legitimate reads as
+     * approved.** `clean.tsx` is for the forms a rule must NOT flag because
+     * they are correct — not for the ones it fails to flag.
+     *
+     * `docs/TESTING.md` §1, §2 and §10 are the incidents behind all of this.
+     */
+    /**
      * A FUNCTION `style` on Pressable is SILENTLY DISCARDED by NativeWind's
      * interop — the whole object, not just the pressed state.
      *

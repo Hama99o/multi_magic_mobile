@@ -457,7 +457,7 @@ export const fr: Translations = {
     today: "Aujourd’hui",
     earlier: "Avant",
     unread: "Non lu : {{title}}",
-    hint: "Ouvre l’assistant avec une question à ce sujet",
+    hint: "Ouvre l’assistant avec une question à ce sujet. Appui long pour la supprimer.",
   },
 
   calendar: {

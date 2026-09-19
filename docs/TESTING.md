@@ -351,6 +351,105 @@ forward check's blind spot. There is now a test asserting that the set of names
 > "is what we define called?" — and the second question is the cheaper one,
 > because the answer is a list you can read.
 
+### It earned itself back the same day, twice
+
+**Once as a gate.** Three sessions were working in one tree that evening.
+Three new `thread.*` keys were sitting uncommitted when another session staged
+the same two locale files by pathspec, so the keys landed under its commit
+while the components calling them stayed unstaged. Main had three keys nothing
+called — for about **eleven minutes**, because this check went red on its own
+and named all three.
+
+Nobody was careless. The other session named its paths, read its diff, and had
+written the warning about this exact hole an hour earlier. Pathspec separates
+sessions *between* files and cannot separate them *inside* one, and the window
+is between "I need these files" and "go" — which is a gap a message cannot
+close, because both messages are true when they are sent.
+
+> **So the rule is not "be careful", it is: a key and its callers are one
+> change.** Land them in one commit. A string that exists and a string that is
+> used are not two pieces of work that can be sequenced across two sessions,
+> and no amount of care makes them two.
+
+Eleven minutes rather than a week is the strongest thing any gate in this file
+has done, and it is worth being exact about why: the backward check written
+that afternoon is the *only* reason it was visible at all. `tsc` was happy —
+the keys type-check. `locales.test.ts` was happy — both locales agreed.
+Nothing renders an unused key, so no screen test could see it.
+
+**And once as a diagnosis.** The three English literals fixed that night —
+`"UNREAD"`, `"This message was deleted"`, `"Not sent. Tap to retry."` — were
+found by a *backward walk over drawn text*: what does the app render that never
+asks for a key? The forward gate could not see them, and neither could the
+eslint rule added in `49a0a7a`, which guards `accessibilityLabel` and
+`accessibilityHint` — **a `<Text>` child is neither**.
+
+`49a0a7a` is also the commit that last touched `PersonMessageRow.tsx`. It fixed
+two literals in that file and these survived it, two lines away.
+
+> **A gate aimed at one shape of a bug will watch the other shape walk past it
+> — in the same file, on the same day, in the same commit.** When you write a
+> rule, name the shape it does not cover, in the rule.
+
+---
+
+## 9 · A fix that would have caused the defect it was fixing
+
+**2026-09-19, caught while writing the fix, and the two tests written to guard
+it both stayed green on the broken version.**
+
+`docs/ACCESSIBILITY.md` D2: the assistant's answer and the user's question are
+told apart **by shape** — a bubble on the right, an unbubbled serif for the
+answer. `MessageRow`'s own header says so: *"authorship is legible by shape
+before anybody reads a word."* True, and a claim about eyes. A screen reader
+read question and answer as one undifferentiated run, so the job was to add the
+spoken half without touching the visual.
+
+The obvious implementation is to wrap the answer in an element carrying the
+speaker's name. **That would have made every link in every answer unreachable.**
+A named accessibility element groups its children — `Pressable.js:245`,
+`accessible: accessible !== false`, and on iOS grouping is absolute — and
+`AnswerMarkdown` renders `accessibilityRole="link"` pressables *inside* answers,
+because the assistant puts a file's download link in the answer it writes.
+
+That is **N1 of the same audit**, arriving through its own remedy: the fix for
+"nobody is told who is speaking" would have caused "the control inside cannot be
+reached". It was avoided by putting the name on a leaf — the first text block —
+and never on the container.
+
+### The part that belongs in this file: neither gate could see it
+
+A test was written to guard exactly this — *a link inside an answer is still
+reachable after the answer is attributed* — and the naive fix was planted to
+watch it fail. **It stayed green.** RNTL builds a JS tree and does not emulate
+native accessibility grouping, so its queries find children that VoiceOver would
+never reach. The test is not useless, but what it proves is that the link is
+still *in the tree*, which is not what its name suggests.
+
+So a static check went in: a name on a container that holds a control. Its scope
+was then measured in both directions rather than assumed.
+
+- Planted a name on a container that **lexically** holds the send button in
+  `Composer.tsx` — it fires, naming the line.
+- Planted the same thing on `AnswerMarkdown`'s own container — **it stays
+  green.** That component builds its children into an array and interpolates
+  them (`{blocks}`), so nothing interactive is lexically inside the JSX and a
+  source walk cannot see what will be rendered there.
+
+The check earns its place anyway: it found **five** sheet scrims with this
+shape, and **three of the five were missed by the hand-read that wrote N1 up** —
+the first pass grepped for the press-swallowing child, and `SourceSheet` stops
+propagation instead, so it looked different while being identical. But the exact
+shape that prompted it is the shape it cannot check.
+
+> **The rule: an accessibility fix that adds a container is a grouping change,
+> and a grouping change is the same class of defect as the one being fixed.**
+> Put the name on a leaf. If you must name a container, the test to write first
+> is that what was reachable before is still reachable after — **and then prove
+> that test can fail**, because in Jest it usually cannot. What was reachable is
+> a native question; a JS tree will answer it wrongly and confidently. Where no
+> gate can reach, say so in the file rather than banking the green.
+
 ---
 
 ## What each gate is actually for

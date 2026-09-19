@@ -429,7 +429,7 @@ export const en = {
     today: "Today",
     earlier: "Earlier",
     unread: "Unread: {{title}}",
-    hint: "Opens the assistant with a question about this",
+    hint: "Opens the assistant with a question about this. Long press to delete it.",
   },
 
   calendar: {

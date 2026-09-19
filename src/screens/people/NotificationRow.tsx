@@ -55,6 +55,12 @@ export function NotificationRow({
       accessibilityLabel={
         unread ? t("notifications.unread", { title: notification.title }) : notification.title
       }
+      // BOTH actions, because the long press DELETES. This hint used to name
+      // only the tap, so the safe action was announced and the destructive one
+      // was not — a person was told this control does something other than the
+      // thing holding it would do. Wrong under every convention
+      // `docs/DICTATION_LANGUAGE.md` §4 draws, which is why it is fixed here
+      // rather than waiting on that decision.
       accessibilityHint={t("notifications.hint")}
       android_ripple={{ color: colors.border }}
       style={{

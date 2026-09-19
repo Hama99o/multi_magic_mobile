@@ -156,34 +156,55 @@ detail.
 
 ---
 
-## 6 · A green from the easy case, reported as coverage of the hard one
+## 6 · A flow counted as coverage that had never been run — and an entry, here, that invented its green
 
-**2026-09-19. Cost: the bug in §5 walked past a flow written specifically to
-catch it, and was found two flows later by hand.**
+**2026-09-19. Corrected the same night, from a screenshot.**
 
 `qa/flows/09-keyboard.yaml` raises the keyboard and asserts the composer, the
-send button and the attach button are all still visible. That is the right
-assertion. It passed on the AVD, and the pass went into the register as
+send button and the attach button are all still visible. It is the right
+assertion, aimed at exactly the defect in §5, and it sat in the register as
 keyboard coverage.
 
-Gboard on that emulator is in **floating** mode. A floating keyboard produces
-**no inset at all** — the window is never told anything happened — so the flow
-raised a keyboard that could not possibly have covered the composer, asserted
-the composer was not covered, and went green. It never executed the docked case,
-which is the only case that breaks.
+**It had never executed.** Not once. So when `app/chat.tsx` carried the same
+`behavior={undefined}` that put the assistant's composer under the keyboard,
+this flow caught nothing — there was no green to have been vacuous, there was
+nothing at all. *A flow that is written and never run proves exactly as much as
+no flow*, and it is worse than no flow in one respect: it occupies the slot
+where somebody would otherwise notice the gap.
 
-The flow's own header says this, in its own words: a floating keyboard "is the
-easy case, not the hard one". So the caveat was written, published, and then
-not carried into the result. **A limitation recorded next to a test does not
-travel with the test's verdict** — the verdict travels alone, as a green tick in
-a table, and by then nobody is reading the header.
+### What this entry said first, which was wrong
 
-The re-run is docked, and until that happens §5's fix is reasoned from the React
-Native source rather than witnessed.
+The first version of §6 said the flow had been **passing against a floating
+Gboard** — the easy case, no inset, so the composer could not have been covered
+— and reported as coverage of the docked case. That was a good story and none
+of it happened.
 
-> **The rule: a pass is only as strong as the hardest case the run actually
-> executed** — and the environment decides that, not the flow. Say in the
-> result which case ran, not only in the file which cases exist.
+It came from the flow's own header, which asserted that Gboard on that AVD runs
+floating. The first real run produced `reports/50-keyboard-up.png`: a **docked,
+full-width** keyboard with the composer sitting above it. The header was wrong,
+and it had been load-bearing — it was the reason to doubt the flow rather than
+the screen.
+
+So the author of this file read a claim in a comment, believed it because it
+was specific, and wrote it up as a finding in **the document about checks that
+pass for reasons unrelated to their name**. The correction came from QA running
+the thing and photographing the screen.
+
+That is the entry. The rule underneath did not change, but the instance is now
+the honest one, and the honest one is sharper: the invented mechanism was
+plausible, internally consistent, and would have been believed.
+
+> **The rule, twice over.** A verdict is only as strong as the hardest case the
+> run actually executed — so say in the *result* which case ran, not only in the
+> file which cases exist. And **a caveat written in a header is a claim about
+> the world, not evidence about it.** A comment describing an emulator's
+> behaviour is exactly as trustworthy as the last person to look, and if nobody
+> has looked, it is a guess in a convincing typeface. §5's rule was *never write
+> an assertion whose only source is a comment*; this is the same mistake made in
+> prose instead of in code, by the person who had just written that rule down.
+
+The fix in §5 is now **verified on a device**: the same run shows the composer
+above a docked full-width Gboard with a message sent and ticked.
 
 ---
 
@@ -296,7 +317,7 @@ forward check's blind spot. There is now a test asserting that the set of names
 | `npm run lint` | the banned forms are absent | a banned form with a `disable` comment on it |
 | `npm test` | behaviour, under **Node's** resolver and with **no layout** | whether the app bundles; whether anything fits; whether a colour is legible — and it will keep passing while telling you something is wrong in a sentence that names nothing (§7) |
 | `npm run bundle` | Metro, Babel, NativeWind, expo-router and the config plugins agree — **the app can start** | whether it then works |
-| the flows, on a device | it works, for a person, **on that device in that state** | only what a flow asserts — and only the cases that device actually produced (§6) |
+| the flows, on a device | it works, for a person, **on that device in that state** | only what a flow asserts, only on the cases that device actually produced — and nothing whatever until it has been RUN once (§6) |
 
 **Nothing above measures a pixel.** Jest has no layout engine, so no test in
 this repo can tell you that a French string fits a 360 dp row or that text is

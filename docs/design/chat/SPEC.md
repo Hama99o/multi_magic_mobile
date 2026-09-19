@@ -209,12 +209,19 @@ did not know about.
   which is correct — he dictates in French into an interface he may be
   reading in English — but nothing on screen says so. Proposed at the foot of
   this file, with the words, and left unbuilt for him.
-- **`09-keyboard` was passing against a floating keyboard.** The composer
-  survived because Gboard on that AVD produces no inset, not because the
-  screen handled one: `ScreenContainer` passed `behavior={undefined}` on
-  Android on the belief that the window always resizes, which stopped being
-  true when `edgeToEdgeEnabled` was set. Fixed in `28cf795`; the flow needs a
-  docked-keyboard re-run before its green means anything.
+- **The composer went under the keyboard on Android, and it is fixed and
+  verified.** `ScreenContainer` passed `behavior={undefined}` on Android on the
+  belief that the window always resizes, which stopped being true when
+  `edgeToEdgeEnabled` was set. Fixed in `28cf795`. QA's first-ever run of
+  `09-keyboard` then passed against a **docked, full-width** Gboard with a
+  message sent and ticked, so this is witnessed rather than reasoned.
+
+  *Corrected the same day:* an earlier version of this note said the flow had
+  been passing vacuously against a FLOATING keyboard. It had not been passing
+  at all — it had never been run — and that AVD's Gboard is docked. The
+  "floating" claim came from the flow's own header and was believed because it
+  was specific. `docs/TESTING.md` §6 is the write-up, including the part where
+  this file got it wrong.
 
 ---
 

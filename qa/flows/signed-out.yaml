@@ -1,0 +1,22 @@
+# END on the sign-in screen, whatever state the app was left in.
+#
+# The auth flows (sign-up, forgot-password) start where a stranger starts: signed
+# OUT. `login.yaml` deliberately ends signed IN, so this goes through it and then
+# signs out THE WAY A USER DOES — the sessions sheet's own row — rather than
+# wiping app storage. `clearState` would also erase the device fingerprint, which
+# every token is bound to and which sign-out deliberately keeps (`api/auth.ts`),
+# and under Expo Go it wipes Expo Go's own state and lands on its error screen
+# (`run.sh`'s note on `pm clear`).
+appId: ${APP_ID}
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-open-sessions"
+- assertVisible:
+    id: "sessions-sheet"
+- tapOn:
+    id: "sessions-sign-out"
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-email"
+    timeout: 60000

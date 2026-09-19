@@ -1,0 +1,95 @@
+# CREATE AN ACCOUNT — without creating one.
+#
+# His instruction of 18 Sept: *"create account should also work."* Its own
+# screen, not a toggle on sign-in (`docs/design/sign-in/SPEC.md`).
+#
+# ── WHY THIS FLOW NEVER SIGNS ANYBODY UP ─────────────────────────────────
+# The backend is his REAL MultiMagic (`RIG_CONTRACT.md` §3), and the only
+# address this rig may type is the QA account's, from `.env`. That account
+# EXISTS. So the submit here is refused by the server with a 400, and the flow
+# asserts the thing a real person most needs from this screen: that the refusal
+# arrives in the server's OWN words ("has already been taken") rather than as
+# "something went wrong" — `registrations_controller.rb` answers with a
+# JSON:API-ish `errors[].detail` array, a different shape from the rest of the
+# API, and `app/sign-up.tsx#messageFor` exists to read it.
+#
+# The 201 path — Devise signs the new user in, the app lands on the assistant —
+# is asserted by unit test and by nothing here. Creating throwaway users in his
+# database on every run is not a test; it is a mess with a schedule.
+#
+# ── TWO FINDINGS THIS FLOW WALKS PAST, on the record ─────────────────────
+#  · `detail` is `error.message`, which carries NO attribute: the screen says
+#    "has already been taken" without saying WHAT was. Rendering
+#    `source.pointer` (…/attributes/email) would name it.
+#  · The app validates firstname/email/password and not lastname; the server
+#    requires all four (`user.rb:221`). A blank last name reaches the server
+#    and comes back as "can't be blank" — naming no field, per the point above.
+#  · `rack_attack.rb` throttles sign-ups on the path `/users`; the route is
+#    `/users/signup`, so the throttle never fires. Backend, not this repo.
+appId: ${APP_ID}
+tags:
+  - auth
+---
+- runFlow: signed-out.yaml
+
+# The door: the second way out of sign-in.
+- tapOn:
+    id: "sign-in-create-account"
+- extendedWaitUntil:
+    visible:
+      id: "sign-up-firstname"
+    timeout: 30000
+- assertVisible: "Create an account"
+- assertVisible: "One account for your notes, money, contacts and calendar."
+- takeScreenshot: reports/60-sign-up-empty
+
+# ── Validate on press, and NAME what is missing ──────────────────────────
+# The same decision as sign-in: the button is enabled from the start. A
+# disabled button with no explanation is the commonest reason somebody believes
+# a form is broken.
+- tapOn:
+    id: "sign-up-submit"
+- assertVisible:
+    id: "sign-up-error"
+- assertVisible: "Fill in your name, email and a password."
+- takeScreenshot: reports/61-sign-up-empty-error
+
+# ── The taken address, refused in the server's words ─────────────────────
+- tapOn:
+    id: "sign-up-firstname"
+- inputText: "QA"
+- tapOn:
+    id: "sign-up-lastname"
+- inputText: "Rig"
+- tapOn:
+    id: "sign-up-email"
+- inputText: ${EMAIL}
+- tapOn:
+    id: "sign-up-password"
+- inputText: "never-created-by-the-rig"
+# Enter, not hideKeyboard. On a single-line field Enter performs the IME's
+# "done" and the keyboard closes; hideKeyboard can reach the app as a BACK
+# press when no IME is up, and this is a PUSHED screen — Back would pop it to
+# sign-in and the flow would fail three steps later on the wrong screen.
+- pressKey: Enter
+- tapOn:
+    id: "sign-up-submit"
+# THE ASSERTION. The 400's own `detail`, on screen, within the request timeout.
+- extendedWaitUntil:
+    visible: ".*has already been taken.*"
+    timeout: 30000
+- takeScreenshot: reports/62-sign-up-taken
+# Nothing was created and nobody was signed in: still on this screen, and the
+# composer — which exists on no screen but the assistant — is not here.
+- assertVisible:
+    id: "sign-up-firstname"
+- assertNotVisible:
+    id: "composer-input"
+
+# ── The way back ─────────────────────────────────────────────────────────
+- tapOn:
+    id: "sign-up-to-sign-in"
+- extendedWaitUntil:
+    visible:
+      id: "sign-in-email"
+    timeout: 30000

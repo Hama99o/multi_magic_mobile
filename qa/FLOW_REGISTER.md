@@ -19,6 +19,8 @@ not 1 — a blocked preflight has found nothing, not a bug.
 | `06-people-chat.yaml` | **UNRUN.** The chat list from `GET /conversations` with the name taken from `user.fullname` (a direct chat's `title` is null); `mark_read` on open; a message sent over HTTP landing on the **right** — `msg-mine-*` vs `msg-theirs-*` is the assertion, because the ConversationChannel copy is serialized with `user: nil` and would draw every message left; the long-press sheet; a reaction chip added and the same emoji taking it back. Arrives by **tapping `chat-open-chats`**, so a pass covers reachability | **Not the other side.** Whether a message from another person renders LEFT — the half of the `sent_by_me` trap that matters most — needs a second signed-in account and the rig has none; the left side is asserted only if the fixture happens to contain one, which is luck. **Not the double tick**: `read_at` is nil unless every *other* member has read past it, so one account can never make it non-nil. **Not the unread divider**, same reason. Nothing about groups |
 | `07-notifications.yaml` | **UNRUN.** The list grouped `Today`/`Earlier`; an unread row carrying both signals; a tap marking it read; and the one that matters — the tap lands in the assistant's composer with the question present and **no `thinking` and no `assistant-answer`**, which is the proof it was composed and not sent. Arrives by tapping the bell | **Not a live arrival.** `NotificationChannel` needs the backend to generate one for the QA account mid-run and nothing in this rig can cause that, so the socket path is asserted by unit test against a frame shape and by nothing at all against a real socket. **Not `clear`**: it opens the confirm, asserts the wording and cancels, because deleting rows from a real account to prove a negative is a deletion, not a test |
 | `08-calendar.yaml` | **UNRUN.** The agenda from `GET /events/upcoming?days=7`; **today always present**, with its events or the single line "Nothing today."; a day heading naming the day and the date; tapping an event composing a question without sending it. Arrives by tapping the calendar icon | **Not the correction it was built on.** Proving a 1990 birthday resolves to this year needs a recurring event whose next occurrence falls inside seven days, and the rig may not write to his real calendar — so `event-repeats` is asserted only if one happens to be there. **The proof lives in `src/api/__tests__/calendar.test.ts`**, and a green run here is not evidence about recurrence. Not the colour bar's provenance: `event.color` and the id fallback both render and no assertion tells them apart |
+| `signed-out.yaml` | Helper, like `login.yaml`: ends on the sign-in screen by signing OUT through the sessions sheet's own row — the way a user does — so the auth flows start where a stranger starts | Does not wipe storage. `clearState` would erase the device fingerprint every token is bound to, and under Expo Go it lands on Expo Go's error screen |
+| `10-sign-up.yaml` | **UNRUN.** Reachable from sign-in's "Create account"; validate-on-press with copy that names name, email and password; a TAKEN address — the QA account's own, the only one the rig may type — refused in the server's own words, "has already been taken", which is the JSON:API `errors[].detail` shape only this screen parses; nothing created and nobody signed in (still on sign-up, no composer); the way back to sign-in | **Does not create an account.** The 201 path — Devise signs the new user in and the app lands on the assistant — is unit-tested only; making users in his real database on every run is not a test. Not the 429: `rack_attack.rb` throttles `/users`, the route is `/users/signup`, so it never fires (backend finding). Walks past two app findings it records in its header: `detail` names no attribute, so the screen says "has already been taken" without saying what; and lastname is required by the server and not by the app |
 
 ## Run 5 — where the harness actually stands
 
@@ -130,3 +132,40 @@ known to work; its absence costs repeatability, not confidence.
 - **Destructive paths are opened and cancelled**, and assert the *wording*.
 - **Arrive the way a user arrives.** A flow that deep-links past the navigation
   proves the screen works, not that anybody can reach it.
+
+## Run 7 — flows for the screens that had none, written off-box
+
+Hamma9901's queue for the fourth session, 2026-09-19: every screen with no flow
+gets one, in the order a store reviewer meets them — sign-up, forgot-password,
+account, profile, change-password, sessions switch, ai-keys, privacy,
+delete-account. Each is **UNRUN** until `multimagic-mobile-79` runs it on the
+device in the gaps between its own steps; this session stays off the device.
+
+**The bar every one of them was written to**, and `qa/flow_lint.py` now checks
+what it can of it:
+
+- **Stable selectors only.** Every `id:` resolves to a `testID` in the code
+  (`TESTID`), and a testID built on a database id is reported as a finding, not
+  used as a selector (`DBID`) — the flow taps the row by its label instead.
+- **Never `optional: true` on the step that is the point.** Karwan's F-64:
+  optional turns "did not work" into "did not happen". Every optional needs a
+  written reason on its own command (`OPTIONAL`, `TOOTHLESS`).
+- **A whole text node, or a `.*`.** Maestro matches the full node, so a flow
+  asserting the first line of a two-line caption can never pass (`ANCHORED`).
+- **Real accounts are the QA account's, never his.** Sign-up types the QA
+  address and is refused; forgot-password asks for the QA address and asserts
+  the request was ACCEPTED, not that mail arrived. Nothing here deletes.
+
+**Finding, not a flow — the language switch.** The queue names "account
+(theme switch with dark actually visible, language switch)". There is no
+language switch in this app: `theme.store.ts`'s header says *"System / Light /
+Dark — his instruction, alongside language"*, and nothing under `app/` or
+`src/` reads a locale, calls i18next or offers a language row. A flow cannot
+cover a screen that does not exist, so it is recorded here as the gap it is.
+
+**First run of the linter over the ten flows that existed: 16 findings**, all
+reported to their owners rather than fixed here: an optional assert in
+`01-ask` (justified in prose, unmarked), an optional tap in `04`, three
+either-state waits in `login.yaml` that want `optional-ok` markers, eight
+database-id selectors in `06` and `07`, three `hideKeyboard`s with no
+justification (`03`, `06`, `09`), and `09-keyboard` with no row in this file.

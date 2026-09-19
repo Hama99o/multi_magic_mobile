@@ -84,17 +84,36 @@ interface DeviceSpeechModule {
   stop: () => Promise<void>;
 }
 
-function tryRequire<T>(name: string): T | null {
-  try {
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require(name) as T;
-  } catch {
-    return null;
-  }
+/**
+ * TWO BLOCKS, NOT ONE HELPER — and the duplication is the requirement.
+ *
+ * This was `tryRequire(name)` with the module name as an argument, and it
+ * made the whole app unbundleable: **Metro resolves `require` statically**, so
+ * a call whose argument is a variable is rejected at transform time with
+ * `Invalid call at line 90: require(name)`. Node does not care, which is
+ * precisely why it got through — `tsc`, eslint and 465 Jest tests all passed
+ * on it, and the eslint-disable on that line made it look considered. The dev
+ * client dropped to an error activity and nothing rendered.
+ *
+ * So each module is required with a LITERAL, which is the only form Metro can
+ * read. The `try` is still the point (see the header): a binary without these
+ * native modules must render no control, not take the route down.
+ */
+let audio: AudioModule | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  audio = require("expo-audio") as AudioModule;
+} catch {
+  audio = null;
 }
 
-const audio = tryRequire<AudioModule>("expo-audio");
-const device = tryRequire<DeviceSpeechModule>("expo-speech");
+let device: DeviceSpeechModule | null = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  device = require("expo-speech") as DeviceSpeechModule;
+} catch {
+  device = null;
+}
 
 // ── State ────────────────────────────────────────────────────────────────────
 

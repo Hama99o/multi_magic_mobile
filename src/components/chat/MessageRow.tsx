@@ -73,7 +73,13 @@ export function MessageRow({
             paddingVertical: metrics.space.md,
           }}
         >
-          <Text selectable style={{ color: colors.userBubbleInk }}>
+          <Text
+            selectable
+            style={{ color: colors.userBubbleInk }}
+            // The side and the bubble say whose words these are, and say it to
+            // eyes only. This is the same fact, said out loud.
+            accessibilityLabel={t("chat.youAsked", { body: message.body })}
+          >
             {message.body}
           </Text>
         </View>
@@ -89,7 +95,11 @@ export function MessageRow({
           the answer (`Ai::Actions::FindFiles`), so printing the raw string
           turns a file the user asked for into a filename in brackets followed
           by a path — unreachable, with nothing on screen to say so. */}
-      <AnswerMarkdown content={message.body ?? ""} onOpenLink={onOpenLink} />
+      <AnswerMarkdown
+        content={message.body ?? ""}
+        onOpenLink={onOpenLink}
+        speaker={t("chat.assistantSpeaker")}
+      />
 
       {/* TWO ROWS, NEVER ONE. `sources` are the records the answer was drawn
           FROM; `links` are what it points you AT. §5b: mixing them made "What

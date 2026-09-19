@@ -6,6 +6,7 @@
  * distinguishable from one that is merely slow.
  */
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { AccessibilityInfo } from "react-native";
 
 const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({
@@ -258,6 +259,37 @@ describe("waiting for the answer", () => {
 
     // The only thing standing between a posted question and silence.
     await waitFor(() => expect(screen.getByTestId("thinking")).toBeTruthy());
+  });
+
+  /**
+   * The sighted half of this is `scrollToEnd`: the screen moves to where the
+   * answer landed. Someone using a screen reader got neither that nor a word,
+   * so a posted question was followed by silence and the only way to find out
+   * was to swipe the screen looking. docs/ACCESSIBILITY.md D1.
+   *
+   * The ARRIVAL is announced, not the answer — speaking paragraphs about
+   * somebody's money unbidden takes the reading out of their hands.
+   */
+  it("says the answer arrived, because nothing else did", async () => {
+    const announce = jest
+      .spyOn(AccessibilityInfo, "announceForAccessibility")
+      .mockImplementation(() => {});
+    conversation.awaitingReply = true;
+    renderChat();
+    await waitFor(() => expect(screen.getByTestId("thinking")).toBeTruthy());
+    expect(announce).not.toHaveBeenCalledWith("Answer received.");
+
+    conversation.awaitingReply = false;
+    conversation.messages = [message(2, "assistant", "Your rent is 1,284.50 EUR.")];
+    act(() => {
+      screen.rerender(
+        <QueryClientProvider client={client as QueryClient}>
+          <Chat />
+        </QueryClientProvider>,
+      );
+    });
+
+    await waitFor(() => expect(announce).toHaveBeenCalledWith("Answer received."));
   });
 
   // The server broadcasts `aiError`. Without this the question looks like it is

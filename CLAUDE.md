@@ -105,6 +105,19 @@ This is not hypothetical: it happened while writing this file. A sibling had
 staged a half-finished fix and a test that was **red at that moment**, and a
 plain commit would have put both on `main` under somebody else's message.
 
+**And a failing suite in a shared tree belongs to whoever holds the files, not
+to whoever ran it.** `npm test` reads the whole tree, so the red you are looking
+at is very often somebody else's uncommitted line. Find out whose before you fix
+it: a well-meant fix to a file another session is mid-edit in is the same sweep
+as `git add -A`, arriving through the working tree instead of the index. Say
+what you saw and let them land it. This happened twice tonight in opposite
+directions.
+
+**Pathspec does not help inside a file.** Two sessions editing the same file
+cannot be separated by naming paths at all, so the only thing that works is one
+of them landing or reverting before the other stages. Ask, and say which files
+you are mid-edit in when you report progress.
+
 The cost is not tidiness. One sweep put a personal email address into a public
 repo. Another hid a session's finished work from the session chasing it — the
 header icons existed for half an hour while being asked for twice, committed

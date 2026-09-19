@@ -102,9 +102,23 @@ function renderInline(
 export function AnswerMarkdown({
   content,
   onOpenLink,
+  speaker,
 }: {
   content: string;
   onOpenLink?: (link: AnswerLink) => void;
+  /**
+   * Spoken before the answer, so somebody who cannot see the shape is told who
+   * is talking — `MessageRow`'s header says authorship is legible by shape,
+   * which is true and is a claim about eyes.
+   *
+   * It goes on ONE TEXT BLOCK, never on the container. Wrapping the answer in
+   * an element with a name would group its children — `docs/ACCESSIBILITY.md`
+   * N1 — and every link in an answer would stop being reachable, which is this
+   * audit's own finding reintroduced by its own fix. And it skips a block that
+   * holds a link, because a label REPLACES what is read: attributing the block
+   * a link lives in would bury the link inside a sentence.
+   */
+  speaker?: string;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -115,6 +129,14 @@ export function AnswerMarkdown({
   };
 
   const blocks: ReactNode[] = [];
+  let attributed = false;
+  /** The name, once, on the first block that can carry it without hiding a link. */
+  const nameFor = (plain: string): string | undefined => {
+    if (!speaker || attributed) return undefined;
+    if (/\[[^\]]*\]\([^)]*\)/.test(plain)) return undefined;
+    attributed = true;
+    return `${speaker}. ${plain}`;
+  };
   const lines = content.split("\n");
   let paragraph: string[] = [];
   let code: string[] | null = null;
@@ -124,7 +146,7 @@ export function AnswerMarkdown({
     const text = paragraph.join(" ");
     paragraph = [];
     blocks.push(
-      <Text key={key} variant="answer" selectable>
+      <Text key={key} variant="answer" selectable accessibilityLabel={nameFor(text)}>
         {renderInline(text, colors, open)}
       </Text>,
     );
@@ -174,7 +196,12 @@ export function AnswerMarkdown({
       blocks.push(
         <View key={`li${i}`} style={{ flexDirection: "row", gap: metrics.space.sm }}>
           <Text variant="answer" tone="muted">{numbered ? `${numbered[1]}.` : "•"}</Text>
-          <Text variant="answer" selectable style={{ flex: 1 }}>
+          <Text
+            variant="answer"
+            selectable
+            style={{ flex: 1 }}
+            accessibilityLabel={nameFor((bullet?.[1] ?? numbered?.[2]) as string)}
+          >
             {renderInline((bullet?.[1] ?? numbered?.[2]) as string, colors, open)}
           </Text>
         </View>,

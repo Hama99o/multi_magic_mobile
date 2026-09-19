@@ -12,7 +12,7 @@
  * stays on screen with a Retry under it.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { FlatList, Pressable, View } from "react-native";
+import { AccessibilityInfo, FlatList, Pressable, View } from "react-native";
 import { Bell, CalendarDays, MessageSquareText, Users } from "lucide-react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -324,6 +324,28 @@ export default function Chat() {
   useEffect(() => {
     if (awaitingReply) scrollToEnd();
   }, [awaitingReply, scrollToEnd]);
+
+  /**
+   * THE ANSWER ARRIVING IS THE PRODUCT, AND NOTHING SAID IT.
+   *
+   * `scrollToEnd` above is the sighted half of this: the screen moves to where
+   * the answer landed. Someone using a screen reader got neither — no movement
+   * they could perceive and no announcement — so a posted question was followed
+   * by silence, and the only way to find out whether the reply had come was to
+   * swipe the screen looking for it.
+   *
+   * The ARRIVAL is announced, not the answer. An answer here is paragraphs
+   * drawn from somebody's notes and money; speaking it unbidden would talk over
+   * whatever they were doing and take the reading out of their hands.
+   * `docs/ACCESSIBILITY.md` D1.
+   */
+  const wasAwaiting = useRef(false);
+  useEffect(() => {
+    if (wasAwaiting.current && !awaitingReply) {
+      AccessibilityInfo.announceForAccessibility(t("chat.answerArrived"));
+    }
+    wasAwaiting.current = awaitingReply;
+  }, [awaitingReply, t]);
 
   return (
     /* `avoidKeyboard` — and this screen is the one that most needed it and was

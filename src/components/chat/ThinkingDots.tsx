@@ -15,7 +15,7 @@
  * provider call is genuinely slow — so this does not fail, it says so.
  */
 import { useEffect, useRef, useState } from "react";
-import { Animated, View } from "react-native";
+import { AccessibilityInfo, Animated, View } from "react-native";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useTranslation } from "react-i18next";
@@ -68,10 +68,24 @@ export function ThinkingDots() {
     return () => clearTimeout(timer);
   }, []);
 
+  /**
+   * SPOKEN, because the copy change above is the whole point of this component
+   * and a label that changes inside a view nobody is watching changes nothing.
+   *
+   * The header says it: a socket that died silently must not look like a model
+   * that is thinking. Someone who cannot see the dots has no other way to tell
+   * those two apart, so they are the person this sentence was written for.
+   * `announceForAccessibility` is a no-op when no screen reader is running.
+   */
+  useEffect(() => {
+    if (slow) AccessibilityInfo.announceForAccessibility(t("chat.slow"));
+  }, [slow, t]);
+
   return (
     <View
       accessibilityRole="progressbar"
       accessibilityLabel={slow ? t("chat.stillWorking") : t("chat.thinking")}
+      accessibilityLiveRegion="polite"
       style={{ paddingVertical: metrics.space.md, gap: metrics.space.sm }}
       testID="thinking"
     >

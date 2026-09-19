@@ -39,6 +39,7 @@ const FRENCH = flatten(fr);
 const SAME_IN_BOTH = new Set([
   // Words French took whole, and one product name.
   "chat.title", // "Assistant"
+  "chat.assistantSpeaker", // "Assistant" — spoken, and the same word as chat.title
   "chat.notifications", // "Notifications"
   "files.document", // "Document"
   "thread.message", // "Message"

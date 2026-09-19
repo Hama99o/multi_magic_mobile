@@ -35,7 +35,10 @@ be read before anybody cites it.
 | No `Pressable` with a press handler in `app/` or `src/` is nameless — no label, no text in its subtree, and not excused by `accessible={false}` | Anything about whether the name is *right*, or whether two controls share one |
 | `Button` keeps its accessible name while `busy` | — |
 | `Markdown` gives every heading the `header` role | Whether heading *levels* are ordered sensibly |
-| `Input` marks its error as a live region | Whether anything else that changes is announced (mostly it is not — see below) |
+| `Input` marks its error as a live region | Whether anything else that changes is announced |
+| `ThinkingDots` is a live region and speaks when the wait turns slow | Whether a screen reader voices it in the order a person wants — a device question |
+| The chat screen announces the answer arriving | — |
+| Both speakers are named, and attributing the answer leaves its links reachable | — |
 
 **A green here does not mean the gestures work**, and that is not a hedge. It is
 this repo's §6 in its newest costume, and the instance is live: `06-people-chat`
@@ -149,44 +152,64 @@ unverified until `06` re-runs.
 
 ---
 
+## BUILT — D1 and D2, taken rather than listed
+
+These were written up as decisions and Hamma9901 ruled they are not: *"they are
+the same information the screen already gives everyone else."* That is the right
+test, and it is worth keeping as the line between this section and the next —
+**adding the spoken half of something the screen already says is a defect fix;
+deciding what the app should newly say is his.**
+
+### D1 · Nothing announced the answer arriving, and the answer is the product
+
+The app's entire claim is an asynchronous reply over ActionCable, and until this
+pass there was **one live region in the whole app** — the field error in F3. So
+a screen reader user posted a question and got silence, with no way to know the
+reply had landed except to swipe the screen looking for it. The sighted half
+already existed: `chat.tsx` calls `scrollToEnd` so the screen moves to where the
+answer will be.
+
+`ThinkingDots` was the sharpest case, because it was designed against exactly
+this failure and could not reach the people it was designed for. Its header says
+the 45-second copy change exists so that *"a socket that died silently must not
+look like a model that is thinking"* — and with no live region, a screen reader
+was never told the label had changed from `chat.thinking` to `chat.stillWorking`.
+Someone who cannot see the dots has no other way to tell those two apart.
+
+Built: the indicator is a polite live region and speaks `chat.slow` when the
+wait turns slow, and `chat.tsx` announces `chat.answerArrived` when
+`awaitingReply` falls. **The arrival is announced, not the answer body** — an
+answer here is paragraphs about somebody's notes and money, and speaking it
+unbidden would talk over whatever they were doing and take the reading out of
+their hands.
+
+### D2 · Who is speaking was carried entirely by shape
+
+`MessageRow`'s header is explicit: **"authorship is legible by shape before
+anybody reads a word"** — the user's words in a bubble on the right, the
+assistant's answer unbubbled in a serif. It is a good decision and a *sighted*
+one. There was no role, label or prefix distinguishing them, so a screen reader
+read question and answer as one undifferentiated run of text. For an app whose
+answers are drawn from somebody's own money and contacts, "who said this" is not
+decoration.
+
+Built, and **nothing anybody looks at changed**: the question's `<Text>` carries
+`chat.youAsked`, and the answer's speaker goes on the first text block of
+`AnswerMarkdown`.
+
+**The way it is attached is the interesting part, and it is this audit's own N1
+nearly reintroduced by its own fix.** The obvious implementation — wrap the
+answer in an element carrying the name — would have made the element group its
+children, and `AnswerMarkdown` renders `accessibilityRole="link"` pressables
+inside answers (the assistant puts a file's download link *in* the answer). That
+would have made every link in every answer unreachable. So the name goes on one
+text block, never the container, and it skips a block containing a link, because
+a label REPLACES what is read and would bury the link inside a sentence. The
+test that guards it asserts the link is still there after the attribution.
+
+---
+
 ## DESIGN DECISIONS — his call, not mine
-
-### D1 · Nothing announces the answer arriving, and the answer is the product
-
-The app's entire claim is an asynchronous reply over ActionCable. There is **one
-live region in the whole app** and it is the field error added in F3. So a
-screen reader user posts a question and gets silence — no announcement that the
-reply landed, and no way to know without manually swiping the screen to find
-out.
-
-`ThinkingDots` is the sharpest instance, because it was designed against exactly
-this failure. Its header says the 45-second copy change exists so that *"a socket
-that died silently must not look like a model that is thinking"*. It has
-`accessibilityRole="progressbar"` and a label that changes from `chat.thinking`
-to `chat.stillWorking` — and **with no live region a screen reader is never told
-the label changed**, so the one safeguard against a silent death does not reach
-the users least able to detect it by other means.
-
-The decision is *how much* to announce, and it is a real design question rather
-than an oversight to be patched: the whole answer (long, and it interrupts), a
-short "answer received", or a polite live region on the thinking indicator only.
-Recommended: announce the state changes (`thinking` → `stillWorking` → arrived),
-not the answer body — which keeps `IDENTITY.md`'s reading-app character and
-leaves the answer to be read deliberately.
-
-### D2 · Who is speaking is carried entirely by shape
-
-`MessageRow.tsx`'s header is explicit that **"authorship is legible by shape
-before anybody reads a word"** — the user's words in a bubble on the right, the
-assistant's answer unbubbled in a serif. That is a good decision and it is a
-*visual* one. There is no role, no label and no prefix distinguishing them, so a
-screen reader reads question and answer as one undifferentiated run of text.
-
-For an app whose answers are drawn from somebody's own notes, loans and money,
-"who said this" is not decoration. The fix is cheap (an `accessibilityLabel` on
-each row naming the speaker, or a visually-hidden prefix) but it is a content
-decision — it changes what is spoken on every message — so it is listed, not
-taken.
 
 ### D3 · A destructive long press that nothing announces, under a hint about something else
 
@@ -229,16 +252,19 @@ icon-only controls drifted. Effective size is the box plus `hitSlop` on each
 side; measured from source, so treat these as candidates for a device rather
 than as verdicts.
 
+**The three destructive ones first, because they are the ones that matter and
+they are also among the four smallest — which is the wrong way round.**
+
 | Control | Box | hitSlop | Effective | |
 |---|---|---|---|---|
+| `ai-key-remove` (`ai-keys.tsx:231`) | icon 13 | 8 | **29** | **removes a provider key** |
+| `pending-file-remove` (`PendingFiles.tsx:80`) | icon 16 | 8 | **32** | **removes a queued file** |
+| `answer-undo` (`AnswerActions.tsx:117`) | icon 15 | 10 | **35** | **undoes what an answer created** |
 | `msg-retry` (`PersonMessageRow.tsx:254`) | `minHeight: 32` | none | **32 high** | e7's file — reported, not touched |
-| `ai-key-remove` (`ai-keys.tsx:231`) | icon 13 | 8 | **29** | destructive |
 | `Freshness.tsx:47` | icon 18 | 6 | **30** | |
 | `composer-dictation-cancel` (`Composer.tsx:86`) | icon 16 | 8 | **32** | cancels dictation |
-| `pending-file-remove` (`PendingFiles.tsx:80`) | icon 16 | 8 | **32** | destructive |
 | header icons (`chat.tsx:72`) | icon 21 | 6 | **33** | the app's main navigation |
 | reveal (`change-password.tsx:88`) | icon 18 | 8 | **34** | |
-| `answer-undo` (`AnswerActions.tsx:117`) | icon 15 | 10 | **35** | destructive |
 | `session-menu` (`SessionRow.tsx:98`) | icon 20 | 8 | **36** | |
 | `answer-*` (`AnswerActions.tsx:87`) | icon 17 | 10 | **37** | copy / read aloud |
 | `file-preview-close`, `sessions-close` | icon 22 | 10 | **42** | |
@@ -249,9 +275,6 @@ of these sits inside a laid-out row, so **whether raising it makes two adjacent
 targets overlap is a layout question and Jest has no layout.** The pattern is
 worth a decision rather than twelve separate patches — raising the floor inside
 the icon-button pattern itself would fix them together.
-
-**Three of the four smallest are destructive** (remove a key, remove a pending
-file, undo an answer), which is the wrong way round.
 
 ---
 

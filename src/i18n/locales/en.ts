@@ -108,6 +108,10 @@ export const en = {
     thinking: "Thinking",
     stillWorking: "Still working on your answer",
     slow: "Still working — this one is taking a while.",
+    // Spoken, never drawn. The screen shows the answer arriving; these say it.
+    answerArrived: "Answer received.",
+    youAsked: "You asked: {{body}}",
+    assistantSpeaker: "Assistant",
   },
 
   composer: {
@@ -404,6 +408,9 @@ export const en = {
     react: "React {{emoji}}",
     removeReaction: "Remove {{emoji}}",
     reactHint: "Long press to react",
+    unread: "Unread",
+    deleted: "This message was deleted.",
+    notSent: "Not sent. Tap to retry.",
   },
 
   notifications: {

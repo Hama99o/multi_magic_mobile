@@ -126,6 +126,10 @@ export const fr: Translations = {
     thinking: "Réflexion",
     stillWorking: "Toujours en train de chercher votre réponse",
     slow: "Toujours en cours — celle-ci prend un peu de temps.",
+    // Lu à voix haute, jamais affiché.
+    answerArrived: "Réponse reçue.",
+    youAsked: "Vous avez demandé : {{body}}",
+    assistantSpeaker: "Assistant",
   },
 
   composer: {
@@ -432,6 +436,9 @@ export const fr: Translations = {
     react: "Réagir {{emoji}}",
     removeReaction: "Retirer {{emoji}}",
     reactHint: "Appui long pour réagir",
+    unread: "Non lus",
+    deleted: "Ce message a été supprimé.",
+    notSent: "Non envoyé. Touchez pour réessayer.",
   },
 
   notifications: {

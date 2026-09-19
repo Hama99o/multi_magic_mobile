@@ -20,3 +20,19 @@ nothing imports them. The test lints them explicitly with `--no-ignore`.
 
 **When you add a custom rule, add a fixture. When you change a selector, run
 `npx jest eslintRules`.**
+
+## Every rule here has a written blind spot
+
+Each rule in `.eslintrc.js` carries a `DOES NOT COVER:` paragraph naming the
+shapes of the same bug it cannot see — a function `style` on a component not
+spelled `Pressable`, a dynamic `import()`, a `selectable` and a long press in
+two different files, an English sentence in a `<Text>` child.
+
+That last one is why the habit exists. The commit that added the accessibility
+rule fixed two hints in `PersonMessageRow.tsx`; three English literals in
+visible text survived it, one of them two lines away, and one of those was a
+button's entire accessible name. A gate aimed at one shape of a bug will watch
+the other shape walk past it in the same file on the same day.
+
+**So name the shape a rule does not cover, in the rule.** A fixture proves a
+rule can fire; the paragraph beside it says what firing does not mean.

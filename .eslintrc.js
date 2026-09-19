@@ -31,6 +31,12 @@ module.exports = {
      *
      * `button.tsx`'s header carried this warning, having already shipped it
      * once. A warning in a header is a claim nobody enforces; this is the gate.
+     *
+     * DOES NOT COVER: a function `style` on anything not literally spelled
+     * `Pressable` — `TouchableOpacity`, a wrapped `Button`, or `Pressable`
+     * renamed on import — nor one passed in as a variable rather than written
+     * inline. The selector reads the tag name and the shape of the attribute,
+     * and both are easy to write around without meaning to.
      */
     "no-restricted-syntax": [
       "error",
@@ -59,6 +65,12 @@ module.exports = {
        * The legitimate form is a literal per module, each in its own `try`:
        *   try { audio = require("expo-audio") as AudioModule; } catch { … }
        * See `src/stores/readAloud.store.ts`.
+       *
+       * DOES NOT COVER: a dynamic `import()` with a computed argument, which
+       * breaks Metro the same way; `require` reached through an alias or
+       * `module.require`; or a perfectly literal name for a package that is
+       * not installed. Only `npm run bundle` sees those, which is why the
+       * hook still runs it when a diff touches module loading.
        */
       {
         selector: "CallExpression[callee.name='require'] > :first-child:not(Literal)",
@@ -83,6 +95,15 @@ module.exports = {
        * two spoken attributes. Data-derived values are untouched, because a
        * `t()` argument sits under a CallExpression and a template of names has
        * no literal at all.
+       *
+       * DOES NOT COVER: **a `<Text>` child**, which is not an attribute at
+       * all — and that is not hypothetical. `49a0a7a` added this rule and
+       * fixed two hints in `PersonMessageRow.tsx`; three English literals in
+       * visible `<Text>` survived it, one of them two lines away, and one of
+       * those WAS a control's entire accessible name. See `docs/TESTING.md`
+       * §8. It also misses a template literal with English in it, a literal
+       * reached through a variable, and the labels inside
+       * `accessibilityActions`.
        */
       /**
        * A `selectable` TEXT EATS THE LONG PRESS AROUND IT.
@@ -104,6 +125,15 @@ module.exports = {
        * text — none of which sits under a long press. This rule is about the
        * COMBINATION. If a bubble needs both, the copy action belongs in the
        * menu the long press opens, which is where every reference puts it.
+       *
+       * DOES NOT COVER, and this is the important one: the `Pressable` and the
+       * `Text` do not have to be in the same FILE. A row component that is
+       * selectable inside, dropped into a long-pressable list item elsewhere,
+       * collides exactly the same way and nothing here can see it — a selector
+       * runs over one file's AST. It also misses `selectable` arriving through
+       * a spread or a variable, and every other way a gesture gets eaten
+       * (a nested Pressable, a scroll view claiming the responder). The
+       * general case is a device.
        *
        * The selector over-approximates on purpose: `:has()` searches the whole
        * subtree, so it flags a `selectable` anywhere inside an element that

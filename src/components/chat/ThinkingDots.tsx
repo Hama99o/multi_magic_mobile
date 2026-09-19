@@ -25,7 +25,11 @@ const SLOW_AFTER_MS = 45_000;
 
 function Dot({ delay }: { delay: number }) {
   const colors = useColors();
-  const opacity = useRef(new Animated.Value(0.3)).current;
+  // `useState` with an initialiser rather than `useRef(new …).current`: the
+  // ref form reads `.current` during render, which the React Compiler rejects,
+  // AND constructs a throwaway `Animated.Value` on every render to hand to a
+  // `useRef` that ignores it. This builds exactly one.
+  const [opacity] = useState(() => new Animated.Value(0.3));
 
   useEffect(() => {
     const loop = Animated.loop(

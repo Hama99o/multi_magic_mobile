@@ -124,7 +124,14 @@ export function useConversation({
    * subscription down and back up on every render.
    */
   const conversationRef = useRef(conversationId);
-  conversationRef.current = conversationId;
+  // Written in an EFFECT, not during render: the React Compiler (SDK 57)
+  // rejects a ref assignment in a render body, and it is right that this is
+  // the safer shape — every read below happens inside a callback or a socket
+  // frame, never during a render, so "after commit" is soon enough and
+  // "during render" was never needed.
+  useEffect(() => {
+    conversationRef.current = conversationId;
+  });
 
   /**
    * The id of the question we are waiting on an answer to.

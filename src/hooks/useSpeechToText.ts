@@ -195,7 +195,14 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
   // Kept in a ref so the event subscriptions never need rebuilding when the
   // composer re-renders, which it does on every keystroke.
   const onFinalRef = useRef(onFinal);
-  onFinalRef.current = onFinal;
+  // Written in an EFFECT, not during render: the React Compiler (SDK 57)
+  // rejects a ref assignment in a render body, and it is right that this is
+  // the safer shape — every read below happens inside a callback or a socket
+  // frame, never during a render, so "after commit" is soon enough and
+  // "during render" was never needed.
+  useEffect(() => {
+    onFinalRef.current = onFinal;
+  });
 
   /** A cancel must suppress the final result that is already on its way. */
   const cancelledRef = useRef(false);

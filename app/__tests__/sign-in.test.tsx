@@ -21,7 +21,7 @@ jest.mock("expo-router", () => ({
 
 /* eslint-disable import/first */
 import SignIn from "../sign-in";
-import { useAuthStore } from "@/stores/auth.store";
+import { SESSION_END_SENTENCE, useAuthStore } from "@/stores/auth.store";
 import { TwoFactorRequiredError } from "@/api/auth";
 
 function axiosError(status: number) {
@@ -33,7 +33,32 @@ let signIn: jest.Mock;
 beforeEach(() => {
   jest.clearAllMocks();
   signIn = jest.fn().mockResolvedValue(undefined);
-  useAuthStore.setState({ signIn, user: null, status: "signedOut" });
+  useAuthStore.setState({ signIn, user: null, status: "signedOut", signedOutReason: null });
+});
+
+describe("arriving here because a session ended", () => {
+  // Landing on sign-in with no sentence looks like the app forgot you.
+  // Landing here because the device check failed deserves to be told so.
+  it("says the session was REVOKED, naming the device check", () => {
+    useAuthStore.setState({ signedOutReason: "revoked" });
+    render(<SignIn />);
+
+    expect(screen.getByTestId("sign-in-notice")).toHaveTextContent(SESSION_END_SENTENCE.revoked);
+    expect(SESSION_END_SENTENCE.revoked).toMatch(/device/);
+  });
+
+  it("says the session EXPIRED when it simply ran out", () => {
+    useAuthStore.setState({ signedOutReason: "expired" });
+    render(<SignIn />);
+
+    expect(screen.getByTestId("sign-in-notice")).toHaveTextContent(SESSION_END_SENTENCE.expired);
+  });
+
+  it("says nothing on an ordinary arrival", () => {
+    render(<SignIn />);
+
+    expect(screen.queryByTestId("sign-in-notice")).toBeNull();
+  });
 });
 
 function fill(email = "person@example.com", password = "a-real-password") {

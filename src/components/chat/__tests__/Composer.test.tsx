@@ -119,6 +119,24 @@ describe("the final transcript", () => {
   });
 });
 
+describe("offline", () => {
+  it("says so, keeps the field, and holds send and attach", () => {
+    render(<Composer value="a question" onChange={jest.fn()} onSend={jest.fn()} onAttach={jest.fn()} offline />);
+
+    expect(screen.getByTestId("composer-offline")).toBeTruthy();
+    expect(screen.getByTestId("composer-input").props.value).toBe("a question");
+    expect(screen.getByTestId("composer-send").props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByTestId("composer-attach").props.accessibilityState.disabled).toBe(true);
+  });
+
+  it("is silent when the server answers", () => {
+    render(<Composer value="a question" onChange={jest.fn()} onSend={jest.fn()} onAttach={jest.fn()} />);
+
+    expect(screen.queryByTestId("composer-offline")).toBeNull();
+    expect(screen.getByTestId("composer-send").props.accessibilityState.disabled).toBe(false);
+  });
+});
+
 describe("sending", () => {
   it("will not send whitespace", () => {
     const onSend = jest.fn();

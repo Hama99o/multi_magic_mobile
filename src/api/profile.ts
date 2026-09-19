@@ -22,6 +22,7 @@
  * breath and re-testing the socket — an auth-layer change, not a form field.
  */
 import { http } from "./http";
+import { UPLOAD_TIMEOUT_MS } from "./ai";
 import { absoluteUrl } from "./conversations";
 import { obj, optStr, id as parseId } from "./parse";
 
@@ -121,6 +122,8 @@ export const profileApi = {
       // The instance default is application/json, and leaving it produces a
       // request Rails parses as an empty body.
       headers: { "Content-Type": "multipart/form-data" },
+      // A photo is a file, and 15 s is a question's timeout — see ai.ts.
+      timeout: UPLOAD_TIMEOUT_MS,
     });
     return parseProfile(obj(res.data, "user").user);
   },

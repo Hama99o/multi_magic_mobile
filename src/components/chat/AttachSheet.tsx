@@ -15,7 +15,12 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Camera, FileText, Image as ImageIcon } from "lucide-react-native";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { LIMITS } from "@/api/ai";
+import { ALLOWED_UPLOAD_EXTENSIONS, LIMITS } from "@/api/ai";
+
+/** "PDF, PNG, JPG, …" — from the list the endpoint enforces, never retyped. */
+export function describeAllowedTypes(): string {
+  return ALLOWED_UPLOAD_EXTENSIONS.map((ext) => ext.toUpperCase()).join(", ");
+}
 
 export function AttachSheet({
   visible,
@@ -78,6 +83,16 @@ export function AttachSheet({
               </Text>
             ) : null}
           </View>
+
+          {/* The limits, BEFORE the picker opens. A person who picks a 14 MB
+              scan and is then told "under 10 MB" has done the work twice;
+              the sentence costs one line and the server enforces every word
+              of it (`AiDocument::MAX_BYTES`, `MAX_PER_CONVERSATION`,
+              `ALLOWED_EXTENSIONS`). */}
+          <Text variant="caption" tone="muted" testID="attach-limits">
+            Up to {LIMITS.maxFilesPerSession} files of {LIMITS.maxFileBytes / (1024 * 1024)} MB
+            each. {describeAllowedTypes()}.
+          </Text>
 
           {rows.map((row) => (
             <Pressable

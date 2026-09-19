@@ -21,6 +21,7 @@ jest.mock("@/hooks/useConversation", () => ({
 /* eslint-disable import/first */
 import Chat from "../chat";
 import { aiApi, documentsApi, type ChatMessage } from "@/api/ai";
+import { useReachability } from "@/stores/reachability.store";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
@@ -91,6 +92,7 @@ beforeEach(async () => {
 afterEach(() => {
   client?.clear();
   client = null;
+  useReachability.setState({ reachable: true, unreachableSince: null });
   jest.restoreAllMocks();
 });
 
@@ -170,6 +172,11 @@ describe("posting a question", () => {
     expect(screen.getByTestId("composer-input").props.value).toBe("Do I owe anyone?");
   });
 
+  // ── A 429 IS A WAIT, NOT A FAILURE ──────────────────────────────────────
+  //
+  // It used to be the danger tone with a Retry button — an invitation to do
+  // the one thing that keeps the limit closed. Now: muted, a countdown, the
+  // limits named, the question kept, and send off until the minute is up.
   it("says WAIT on a 429 rather than showing a failure", async () => {
     (aiApi.ask as jest.Mock).mockRejectedValue({ response: { status: 429 }, isAxiosError: true });
     renderChat();
@@ -180,9 +187,32 @@ describe("posting a question", () => {
       fireEvent.press(screen.getByTestId("composer-send"));
     });
 
-    // A substring match: the row also carries the Retry button's label, and
-    // `toHaveTextContent` compares the node's full text.
-    await waitFor(() => expect(screen.getByText(/You have asked a lot in a short time/)).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("chat-rate-limited")).toBeTruthy());
+    expect(screen.getByText(/You have asked a lot in a short time/)).toBeTruthy();
+    // Both caps are named, and the minute is counted down.
+    expect(screen.getByText(/15 questions a minute and 200 an hour/)).toBeTruthy();
+    expect(screen.getByText(/in 60 s/)).toBeTruthy();
+    // Nothing red, no Retry, the question still in the field, send held.
+    expect(screen.queryByTestId("chat-send-failed")).toBeNull();
+    expect(screen.queryByText("Retry")).toBeNull();
+    expect(screen.getByTestId("composer-input").props.value).toBe("hello");
+    expect(screen.getByTestId("composer-send").props.accessibilityState.disabled).toBe(true);
+  });
+
+  it("honours a Retry-After when the server sends one", async () => {
+    (aiApi.ask as jest.Mock).mockRejectedValue({
+      response: { status: 429, headers: { "retry-after": "12" }, data: {} },
+      isAxiosError: true,
+    });
+    renderChat();
+    await waitForSession();
+
+    fireEvent.changeText(screen.getByTestId("composer-input"), "hello");
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("composer-send"));
+    });
+
+    await waitFor(() => expect(screen.getByText(/in 12 s/)).toBeTruthy());
   });
 
   it("will not send an empty question", async () => {
@@ -192,6 +222,33 @@ describe("posting a question", () => {
     fireEvent.press(screen.getByTestId("composer-send"));
 
     expect(aiApi.ask).not.toHaveBeenCalled();
+  });
+});
+
+describe("when MultiMagic is not answering", () => {
+  // Observed, not assumed: the store flips when a request got no response.
+  // The composer says so, keeps the draft, and holds send.
+  it("says so under the composer and holds send", async () => {
+    useReachability.setState({ reachable: false, unreachableSince: Date.now() });
+    renderChat();
+    await waitForSession();
+
+    fireEvent.changeText(screen.getByTestId("composer-input"), "Do I owe anyone?");
+
+    expect(screen.getByTestId("composer-offline")).toBeTruthy();
+    expect(screen.getByTestId("composer-send").props.accessibilityState.disabled).toBe(true);
+    expect(screen.getByTestId("composer-input").props.value).toBe("Do I owe anyone?");
+  });
+
+  it("comes back the moment the server answers", async () => {
+    useReachability.setState({ reachable: false, unreachableSince: Date.now() });
+    renderChat();
+    await waitForSession();
+    expect(screen.getByTestId("composer-offline")).toBeTruthy();
+
+    act(() => useReachability.getState().markReachable());
+
+    expect(screen.queryByTestId("composer-offline")).toBeNull();
   });
 });
 

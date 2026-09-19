@@ -19,11 +19,13 @@ jest.mock("expo-status-bar", () => ({
 }));
 
 const mockStack = jest.fn();
+const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({
   Stack: (props: unknown) => {
     mockStack(props);
     return null;
   },
+  router: { replace: (...args: unknown[]) => mockReplace(...args) },
 }));
 
 jest.mock("expo-splash-screen", () => ({
@@ -43,6 +45,7 @@ jest.mock("@/styles/global.css", () => ({}));
 
 /* eslint-disable import/first */
 import RootLayout from "../_layout";
+import { useAuthStore } from "@/stores/auth.store";
 import { useThemeStore } from "@/stores/theme.store";
 import { TOKENS } from "@/theme/tokens";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -57,6 +60,34 @@ beforeEach(async () => {
   jest.clearAllMocks();
   await AsyncStorage.clear();
   useThemeStore.setState({ choice: "system", hydrated: false });
+  useAuthStore.setState({ user: null, status: "unknown", signedOutReason: null });
+});
+
+describe("a session that ends underneath the app", () => {
+  // A 401 clears the token and flips the store — and until this, nobody
+  // navigated. The chat stayed up, every request failing, nothing said.
+  it("goes to sign-in when the sign-out was FORCED", async () => {
+    render(<RootLayout />);
+    await waitFor(() => expect(mockStatusBar).toHaveBeenCalled());
+    act(() => useAuthStore.setState({ status: "signedIn" }));
+
+    act(() => useAuthStore.getState().forceSignOut("revoked"));
+
+    expect(mockReplace).toHaveBeenCalledWith("/sign-in");
+    expect(useAuthStore.getState().signedOutReason).toBe("revoked");
+  });
+
+  // The sessions sheet navigates itself on a deliberate sign-out; doing it
+  // here too would be two replaces for one departure.
+  it("leaves a deliberate sign-out to the screen that made it", async () => {
+    render(<RootLayout />);
+    await waitFor(() => expect(mockStatusBar).toHaveBeenCalled());
+    act(() => useAuthStore.setState({ status: "signedIn" }));
+
+    act(() => useAuthStore.setState({ status: "signedOut", signedOutReason: null }));
+
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
 });
 
 describe("the status bar", () => {

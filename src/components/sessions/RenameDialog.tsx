@@ -85,6 +85,12 @@ export function RenameDialog({
             onSubmitEditing={() => trimmed && onSave(trimmed)}
             testID="rename-input"
           />
+          {/* `maxLength` stops the typing silently; the count says why it
+              stopped. 60 is the server's `TITLE_LIMIT`, so the number a person
+              sees is the one that would otherwise have come back as a 422. */}
+          <Text variant="caption" tone="muted" testID="rename-count">
+            {title.length} / {LIMITS.titleLimit}
+          </Text>
 
           <View style={{ gap: metrics.space.sm }}>
             <Button

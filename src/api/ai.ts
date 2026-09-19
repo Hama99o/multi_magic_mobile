@@ -149,7 +149,23 @@ export const LIMITS = {
   maxSessions: 50,
   /** `Ai::Sessions::TITLE_LIMIT` */
   titleLimit: 60,
+  /**
+   * `ai_controller.rb:5-9` — `rate_limit to: 15, within: 1.minute` and
+   * `to: 200, within: 1.hour` on `show`. Rails' `rate_limit` answers with
+   * `head :too_many_requests` and NO `Retry-After`, so the screen can only name
+   * these numbers and count down the shorter window.
+   */
+  questionsPerMinute: 15,
+  questionsPerHour: 200,
 } as const;
+
+/**
+ * The instance timeout is 15 s, chosen for a request that is a question. A
+ * 10 MB PDF on a mobile connection is not a question: at 1 Mbit/s it is 80 s
+ * of upload before the server has even started reading it. Without this every
+ * large file "did not upload" — timed out client-side while it was arriving.
+ */
+export const UPLOAD_TIMEOUT_MS = 120_000;
 
 /**
  * What the upload endpoint ACCEPTS — `AiDocument::ALLOWED_EXTENSIONS`.
@@ -458,6 +474,7 @@ export const documentsApi = {
       // application/json, and leaving it in place produces a request Rails
       // parses as an empty body — "file is required" on a file that was there.
       headers: { "Content-Type": "multipart/form-data" },
+      timeout: UPLOAD_TIMEOUT_MS,
     });
     return parseDocument(obj(res.data, "document").document);
   },

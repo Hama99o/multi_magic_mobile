@@ -20,7 +20,7 @@ import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { Input } from "@/components/reusables/input";
 import { useMetrics } from "@/hooks/useColors";
-import { useAuthStore } from "@/stores/auth.store";
+import { SESSION_END_SENTENCE, useAuthStore } from "@/stores/auth.store";
 import { TwoFactorRequiredError } from "@/api/auth";
 import { apiErrorMessage, isNetworkFailure, isRateLimited, isUnauthorized } from "@/api/http";
 
@@ -44,6 +44,7 @@ function messageFor(error: unknown): string {
 export default function SignIn() {
   const metrics = useMetrics();
   const signIn = useAuthStore((s) => s.signIn);
+  const signedOutReason = useAuthStore((s) => s.signedOutReason);
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -80,6 +81,14 @@ export default function SignIn() {
         <View style={{ gap: metrics.space.sm }}>
           <Text variant="title">Sign in</Text>
           <Text tone="muted">Your notes, money, contacts and calendar — answered.</Text>
+          {/* Only after a FORCED sign-out. Arriving here from a 401 with no
+              sentence looks like the app forgot you; arriving here because the
+              device check failed deserves to be told so in words. */}
+          {signedOutReason ? (
+            <Text variant="caption" tone="accent" testID="sign-in-notice">
+              {SESSION_END_SENTENCE[signedOutReason]}
+            </Text>
+          ) : null}
         </View>
 
         <View style={{ gap: metrics.space.lg }}>

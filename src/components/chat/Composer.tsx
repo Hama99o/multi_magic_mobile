@@ -18,6 +18,13 @@
  * The `+` opens the attachment sheet when `onAttach` is given, and is disabled
  * with a label when it is not — a screen without a session id yet has nothing
  * to attach a file TO.
+ *
+ * ── Offline is SAID, and send is off ──────────────────────────────────────
+ * `offline` comes from the reachability store: MultiMagic did not answer the
+ * last request and has not answered a probe since. Sending would only produce
+ * the same failure; the draft is kept and the pill says why in one line. The
+ * field stays editable — being unable to reach the server is no reason to stop
+ * somebody writing their question.
  */
 import { Pressable, TextInput, View } from "react-native";
 import { ArrowUp, Mic, Plus, Square, X } from "lucide-react-native";
@@ -30,6 +37,7 @@ export function Composer({
   onChange,
   onSend,
   busy = false,
+  offline = false,
   onAttach,
 }: {
   value: string;
@@ -37,6 +45,8 @@ export function Composer({
   onSend: () => void;
   /** A question is in flight; sending another would race it. */
   busy?: boolean;
+  /** MultiMagic is not answering. Send is off and the pill says so. */
+  offline?: boolean;
   /** Opens the attachment sheet. Absent means attachments are not available. */
   onAttach?: () => void;
 }) {
@@ -49,7 +59,9 @@ export function Composer({
     onChange(value ? `${value.trim()} ${final}` : final);
   });
 
-  const canSend = value.trim().length > 0 && !busy;
+  const canSend = value.trim().length > 0 && !busy && !offline;
+  // A file cannot be uploaded to a server that is not answering either.
+  const canAttach = Boolean(onAttach) && !offline;
 
   return (
     <View style={{ gap: metrics.space.xs }}>
@@ -100,6 +112,15 @@ export function Composer({
         </Text>
       ) : null}
 
+      {/* Not a failure — a state. The question is kept, and the line says what
+          will happen next rather than what went wrong. */}
+      {offline ? (
+        <Text variant="caption" tone="muted" style={{ paddingHorizontal: metrics.space.md }} testID="composer-offline">
+          Can&apos;t reach MultiMagic right now. Your question is kept — send it when the
+          connection is back.
+        </Text>
+      ) : null}
+
     <View
       style={{
         flexDirection: "row",
@@ -116,8 +137,8 @@ export function Composer({
       <Pressable
         accessibilityRole="button"
         accessibilityLabel="Add a photo or a document"
-        accessibilityState={{ disabled: !onAttach }}
-        disabled={!onAttach}
+        accessibilityState={{ disabled: !canAttach }}
+        disabled={!canAttach}
         hitSlop={8}
         onPress={onAttach}
         style={{
@@ -125,7 +146,7 @@ export function Composer({
           height: 40,
           alignItems: "center",
           justifyContent: "center",
-          opacity: onAttach ? 1 : 0.4,
+          opacity: canAttach ? 1 : 0.4,
         }}
         testID="composer-attach"
       >

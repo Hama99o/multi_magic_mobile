@@ -10,7 +10,8 @@ import MockAdapter from "axios-mock-adapter";
 import * as SecureStore from "expo-secure-store";
 import {
   __resetTokenCache, http, isNetworkFailure, isRateLimited, isUnauthorized,
-  loadSessionEmail, loadToken, setSessionEmail, setToken, setUnauthorizedHandler,
+  loadSessionEmail, loadToken, retryAfterSeconds, sessionEndReason, setReachabilityHandler,
+  setSessionEmail, setToken, setUnauthorizedHandler,
 } from "../http";
 import { __resetFingerprintCache } from "@/lib/fingerprint";
 import { ApiShapeError } from "../parse";
@@ -24,7 +25,16 @@ beforeEach(() => {
   __resetFingerprintCache();
   (globalThis as { __clearSecureStore?: () => void }).__clearSecureStore?.();
   setUnauthorizedHandler(null);
+  setReachabilityHandler(null);
 });
+
+/** A JWT with the given `exp`, shaped as devise-jwt hands it back. */
+function bearer(exp: number): string {
+  const payload = Buffer.from(JSON.stringify({ jti: "abc", exp })).toString("base64url");
+  return `Bearer eyJhbGciOiJIUzI1NiJ9.${payload}.c2ln`;
+}
+const IN_AN_HOUR = Math.floor(Date.now() / 1000) + 3600;
+const AN_HOUR_AGO = Math.floor(Date.now() / 1000) - 3600;
 
 afterEach(() => {
   mock.restore();
@@ -107,6 +117,45 @@ describe("the 401 path", () => {
     expect(await loadToken()).toBeNull();
   });
 
+  // ── THE LOGIN'S OWN 401 IS NOT A SESSION ENDING ──────────────────────────
+  //
+  // A wrong password is a 401 too. Before this guard it reached the handler,
+  // which tore down a cable that was never up — and once the handler carried a
+  // reason, would have told somebody who mistyped their password that their
+  // session had expired.
+  it("ignores a 401 on a request that carried no token", async () => {
+    const handler = jest.fn();
+    setUnauthorizedHandler(handler);
+    mock.onPost("/users/login").reply(401, { error: "Invalid Email or password." });
+
+    await expect(http.post("/users/login", {})).rejects.toBeDefined();
+
+    expect(handler).not.toHaveBeenCalled();
+  });
+
+  it("says REVOKED when a live token is refused — the fingerprint, or another device", async () => {
+    await setToken(bearer(IN_AN_HOUR));
+    const handler = jest.fn();
+    setUnauthorizedHandler(handler);
+    mock.onGet("/guarded").reply(401, { error: "You need to sign in or sign up before continuing." });
+
+    await expect(http.get("/guarded")).rejects.toBeDefined();
+
+    expect(handler).toHaveBeenCalledWith("revoked");
+    expect(await loadToken()).toBeNull();
+  });
+
+  it("says EXPIRED when the token's own exp is in the past", async () => {
+    await setToken(bearer(AN_HOUR_AGO));
+    const handler = jest.fn();
+    setUnauthorizedHandler(handler);
+    mock.onGet("/guarded").reply(401);
+
+    await expect(http.get("/guarded")).rejects.toBeDefined();
+
+    expect(handler).toHaveBeenCalledWith("expired");
+  });
+
   it("leaves the token alone on a 403 — a different problem with different advice", async () => {
     await setToken("Bearer good");
     mock.onGet("/forbidden").reply(403, { error: "Access denied" });
@@ -161,6 +210,69 @@ describe("isNetworkFailure", () => {
     const offline = await http.get("/gone").catch((e) => e);
 
     expect(isNetworkFailure(offline)).toBe(true);
+  });
+});
+
+describe("sessionEndReason", () => {
+  it("reads exp off the stored Authorization value without verifying it", () => {
+    expect(sessionEndReason(bearer(AN_HOUR_AGO))).toBe("expired");
+    expect(sessionEndReason(bearer(IN_AN_HOUR))).toBe("revoked");
+  });
+
+  // Unreadable is the more careful sentence: "check your devices" costs
+  // nothing when wrong; "it just expired" hides a stolen token when wrong.
+  it("treats anything it cannot read as revoked", () => {
+    expect(sessionEndReason("Bearer not-a-jwt")).toBe("revoked");
+    expect(sessionEndReason("Bearer a.!!!.c")).toBe("revoked");
+    expect(sessionEndReason("")).toBe("revoked");
+  });
+});
+
+describe("retryAfterSeconds", () => {
+  // Rack::Attack sends both; Rails' own rate_limit on ai#show sends neither.
+  it("reads the header first, then the body, then gives up honestly", async () => {
+    mock.onGet("/h").reply(429, { error: "too_many_requests", retry_after: 60 }, { "retry-after": "60" });
+    mock.onGet("/b").reply(429, { error: "too_many_requests", retry_after: 120 });
+    mock.onGet("/n").reply(429);
+
+    expect(retryAfterSeconds(await http.get("/h").catch((e) => e))).toBe(60);
+    expect(retryAfterSeconds(await http.get("/b").catch((e) => e))).toBe(120);
+    expect(retryAfterSeconds(await http.get("/n").catch((e) => e))).toBeNull();
+  });
+});
+
+describe("the reachability witness", () => {
+  it("reports reached for ANY response, including a 500", async () => {
+    const reach = jest.fn();
+    setReachabilityHandler(reach);
+    mock.onGet("/ok").reply(200, {});
+    mock.onGet("/broken").reply(500, {});
+
+    await http.get("/ok");
+    await http.get("/broken").catch(() => {});
+
+    expect(reach.mock.calls).toEqual([[true], [true]]);
+  });
+
+  it("reports NOT reached only when nothing answered", async () => {
+    const reach = jest.fn();
+    setReachabilityHandler(reach);
+    mock.onGet("/gone").networkError();
+
+    await http.get("/gone").catch(() => {});
+
+    expect(reach).toHaveBeenCalledWith(false);
+  });
+
+  // A 10 MB upload timing out on a slow link is not the app being offline.
+  it("does not call a timeout offline", async () => {
+    const reach = jest.fn();
+    setReachabilityHandler(reach);
+    mock.onGet("/slow").timeout();
+
+    await http.get("/slow").catch(() => {});
+
+    expect(reach).not.toHaveBeenCalledWith(false);
   });
 });
 

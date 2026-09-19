@@ -21,8 +21,9 @@ import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useAuthStore } from "@/stores/auth.store";
-import { aiApi, type ChatMessage, type MessageLink } from "@/api/ai";
-import { isRateLimited, isNetworkFailure, apiErrorMessage } from "@/api/http";
+import { LIMITS, aiApi, type ChatMessage, type MessageLink } from "@/api/ai";
+import { isRateLimited, isNetworkFailure, apiErrorMessage, retryAfterSeconds } from "@/api/http";
+import { useReachability } from "@/stores/reachability.store";
 import { useConversation } from "@/hooks/useConversation";
 import { useDraft } from "@/hooks/useDraft";
 import { useStarterPrompts } from "@/hooks/useStarterPrompts";
@@ -110,6 +111,17 @@ interface FailedQuestion {
   body: string;
   reason: string;
 }
+
+/**
+ * How long a 429 with no `Retry-After` is treated as a wait.
+ *
+ * `ai#show` is capped at 15 a minute and 200 an hour by Rails' `rate_limit`,
+ * which answers `head :too_many_requests` and nothing else. The minute is the
+ * window somebody actually hits by asking quickly, so that is the one counted
+ * down; the hour is named in the sentence so a second 429 straight after is
+ * not a mystery.
+ */
+const RATE_LIMIT_WAIT_S = 60;
 
 export default function Chat() {
   const colors = useColors();
@@ -205,6 +217,32 @@ export default function Chat() {
   const unreadChats = unread?.unreadConversations ?? 0;
   const [posting, setPosting] = useState(false);
   const [failedQuestion, setFailedQuestion] = useState<FailedQuestion | null>(null);
+
+  /**
+   * ── A 429 IS A WAIT, NOT A FAILURE ────────────────────────────────────
+   * It used to render in the danger tone with a Retry button — an invitation
+   * to do the one thing that keeps the limit closed. Now it is a muted line
+   * with a countdown, the question stays in the composer, and send is off
+   * until the count reaches zero. Nothing is red, because nothing is wrong.
+   */
+  const [waitUntil, setWaitUntil] = useState<number | null>(null);
+  const [secondsLeft, setSecondsLeft] = useState(0);
+
+  useEffect(() => {
+    if (waitUntil == null) return;
+    const tick = () => {
+      const left = Math.max(0, Math.ceil((waitUntil - Date.now()) / 1000));
+      setSecondsLeft(left);
+      if (left === 0) setWaitUntil(null);
+    };
+    tick();
+    const timer = setInterval(tick, 1_000);
+    // Cleared on unmount and on every new wait: nothing left spinning.
+    return () => clearInterval(timer);
+  }, [waitUntil]);
+
+  /** MultiMagic did not answer the last request. See `reachability.store`. */
+  const reachable = useReachability((s) => s.reachable);
   const [openSource, setOpenSource] = useState<MessageLink | null>(null);
   const [openFile, setOpenFile] = useState<AnswerLink | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
@@ -256,14 +294,17 @@ export default function Chat() {
         // The question comes BACK, into the composer and onto the screen. The
         // one thing this must never do is swallow it.
         setDraft(question);
-        setFailedQuestion({
-          body: question,
-          reason: isRateLimited(e)
-            ? "You have asked a lot in a short time. Try again in a minute."
-            : isNetworkFailure(e)
+        if (isRateLimited(e)) {
+          // A wait, not a failure — see `waitUntil`.
+          setWaitUntil(Date.now() + (retryAfterSeconds(e) ?? RATE_LIMIT_WAIT_S) * 1000);
+        } else {
+          setFailedQuestion({
+            body: question,
+            reason: isNetworkFailure(e)
               ? "Could not reach MultiMagic. Your question is still here."
               : (apiErrorMessage(e) ?? "That did not send."),
-        });
+          });
+        }
       } finally {
         setPosting(false);
       }
@@ -402,6 +443,17 @@ export default function Chat() {
                 </View>
               ) : null}
 
+              {secondsLeft > 0 ? (
+                <View style={{ gap: metrics.space.xs }} testID="chat-rate-limited">
+                  {/* Muted, no button. The number is the whole message. */}
+                  <Text variant="caption" tone="muted">
+                    You have asked a lot in a short time. MultiMagic takes{" "}
+                    {LIMITS.questionsPerMinute} questions a minute and {LIMITS.questionsPerHour} an
+                    hour. Your question is kept — you can send it in {secondsLeft} s.
+                  </Text>
+                </View>
+              ) : null}
+
               {failedQuestion ? (
                 <View style={{ gap: metrics.space.sm }} testID="chat-send-failed">
                   <Text variant="caption" tone="danger">
@@ -440,7 +492,9 @@ export default function Chat() {
             value={draft}
             onChange={setDraft}
             onSend={() => void send(draft)}
-            busy={posting}
+            // Off while a question is in flight AND while the minute runs down.
+            busy={posting || secondsLeft > 0}
+            offline={!reachable}
             onAttach={conversationId != null ? () => setAttachOpen(true) : undefined}
           />
           {/* Mindvalley's one line, once, under the composer. */}

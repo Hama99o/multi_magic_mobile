@@ -32,6 +32,7 @@ import { AppState, type AppStateStatus } from "react-native";
 import { installActionCableShim } from "./actioncableShim";
 import { WS_URL } from "@/config/env";
 import { loadSessionEmail, loadToken } from "@/api/http";
+import { useReachability } from "@/stores/reachability.store";
 import { getDeviceFingerprint } from "./fingerprint";
 
 // Must run before any connection is opened — see the shim's header.
@@ -186,6 +187,10 @@ function attach(state: ChannelState, cable: CableConsumer): void {
       for (const listener of state.listeners) listener.onData(data);
     },
     connected: () => {
+      // The socket is up, so the host answers — the earliest witness after a
+      // tunnel, ahead of any HTTP reply. The offline banner comes down here
+      // rather than on the next probe.
+      useReachability.getState().markReachable();
       for (const listener of state.listeners) listener.onConnected?.();
     },
     rejected: () => {

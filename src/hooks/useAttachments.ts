@@ -22,7 +22,7 @@ import {
   ALLOWED_UPLOAD_EXTENSIONS, ALLOWED_UPLOAD_MIME_TYPES, LIMITS, documentsApi,
   type AiDocument,
 } from "@/api/ai";
-import { apiErrorMessage } from "@/api/http";
+import { failureMessage } from "@/api/failure";
 
 export interface PendingFile {
   /** Local, and only for React's key — the server's id arrives on success. */
@@ -103,7 +103,7 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
         setPending((current) =>
           current.map((p) =>
             p.key === key
-              ? { ...p, status: "failed", error: apiErrorMessage(e) ?? "That file did not upload." }
+              ? { ...p, status: "failed", error: failureMessage(e, "That file did not upload.") }
               : p,
           ),
         );

@@ -502,6 +502,16 @@ structure, and the idea lives in the structure.
 > it, and nobody could see that until somebody asked the question from the other
 > end.
 
+**A relative, from the same evening, and the sharpest form of it.** A session
+chasing this very report ran `pkill -f 'while :; do :; done'` and killed its
+own shell — because the process running the pattern had the pattern on its
+command line. `QA_HANDBOOK`'s `pgrep -f maestro` trap, walked into by the
+person who wrote it into `CLAUDE.md` that morning. It is §10 turned inside
+out: not a search that misses a spelling, but **a search whose own invocation
+is inside the set it searches.** Same root — the pattern was treated as if it
+named an idea, when a pattern only ever names characters, and the characters
+were also in the searcher.
+
 **A fourth, an hour after this entry was written, in the instrument that
 supplied its first example.** `keys.test.ts` had by then written down the two
 *names* `t` is imported under, with a test that fails if a third appears. It
@@ -533,6 +543,57 @@ fixing. Only one of them tells you to break something.
 
 Writing the rule down did not protect the file the rule was written from. §2's
 corollary, one level up.
+
+---
+
+## 11 · A diagnosis that was right about what it ruled out and wrong about what it ruled in
+
+**2026-09-19, and the wrong half reached a commit message and two reports
+before the right one arrived.**
+
+Two suites failed in a full run: `ScopeDialog` once, `PendingFiles` the next
+time. Each passed alone in under a second after taking sixteen under load.
+Both were untracked files belonging to another session.
+
+The experiment was sound. I stashed my own three changed files, ran the whole
+suite against the same tree, and it came back green — so my change was not the
+cause. That conclusion was correct and it is the only thing the experiment
+supported.
+
+Then I attached a cause: **flaky under parallel contention**. It fitted every
+observation. A different suite each run, a twentyfold slowdown under load, and
+green in isolation are exactly what test pollution looks like, and the machine
+really was at load 25.
+
+The real cause was that a sibling session was **planting breaks** in those two
+components to check its new tests could fail. Seconds each, reverted
+immediately. I ran the suite inside the window, twice, and caught two different
+plants. *"A different suite each time"* was two different plants. *"Green
+alone"* was after the revert. There was nothing left to find by the time I
+looked, because the evidence had already restored itself.
+
+> **The rule: a controlled experiment licenses exactly one conclusion, and
+> "not me" is not "therefore this".** Ruling yourself out is cheap and worth
+> doing; naming the cause is a second claim that needs its own evidence. When
+> the observation is *"something changed underneath me"*, the only honest
+> report is that sentence — and in a tree three sessions share, **the first
+> hypothesis should be another session, not the machine.**
+
+What made it costly rather than merely wrong is that the wrong half travelled:
+it went into `bf0ec10`'s message and into a report, and "flaky" was repeated
+onward by somebody who had no way to check it. The observation would have
+travelled just as usefully without the cause attached.
+
+**Fixed at the source too**, by the session that was planting: planting a
+break is a destructive edit to state three sessions share. It is invisible in
+a normal repo because it lasts seconds; here a sibling running `npm test`
+inside the window sees files they do not own going red, and the honest reading
+of that is wrong. Announce the file and the window, or plant when nobody else
+is running — in `CLAUDE.md` as of `240cf14`.
+
+Which means this file now argues both halves: **plant the break** (§2), and
+**say when you are about to**, because in a shared tree the cost of your plant
+lands on whoever is being careful at that moment.
 
 ---
 

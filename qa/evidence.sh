@@ -75,6 +75,31 @@ for flowdir in "$SRC"/*/; do
   [ "$flow" = "maestro.log" ] && continue
   screen="$(screen_for "$flow")"
 
+  # THE PICTURE PASS FILES BY PICTURE, NOT BY FLOW. `99-screens` visits all
+  # nine screens in one run, so one destination for the whole flow would put
+  # the calendar in the chat's folder. Its filenames carry the screen —
+  # `360-dark-en-calendar.png` — and that is what routes them.
+  if [ "$flow" = "99-screens" ] && [ -d "$flowdir/takeScreenshot/reports" ]; then
+    mkdir -p "$REPO/qa/evidence/$flow"
+    cp -f "$flowdir/takeScreenshot/reports"/*.png "$REPO/qa/evidence/$flow/" 2>/dev/null
+    for pic in "$flowdir/takeScreenshot/reports"/*.png; do
+      [ -e "$pic" ] || continue
+      base="$(basename "$pic" .png)"
+      # <width>-<mode>-<lang>-<screen>: the screen is everything after the
+      # third dash, because `people-chat` and `sign-in` contain one themselves.
+      scr="$(echo "$base" | cut -d- -f4-)"
+      if [ -d "$REPO/docs/design/$scr" ]; then
+        mkdir -p "$REPO/docs/design/$scr/ours"
+        cp -f "$pic" "$REPO/docs/design/$scr/ours/" 2>/dev/null
+        total=$((total + 1))
+      else
+        echo "  $base -> NO docs/design/$scr — picture kept in qa/evidence only"
+      fi
+    done
+    echo "  $flow: filed by screen into docs/design/*/ours/"
+    continue
+  fi
+
   shots="$flowdir/takeScreenshot/reports"
   if [ -d "$shots" ]; then
     mkdir -p "$REPO/qa/evidence/$flow"

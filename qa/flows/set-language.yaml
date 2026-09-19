@@ -1,0 +1,28 @@
+# Put the app into one language. `${LANG_ID}` is `language-en` or `language-fr`.
+#
+# The switch is in the SESSIONS SHEET beside the theme, under Appearance — not
+# on the account screen, which is where `account/SPEC.md`'s references put
+# settings. e7 landed it there at `049079e` and Hamma9901 asked for a dated
+# divergence note rather than moving the pair.
+#
+# The choice persists in AsyncStorage under `mm-language` AND is written to the
+# server as `users.lang`, so it survives a relaunch — which is why the picture
+# pass sets it back to English at the end rather than leaving the account
+# French for whatever runs next.
+appId: ${APP_ID}
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-open-sessions"
+- scrollUntilVisible:
+    element:
+      id: "language-row"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: ${LANG_ID}
+- assertVisible:
+    id: ${LANG_ID}
+    selected: true
+- tapOn:
+    id: "sessions-close"

@@ -1,0 +1,101 @@
+# THE PICTURE PASS — nine screens, one visit each, named by the run.
+#
+# `docs/design/README.md` §4: a screen is DONE when `ours/` holds it at 360,
+# 411 and 800 dp. This flow is the "one visit each" half; `qa/screens.sh` is
+# the half that sets the width, the mode and the language and runs this eight
+# times.
+#
+# ── WHY ONE FLOW AND NOT NINE ────────────────────────────────────────────
+# Every screen here is reached from the assistant, and a sign-in costs about
+# forty seconds on this box. Nine separate flows would pay it nine times per
+# combination — seventy-two sign-ins across the pass. This pays it eight.
+#
+# ── ${SHOT} IS THE RUN'S NAME, NOT DECORATION ────────────────────────────
+# It carries width, mode and language into every filename, so a picture cannot
+# be mistaken for one from another combination. `qa/screens.sh` composes it and
+# `qa/evidence.sh` files the result under each screen's own `ours/`.
+#
+# NOTHING HERE ASSERTS BEHAVIOUR. It is a camera, deliberately: an assertion
+# that fails at 800 dp would stop the pass and cost the widths after it. What
+# it does assert is ARRIVAL — one handle per screen — because a photograph of
+# the wrong screen is worse than no photograph.
+appId: ${APP_ID}
+tags:
+  - screens
+---
+- runFlow: login.yaml
+
+# 1 · The assistant itself.
+- assertVisible:
+    id: "composer-input"
+- takeScreenshot: reports/${SHOT}-chat
+
+# 2 · The sessions sheet — a sheet, not a drawer.
+- tapOn:
+    id: "chat-open-sessions"
+- assertVisible:
+    id: "sessions-sheet"
+- takeScreenshot: reports/${SHOT}-sessions
+- tapOn:
+    id: "sessions-close"
+
+# 3 · People.
+- tapOn:
+    id: "chat-open-chats"
+- assertVisible:
+    id: "chats-list"
+- takeScreenshot: reports/${SHOT}-people-chat
+- tapOn: "Back"
+
+# 4 · Notifications.
+- tapOn:
+    id: "chat-open-notifications"
+- assertVisible:
+    id: "notifications-list"
+- takeScreenshot: reports/${SHOT}-notifications
+- tapOn: "Back"
+
+# 5 · Calendar.
+- tapOn:
+    id: "chat-open-calendar"
+- assertVisible:
+    id: "calendar-list"
+- takeScreenshot: reports/${SHOT}-calendar
+- tapOn: "Back"
+
+# 6 · Account, reached through the sheet.
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn:
+    id: "sessions-account"
+- assertVisible:
+    id: "account-delete"
+- takeScreenshot: reports/${SHOT}-account
+
+# 7 · Profile.
+- tapOn: "Back"
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn:
+    id: "sessions-profile"
+- assertVisible:
+    id: "profile-firstname"
+- takeScreenshot: reports/${SHOT}-profile
+- tapOn: "Back"
+
+# 8 · Upload — the attach sheet, which is the whole of that screen's design.
+- assertVisible:
+    id: "composer-input"
+- tapOn:
+    id: "composer-attach"
+- assertVisible:
+    id: "attach-sheet"
+- takeScreenshot: reports/${SHOT}-upload
+- pressKey: Back
+
+# 9 · Sign-in. LAST, because it signs out — every screen above needs a session,
+# and `login.yaml` signs back in at the start of the next run.
+- runFlow: signed-out.yaml
+- assertVisible:
+    id: "sign-in-email"
+- takeScreenshot: reports/${SHOT}-sign-in

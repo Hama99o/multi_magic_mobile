@@ -769,3 +769,61 @@ instruments were honest and both readers were not.**
 Related: §10 asks which way a gate's error runs. `qa/QA_HANDBOOK.md`'s "a check
 that returns SOME of the answer is the hardest kind to doubt" asks how
 convincing its output is. This one asks what you re-run after changing it.
+
+---
+
+## 13 · A test that never re-renders cannot see a stale closure
+
+**2026-09-20, on the SDK 57 branch, found by planting — and the tests it got
+past were not vacuous.**
+
+Three hooks kept a "latest callback" in a ref, written in the render body:
+
+```ts
+const onFinalRef = useRef(onFinal);
+onFinalRef.current = onFinal;      // ← rejected by the React Compiler
+```
+
+SDK 57's eslint config rejects that, so it moved into an effect. To check the
+move was safe, the update was deleted outright — so the hook would call
+whatever callback it was handed on its **first render, for the rest of the
+session.**
+
+`useAssistantEcho`'s suite caught it. **`useSpeechToText`'s did not: every one
+of its tests stayed green.** The defect that shape ships is a dictated sentence
+appended to a draft belonging to a conversation the person had already left —
+the composer re-renders on every keystroke and passes `onFinal` inline, so the
+ref is the only thing keeping the callback current.
+
+### Why this is not §2 again
+
+**The tests were not vacuous and they were not weak.** They test the right
+things — availability, permissions, the four failure sentences, interim and
+final transcripts — and every assertion in them can fail. What they never do
+is **render the hook twice with a different callback.**
+
+A stale closure is invisible to any test that renders once. There is no
+assertion to strengthen, no name that overclaims, nothing wrong with the file
+at all. The gap is not in what it checks; it is in the *shape of the exercise*
+— one mount, one prop set, one interaction. A whole class of bug lives on the
+far side of a second render and cannot be reached from this side of it.
+
+> **The rule: when state or a callback is held across renders, the test has to
+> re-render.** `rerender` with a different function, then fire the thing that
+> calls it, and assert the SECOND one ran and the first did not. Anything that
+> mounts once is testing the first render's world, and a stale closure is by
+> definition a bug about the second.
+>
+> And the corollary for refactors: **the compiler-clean form of a ref is not
+> always behaviour-identical.** Moving a write from render to effect changes
+> *when* it lands. The way to find out whether that matters is to plant the
+> stale value and watch — not to reason about the ordering, which is exactly
+> what makes it look safe.
+
+The same evening, `ScopeDialog` had the twin: removing the `key` that re-seeds
+a dialog whose seed changes **while it is open** left all ten of its tests
+green, for the same reason — none of them changed a prop on a mounted dialog.
+
+Both have tests now, both go red when the fix is removed, and `useDraft` — the
+hook that decides whether somebody's half-typed question survives a screen
+change — had no test file at all.

@@ -34,11 +34,20 @@
  * keyboard up, the composer was not merely covered — it was off-screen, and
  * `people-composer-send` was absent from the hierarchy entirely.
  *
- * **Why `09-keyboard` passed anyway** is the part worth keeping: that flow
- * runs on an AVD where Gboard is in FLOATING mode, and its own header says a
- * floating keyboard "produces no inset at all, so it is the easy case, not
- * the hard one". A green flow, on the wrong keyboard mode, on the one screen
- * that was checked.
+ * **Why `09-keyboard` did not catch it**, corrected 2026-09-19 — and the
+ * first version of this paragraph was itself wrong, in a header about a
+ * comment that was wrong.
+ *
+ * It said the flow had been passing against a FLOATING Gboard, the easy case,
+ * so the green was vacuous. Neither half was true. **The flow had never been
+ * run at all**, so there was no green to be vacuous, and that AVD's Gboard is
+ * DOCKED and full width — `qa/reports/50-keyboard-up.png` from its first real
+ * execution shows the composer sitting above it. The floating claim came from
+ * the flow's own header and was believed because it was specific.
+ *
+ * A flow that is written and never run proves exactly as much as no flow, and
+ * is worse in one way: it occupies the slot where somebody would notice the
+ * gap. `docs/TESTING.md` §6.
  */
 import type { ReactNode } from "react";
 import { KeyboardAvoidingView, ScrollView, View } from "react-native";

@@ -47,8 +47,21 @@ The refactor itself is now safe to attempt and has not been done.
 
 Both were listed as "doable, not small". Having tried, that was optimistic:
 
-| `src/hooks/useConversation.ts` | 1 | **Not contained.** The compiler-clean form collapses four `useState`s into one object tagged with the conversation id, and there are **23 setter call sites** in the file. It is the chat spine — the socket subscription, the resync, the pending-question tracking. Its tests are good and would catch a lot; "a lot" is not the same as the resync ordering. |
+| `src/hooks/useConversation.ts` | 1 | **Not contained** — see the note below. |
 | `src/hooks/useSpeechToText.ts` | 1 | Doable — `useSyncExternalStore` over the AppState subscription — but **unverifiable**: the mic is in no Expo Go at any SDK, so nothing confirms it until a dev build exists. It should ride with the rebuild for the same reason the eight do. |
+
+**Why `useConversation` was not done, written out so the next person reading
+"doable" has the reason:** the compiler-clean form collapses four `useState`s
+into one object tagged with the conversation id, and there are **23 setter
+call sites** in that file. It is the chat spine — the socket subscription, the
+resync, the pending-question tracking. Its tests are good and would catch a
+lot.
+
+> **"A lot" is not the resync ordering.**
+
+Twenty-three setter sites, an ordering the tests do not reach, at half past
+midnight, on a branch that is already green, for a lint rule. Any one of those
+would be a reason to wait. Together they are not a close call.
 
 One free thing came out of reading it: that effect contained
 `setStatus(conversationId == null ? "loading" : "loading")` — both branches the

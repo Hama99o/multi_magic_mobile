@@ -1,0 +1,114 @@
+# YOUR OWN AI KEY — refused by the provider, in its words, and NOTHING stored.
+#
+# `docs/design/profile/SPEC.md` §2.4. His words: *"that's great you have show
+# how to add the key, this is great."*
+#
+# ── THE FEATURE IS THE VERIFICATION, SO THAT IS WHAT IS TESTED ───────────
+# `Ai::Keys.verify` puts the candidate key to the provider ONCE before storing
+# it, and nothing is written when the provider refuses — "a typo must fail here
+# rather than halfway through an agent run". So the flow pastes a key that is
+# not a key, presses "Check and save", and asserts two things: the refusal
+# arrives (`ai-key-refused`, carrying the provider's own sentence rather than
+# ours), and the screen still says there is no key. A rejected paste that left
+# a dead key behind is exactly the failure the design exists to prevent.
+#
+# The provider is `gemini` — in `Ai::Keys::OFFERED`, and the chip's testID is
+# the provider SLUG, which is stable vocabulary and not a database id. The
+# verify call reaches Google with an invalid key and costs nothing.
+#
+# ── WHAT IS NEVER DONE HERE ──────────────────────────────────────────────
+# A real key is never added: the QA account has none, and the register says so
+# because `01-ask`'s answer is the missing-key message. If the account ever
+# does hold one, this flow photographs the row and stops rather than removing
+# somebody's key to reach its own empty state.
+appId: ${APP_ID}
+tags:
+  - account
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn:
+    id: "sessions-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-firstname"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: "profile-keys"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "profile-keys"
+- extendedWaitUntil:
+    visible: "Your AI key"
+    timeout: 30000
+- assertVisible: "Add a key of your own and the assistant runs on your account, with your provider, at your cost. The key is checked with the provider before it is saved, and it is never shown again afterwards."
+# Loaded: EITHER the list or the empty line, whichever the account has. One
+# regex id, so no optional wait is needed to cover both.
+- extendedWaitUntil:
+    visible:
+      id: "ai-keys-(list|empty)"
+    timeout: 30000
+- takeScreenshot: reports/85-ai-keys
+
+# ── The account holds a key: the fixture changed under this flow ─────────
+# Photograph it and stop. Removing a key to reach the empty state is not a
+# test; it is a deletion of something somebody added.
+- runFlow:
+    when:
+      visible:
+        id: "ai-keys-list"
+    commands:
+      - assertVisible: "Replace"
+      - assertVisible: "Remove"
+      - takeScreenshot: reports/86-ai-keys-has-a-key-NOT-MEASURED
+
+# ── No key: the QA account's stated state ────────────────────────────────
+- runFlow:
+    when:
+      notVisible:
+        id: "ai-keys-list"
+    commands:
+      - assertVisible:
+          id: "ai-keys-empty"
+      - assertVisible: "No key of your own yet. The assistant runs on MultiMagic's."
+      - assertVisible: "Add a key"
+      # From the server, never a hardcoded list — and this one is in OFFERED.
+      - tapOn:
+          id: "ai-provider-gemini"
+      - assertVisible:
+          id: "ai-key-input"
+      - tapOn:
+          id: "ai-key-input"
+      - inputText: "not-a-key-typed-by-the-rig"
+      # Enter on this single-line field performs the IME's done and closes the
+      # keyboard; not hideKeyboard, whose Back could pop this pushed screen.
+      - pressKey: Enter
+      - assertVisible: "Check and save"
+      - tapOn:
+          id: "ai-key-save"
+      # THE ASSERTION, part one: the provider refused, and the screen carries
+      # its sentence. Generous, because this is a round trip to Google.
+      - extendedWaitUntil:
+          visible:
+            id: "ai-key-refused"
+          timeout: 60000
+      - takeScreenshot: reports/87-ai-key-refused
+      # Part two: nothing was stored. Still no key, no list, nothing "In use".
+      - assertVisible:
+          id: "ai-keys-empty"
+      - assertNotVisible:
+          id: "ai-keys-list"
+      - assertNotVisible:
+          id: "ai-key-active-gemini"
+
+- tapOn: "Back"
+- extendedWaitUntil:
+    visible:
+      id: "profile-firstname"
+    timeout: 20000
+- tapOn: "Back"
+- assertVisible:
+    id: "composer-input"

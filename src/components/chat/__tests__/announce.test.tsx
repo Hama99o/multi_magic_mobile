@@ -37,6 +37,12 @@ const message = (over: Partial<ChatMessage> = {}): ChatMessage =>
 
 describe("the wait is announced, not only drawn", () => {
   beforeEach(() => {
+    // `restoreAllMocks` alone is not enough here: RNTL registers its cleanup
+    // from setupFilesAfterEach BEFORE any test body, and Jest runs afterEach in
+    // reverse, so the unmount happens after this file's restore. Clearing at
+    // the START of each test is the only ordering that cannot be got wrong —
+    // the same trap as gcTime in src/__tests__/queryClient.ts.
+    jest.clearAllMocks();
     jest.spyOn(AccessibilityInfo, "announceForAccessibility").mockImplementation(() => {});
     jest.useFakeTimers();
   });
@@ -48,6 +54,26 @@ describe("the wait is announced, not only drawn", () => {
   it("ThinkingDots is a polite live region", () => {
     render(<ThinkingDots />);
     expect(screen.getByTestId("thinking").props.accessibilityLiveRegion).toBe("polite");
+  });
+
+  it("puts the slow line ON SCREEN too — nothing had ever rendered it", () => {
+    // `qa/UNWALKED.md` §3: `thinking-slow` was named by no flow and no test, so
+    // the 45-second safeguard had never appeared anywhere. A message nobody has
+    // seen is the same shape as a control nobody has entered — it is not that
+    // it is wrong, it is that nothing would tell us.
+    render(<ThinkingDots />);
+    expect(screen.queryByTestId("thinking-slow")).toBeNull();
+    expect(screen.getByTestId("thinking")).toHaveAccessibleName("Thinking");
+
+    act(() => {
+      jest.advanceTimersByTime(45_000);
+    });
+
+    expect(screen.getByTestId("thinking-slow")).toBeTruthy();
+    expect(screen.getByText("Still working — this one is taking a while.")).toBeTruthy();
+    // And the indicator's own name changes with it, which is what a screen
+    // reader is told rather than the line below the dots.
+    expect(screen.getByTestId("thinking")).toHaveAccessibleName("Still working on your answer");
   });
 
   it("says so when the wait turns slow, which is the whole point of the copy change", () => {

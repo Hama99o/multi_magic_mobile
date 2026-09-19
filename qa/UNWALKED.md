@@ -11,8 +11,9 @@ a flow to need it. A handle nothing names is the receipt for a screen nobody
 walked.
 
 **176 handles are defined in `app/` and `src/`. 38 of them — 22% — were named by
-no flow and no test when this was written. §1 has since been closed, so the
-count reads 34; the rest of this file is the list as found.**
+no flow and no test when this was written.** §1 and the two worst of §2 have
+since been closed and the count reads **24**. The list below is as found, with
+what closed each one.
 
 A hit is a question, not a verdict. A control can be reached by its label or its
 text, and this repo *prefers* that: the register is explicit that a conversation
@@ -75,15 +76,27 @@ unit layer does not cover them either.**
 
 | Feature | Handles nothing names | Mounted in a test? |
 |---|---|---|
-| **"Search in" — conversation scoping** | `session-menu-scope`, `scope-*`, `scope-save`, `scope-all`, `scope-cancel` | `ScopeDialog`: **no** |
+| ~~**"Search in" — conversation scoping**~~ | ~~`scope-*`, `scope-save`, `scope-all`, `scope-cancel`~~ | **CLOSED** — `ScopeDialog.test.tsx` |
+| ~~**Pending file chips**~~ | ~~`pending-files`, `pending-file-*`, `pending-file-remove-*`, `pending-files-more`~~ | **CLOSED** — `PendingFiles.test.tsx` |
 | **"How to answer" — per-conversation instructions** | `session-menu-instructions`, `instructions-input`, `instructions-save`, `instructions-cancel` | `InstructionsDialog`: yes, but nothing reaches these |
-| **Pending file chips** | `pending-files`, `pending-file-*`, `pending-file-remove-*`, `pending-files-more` | `PendingFiles`: **no** |
 | **The file preview sheet** | `file-preview-open`, `file-preview-close`, `file-preview-image` | `FilePreview`: mounted, these unreached |
 | **Read-aloud controls** | `answer-read-controls` | behind `READ_ALOUD_ENABLED`, renders nothing yet |
 
-`scope-*` and `pending-file-*` are the two where **no test mounts the component
-at all**, which puts them in the same position as `answer-undo` minus the
-consequence.
+`scope-*` and `pending-file-*` were the two where **no test mounted the
+component at all**, which put them in `answer-undo`'s position minus the
+consequence. Both are closed, and each was closed against the claim its own
+header makes rather than against its handles:
+
+- **`ScopeDialog`** — nothing selected means search **everywhere**, not search
+  nothing. An empty array goes to the server as the scope, and the only thing
+  between "all apps" and "no apps" in a person's head is one sentence. Ten
+  assertions; planting an inverted hint, a one-way toggle and a missing reset
+  turned five of them red.
+- **`PendingFiles`** — a failed upload **stays on screen as failed**, because a
+  chip that vanishes is indistinguishable from one that uploaded, and the next
+  thing a person does is ask about a document the assistant never received. Nine
+  assertions; planting a vanishing failure, a strip that never collapses and a
+  remove that discards the first file turned four of them red.
 
 The row badges `session-scoped-*` and `session-instructed-*` are unreached too,
 which is the same gap seen from the list: nothing asserts that a conversation
@@ -100,8 +113,23 @@ which HAS a scope or instructions shows it.
 
 These are the states a person meets on a bad day, and they are the ones a
 screenshot pass never reaches either, because reaching them means making
-something fail. `thinking-slow` is the 45-second copy change — the one
-`docs/ACCESSIBILITY.md` D1 is about — and nothing has ever rendered it.
+something fail.
+
+**`thinking-slow` is closed.** It was the 45-second copy change
+`docs/ACCESSIBILITY.md` D1 is about — the line that exists so a socket which
+died silently does not look like a model that is thinking — and nothing had ever
+rendered it. `announce.test.tsx` now advances the clock and asserts both halves:
+the line appears on screen, and the indicator's own accessible name changes with
+it. **A safeguard nobody has seen is the same shape as a control nobody has
+entered**: not wrong, but nothing would tell us if it were.
+
+Writing it turned up a leak worth recording. The new test called
+`announceForAccessibility`, and its neighbour asserted that nothing had called
+it — `restoreAllMocks` in an `afterEach` does not save you, because RNTL
+registers its cleanup before any test body and Jest runs `afterEach` in reverse,
+so the unmount lands after this file's restore. Clearing at the START of each
+test is the only ordering that cannot be got wrong. Same trap as `gcTime` in
+`src/__tests__/queryClient.ts`, one layer up.
 
 `msg-retry` and `unread-divider` arrived tonight with e7's i18n fixes, so they
 are new rather than neglected.

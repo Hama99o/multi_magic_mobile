@@ -254,6 +254,17 @@ left it green, because a `testID` sits on a *container* and the English text
 inside survives a language switch untouched. The test was making a true but
 much weaker claim than its name (`docs/TESTING.md` §2).
 
+**And in this tree, say so before you do it.** Planting a break is a destructive
+edit to state three sessions share. It is invisible in a normal repo because it
+lasts seconds; here, a sibling running `npm test` inside that window sees files
+they do not own going red, and the honest diagnosis — a new test that fails
+under parallel load and passes alone — is wrong in a way that costs real time.
+That happened tonight: two suites were reported as load-flaky, a session stashed
+its own work to rule itself out, and the cause was a deliberate plant in the two
+components under test. Fifteen runs afterwards, five of them full and two at
+load 15–40, were green. **Announce the file and the window, or plant while
+nobody else is running the suite.**
+
 **Never write an assertion whose only source is a comment in the file you are
 testing.** `dialogs.keyboard.test.tsx` asserted `behavior === undefined` on
 Android because a comment above the code said Android resizes its own window.

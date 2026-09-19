@@ -94,3 +94,34 @@ Divergences from the decisions above are recorded below, not folded in.
   cannot be named by a flow ahead of time; `flow_lint`'s DBID rule reports them
   and `15` names rows by title and menus by their `Options for <title>` label.
   A stable per-row handle would need a slug, and none is on the serializer.
+
+### Divergence notes — 2026-09-19, later
+
+- **Appearance is now two rows, not one.** `language-row` sits beside
+  `theme-row` under the same heading: `language-en` / `language-fr`, each
+  language **written in itself**, because the way out of a language you
+  cannot read has to be legible from inside it. His instruction put language
+  and mode in one breath ("same lang as we have in web, both mode"), and the
+  choice is saved on the same `users.lang` the web's switcher writes, so a
+  switch on the laptop reaches the phone.
+  **This diverges from `../account/SPEC.md`**, whose references put settings
+  on the account screen. The theme chooser was already here with a reason,
+  and moving two controls the night before a first iOS build buys nothing —
+  recorded rather than acted on, per Hamma9901.
+- **The rename field says what the cap is.** `rename-count` renders `n / 60`
+  beside it. `maxLength` already enforced the server's `TITLE_LIMIT`, which
+  means the typing simply stopped with nothing to explain why.
+- **The sheet respects the bottom inset.** Its last row is **Sign out**, and
+  it padded a fixed 24 dp — under the gesture bar on edge-to-edge Android and
+  under the 34 pt home indicator on every iPhone since the X. One table now
+  holds all six of this app's sheets to the same rule
+  (`src/components/__tests__/sheets.insets.test.tsx`).
+- **Both dialogs lift themselves above the keyboard**, on both platforms.
+  `RenameDialog` autofocuses, so on a short phone its field opened underneath
+  the keyboard; a `Modal` is its own window and is not resized under
+  edge-to-edge either. See `../chat/SPEC.md`'s note on `09-keyboard` for why
+  the old rule survived so long.
+- **The delete confirm's guarantee is a function now, not a constant.**
+  `SAFE_SENTENCE` was evaluated at import — before the stored language is
+  read — so it would have stayed English in a French app while every test
+  passed, because the tests compared against the same constant.

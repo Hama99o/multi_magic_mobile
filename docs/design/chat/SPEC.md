@@ -158,10 +158,60 @@ not anticipate, it is recorded as a divergence below rather than rewritten.
   again** for an answer that never came and **Retry** for a question that never
   posted. Both keep the question on screen, which was the point.
 - **On 429 the copy names the minute but does not count it down** at `bbdfc2b`
-  ("Try again in a minute."). `Retry-After` handling is in flight in
-  `multi-magic-mobile-ae`'s failure-paths work, uncommitted as this is written.
+  ("Try again in a minute."). *Landed since, in `74b1cba`:* it is now a muted
+  line naming both caps (15 a minute, 200 an hour) with a live countdown, the
+  question kept in the composer and send held until it reaches zero — and
+  **no Retry button**, because offering one is inviting the person to do the
+  thing that keeps the limit closed. `Retry-After` is honoured where the
+  server sends it (Rack::Attack does; Rails' own `rate_limit` on `ai#show`
+  does not, so 60 s is the fallback).
 - **Additions the decisions did not anticipate**: the four title-bar doors
   (his instruction, `70c68b6`); Undo and feedback under an answer (from the web's
   §Undo); file previews for links in an answer; the device-remembered session
   (`rememberedSession.ts`, because `ai/conversation` follows whichever client
   spoke last).
+
+### Divergence notes — 2026-09-19, later
+
+Written after the failure-paths, read-aloud, freshness and language work
+landed. Everything above still holds; these are the decisions the table above
+did not know about.
+
+- **The composer has three lines under it now, and all three are states
+  rather than errors.** `composer-mic-refused` (was already there),
+  `composer-mic-problem` — a recogniser that exists but cannot work right now,
+  network or microphone or an unsupported language, one sentence each — and
+  `composer-offline`, which also **disables send and attach** while
+  MultiMagic is not answering. Offline is observed rather than asked of a
+  native module: any response marks the host reached, no response marks it
+  not, and a `GET /up` probe runs only between a failure and the next success
+  (`src/stores/reachability.store.ts`).
+- **A 401 now leaves this screen.** It used to clear the token, flip the
+  store and navigate nowhere, so the chat stayed up with every request
+  failing. The root layout watches the store and replaces to sign-in, which
+  says whether the session expired or was revoked — read from the token's own
+  `exp`, because devise-jwt answers both identically.
+- **Read-aloud exists, behind `READ_ALOUD_ENABLED = false`.** Per-answer
+  controls (`answer-read`, `-pause`, `-resume`, `-restart`), the server's
+  voice from `GET /api/v1/ai/messages/:id/speech`, the phone's voice as a
+  fallback that **says so on screen** (`answer-read-device-voice`), and
+  pause/restart deliberately NOT offered for the phone's voice because it
+  cannot resume from a sample. `BRIEF.md` §6 said "recommend: not in v1"; he
+  asked for it on 18 Sept and it waits on his ear, not on code.
+- **The answer's serif and its code blocks name a real family.**
+  `fontFamily: "serif"` and `"monospace"` are Android generic names; on iOS
+  they are a console warning and San Francisco, so IDENTITY §2's whole
+  argument did not render there. `src/theme/fonts.ts` resolves Georgia and
+  Menlo on iOS.
+- **Everything on this screen is translated.** English and French, the web's
+  own French wherever a string exists in both (`docs/LANGUAGES.md`). The
+  dictation language and the interface language are still separate settings,
+  which is correct — he dictates in French into an interface he may be
+  reading in English — but nothing on screen says so, and that is the next
+  thing on this screen worth a decision.
+- **`09-keyboard` was passing against a floating keyboard.** The composer
+  survived because Gboard on that AVD produces no inset, not because the
+  screen handled one: `ScreenContainer` passed `behavior={undefined}` on
+  Android on the belief that the window always resizes, which stopped being
+  true when `edgeToEdgeEnabled` was set. Fixed in `28cf795`; the flow needs a
+  docked-keyboard re-run before its green means anything.

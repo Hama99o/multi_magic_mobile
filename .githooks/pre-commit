@@ -1,0 +1,109 @@
+#!/bin/sh
+# THIS HOOK IS NOT ENABLED. See .githooks/README.md for the one line that turns
+# it on, and for the argument about whether it should be.
+#
+# It exists because of one afternoon: `e41be2a` shipped a `require()` with a
+# variable argument, which Node resolves and Metro does not. `tsc`, `eslint`
+# and 465 Jest tests were green; the app could not start at all, for seven
+# hours, on a device somebody else was waiting to use. The gate that catches it
+# had been in CI from the first commit. Nobody ran it locally.
+#
+# So this runs the gates in the order that fails fastest, and runs the slow one
+# only when the change can plausibly break it.
+
+set -e
+
+say() { printf '\n\033[1m%s\033[0m\n' "$1"; }
+
+# ── Which node, before anything else ──────────────────────────────────────
+#
+# A hook does not run in your shell. Git gives it a bare, non-interactive
+# environment, so nvm has never been sourced and `node` is whatever the system
+# default is — here that was 18 while `.nvmrc` says 22. Expo 54's metro-config
+# calls `Array.prototype.toReversed`, which is Node 20+, so the export dies
+# after thirty seconds with `configs.toReversed is not a function`: an error
+# naming neither node nor a version, thrown from a file nobody edited.
+#
+# `.github/workflows/ci.yml` has a comment about this exact trap. It is worth
+# rather more than a comment here, because a hook that fails for a reason
+# unrelated to the commit is a hook that gets uninstalled by lunchtime.
+want=$(sed -n 's/^v\{0,1\}\([0-9]*\).*/\1/p' .nvmrc | head -1)
+have=$(node -v 2>/dev/null | sed -n 's/^v\([0-9]*\).*/\1/p')
+if [ -z "$have" ]; then
+  printf 'No node on this hook\x27s PATH at all. It is not your shell\x27s PATH.\n'
+  exit 1
+fi
+if [ "$have" -lt "$want" ]; then
+  cat <<MSG
+This hook is running node v$have. .nvmrc asks for v$want.
+
+Nothing is wrong with your commit. A git hook runs in a bare environment where
+nvm was never sourced, so it gets the system node, not yours. On node < 20 the
+export fails inside metro-config with "configs.toReversed is not a function",
+which reads like a broken tree and is not one.
+
+Point git at a node that can run the gates, e.g. in ~/.config/git/hooks-env or
+by installing nvm's shim for non-interactive shells:
+
+  export PATH="\$HOME/.nvm/versions/node/v\$(cat .nvmrc)/bin:\$PATH"
+MSG
+  exit 1
+fi
+
+say "lint"
+npm run lint
+
+say "typecheck"
+npm run typecheck
+
+# ── Whether to ask Metro ──────────────────────────────────────────────────
+#
+# An export takes about a minute. A minute on every commit is how a hook gets
+# `--no-verify`d into irrelevance, which is the same failure this file is
+# about: a gate that exists and is not run. So it runs when the staged change
+# touches MODULE LOADING, and otherwise says why it did not.
+#
+#   MM_BUNDLE=1  always run it
+#   MM_BUNDLE=0  never  (use when you already ran `npm run bundle` yourself)
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+
+needs_bundle=no
+
+# Config that decides how anything resolves at all.
+if printf '%s\n' "$staged" | grep -Eq '^(package(-lock)?\.json|app\.json|eas\.json|babel\.config\.js|metro\.config\.js|tsconfig\.json|tailwind\.config\.js|\.nvmrc|global\.css)$'; then
+  needs_bundle=yes
+fi
+
+# A line ADDED by this commit that loads a module: any `require(`, any dynamic
+# `import(`, or an import of a bare specifier (a package — not `./x`, not the
+# `@/` alias, both of which tsc already resolves).
+if git diff --cached -U0 -- '*.ts' '*.tsx' '*.js' '*.jsx' \
+   | grep -E '^\+' \
+   | grep -Eq "require\(|import\(|from +['\"](@[A-Za-z0-9_.-]+/|[A-Za-z0-9_-])"; then
+  needs_bundle=yes
+fi
+
+[ "${MM_BUNDLE:-}" = "1" ] && needs_bundle=yes
+[ "${MM_BUNDLE:-}" = "0" ] && needs_bundle=no
+
+if [ "$needs_bundle" = yes ]; then
+  say "bundle — this change touches how a module is loaded, so Metro gets asked"
+  npm run bundle >/dev/null
+  printf 'Metro is happy.\n'
+else
+  printf '\nNo bundle: nothing staged changes how a module loads.\n'
+  printf 'If you are about to be surprised, MM_BUNDLE=1 git commit …\n'
+fi
+
+# ── What this hook does NOT do ────────────────────────────────────────────
+#
+# It does not run `npm test`. 536 tests is another minute on top, and the
+# suite is the gate people actually remember — it was green for the failure
+# above, not skipped. Adding it here would double the cost of every commit to
+# re-prove the one thing that was never in doubt. CI runs it.
+#
+# It also cannot see your index. A pre-commit hook's gates run against the
+# WORKING TREE, and this repo commits by named path, so a partial commit is
+# normal here: these gates prove the files on disk are sound, not that the
+# commit alone is. Stashing the difference is how people lose work, so it is
+# stated rather than attempted.

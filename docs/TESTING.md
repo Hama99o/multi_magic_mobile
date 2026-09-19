@@ -1,9 +1,10 @@
 # What our tests cannot see
 
 Four gates run on every change: `npm run lint`, `npm run typecheck`,
-`npm test`, and `npm run bundle`. This file is about the times **all of them
-were green and the app was broken** — each entry is an instance that actually
-happened in this repo, what it cost, and the gate that now catches it.
+`npm test`, and `npm run bundle`, and the flows run on a device after them.
+This file is about the times **every one of them was green and the app was
+broken** — each entry is an instance that actually happened in this repo, what
+it cost, and the gate that now catches it.
 
 It exists because the same mistake keeps arriving in a new costume: **a check
 that passes for a reason unrelated to the thing it is named after.**
@@ -119,6 +120,73 @@ because it is the same family, and because the warning had been sitting in
 
 ---
 
+## 5 · A test that defended the bug
+
+**2026-09-19, found on a device by the QA session, after the unit test had
+guarded the broken behaviour for as long as it existed.**
+
+`ScreenContainer` passed `behavior={Platform.OS === "ios" ? "padding" : undefined}`
+to `KeyboardAvoidingView`, above a comment explaining that Android resizes the
+window itself so padding would double-count. That was true once. It stopped
+being true when `edgeToEdgeEnabled: true` went into `app.json` — an
+edge-to-edge window is **not** resized for the IME — and the composer went
+under the keyboard on every Android phone.
+
+`dialogs.keyboard.test.tsx` asserted exactly that: `behavior` is `undefined` on
+Android. It passed. It would have passed forever.
+
+This is the worst entry in this file, and it is worth being precise about why.
+The other four are gates that could not see a problem. **This one could see it
+perfectly and had been told the wrong answer.** A test written from a comment
+rather than from a device inherits the comment's belief and then outranks it —
+the comment is prose somebody may argue with, the test is a red X in CI. Fixing
+the app required *deleting a passing test*, which is the one move code review
+is trained to stop.
+
+The file is gone. `src/components/__tests__/keyboard.test.tsx` replaces it and
+asserts `padding` on **both** platforms, across every surface with a field in
+it, which is a claim about behaviour rather than about an implementation
+detail.
+
+> **The rule: never write an assertion whose only source is a comment in the
+> file you are testing.** If you cannot say where the rule came from — a
+> platform doc, the framework's source, a device you watched — you are not
+> testing the code, you are notarising it. And a test that merely restates
+> what the code does will survive the code being wrong.
+
+---
+
+## 6 · A green from the easy case, reported as coverage of the hard one
+
+**2026-09-19. Cost: the bug in §5 walked past a flow written specifically to
+catch it, and was found two flows later by hand.**
+
+`qa/flows/09-keyboard.yaml` raises the keyboard and asserts the composer, the
+send button and the attach button are all still visible. That is the right
+assertion. It passed on the AVD, and the pass went into the register as
+keyboard coverage.
+
+Gboard on that emulator is in **floating** mode. A floating keyboard produces
+**no inset at all** — the window is never told anything happened — so the flow
+raised a keyboard that could not possibly have covered the composer, asserted
+the composer was not covered, and went green. It never executed the docked case,
+which is the only case that breaks.
+
+The flow's own header says this, in its own words: a floating keyboard "is the
+easy case, not the hard one". So the caveat was written, published, and then
+not carried into the result. **A limitation recorded next to a test does not
+travel with the test's verdict** — the verdict travels alone, as a green tick in
+a table, and by then nobody is reading the header.
+
+The re-run is docked, and until that happens §5's fix is reasoned from the React
+Native source rather than witnessed.
+
+> **The rule: a pass is only as strong as the hardest case the run actually
+> executed** — and the environment decides that, not the flow. Say in the
+> result which case ran, not only in the file which cases exist.
+
+---
+
 ## What each gate is actually for
 
 | Gate | Proves | Cannot see |
@@ -127,10 +195,24 @@ because it is the same family, and because the warning had been sitting in
 | `npm run lint` | the banned forms are absent | a banned form with a `disable` comment on it |
 | `npm test` | behaviour, under **Node's** resolver and with **no layout** | whether the app bundles; whether anything fits; whether a colour is legible |
 | `npm run bundle` | Metro, Babel, NativeWind, expo-router and the config plugins agree — **the app can start** | whether it then works |
-| the flows, on a device | it works, for a person | only what a flow asserts |
+| the flows, on a device | it works, for a person, **on that device in that state** | only what a flow asserts — and only the cases that device actually produced (§6) |
 
 **Nothing above measures a pixel.** Jest has no layout engine, so no test in
 this repo can tell you that a French string fits a 360 dp row or that text is
 readable on a dark ground. That is a device and a screenshot, and it is why
 `docs/design/README.md` makes a device screenshot at three widths part of
 `DONE`.
+
+---
+
+## Running them
+
+`npm run lint`, `npm run typecheck`, `npm test`, `npm run bundle`. The last one
+is the one that gets skipped, and §1 is what that costs.
+
+There is a tracked pre-commit hook in `.githooks/` that runs the first two
+always and the third when the staged change touches how a module is loaded.
+**It is off**, and `.githooks/README.md` has both the one line that enables it
+and the argument for leaving it alone — chiefly that the `require()` rule in
+`.eslintrc.js` already catches §1's exact class in milliseconds, on a gate
+everybody runs.

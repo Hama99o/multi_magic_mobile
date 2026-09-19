@@ -207,11 +207,91 @@ did not know about.
   own French wherever a string exists in both (`docs/LANGUAGES.md`). The
   dictation language and the interface language are still separate settings,
   which is correct — he dictates in French into an interface he may be
-  reading in English — but nothing on screen says so, and that is the next
-  thing on this screen worth a decision.
+  reading in English — but nothing on screen says so. Proposed at the foot of
+  this file, with the words, and left unbuilt for him.
 - **`09-keyboard` was passing against a floating keyboard.** The composer
   survived because Gboard on that AVD produces no inset, not because the
   screen handled one: `ScreenContainer` passed `behavior={undefined}` on
   Android on the belief that the window always resizes, which stopped being
   true when `edgeToEdgeEnabled` was set. Fixed in `28cf795`; the flow needs a
   docked-keyboard re-run before its green means anything.
+
+---
+
+## Proposal, not built — saying which language the mic is listening in
+
+**2026-09-19. Written down, deliberately unimplemented. The words below are a
+starting point for his, and where the control lives is a separate decision from
+whether the sentence exists.**
+
+### What is actually on screen today
+
+The dictation language and the interface language are two settings, and that is
+right: the corpus is largely French, so he dictates in French into an interface
+he may be reading in English. `DEFAULT_LANG = "fr-FR"`
+(`useSpeechToText.ts:107`) while `DEFAULT_LANGUAGE = "en"` (`i18n/index.ts:46`),
+which means **the default install already disagrees with itself on purpose**.
+
+Nothing says so. Three things are true at once and none of them is visible:
+
+1. **The state is unspoken.** While listening, the row reads `"Listening…"` /
+   `"Écoute…"` — no language in it. The only way to learn which language the
+   recogniser is in is to speak and read what comes back wrong.
+2. **The control already exists, and nobody can find it.** A **long press on
+   the mic** switches the language and remembers it (`Composer.tsx:207-211`).
+   There is no label, no hint, no second glyph, and nothing anywhere else in
+   the app uses long press to change a setting. This is a feature that ships
+   and is never used.
+3. **A screen reader is told and a sighted user is not.** The mic's
+   `accessibilityLabel` is `composer.dictateIn` → *"Dictate in {{language}}"*.
+   VoiceOver and TalkBack announce the listening language on focus. The screen
+   does not print it. That inversion is an accident, not a decision.
+
+### The proposal: one sentence, where dictation starts
+
+Fold the language into the line that already appears when listening begins,
+rather than adding a fourth line to a composer that has three already
+(`composer-mic-refused`, `composer-mic-problem`, `composer-offline`). It
+appears exactly when the mic opens, and it is replaced by the interim words the
+moment the recogniser hears something — which is the right moment for it to
+stop mattering.
+
+The words, in the **interface** language, naming the **listening** language:
+
+| interface | listening | line |
+|---|---|---|
+| EN | fr-FR | `Listening in French…` |
+| EN | en-US | `Listening in English…` |
+| FR | fr-FR | `Écoute en français…` |
+| FR | en-US | `Écoute en anglais…` |
+
+Nothing more — no "tap to change", no chevron, no second control. If he wants
+the switch discoverable that is the *other* decision below, and bolting a hint
+onto this line answers both questions badly.
+
+### The one thing in it that is genuinely a decision
+
+**Which language do we name it in?** The table above writes *French* and
+*anglais* — the language named **in the interface language**, so the sentence
+reads as a sentence. But `LANGUAGES` deliberately labels each language **in
+itself** (`Français`, `English`), which is correct for the chooser in
+`LanguageRow` and correct for the mic's current label, and would give
+*"Listening in Français…"* here.
+
+Both conventions are defensible and the app currently only has the second. A
+sentence wants the first. Picking one means either a second label per language
+or an accepted inconsistency between the chooser and the sentence — and that is
+his call, not a detail to settle in an implementation.
+
+### The decision this does NOT make
+
+He may want the listening language switchable **from the composer** rather than
+from a settings row — which, given (2) above, is less "add a control" than
+"make the hidden one real". That is a different screen and a different
+question: a visible affordance next to the mic costs horizontal space in the
+one row that has none to spare, and the alternatives (a chip above the field, a
+long-press hint the first time, a sheet on the mic) are three different
+designs, not three spellings of one.
+
+So: the sentence is proposed on its own, and stands on its own if the switch
+never moves. **Neither is built.** Both wait on him.

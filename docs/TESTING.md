@@ -81,6 +81,50 @@ screen. Re-planting the same break fails.
 > test is measuring something else — find out what, because that is usually
 > more interesting than the test you meant to write.
 
+### The corollary, earned the hard way on 2026-09-19
+
+Four assertions written that evening could not have failed. Three were tests:
+`delete-account.test.tsx` checked an empty request history one line after an
+**async** press, so no time had passed; `PersonMessageRow.test.tsx` fired a long
+press and asserted a spy ran, but RNTL's `fireEvent` walks up through
+**composite** elements, reached the component under test and called the prop
+the test itself had just handed it. The fourth was worse than a test — see
+below.
+
+**Every one was found by planting. None was found by reading**, and all four
+were written by somebody who had just written the rule above.
+
+> **So: the plant is cheapest exactly when the neighbouring tests have just
+> gone green — and that is when the odds are worst.** Six siblings passing is
+> not evidence about the seventh; it is the feeling that makes you skip the
+> one check that would have told you. The moment it feels unnecessary is the
+> moment to do it.
+
+### And the worst shape of all: a rule that cannot fire
+
+The fourth was a `no-restricted-syntax` selector. It was added with the defect
+it forbids sitting in the tree, believed because that instance went red, and
+its first form used `:has(> JSXOpeningElement > JSXAttribute[…])` — which this
+esquery does not support. It matched **nothing**. Forever.
+
+A lint rule that cannot fire is not a weak test; it is indistinguishable from a
+passing one, in CI, in a diff and in review. It is worse than no rule, because
+it occupies the slot where somebody would otherwise notice the gap — and unlike
+a vacuous test, nobody ever runs it with the break in place, because the break
+is what it exists to stop being written.
+
+Hence `eslint-fixtures/`: one file per custom rule containing exactly the shape
+it forbids, plus a `clean.tsx` of the legitimate forms, and
+`src/__tests__/eslintRules.test.ts` running the real `eslint` binary over them
+in `npm test`. Every rule in this repo has now been planted and watched to
+fire, including the compound accessibility selector's four separate branches.
+The audit was itself planted: restoring the dead selector leaves `npm run lint`
+perfectly clean and turns the audit red, naming the rule that went quiet.
+
+It is the same instrument as §8's inverse key check, pointed at the linter.
+Every gate asked whether the code satisfies the rules; none asked whether the
+rules are capable of being broken.
+
 ---
 
 ## 3 · A constant evaluated before the thing it depends on exists
@@ -314,7 +358,7 @@ forward check's blind spot. There is now a test asserting that the set of names
 | Gate | Proves | Cannot see |
 |---|---|---|
 | `npm run typecheck` | the shapes agree | anything about runtime, bundling, or words on a screen |
-| `npm run lint` | the banned forms are absent | a banned form with a `disable` comment on it |
+| `npm run lint` | the banned forms are absent — and every custom rule is proven able to fire, by `eslint-fixtures/` (§2) | a banned form with a `disable` comment on it |
 | `npm test` | behaviour, under **Node's** resolver and with **no layout** | whether the app bundles; whether anything fits; whether a colour is legible — and it will keep passing while telling you something is wrong in a sentence that names nothing (§7) |
 | `npm run bundle` | Metro, Babel, NativeWind, expo-router and the config plugins agree — **the app can start** | whether it then works |
 | the flows, on a device | it works, for a person, **on that device in that state** | only what a flow asserts, only on the cases that device actually produced — and nothing whatever until it has been RUN once (§6) |

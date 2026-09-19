@@ -133,5 +133,9 @@ module.exports = {
     ".expo/",
     "docs/",
     "*.config.js",
+    // Files that exist to FAIL these rules. `src/__tests__/eslintRules.test.ts`
+    // lints them explicitly with `--no-ignore` and fails if a rule has gone
+    // quiet. See `eslint-fixtures/README.md`.
+    "eslint-fixtures/",
   ],
 };

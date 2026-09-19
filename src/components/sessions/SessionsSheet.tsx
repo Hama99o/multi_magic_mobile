@@ -311,7 +311,7 @@ export function SessionsSheet({
               accessibilityRole="button"
               accessibilityLabel={t("common.close")}
               onPress={() => setPending(null)}
-              style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" }}
+              style={{ ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.5)" }}
             />
             <View
               style={{

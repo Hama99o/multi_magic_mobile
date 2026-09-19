@@ -40,11 +40,15 @@ describe("on iOS", () => {
     expect(useThemeStore.getState().choice).toBe("dark");
   });
 
-  it("hands control back to the phone for System, with null and not a string", () => {
+  // SDK 57 / RN 0.86 renamed this value rather than changing the behaviour:
+  // `ColorSchemeName` is now `'light' | 'dark' | 'unspecified'` and `null` is
+  // gone. The old name of this test — "with null and not a string" — was the
+  // assertion, so both moved together.
+  it("hands control back to the phone for System, with 'unspecified'", () => {
     useThemeStore.getState().setChoice("light");
     useThemeStore.getState().setChoice("system");
 
-    expect(mockSetColorScheme).toHaveBeenLastCalledWith(null);
+    expect(mockSetColorScheme).toHaveBeenLastCalledWith("unspecified");
   });
 
   // The first frame after launch has to be right too — a keyboard that is

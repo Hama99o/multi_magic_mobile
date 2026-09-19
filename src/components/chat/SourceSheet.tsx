@@ -52,7 +52,7 @@ export function SourceSheet({
           accessibilityRole="button"
           accessibilityLabel={t("common.close")}
           onPress={onClose}
-          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" }}
+          style={{ ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.5)" }}
         />
         {/* A sibling scrim cannot be reached through the content, so nothing
             needs to stop a tap here any more. */}

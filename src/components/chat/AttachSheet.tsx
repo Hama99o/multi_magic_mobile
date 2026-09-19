@@ -63,7 +63,7 @@ export function AttachSheet({
           accessibilityRole="button"
           accessibilityLabel={t("common.close")}
           onPress={onClose}
-          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" }}
+          style={{ ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.5)" }}
         />
         <View
           style={{

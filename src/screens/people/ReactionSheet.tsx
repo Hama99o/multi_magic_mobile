@@ -94,7 +94,7 @@ export function ReactionSheet({
           onPress={onClose}
           accessibilityRole="button"
           accessibilityLabel={t("common.close")}
-          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "#00000088" }}
+          style={{ ...StyleSheet.absoluteFill, backgroundColor: "#00000088" }}
         />
         {/* A sibling scrim cannot be reached through the content, so nothing
             needs to swallow a press here any more — and a plain View is not

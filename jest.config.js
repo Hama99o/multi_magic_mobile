@@ -57,6 +57,13 @@ module.exports = {
       "expo-image-picker|" +
       "expo-splash-screen|" +
       "expo-status-bar|" +
+      // NEW IN SDK 57: pulled in by expo-router's native-stack fork, ships
+      // untranspiled ESM, and fails with `Unexpected token 'export'` pointing
+      // at OUR test's first import rather than at itself — exactly what this
+      // header warns about.
+      "expo-glass-effect|" +
+      // Also new in 57, also via expo-router.
+      "standard-navigation|" +
       "nativewind|" +
       "@nativewind|" +
       "react-native-css-interop|" +

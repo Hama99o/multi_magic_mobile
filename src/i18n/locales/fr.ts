@@ -229,6 +229,8 @@ export const fr: Translations = {
     atLimit:
       "Vous avez {{max}} discussions, soit le maximum que MultiMagic conserve. Supprimez-en une pour en commencer une autre.",
     options: "Options de {{title}}",
+    scopedBadge: "recherche limitée",
+    instructedBadge: "instructions permanentes",
     messages_one: "{{count}} message",
     messages_other: "{{count}} messages",
     files_one: "{{count}} fichier",
@@ -439,6 +441,9 @@ export const fr: Translations = {
     unread: "Non lus",
     deleted: "Ce message a été supprimé.",
     notSent: "Non envoyé. Touchez pour réessayer.",
+    edited: "modifié",
+    sent: "Envoyé",
+    read: "Lu par tout le monde",
   },
 
   notifications: {

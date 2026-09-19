@@ -101,6 +101,68 @@ MM_COMPOSE_TIMEOUT="${MM_COMPOSE_TIMEOUT:-300}"
 #    migrations FIRST, with postgres up and `web` still stopped, and fails
 #    rather than starting the thing that would migrate.
 
+# ── A DISPLAY CHANGE IS NOT DONE WHEN adb RETURNS ───────────────────────────
+# This lives here rather than in one script because the next session to change
+# a size or a density will hit it and will not know to look.
+#
+# `wm size` and `wm density` return immediately; the display keeps
+# reconfiguring afterwards, and an app launched into that window lays itself
+# out at the OLD geometry inside the NEW one. What that produces is not a
+# crash and not a blank screen — it is a perfectly sharp screenshot of text
+# clipped mid-letter, vertically as well as horizontally. It looks exactly
+# like a real overflow bug at that width.
+#
+# On 2026-09-19 it produced two sets of nine pictures, and one of them reached
+# Hamma9900, who photographed the sign-in screen and sent it up as a product
+# defect. It is not one: force-stop, relaunch at the same Override, and the
+# screen renders perfectly.
+#
+# Changing density ALONE settles in a few seconds. Changing SIZE AND DENSITY
+# together does not, and no sleep is the right length — so this asks the window
+# instead. Call it after every configuration change, before anything is
+# measured or photographed.
+#
+# ── IT READS THE ROOT NODE, AND THAT IS LOAD-BEARING ────────────────────────
+# `uiautomator dump` reports every node's bounds CLIPPED TO THE VISIBLE REGION.
+# A control half covered by a pinned footer is reported at the size of the part
+# you can see, not the size it is.
+#
+# Karwan measured a courier's map button at 83 px — 31.6 dp, below Android's
+# 48 dp floor, on the role whose whole premise is huge targets in sunlight —
+# and was one line from filing it. Scrolling four hundred pixels and measuring
+# again gave 147 px, exactly 56 dp, exactly the role's token. The first number
+# was real and it was a fact about VISIBILITY that reads as a fact about
+# LAYOUT. Same family as the stale-layout screenshot: a real number about the
+# wrong thing.
+#
+# This function is safe because the ROOT node is never clipped — it IS the
+# visible region. Point it at a child and it inherits the trap silently.
+# NEVER take a size from a dumped child node without proving it is fully on
+# screen first.
+#
+# ── AND IT MUST ANSWER INSIDE THE CALLER'S PATIENCE ─────────────────────────
+# Karwan's copy timed out on its first real run: 40 iterations at 3 s, plus two
+# adb round trips each, outlives a 150 s cap and never answers at all. A check
+# nobody can afford to wait for is a check nobody runs. This one polls faster
+# and gives up sooner, and a caller with a tighter budget should pass its own.
+#
+#   wait_for_geometry <expected-width-px> [app-id] [deep-link]
+wait_for_geometry() {
+  local want="$1" app="${2:-$APP_ID}" link="${3:-${DEEP_LINK:-}}" n=0 got=""
+  [ -n "$link" ] && adb -s "$SERIAL" shell am start -a android.intent.action.VIEW \
+      -d "$link" "$app" >/dev/null 2>&1
+  until [ "$n" -ge "${GEOMETRY_TRIES:-25}" ]; do
+    adb -s "$SERIAL" shell uiautomator dump /sdcard/geom.xml >/dev/null 2>&1
+    got=$(adb -s "$SERIAL" shell cat /sdcard/geom.xml 2>/dev/null \
+          | grep -oE 'bounds="\[0,0\]\[[0-9]+,[0-9]+\]"' | head -1 \
+          | grep -oE '\[[0-9]+,[0-9]+\]$' | tr -d '[]' | cut -d, -f1)
+    [ -n "$got" ] && [ "$got" = "$want" ] && return 0
+    n=$((n + 1)); sleep "${GEOMETRY_WAIT:-2}"
+  done
+  echo "  window reports ${got:-nothing}px, asked for ${want}px" >&2
+  return 1
+}
+
 # ── THE RULE THAT MAKES THIS A RIG AND NOT A HAZARD ─────────────────────────
 # Karwan's rig seeds and resets its database safely, because its dev data is
 # fixtures. OURS IS HIS REAL MULTIMAGIC — his notes, contacts, loans, expenses

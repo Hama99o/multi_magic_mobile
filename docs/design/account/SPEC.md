@@ -252,3 +252,42 @@ Checked by the verifier session against `main` at `971f951`.
   the person on the screen, or that the disclosure renders in full when the
   gate is closed. It is the most consequential screen in the app and the
   least covered, and that is worth saying out loud rather than leaving implied.
+
+---
+
+## Divergence note — 2026-09-19, the language switch is not on this screen
+
+**Where the SPEC's references put it:** on the account screen, with the other
+settings. That is what the sources this SPEC cites do.
+
+**Where it actually is:** in the **sessions sheet**, under Appearance, beside
+`ThemeRow`. Landed by e7 at `049079e`.
+
+**Why it was not moved to match.** The theme chooser was already in the sheet,
+and theme and language are one pair — a person looking for "how this app is
+set" finds both in one place or neither. Moving the language row to account
+would split the pair; moving both would relocate a control that has shipped
+and been photographed. Hamma9901's call was to record the divergence rather
+than relitigate a decision already made, which is the same treatment the other
+six SPECs got tonight.
+
+**The handles**, so a flow never has to guess: `language-row` is the
+container, `language-en` and `language-fr` the two options. The active one
+carries `accessibilityState.selected`, which is the app's own record of the
+choice. Each label stays in its own language whichever way the app is set —
+English reads "English", Français reads "Français" — so an assertion on either
+holds in either state.
+
+**What is covered, and by what.** `12-account` asserts the control exists,
+that both options are present, that choosing one marks it selected, and that
+English is put back before the flow ends — the choice persists in
+AsyncStorage (`mm-language`) **and on the server as `users.lang`**, so a run
+that leaves the account in French leaves every later flow asserting English
+copy against a French screen. It deliberately does **not** assert that any
+other screen's words changed: that is a translation question, and
+`src/i18n/__tests__/keys.test.ts` answers it properly by resolving every
+called key through the real i18next instance in both languages.
+
+**Not yet run on a device.** The step was written after the device passed to
+another session, so `12-account`'s PASS in `qa/FLOW_REGISTER.md` is the run
+*before* this step existed. It is UNRUN until the row is reached on glass.

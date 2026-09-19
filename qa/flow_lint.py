@@ -430,9 +430,178 @@ def unregistered(flow_paths, register_path):
     return hits
 
 
+
+# A lucide icon hands its `testID` to BOTH its wrapper and the Svg inside it,
+# so one handle resolves to TWO nodes in the rendered tree. Nothing in this
+# file can see that by reading source — the source says `testID={...}` once —
+# which is why it is detected by SHAPE here: a lucide icon is the element that
+# takes `size` and `color` and renders no children.
+#
+# da found it on 2026-09-19 while walking handles backwards. No flow taps one
+# today; this exists so the first flow that does finds out from the linter
+# rather than from a device at 3am.
+# The brace half must tolerate `${...}` NESTED inside the expression, which a
+# flat `\{[^}]*\}` stops at — so it reuses ID_EXPR's own nesting pattern.
+# Caught by this detector finding `event-repeats` and silently missing the two
+# template handles it exists for.
+ICON_ID = re.compile(
+    r"<[A-Z][A-Za-z]*\s+(?=[^>]*\bsize=)(?=[^>]*\bcolor=)[^>]*?"
+    r"testID\s*=\s*(\{(?:[^{}]|\{[^{}]*\})*\}|\"[^\"]*\")"
+)
+
+
+def icon_testids():
+    """Handles that sit on an icon, and so resolve to two nodes each."""
+    out = set()
+    for path in code_files():
+        src = io.open(path, encoding="utf-8").read()
+        for m in ICON_ID.finditer(src):
+            expr = m.group(1)
+            out.update(LIT_IN.findall(expr))
+            for tpl in TPL_IN.findall(expr):
+                # `session-scoped-${id}` -> the stable head, which is what a
+                # flow would match on.
+                head = INTERP.split(tpl)[0] if INTERP.search(tpl) else tpl
+                if head:
+                    out.add(head.rstrip("-"))
+    return out
+
+# ── THE FOUR BUCKETS, BECAUSE A LIST OF SIXTY-ONE BECOMES WALLPAPER ─────────
+# Only the first is a backlog. The other three are answers, not debt, and
+# keeping them in the same list as the real gaps is how the real gaps stop
+# being read.
+#
+# Each entry carries its REASON, so the next session can disagree with the
+# judgement rather than with the bucket.
+BUCKETS = {
+    # ── 1. FORBIDDEN — a rule says never press it ──────────────────────────
+    "delete-account-confirm": ("forbidden", "RIG_CONTRACT.md §3: no test may call account deletion against a real account"),
+
+    # ── 2. UNREACHABLE — the rig cannot produce the state ──────────────────
+    # Everything here needs a server made to fail, a second signed-in account,
+    # or a moment this suite cannot manufacture against HIS REAL BACKEND.
+    "ai-keys-error":        ("unreachable", "needs the provider check to fail"),
+    "attach-error":         ("unreachable", "needs an upload to fail"),
+    "chat-answer-failed":   ("unreachable", "needs the answer job to fail"),
+    "chat-load-failed":     ("unreachable", "needs the history fetch to fail"),
+    "chat-rate-limited":    ("unreachable", "tripping the limit locks the QA account out of the suite"),
+    "chat-send-failed":     ("unreachable", "needs the send to fail"),
+    "delete-error":         ("unreachable", "needs the delete to fail"),
+    "password-error":       ("unreachable", "the 422 path IS covered by 14; this is the transport failure"),
+    "profile-error":        ("unreachable", "needs the save to fail"),
+    "sessions-error":       ("unreachable", "needs the list fetch to fail"),
+    "answer-undo-error":    ("unreachable", "needs the undo to fail"),
+    "composer-offline":     ("unreachable", "needs the device to lose the network mid-flow"),
+    "composer-mic-problem": ("unreachable", "needs the recogniser to error rather than refuse"),
+    "sign-in-notice":       ("unreachable", "needs a specific server response the rig cannot ask for"),
+    "thinking-slow":        ("unreachable", "needs an answer slow enough to cross the threshold"),
+    "ai-keys-borrowed":     ("unreachable", "needs a key granted by another user"),
+    "thread-typing":        ("unreachable", "needs a SECOND signed-in account typing"),
+    "unread-divider":       ("unreachable", "needs a message from somebody else"),
+
+    # ── 3. UNIT-ONLY — not an interactive control, and a test covers it ────
+    # Counters, captions and labels. A flow asserting these proves the render,
+    # which is what the render tests already do more cheaply and at three
+    # widths.
+    "attach-count":            ("unit-only", "a counter; asserted in the render tests"),
+    "attach-limits":           ("unit-only", "a caption; asserted in the render tests"),
+    "rename-count":            ("unit-only", "a counter"),
+    "delete-conversation-safe":("unit-only", "the guarantee sentence — 04 and 15 assert its TEXT, which is the point"),
+    "answer-undone":           ("unit-only", "a transient confirmation"),
+    "answer-copied":           ("unit-only", "a transient confirmation"),
+    "calendar-updated":        ("unit-only", "a freshness caption; Freshness.test covers it"),
+    "notifications-updated":   ("unit-only", "a freshness caption; Freshness.test covers it"),
+    "updated-line":            ("unit-only", "a freshness caption; Freshness.test covers it"),
+    "answer-actions":          ("unit-only", "the wrapper; its children are what matter"),
+    "answer-read-controls":    ("unit-only", "the wrapper; its children are what matter"),
+    "pending-files":           ("unit-only", "a container"),
+    "source-chips":            ("unit-only", "a container"),
+    "file-preview":            ("unit-only", "a container"),
+}
+
+
+def bucket_for(name):
+    """Which of the four a handle belongs in, and why.
+
+    Anything not named above is a BACKLOG item by default — a control a person
+    can reach on the QA account that no flow has ever touched. Defaulting to
+    backlog rather than to 'probably fine' is deliberate: the failure this
+    whole check exists to catch is a gap that looked like coverage.
+    """
+    if name in BUCKETS:
+        return BUCKETS[name]
+    return ("backlog", "reachable on the QA account; no flow touches it")
+
+
+def untouched(literals, templates):
+    """WHICH testIDs EXIST AND NO FLOW HAS EVER TOUCHED.
+
+    Every other check here runs FORWARDS: take what a flow says and ask
+    whether it resolves. That direction cannot see a handle the app offers
+    and nothing uses — and both sibling rigs were bitten by the same
+    asymmetry on 2026-09-19. e7 had a key sitting in both locales, asserted
+    by a locale test and listed in the docs, called by nothing, while the
+    component wrote the sentence as an English literal two lines below it:
+    four places agreed the translation existed. Karwan's literal check read
+    `en.ts` while its rig forced Pashto, so it compared two disjoint sets and
+    reported clean by construction.
+
+    A handle with no flow is NOT automatically wrong — plenty are reached
+    only by unit tests, and some mark a state a flow cannot reach. That is
+    exactly why this prints a list and does not fail the gate: the value is
+    in reading it, and a check that cried wolf here would be turned off.
+    """
+    used = set()
+    for path in sorted(glob.glob(os.path.join(FLOWS, "*.yaml"))):
+        text = io.open(path, encoding="utf-8").read()
+        for m in re.finditer(r'id:\s*"([^"]+)"', text):
+            used.add(m.group(1))
+        for m in re.finditer(r"id:\s*'([^']+)'", text):
+            used.add(m.group(1))
+
+    def touched(lit):
+        if lit in used:
+            return True
+        # A flow may address it by regex — `ai-keys-(list|empty)` covers both.
+        for u in used:
+            try:
+                if re.fullmatch(u, lit):
+                    return True
+            except re.error:
+                pass
+        return False
+
+    return sorted(l for l in literals if not touched(l))
+
+
 def main(argv):
     strings = ui_strings()
     literals, templates = testids()
+
+    if "--untouched" in argv:
+        orphans = untouched(literals, templates)
+        print()
+        print(f"  {len(literals)} literal testIDs in the app; "
+              f"{len(literals) - len(orphans)} are reached by a flow.")
+        order = [
+            ("backlog",     "BACKLOG — reachable, and nothing has ever touched it"),
+            ("unreachable", "the rig cannot produce this state against his real backend"),
+            ("unit-only",   "not an interactive control; a unit test covers it"),
+            ("forbidden",   "a rule says never press it"),
+        ]
+        grouped = {}
+        for o in orphans:
+            b, why = bucket_for(o)
+            grouped.setdefault(b, []).append((o, why))
+        for key, title in order:
+            rows = grouped.get(key, [])
+            print()
+            print(f"  {len(rows):>3}  {title}")
+            for name, why in rows:
+                print(f"         {name:<28} {why}")
+        print()
+        print(f"  ONLY THE FIRST {len(grouped.get('backlog', []))} ARE A BACKLOG.")
+        return 0
 
     if "--selftest" in argv:
         fixture = os.path.join(ROOT, "qa", "testdata", "lint_synthetic.yaml")
@@ -485,6 +654,21 @@ def main(argv):
         for line, kind, why in check(p, strings, literals, templates):
             print(f"  {kind:<12} qa/flows/{os.path.basename(p)}:{line}  {why}")
             total += 1
+    # ICON — a handle that resolves to two nodes, not one.
+    icons = icon_testids()
+    for path in paths:
+        for n, line in enumerate(io.open(path, encoding="utf-8").read().splitlines(), 1):
+            m = re.search(r'id:\s*["\']([^"\']+)["\']', line)
+            if not m:
+                continue
+            sel = m.group(1)
+            hit = next((i for i in icons if sel == i or sel.startswith(i)), None)
+            if hit:
+                print(f"  {'ICON':<12} qa/flows/{os.path.basename(path)}:{n}  "
+                      f"`{sel}` sits on a lucide icon, which hands its testID to BOTH "
+                      f"its wrapper and the Svg inside — TWO nodes, not one")
+                total += 1
+
     for name, kind, why in unregistered(paths, REGISTER):
         # Helpers are decided against EVERY flow on disk, not only the targets.
         if os.path.join(FLOWS, name) in helpers(all_flows):

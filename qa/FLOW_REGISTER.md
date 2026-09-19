@@ -341,3 +341,124 @@ dialog that reads exactly like a failed assertion. At **7.5**, twelve flows
 ran clean. The pass now **refuses to start above 12** and writes the load at
 run start into `qa/reports/screens.jsonl` beside the screen count, so the line
 can be moved on evidence rather than on taste.
+
+---
+
+## What no flow touches — `python3 qa/flow_lint.py --untouched`
+
+Every other check in the rig runs **forwards**: take what a flow says and ask
+whether it resolves. That direction cannot see a handle the app offers and
+nothing uses, and both sibling rigs were bitten by exactly that asymmetry on
+2026-09-19 — e7 had a key present in both locales, asserted by a locale test
+and listed in the docs, **called by nothing**, while the component wrote the
+sentence as an English literal two lines below it; Karwan's literal check read
+`en.ts` while its rig forced Pashto, so it compared two disjoint sets and
+reported clean by construction.
+
+Asked backwards: **153 literal testIDs, 92 reached by a flow, 61 by nothing.**
+
+A list of sixty-one becomes wallpaper, so it is ranked. **Only the first
+bucket is a backlog**; the other three are answers, and keeping them in one
+list with the real gaps is how the real gaps stop being read.
+
+| bucket | count | what it means |
+|---|---|---|
+| **BACKLOG** | **20** | reachable on the QA account, and nothing has ever touched it |
+| unreachable | 18 | needs a server made to fail, a second signed-in account, or a lost network — states this rig cannot produce **against his real backend**. See the note below: this does not mean *uncovered* |
+| unit-only | 17 | counters, captions and containers, not interactive controls; the render tests cover them more cheaply and at three widths |
+| forbidden | 1 | `delete-account-confirm` — `RIG_CONTRACT.md` §3 forbids pressing it |
+
+Each entry carries its own reason in `flow_lint.py`, so the next session can
+disagree with a judgement rather than with a bucket. **Anything unclassified
+defaults to BACKLOG**, deliberately: the failure this check exists to catch is
+a gap that looked like coverage, so the default must not be "probably fine".
+
+### "Unreachable by the rig" is not "uncovered", and I had them collapsed
+
+The middle bucket says where a state **cannot be reached from a flow**. It says
+nothing about whether the behaviour is tested, and reading it as "nobody covers
+this" is wrong in both directions — it would excuse a real gap and it would
+claim credit for work living somewhere else.
+
+`msg-retry` is the case that showed it. It sits in that bucket correctly: a
+person presses retry when a send has failed, and this rig cannot make his
+backend fail. That ruled out a flow and stopped there. What the bucket could
+not say is that a **component test** can pass the failure in directly, which is
+the better home rather than the consolation one — da took it on 2026-09-19 and
+found something no flow would have: a failed message must show **no tick**.
+`mine && isLastSent && !pending && !failed` makes the receipt and the failure
+mutually exclusive by construction, and if that drifts the row tells somebody
+their message arrived when it did not, on the one element they would act on.
+Nothing had ever asserted it.
+
+So an entry in that bucket is a question — *where is this covered instead?* —
+not an answer.
+
+### The backlog, worked rather than listed
+
+**Started — 28 to 25.** `05-upload` already opened the attach sheet and
+asserted its words, so `attach-photo`, `attach-camera` and `attach-document`
+were three lines on a flow that exists. Worth noting *why* the words were not
+enough: a text assertion passes if the string appears anywhere on screen,
+including in a caption, and only the handle says the **control** is there —
+and since `049079e` the copy is `t("attach.photo")`, so "Camera" becomes
+"Appareil photo" in French and two of the three word assertions would fail on
+a French run while the handles hold in both.
+
+**Then five more, 25 to 20, on a menu two flows already open.** `15` opened
+the row menu, asserted its ORDER — Clear first, because the order is the
+safety mechanism — and walked past the other three entries without naming
+them, and it renamed twice without ever naming the rename dialog's own save or
+cancel. It saves with Enter, which the field's `onSubmitEditing` performs, so
+the BUTTON had never been asserted to exist at all. `session-menu-clear`,
+`session-menu-instructions`, `session-menu-scope`, `rename-save` and
+`rename-cancel` are now asserted PRESENT.
+
+**Present is not exercised, and the register should not let that blur.** Clear
+would empty a conversation; Scope and Instructions open dialogs this flow does
+not enter. What the five prove is that the menu a person opens still has all
+four entries in a build where any could have been dropped silently — which is
+worth having and is less than covering them. **And these assertions are UNRUN**
+— written while the device was with another session, so `15`'s PASS above is
+the run before they existed.
+
+**`msg-retry` went to a component test rather than a flow**, taken by da on
+2026-09-19: the failure can be passed in, where this rig would have to make
+his real backend fail. It found what no flow would have — a failed message must
+show **no tick**, because `mine && isLastSent && !pending && !failed` makes the
+receipt and the failure mutually exclusive by construction, and construction
+drifts silently.
+
+**The rest, and the one with his name on it.** `msg-retry` is the
+sharpest: a person presses retry when their message has failed, and nothing in
+this suite has ever exercised it. `file-preview-*` and `instructions-*` are
+whole features with no flow at all. The `answer-read-*` family landed at
+`bf0ec10` and has no flow yet.
+
+
+---
+
+## `ICON` — one handle, two nodes
+
+A lucide icon hands its `testID` to **both its wrapper and the `Svg` inside
+it**, so `event-repeats`, `session-scoped-*` and `session-instructed-*` each
+resolve to **two nodes** in the rendered tree. Nothing else in `flow_lint.py`
+can see that: the source says `testID={...}` exactly once, and every other
+check in the file reads source.
+
+da found it walking handles backwards on 2026-09-19. **No flow taps one
+today**, which is precisely why the check went in now — the first flow that
+does will hear it from the linter rather than from a device at 3am, wondering
+why a tap landed oddly.
+
+Detected by SHAPE rather than by an import list: a lucide icon is the element
+taking `size` and `color` and rendering no children.
+
+**It was proved by making it fail**, not by reading it. A throwaway flow
+tapping `event-repeats` produces the finding; the real suite stays at 0. The
+first version of the detector silently missed the two template handles — a
+flat brace match stops at the `}` inside `${session.id}` — and it found only
+`event-repeats` while claiming to cover all three. That is the same shape as
+da's `edited` test, which asserted `getByText("edited")` and passed against
+the literal it was written to forbid, because English's value for that key
+*is* "edited". A check that has never failed is a hypothesis.

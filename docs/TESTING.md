@@ -597,6 +597,67 @@ lands on whoever is being careful at that moment.
 
 ---
 
+## 11 · Two assertions that could not fail for the reason they were named after
+
+**2026-09-19, both mine, both within an hour, both found only by planting.**
+
+§2 says a test that has never failed is a hypothesis. These are the sharper
+case: tests that **did** have a reason to fail, written deliberately, against
+code that could break — and could not detect the break, because the thing being
+asserted and the thing being guarded against **agree with each other today**.
+
+**One.** `edited` on a changed message was a bare English literal. Fixed to
+`t("thread.edited")`, with a test named *"comes from a key rather than from a
+literal"*:
+
+```ts
+expect(screen.getByText("edited")).toBeTruthy();
+```
+
+English's value for `thread.edited` **is** `"edited"`. The assertion passes
+against the literal it was written to forbid. It asserts in French now —
+`modifié` present, `edited` absent — which is the only place a key and a literal
+differ.
+
+**Two.** `msg-retry` carried its name only through its child `<Text>`, which is
+how a French screen reader came to read an English literal as the button's whole
+name. Fixed by pinning `accessibilityLabel`, with a test named *"names the way
+back, rather than leaving it to whatever text is inside"*:
+
+```ts
+expect(screen.getByTestId("msg-retry")).toHaveAccessibleName("Not sent. Tap to retry.");
+```
+
+React Native computes the accessible name from descendant text when no label is
+given, and the child renders the same string — so deleting the label leaves the
+computed name **identical**. The assertion cannot see the pinning at all. There
+are two assertions now: the computed name, which is what a person hears, and the
+prop, which is the pinning, with the reason written beside it.
+
+### What they have in common, which is the useful part
+
+Neither was lazy and neither was wrong about the app. Both asserted **the
+outcome** — the right instinct, and this file argues for it elsewhere — in a
+case where the outcome is produced identically by the mechanism and by the
+accident. *A correct value arrived by luck is indistinguishable from a correct
+value arrived by design, and only the design survives the next edit.*
+
+So: **when a fix replaces one source of a value with another, ask whether the
+two sources currently produce the same value.** If they do, the outcome cannot
+distinguish them and the assertion has to reach for the thing that differs — the
+other locale, the prop, a second render. Both of these were caught by planting,
+neither by reading, and the second was caught by a plant aimed at something
+else entirely.
+
+> **The rule: name what the test would have to see, then check that it can see
+> it.** "Comes from a key" is invisible while the key's value equals the
+> literal. "Is named explicitly" is invisible while the explicit name equals the
+> inherited one. A test's name is a claim about a mechanism; its assertion is
+> usually about a value; and the gap between those two is where a green lives
+> that means nothing.
+
+---
+
 ## What each gate is actually for
 
 | Gate | Proves | Cannot see |

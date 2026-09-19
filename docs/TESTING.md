@@ -687,3 +687,63 @@ always and the third when the staged change touches how a module is loaded.
 and the argument for leaving it alone — chiefly that the `require()` rule in
 `.eslintrc.js` already catches §1's exact class in milliseconds, on a gate
 everybody runs.
+
+---
+
+## 12 · Prove the fix on the cheapest case first
+
+*(There are two sections numbered 11 above. Left as they are — renumbering
+another session's file mid-night is how a cross-reference stops resolving.)*
+
+**The rule.** When a check, a gate or a rig is repaired, re-run it on the
+**cheapest case that can show the repair worked** before re-running it on the
+expensive one that motivated it. A fix is a hypothesis about a mechanism, and
+the cheap case tests the mechanism for a fraction of the cost.
+
+**2026-09-19, four attempts at one picture set.** The picture pass shoots nine
+screens at a width. 360 dp costs about two minutes; 800 dp costs the same but
+needs a size AND density change, an app relaunch and a settled display, and it
+is the combination where everything goes wrong. Every repair that night was
+verified by going straight back to 800.
+
+The three failures, all in the instrument rather than the app:
+
+1. `wait_for_geometry "$1"` — inside the loop body `$1` is the **script's**
+   argument, not the width. It asked the device for a window `800-light` px
+   wide, which nothing will ever be, and refused with a message that read
+   exactly like the display failing to settle. `return` was also used in a
+   `while` body rather than a function.
+2. `screens.sh` never set `USE_DEV_BUILD`, so `APP_ID` resolved to **Expo Go**.
+   The pass had always worked anyway, because `login.yaml` does `launchApp`
+   (Expo Go) and then `openLink` with the dev-client URL, which hands over to
+   our own app. It surfaced only once something **outside** maestro had to
+   launch the right binary.
+3. The check read the root node of `uiautomator dump`. **That dump describes
+   the foreground window, not the display.** With an ANR dialog on screen the
+   entire dump is the dialog, there is no `[0,0]` root at all, and the check
+   reported "window reports nothing px" while the display had settled
+   perfectly.
+
+**Every one of the three would have appeared at 360 dp**, for two minutes each,
+and each was instead discovered by a full 800 dp attempt. Three of them in a
+row, and then the battery went before any fix could be proved green.
+
+**What this is not.** It is not "the checks were bad". Two things stayed true
+all night and the rule depends on both:
+
+- **The one false picture that escaped did so BEFORE the check existed.** It
+  reached the owner, who photographed a sign-in screen with every line clipped
+  and sent it up as a product defect. Nothing has escaped since.
+- **All three failures were the check REFUSING TO SHOOT.** An instrument that
+  fails closed costs time; one that fails open costs credibility, and the
+  second is what the deleted 800 dp set nearly spent. Refusing for the wrong
+  reason is the right direction to be wrong in.
+
+So the cost of not having this rule was three wasted expensive runs, not a
+false result — and that is exactly the failure mode worth a rule rather than
+an apology. The remedy is one line of discipline: **fix, then reach for the
+two-minute case, and only then for the one you actually want.**
+
+Related: §10 asks which way a gate's error runs. `qa/QA_HANDBOOK.md`'s "a check
+that returns SOME of the answer is the hardest kind to doubt" asks how
+convincing its output is. This one asks what you re-run after changing it.

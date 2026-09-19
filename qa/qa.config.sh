@@ -149,18 +149,36 @@ MM_COMPOSE_TIMEOUT="${MM_COMPOSE_TIMEOUT:-300}"
 #   wait_for_geometry <expected-width-px> [app-id] [deep-link]
 wait_for_geometry() {
   local want="$1" app="${2:-$APP_ID}" link="${3:-${DEEP_LINK:-}}" n=0 got=""
-  [ -n "$link" ] && adb -s "$SERIAL" shell am start -a android.intent.action.VIEW \
-      -d "$link" "$app" >/dev/null 2>&1
+  # THE DISPLAY, ASKED OF THE WINDOW MANAGER — not the accessibility dump.
+  #
+  # This read the root node of `uiautomator dump` and it was wrong twice over.
+  # That dump describes the FOREGROUND WINDOW, not the display: when an ANR
+  # dialog owns the screen the whole dump is the dialog, there is no `[0,0]`
+  # root at all, and the check reported "window reports nothing px" while the
+  # display had in fact settled perfectly. Measured 2026-09-19 at 800 dp.
+  #
+  # It is also the same trap Karwan hit from the other side — dumped bounds
+  # are clipped to the visible region, so any CHILD node's size is a fact
+  # about visibility rather than about layout.
+  #
+  # `dumpsys window displays` reports the display's current size. A dialog
+  # cannot hijack it and nothing clips it.
   until [ "$n" -ge "${GEOMETRY_TRIES:-25}" ]; do
-    adb -s "$SERIAL" shell uiautomator dump /sdcard/geom.xml >/dev/null 2>&1
-    got=$(adb -s "$SERIAL" shell cat /sdcard/geom.xml 2>/dev/null \
-          | grep -oE 'bounds="\[0,0\]\[[0-9]+,[0-9]+\]"' | head -1 \
-          | grep -oE '\[[0-9]+,[0-9]+\]$' | tr -d '[]' | cut -d, -f1)
-    [ -n "$got" ] && [ "$got" = "$want" ] && return 0
+    got=$(adb -s "$SERIAL" shell dumpsys window displays 2>/dev/null \
+          | grep -oE 'cur=[0-9]+x[0-9]+' | head -1 | cut -d= -f2 | cut -dx -f1)
+    [ -n "$got" ] && [ "$got" = "$want" ] && break
     n=$((n + 1)); sleep "${GEOMETRY_WAIT:-2}"
   done
-  echo "  window reports ${got:-nothing}px, asked for ${want}px" >&2
-  return 1
+  if [ "$got" != "$want" ]; then
+    echo "  display reports ${got:-nothing}px wide, asked for ${want}px" >&2
+    return 1
+  fi
+  # THE DISPLAY HAS SETTLED; NOW start the app INTO it. Starting before this
+  # point is the whole bug — the app lays out at the old geometry inside the
+  # new window and photographs as text clipped mid-letter.
+  [ -n "$link" ] && adb -s "$SERIAL" shell am start -a android.intent.action.VIEW \
+      -d "$link" "$app" >/dev/null 2>&1
+  return 0
 }
 
 # ── THE RULE THAT MAKES THIS A RIG AND NOT A HAZARD ─────────────────────────

@@ -27,6 +27,13 @@
 # printing an Override line is exactly what Karwan uses as release proof.
 set -uo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
+# THE DEV BUILD, EXPLICITLY. Without this `qa.config.sh` resolves APP_ID to
+# Expo Go — and the pass still worked by accident, because `login.yaml` does
+# `launchApp` (Expo Go) and then `openLink` with the dev-client URL, which
+# hands over to our own app. It only mattered once something OUTSIDE maestro
+# needed to launch the right binary: `wait_for_geometry` started Expo Go with
+# Expo Go's deep link and dumped a window that was never ours.
+USE_DEV_BUILD="${USE_DEV_BUILD:-1}"
 . "$DIR/qa.config.sh"
 export PATH="$HOME/.maestro/bin:$PATH"
 ONLY="${1:-}"
@@ -128,9 +135,22 @@ echo "$COMBOS" | while read -r width mode lang; do
   # A pass that can photograph a lie needs an instrument that can tell, not a
   # longer timer. So the app is launched here, and nothing is shot until its
   # own window bounds AGREE with the width we asked the device for.
-  if ! wait_for_geometry "$1"; then
-    echo "  the window never reached ${1}px — NOT SHOT, and that is NOT MEASURED"
-    return 1
+  # THE WIDTH IN PIXELS, not the dp name and not the script's argument.
+  # `$1` here is the SCRIPT's first argument — the combination filter — because
+  # this block was moved out of `set_width` where `$1` was the width. It asked
+  # the check for a window "800-light" px wide, which nothing will ever be, and
+  # got back a refusal that read exactly like the display failing to settle.
+  # Third instrument of the night to produce confident output about the wrong
+  # subject; see QA_HANDBOOK, "a check that returns SOME of the answer".
+  case "$width" in
+    800) want_px=1600 ;;
+    *)   want_px=1080 ;;
+  esac
+  if ! wait_for_geometry "$want_px" "$APP_ID" "$DL"; then
+    echo "  the window never reached ${want_px}px — NOT SHOT, and that is NOT MEASURED"
+    # `continue`, not `return`: this is a while-loop body, not a function, and
+    # `return` here printed a bash error and carried on to shoot anyway.
+    continue
   fi
   adb -s "$SERIAL" shell am force-stop "$APP_ID" >/dev/null 2>&1
   sleep 2

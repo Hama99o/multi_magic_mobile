@@ -462,3 +462,72 @@ flat brace match stops at the `}` inside `${session.id}` — and it found only
 da's `edited` test, which asserted `getByText("edited")` and passed against
 the literal it was written to forbid, because English's value for that key
 *is* "edited". A check that has never failed is a hypothesis.
+
+---
+
+## STATE AT 2026-09-19 22:40 — read this first if you are picking this up cold
+
+Battery 26%, no charger, so this was landed rather than finished. Emulator
+shut down CLEANLY, display reset (no Override on size or density), claim
+released, Metro stopped.
+
+### Pictures
+
+| combination | screens |
+|---|---|
+| `360-light-en` | **complete, 9 of 9** |
+| `360-dark-en` | **complete, 9 of 9** |
+| `411-light-en` | **complete, 9 of 9** |
+| `411-dark-en` | **complete, 9 of 9** |
+| `800-light-en` | **NOT ATTEMPTED — see below** |
+| `800-dark-en` | **NOT ATTEMPTED** |
+| `360-light-fr` | **NOT ATTEMPTED** |
+| `360-dark-fr` | **NOT ATTEMPTED** |
+
+360 and 411 are trustworthy: shot after the force-stop moved to the right side
+of the configuration change, and spot-checked against a clean manual relaunch.
+
+### 800 dp is unshot, and the honest reason is that my own check is unproven
+
+The pictures from the FIRST 800 attempt were deleted, not kept — they were the
+stale-layout artifact, and one of them reached Hamma9900 as a photograph of a
+broken sign-in screen. Everything since has been trying to make the rig
+incapable of producing that again, and the instrument itself went wrong three
+times in a row:
+
+1. `wait_for_geometry "$1"` — `$1` inside the loop is the SCRIPT'S ARGUMENT,
+   not the width, so it asked for a window `800-light` px wide and refused
+   every combination with a message that read exactly like the display failing
+   to settle. `return` was also used in a `while` body rather than a function.
+2. `screens.sh` never set `USE_DEV_BUILD`, so `APP_ID` resolved to **Expo Go**.
+   The pass had always worked anyway, because `login.yaml` does `launchApp`
+   (Expo Go) then `openLink` with the dev-client URL, which hands over to our
+   app. It only mattered once something outside maestro had to launch the right
+   binary — the check started Expo Go with Expo Go's link and dumped a window
+   that was never ours.
+3. The check read the root node of `uiautomator dump`. **That dump describes
+   the FOREGROUND WINDOW, not the display.** With an ANR dialog on screen the
+   entire dump is the dialog, there is no `[0,0]` root, and the check reported
+   "window reports nothing px" while the display had settled perfectly. It now
+   asks `dumpsys window displays` for `cur=`, which no dialog can hijack and
+   nothing clips — the same trap Karwan hit from the other side, where a
+   dumped CHILD's bounds are clipped to the visible region and a 31.6 dp
+   button was really 56 dp with a footer over it.
+
+All three are fixed and committed. **None of the three has been proved by a
+green run**, because the battery went before one finished. Treat
+`wait_for_geometry` as written-not-witnessed, and the first thing to do with a
+charged box is run `./qa/screens.sh 800-light` and read the whole output, not
+the tail.
+
+The last 800 attempt failed with maestro producing no usable output at all,
+after the check passed. That is unexplained and is the next thread to pull.
+
+### What is trustworthy right now
+
+* **Twelve flows with written verdicts, no reds** — 06, 07, 08, 09, 13, 14,
+  15, 16, 17, 18, and 12's language step is UNRUN.
+* `flow_lint` at **0 findings**, and `--untouched` ranked into four buckets.
+* The bundle gate passing at 13.66 MB, run first.
+* 36 pictures across four combinations, in both `qa/evidence/` and each
+  screen's `ours/`, which is tracked now.

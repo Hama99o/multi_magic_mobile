@@ -63,3 +63,8 @@ qa/reports/logcat-*.txt
 # The device claim is machine-local state, not a fact about the repo.
 qa/reports/.claims
 qa/reports/.claims.lock
+
+# Voice samples for choosing a read-aloud voice: generated audio, 400 KB, and
+# this repo is public. On disk to be listened to; SAMPLES.md says how to remake
+# them.
+docs/read-aloud/samples/

@@ -515,6 +515,22 @@ convention is a habit, which is precisely the kind of fact the rule above says
 a grep must not rest on. Fixed in `d2e196b`; the key count did not move, and a
 planted single-quoted missing key now fails in both languages.
 
+**And that fourth one fails in the opposite direction from the other three,
+which is worth separating out.** The first three all *under*-reported: a key
+left unresolved, three literals left untranslated, three sheets left uncounted.
+An under-reporting gate wastes protection you thought you had, and the damage is
+whatever the missed thing goes on to do. The quote hole would have gone the
+other way — a **live** key reported as dead — and the output of a gate is not
+information, it is an instruction. That one would have produced a confident,
+mechanically-derived instruction to delete a working string, with a green suite
+behind it. An under-reporting gate spends your attention; a gate that
+over-reports in this direction spends your trust *against* the code, and it is
+much harder to argue with, because arguing means disbelieving the check.
+
+So when a search term turns out to be a hypothesis about how people write, ask
+which way the error runs before deciding how much it matters. Both are worth
+fixing. Only one of them tells you to break something.
+
 Writing the rule down did not protect the file the rule was written from. §2's
 corollary, one level up.
 

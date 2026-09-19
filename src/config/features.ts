@@ -10,11 +10,25 @@
 /**
  * Read an answer aloud — `docs/READ_ALOUD_PROPOSAL.md`.
  *
- * OFF until Hamma9900 has listened to the voice on a phone. The whole feature
- * is built and tested behind this constant: the endpoint
- * (`GET /api/v1/ai/messages/:id/speech`) is live, the store plays the server's
- * audio and falls back to the device voice saying so, and the control renders
- * under every assistant answer the moment this is `true`. Nothing else has to
- * change — which is the point of building it flagged rather than not at all.
+ * ON since 2026-09-19. The flag was holding one question — which voice — and
+ * Hamma9900 answered a different one: *"I can't see the speak button, for a
+ * response we should have a button to not read but to listen it… it is
+ * important."* A feature he cannot find is not waiting for his ear, so it
+ * ships with the default voice and he changes it afterwards, which is one
+ * setting rather than a rebuild.
+ *
+ * What he gets depends on where his phone is pointed, and both paths work:
+ * the server's voice from `GET /api/v1/ai/messages/:id/speech` where that
+ * route exists, and the phone's own voice — saying so on screen — where it
+ * does not. See `fallsBackToDevice` in `api/speech.ts`; the production route
+ * was not deployed when this flipped, so the phone's voice is what he will
+ * actually hear tonight.
+ *
+ * `expo-audio` and `expo-speech` are both in Expo Go's bundled modules for
+ * SDK 54 (`expo/bundledNativeModules.json`) and neither needs a config
+ * plugin, so this renders in Expo Go as well as in a dev build. If either is
+ * somehow missing the control is ABSENT rather than broken — `supported` in
+ * `stores/readAloud.store.ts` — which is the same rule the composer's mic
+ * follows.
  */
-export const READ_ALOUD_ENABLED = false;
+export const READ_ALOUD_ENABLED = true;

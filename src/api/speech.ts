@@ -61,9 +61,34 @@ export class SpeechUnavailable extends Error {
     this.name = "SpeechUnavailable";
     this.kind = kind;
   }
-  /** The device voice can stand in for these; for the rest there is nothing to read. */
+  /**
+   * The device voice can stand in for these; for the rest there is nothing to
+   * read.
+   *
+   * `not_found` JOINED THE LIST on 2026-09-19, and the reason is worth the
+   * lines. A 404 here is documented as "not this person's, or not an
+   * assistant message" — but **a route that does not exist answers 404 too**,
+   * and the client cannot tell the two apart. The production deploy had no
+   * speech route on the night read-aloud shipped, so excluding 404 meant the
+   * new button did nothing at all on the only backend he uses.
+   *
+   * Falling back is also right on the merits, not just convenient: the answer
+   * is ALREADY RENDERED on this person's own screen, so reading it with the
+   * phone's voice discloses nothing the server was withholding. A 404 is the
+   * server saying it cannot synthesise this, not that the text may not be
+   * spoken.
+   *
+   * `no_text` stays out — there is nothing to say. `rate_limited` stays out
+   * too: the cap is a deliberate signal about frequency, and silence with a
+   * sentence is the honest answer to it.
+   */
   get fallsBackToDevice(): boolean {
-    return this.kind === "too_long" || this.kind === "refused" || this.kind === "unreachable";
+    return (
+      this.kind === "too_long" ||
+      this.kind === "refused" ||
+      this.kind === "unreachable" ||
+      this.kind === "not_found"
+    );
   }
 }
 

@@ -120,11 +120,16 @@ describe("when the server's voice is not available", () => {
     expect(error.fallsBackToDevice).toBe(false);
   });
 
-  it("404 is not this person's answer, or not an answer at all", async () => {
+  // Changed 2026-09-19: a MISSING ROUTE answers 404 as well, and the client
+  // cannot tell it from a message that is not this person's. Production had
+  // no speech route the night this shipped, so `false` here meant the button
+  // did nothing on the only backend he uses. The text is already on his
+  // screen, so the phone's voice discloses nothing.
+  it("404 falls back to the phone's voice, because a missing route looks the same", async () => {
     const error = await failure(404, { error: "Message not found." });
 
     expect(error.kind).toBe("not_found");
-    expect(error.fallsBackToDevice).toBe(false);
+    expect(error.fallsBackToDevice).toBe(true);
   });
 
   it("leaves anything else to the caller — a 500 is not a speech decision", async () => {

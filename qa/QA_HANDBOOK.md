@@ -252,3 +252,44 @@ ps -eo comm= | grep -c '^java$'
 
 Narrow patterns are still fine — `pgrep -f "expo start --port 3029"` cannot
 match a watcher unless the watcher quotes it exactly.
+
+## A check that returns SOME of the answer is the hardest kind to doubt
+
+`docs/TESTING.md` §10 separates a gate that under-reports from one that
+over-reports, and asks which way the error runs. This is one level inside the
+first of those, and it is about how convincing the output is rather than which
+direction it points.
+
+**2026-09-19, the `ICON` check.** It detects handles sitting on a lucide icon,
+which hand their `testID` to both the wrapper and the `Svg` inside — one
+handle, two nodes. Three exist in this app: `event-repeats`,
+`session-scoped-*` and `session-instructed-*`.
+
+The first version found **one**. Its brace pattern was flat — `\{[^}]*\}` —
+so it stopped at the `}` inside `${session.id}` and both template handles fell
+out. It then printed a result, cleanly, with no error:
+
+    handles that sit on an icon: ['event-repeats']
+
+**A zero would have made me look. A one made me believe it.** An empty result
+reads as "the check did not work"; a partial result reads as "the check
+worked, and this is the answer". Nothing about the output distinguishes
+one-of-three from three-of-three, and the plausible number is the one that
+stops the investigation.
+
+It was caught by planting a flow that tapped the handle and watching the check
+fire — the practice from `TESTING.md` §2, applied to a check rather than to a
+test. Planting also forced the question "fire on *which* of the three?", which
+is the question that found it.
+
+**So: when a check reports a count, ask what the count should be before
+reading what it is.** For this one the answer was knowable from the source in
+about ten seconds. The risk is not that a check returns nothing; that announces
+itself. The risk is that it returns something.
+
+*(The same day, four instruments in this repo and its siblings were each right
+about their own question and silent about the one being asked: a locale parse
+that read `en.ts` line by line, a literal check comparing two disjoint
+languages, a picture pass that photographed a layout it had disturbed itself,
+and a backward handle walk that had never been run at all. Three of the four
+produced output the whole time.)*

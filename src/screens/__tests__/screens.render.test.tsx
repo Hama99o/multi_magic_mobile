@@ -256,6 +256,30 @@ import AiKeys from "../../../app/ai-keys";
 import AccountScreen from "../../../app/account";
 import DeleteAccount from "../../../app/delete-account";
 import Privacy from "../../../app/privacy";
+// ── THE THREE A STRANGER SEES ──────────────────────────────────────────────
+// Added 2026-09-20, and the gap they left is worth the paragraph.
+//
+// This table skipped sign-in, sign-up and forgot-password for as long as it
+// existed — the only screens somebody meets BEFORE they have an account, and
+// the only part of this app a stranger ever sees. The gap was invisible
+// because all three have good behaviour test files, so anyone auditing
+// coverage found a file and stopped. What those files assert is FAILURE COPY,
+// not layout, and the consequence was that `docs/design/sign-in/SPEC.md`'s
+// "at 800 the form takes a max width and centres" sat unbuilt for two days
+// with every gate green (`094e9e3`).
+//
+// WHAT MADE THEM DIFFERENT, so the next person adding a screen knows which
+// shape they are joining: nothing, in the end. They were believed to need
+// their own `expo-router` mocks because `app/__tests__/sign-in.test.tsx` has
+// one — but that mock exists so those tests can ASSERT ON `router.replace`,
+// which is a behaviour question. This table only needs the module to exist,
+// and the shared mock at the top of this file already provides `router`,
+// `Link` and `useLocalSearchParams`. The only real requirement is that the
+// auth store is in a signed-out state with no `signedOutReason`, which is the
+// state a stranger arrives in anyway.
+import SignIn from "../../../app/sign-in";
+import SignUp from "../../../app/sign-up";
+import ForgotPassword from "../../../app/forgot-password";
 
 /**
  * The panes, as variables.
@@ -316,6 +340,9 @@ const SCREENS: {
   { name: "account", element: () => <AccountScreen />, handles: ["account-privacy", "account-delete"], french: "Confidentialité" },
   { name: "delete-account", element: () => <DeleteAccount />, handles: ["delete-what-goes", "delete-password", "delete-account-confirm"], french: "Ce qui est supprimé" },
   { name: "privacy", element: () => <Privacy />, handles: ["privacy-title", "privacy-body", "privacy-draft-banner"], french: "Brouillon — pas encore approuvé" },
+  { name: "sign-in", element: () => <SignIn />, handles: ["sign-in-email", "sign-in-password", "sign-in-submit", "sign-in-forgot", "sign-in-create-account"], french: "Se connecter avec un e-mail" },
+  { name: "sign-up", element: () => <SignUp />, handles: ["sign-up-firstname", "sign-up-lastname", "sign-up-email", "sign-up-password", "sign-up-submit", "sign-up-to-sign-in"], french: "Créer le compte" },
+  { name: "forgot-password", element: () => <ForgotPassword />, handles: ["forgot-password-email", "forgot-password-submit"] /* -back and -sent belong to the sent state, not this one */, french: "Envoyer le lien" },
 ];
 
 function setWidth(width: number): void {

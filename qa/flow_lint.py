@@ -430,9 +430,61 @@ def unregistered(flow_paths, register_path):
     return hits
 
 
+def untouched(literals, templates):
+    """WHICH testIDs EXIST AND NO FLOW HAS EVER TOUCHED.
+
+    Every other check here runs FORWARDS: take what a flow says and ask
+    whether it resolves. That direction cannot see a handle the app offers
+    and nothing uses — and both sibling rigs were bitten by the same
+    asymmetry on 2026-09-19. e7 had a key sitting in both locales, asserted
+    by a locale test and listed in the docs, called by nothing, while the
+    component wrote the sentence as an English literal two lines below it:
+    four places agreed the translation existed. Karwan's literal check read
+    `en.ts` while its rig forced Pashto, so it compared two disjoint sets and
+    reported clean by construction.
+
+    A handle with no flow is NOT automatically wrong — plenty are reached
+    only by unit tests, and some mark a state a flow cannot reach. That is
+    exactly why this prints a list and does not fail the gate: the value is
+    in reading it, and a check that cried wolf here would be turned off.
+    """
+    used = set()
+    for path in sorted(glob.glob(os.path.join(FLOWS, "*.yaml"))):
+        text = io.open(path, encoding="utf-8").read()
+        for m in re.finditer(r'id:\s*"([^"]+)"', text):
+            used.add(m.group(1))
+        for m in re.finditer(r"id:\s*'([^']+)'", text):
+            used.add(m.group(1))
+
+    def touched(lit):
+        if lit in used:
+            return True
+        # A flow may address it by regex — `ai-keys-(list|empty)` covers both.
+        for u in used:
+            try:
+                if re.fullmatch(u, lit):
+                    return True
+            except re.error:
+                pass
+        return False
+
+    return sorted(l for l in literals if not touched(l))
+
+
 def main(argv):
     strings = ui_strings()
     literals, templates = testids()
+
+    if "--untouched" in argv:
+        orphans = untouched(literals, templates)
+        print()
+        print(f"  {len(literals)} literal testIDs in the app; "
+              f"{len(literals) - len(orphans)} are reached by a flow.")
+        if orphans:
+            print(f"  {len(orphans)} that NO flow touches — not findings, a reading list:")
+            for o in orphans:
+                print(f"      {o}")
+        return 0
 
     if "--selftest" in argv:
         fixture = os.path.join(ROOT, "qa", "testdata", "lint_synthetic.yaml")

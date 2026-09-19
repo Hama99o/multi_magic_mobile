@@ -341,3 +341,40 @@ dialog that reads exactly like a failed assertion. At **7.5**, twelve flows
 ran clean. The pass now **refuses to start above 12** and writes the load at
 run start into `qa/reports/screens.jsonl` beside the screen count, so the line
 can be moved on evidence rather than on taste.
+
+---
+
+## What no flow touches — `python3 qa/flow_lint.py --untouched`
+
+Every other check in the rig runs **forwards**: take what a flow says and ask
+whether it resolves. That direction cannot see a handle the app offers and
+nothing uses, and both sibling rigs were bitten by exactly that asymmetry on
+2026-09-19 — e7 had a key present in both locales, asserted by a locale test
+and listed in the docs, **called by nothing**, while the component wrote the
+sentence as an English literal two lines below it; Karwan's literal check read
+`en.ts` while its rig forced Pashto, so it compared two disjoint sets and
+reported clean by construction.
+
+Asked backwards, today: **153 literal testIDs in the app, 92 reached by a
+flow, 61 touched by nothing.**
+
+It prints a list and does **not** fail the gate, on purpose. A handle with no
+flow is not automatically wrong — some are reached only by unit tests, some
+mark a state a flow cannot reach, and `delete-account-confirm` is untouched
+because `RIG_CONTRACT.md` §3 forbids ever pressing it. A check that cried wolf
+here would be switched off, and the value is in reading the list.
+
+Reading it, three groups are worth naming:
+
+- **Reachable and simply never covered.** `attach-photo`, `attach-camera`,
+  `attach-document` — `05-upload` opens the sheet and asserts what it says,
+  and never asserts the three options by handle. `file-preview-*`,
+  `instructions-*` and `msg-retry` are whole features with no flow at all.
+- **Error and empty states**, which are most of the 61 — `chat-send-failed`,
+  `attach-error`, `ai-keys-error`, `composer-offline`. Reaching them needs a
+  server made to fail, which this rig cannot do against his real backend.
+- **Newly landed and not yet written into a flow**: the `answer-read-*` family,
+  enabled at `bf0ec10`.
+
+That list is the honest backlog. Until now it did not exist, and a flow suite
+with 0 findings looked complete while touching 60% of the app's handles.

@@ -9,6 +9,7 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "lint": "eslint . --ext .ts,.tsx --max-warnings 0",
+    "bundle": "EXPO_PUBLIC_API_URL=http://10.0.2.2:3001 expo export --platform android --output-dir /tmp/mm-bundle-check",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {

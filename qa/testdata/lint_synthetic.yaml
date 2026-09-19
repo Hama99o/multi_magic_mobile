@@ -1,0 +1,34 @@
+# SYNTHETIC. Every class the linter knows must trip here, and the two marked
+# commands must stay silent. Not a flow; never run it.
+appId: host.exp.exponent
+---
+- runFlow: ../_helpers/does-not-exist.yaml
+- assertVisible:
+    id: "no-such-testid"
+- tapOn:
+    id: "session-menu-.*"
+- assertVisible: "Changing your email signs you out of live updates"
+- inputText: "the whole typed sentence here"
+- assertVisible: "the whole typed"
+- assertVisible:
+    id: "sign-in-email"
+    optional: true
+- tapOn:
+    id: "composer-input"
+    optional: true
+- assertVisible: "${visible('x')}"
+- assertVisible: "$450"
+- tapOn:
+    id: "composer-input"
+- hideKeyboard
+- assertVisible: "2024"
+- extendedWaitUntil:
+    visible:
+      id: "composer-input"
+    timeout: "60000# a comment run onto the line"
+# lint: optional-ok — the permission dialog may already have been answered
+- tapOn: "Continue"
+  optional: true
+# lint: dbid-ok — the synthetic case for a justified one
+- tapOn:
+    id: "theme-dark"

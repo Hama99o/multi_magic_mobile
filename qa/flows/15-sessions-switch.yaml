@@ -1,0 +1,169 @@
+# SWITCHING CONVERSATIONS — by title, the way a person does, and cleaned up after.
+#
+# `docs/design/sessions/SPEC.md`: a SHEET, not a drawer, and the row menu's
+# order is a safety mechanism. `04-delete-conversation` covers the menu and the
+# confirm's wording; this flow covers the thing the sheet exists for — picking a
+# different conversation and landing in it — and the rename that makes a row
+# nameable.
+#
+# ── NO SELECTOR HERE IS A DATABASE ID ────────────────────────────────────
+# `session-row-<id>` and `session-menu-<id>` are testIDs built on record ids,
+# which Hamma9901's rule and `flow_lint`'s DBID both call a finding, not a
+# selector: a flow that taps `session-menu-.*` cannot say WHICH row it meant.
+# So this flow names rows the way a user does. A new conversation arrives with
+# the server's default title (`Ai::Sessions::DEFAULT_TITLE`, "New chat") at the
+# TOP of Today, its menu button is labelled "Options for New chat", and once
+# renamed the row is "QA switch target, 0 messages" and its menu "Options for
+# QA switch target". Titles are the selectors; the ids stay in the finding.
+#
+# ── THE PROOF OF A SWITCH ────────────────────────────────────────────────
+# Two proofs, because each alone can be fooled. A brand-new conversation is
+# EMPTY — `chat-empty` — and the QA account's standing conversation is not
+# (every `01-ask` run adds to it), so the empty state appearing after "New
+# conversation" proves the screen moved to the new one. And after switching
+# back by title, the sheet marks that row `selected`, which is `activeId` and
+# nothing else.
+#
+# ── AND IT DELETES WHAT IT MADE ──────────────────────────────────────────
+# Two conversations are created per run. Left behind, the QA account hits the
+# cap of 50 in twenty-five runs and every flow that presses "New conversation"
+# starts failing on a full account. So both are renamed to names nobody else
+# uses and deleted at the end, through the same confirm `04` stops at — real
+# deletions, of rows THIS flow created, on the QA account, and nothing else.
+# The guarantee sentence is asserted on the way past.
+appId: ${APP_ID}
+tags:
+  - sessions
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-open-sessions"
+- assertVisible:
+    id: "sessions-sheet"
+- assertVisible: "Conversations"
+- takeScreenshot: reports/79-sessions-sheet
+
+# ── At the cap there is nothing to create: say so and stop ───────────────
+# NOT MEASURED past here, which is a different fact from passed. Delete a
+# conversation from the QA account by hand and re-run.
+- runFlow:
+    when:
+      visible:
+        id: "sessions-at-limit"
+    commands:
+      - assertVisible: "You have 50 conversations, which is the most MultiMagic keeps.*"
+      - takeScreenshot: reports/80-sessions-at-limit-NOT-MEASURED
+
+- runFlow:
+    when:
+      notVisible:
+        id: "sessions-at-limit"
+    commands:
+      # ── New, and it opens: the empty state is the proof ──────────────
+      - tapOn:
+          id: "sessions-new"
+      - extendedWaitUntil:
+          visible:
+            id: "composer-input"
+          timeout: 30000
+      - extendedWaitUntil:
+          visible:
+            id: "chat-empty"
+          timeout: 30000
+      - takeScreenshot: reports/81-new-conversation-is-empty
+
+      # ── Name it, from its own row's menu ─────────────────────────────
+      - tapOn:
+          id: "chat-open-sessions"
+      - tapOn: "Options for New chat"
+      - assertVisible:
+          id: "session-menu"
+      # Clear FIRST — the order is the safety mechanism.
+      - assertVisible: "Clear messages"
+      - tapOn:
+          id: "session-menu-rename"
+      - assertVisible:
+          id: "rename-dialog"
+      - tapOn:
+          id: "rename-input"
+      - eraseText: 60
+      - inputText: "QA switch target"
+      # The field is returnKeyType "done" with onSubmitEditing saving, so Enter
+      # IS the save, and no hideKeyboard is needed in front of a button.
+      - pressKey: Enter
+      - extendedWaitUntil:
+          visible: "QA switch target.*"
+          timeout: 20000
+      - takeScreenshot: reports/82-renamed
+
+      # ── A second one, so there is something to switch FROM ───────────
+      - tapOn:
+          id: "sessions-new"
+      - extendedWaitUntil:
+          visible:
+            id: "chat-empty"
+          timeout: 30000
+      - tapOn:
+          id: "chat-open-sessions"
+      - tapOn: "Options for New chat"
+      - tapOn:
+          id: "session-menu-rename"
+      - tapOn:
+          id: "rename-input"
+      - eraseText: 60
+      - inputText: "QA switch other"
+      # Same reasoning: Enter is the save.
+      - pressKey: Enter
+      - extendedWaitUntil:
+          visible: "QA switch other.*"
+          timeout: 20000
+      # The one we just made is the active row.
+      - assertVisible:
+          text: "QA switch other.*"
+          selected: true
+
+      # ── THE SWITCH, by title ─────────────────────────────────────────
+      - tapOn: "QA switch target.*"
+      - extendedWaitUntil:
+          visible:
+            id: "composer-input"
+          timeout: 30000
+      - tapOn:
+          id: "chat-open-sessions"
+      # THE ASSERTION: the sheet marks the row we chose as the active one.
+      - assertVisible:
+          text: "QA switch target.*"
+          selected: true
+      - takeScreenshot: reports/83-switched-by-title
+
+      # ── Clean up: delete both, through the real confirm ──────────────
+      - tapOn: "Options for QA switch target"
+      - tapOn:
+          id: "session-menu-delete"
+      - assertVisible:
+          id: "delete-confirm"
+      - assertVisible: "Delete this conversation?"
+      # The guarantee, on the way past.
+      - assertVisible: "Your notes, contacts, loans and money are not touched."
+      - tapOn:
+          id: "delete-confirm-yes"
+      - extendedWaitUntil:
+          notVisible: "QA switch target.*"
+          timeout: 20000
+      - tapOn: "Options for QA switch other"
+      - tapOn:
+          id: "session-menu-delete"
+      - assertVisible:
+          id: "delete-confirm"
+      - tapOn:
+          id: "delete-confirm-yes"
+      - extendedWaitUntil:
+          notVisible: "QA switch other.*"
+          timeout: 20000
+      - takeScreenshot: reports/84-cleaned-up
+      # The server hands back a conversation to fall back to, so the app is
+      # never left with nowhere to talk.
+      - tapOn:
+          id: "sessions-close"
+      - assertVisible:
+          id: "composer-input"

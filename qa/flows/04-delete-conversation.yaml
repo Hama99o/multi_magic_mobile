@@ -5,9 +5,22 @@
 # a Note or a Loan carries no conversation_id, so the delete cannot reach it —
 # and the confirm's whole job is to SAY so at the moment somebody is deciding.
 #
-# This flow stops at the confirm and presses "Keep it". It asserts the copy and
-# does not delete: the assertion is about what the dialog says, and actually
-# destroying a conversation on every run would make the suite worse, not better.
+# ── IT NOW DELETES, AND ONLY WHAT IT MADE ────────────────────────────────
+# This flow used to press "Keep it" and stop, so that every run left one more
+# conversation behind. The QA account's cap is 50 (`Ai::Sessions::MAX_PER_USER`)
+# and at 50 "New conversation" is disabled — which would have failed this flow,
+# `15-sessions-switch` and anything else that starts one, on a full fixture
+# rather than on a bug. Twenty-five runs from a full account.
+#
+# So: it creates a conversation, names it something nobody else uses, opens the
+# confirm and presses **Keep it** — the cancel is still asserted, and the
+# wording is still what this file exists for — and then deletes that same
+# conversation for real. Nothing it did not create is touched.
+#
+# ── NO SELECTOR HERE IS A DATABASE ID ────────────────────────────────────
+# `session-menu-<id>` cannot be named in advance, so rows are reached by the
+# label their menu button carries: "Options for New chat" (the server's
+# `DEFAULT_TITLE`) and then "Options for QA delete target".
 appId: ${APP_ID}
 tags:
   - smoke
@@ -20,34 +33,93 @@ tags:
     id: "sessions-sheet"
 - takeScreenshot: reports/30-sessions
 
-# The safe action is FIRST in the menu. Offering it before the destructive one
-# is what makes the confirm rare, and a confirm somebody reads once a month is
-# read, while one they dismiss daily is not.
-- tapOn:
-    id: "sessions-new"
-- extendedWaitUntil:
-    visible:
-      id: "composer-input"
-    timeout: 30000
-- tapOn:
-    id: "chat-open-sessions"
-- tapOn:
-    below:
-      id: "sessions-sheet"
-    id: "session-menu-.*"
-    optional: true
-- assertVisible: "Clear messages"
-- assertVisible: "Empties this chat. Its files stay."
-- takeScreenshot: reports/31-row-menu
-- tapOn: "Delete"
+# At the cap there is nothing to create: NOT MEASURED past here, which is a
+# different fact from passed. Delete a conversation by hand and re-run.
+- runFlow:
+    when:
+      visible:
+        id: "sessions-at-limit"
+    commands:
+      - assertVisible: "You have 50 conversations, which is the most MultiMagic keeps.*"
+      - takeScreenshot: reports/30-sessions-at-limit-NOT-MEASURED
 
-# THE GUARANTEE. Both halves: the question, and the sentence naming what is
-# NOT touched. It names the four apps rather than saying "your data".
-- assertVisible:
-    id: "delete-conversation-confirm"
-- assertVisible: "Your notes, contacts, loans and money are not touched."
-- takeScreenshot: reports/32-delete-confirm
-- tapOn:
-    id: "delete-conversation-cancel"
-- assertNotVisible:
-    id: "delete-conversation-confirm"
+- runFlow:
+    when:
+      notVisible:
+        id: "sessions-at-limit"
+    commands:
+      # The safe action is FIRST in the menu. Offering it before the
+      # destructive one is what makes the confirm rare, and a confirm somebody
+      # reads once a month is read, while one they dismiss daily is not.
+      - tapOn:
+          id: "sessions-new"
+      - extendedWaitUntil:
+          visible:
+            id: "composer-input"
+          timeout: 30000
+      - tapOn:
+          id: "chat-open-sessions"
+
+      # ── The row menu, in order ──────────────────────────────────────────
+      - tapOn: "Options for New chat"
+      - assertVisible:
+          id: "session-menu"
+      - assertVisible: "Clear messages"
+      - assertVisible: "Empties this chat. Its files stay."
+      - takeScreenshot: reports/31-row-menu
+
+      # Named, so every step after this addresses THIS conversation and not
+      # whichever one happened to be first.
+      - tapOn:
+          id: "session-menu-rename"
+      - assertVisible:
+          id: "rename-dialog"
+      - tapOn:
+          id: "rename-input"
+      - eraseText: 60
+      - inputText: "QA delete target"
+      # The field is `returnKeyType="done"` with `onSubmitEditing` saving, so
+      # Enter IS the save — and no `hideKeyboard` in front of a button.
+      - pressKey: Enter
+      - extendedWaitUntil:
+          visible: "QA delete target.*"
+          timeout: 20000
+
+      # ── THE GUARANTEE, and the way out ──────────────────────────────────
+      - tapOn: "Options for QA delete target"
+      - tapOn:
+          id: "session-menu-delete"
+      - assertVisible:
+          id: "delete-conversation-confirm"
+      # A brand-new conversation holds no files, so this is the no-files
+      # wording. Both halves: the question, and the sentence naming what is NOT
+      # touched. It names the four apps rather than saying "your data".
+      - assertVisible: "Delete this conversation?"
+      - assertVisible: "Your notes, contacts, loans and money are not touched."
+      - takeScreenshot: reports/32-delete-confirm
+      - tapOn:
+          id: "delete-conversation-cancel"
+      - assertNotVisible:
+          id: "delete-conversation-confirm"
+      # Cancelling kept it: the row is still there.
+      - assertVisible: "QA delete target.*"
+      - takeScreenshot: reports/33-kept-it
+
+      # ── And now delete it, because this flow made it ────────────────────
+      - tapOn: "Options for QA delete target"
+      - tapOn:
+          id: "session-menu-delete"
+      - assertVisible:
+          id: "delete-conversation-confirm"
+      - tapOn:
+          id: "delete-conversation-yes"
+      - extendedWaitUntil:
+          notVisible: "QA delete target.*"
+          timeout: 20000
+      - takeScreenshot: reports/34-deleted
+      # The server never leaves the user with nowhere to talk: `destroy`
+      # answers with the session to fall back to, and the app opens it.
+      - tapOn:
+          id: "sessions-close"
+      - assertVisible:
+          id: "composer-input"

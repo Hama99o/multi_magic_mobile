@@ -37,7 +37,15 @@ const ROOTS = ["app", "src"];
  * spelling fails here instead of quietly shrinking what is covered.
  */
 const ALIASES = ["translate"];
-const CALL = new RegExp(`\\b(?:t|${ALIASES.join("|")})\\(\\s*"([a-zA-Z][\\w.]*)"`, "g");
+// All three quote characters, per `docs/TESTING.md` §10 applied to this file:
+// the first version matched a double quote only, which is a hypothesis about
+// how people write rather than a fact about the code. Nothing in the repo uses
+// the other two today and nothing enforces that, which is the whole point —
+// the spelling a grep knows is the finding waiting to happen.
+const CALL = new RegExp(
+  `\\b(?:t|${ALIASES.join("|")})\\(\\s*(["'\`])([a-zA-Z][\\w.]*)\\1`,
+  "g",
+);
 const ALIASED_IMPORT = /\bt\s+as\s+(\w+)/g;
 
 function sourceFiles(dir: string): string[] {
@@ -57,7 +65,7 @@ function calledKeys(): Map<string, string> {
     for (const file of sourceFiles(root)) {
       const source = fs.readFileSync(file, "utf8");
       for (const match of source.matchAll(CALL)) {
-        if (!found.has(match[1])) found.set(match[1], file);
+        if (!found.has(match[2])) found.set(match[2], file);
       }
     }
   }

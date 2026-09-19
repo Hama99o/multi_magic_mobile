@@ -141,12 +141,12 @@ tags:
       - tapOn:
           id: "session-menu-delete"
       - assertVisible:
-          id: "delete-confirm"
+          id: "delete-conversation-confirm"
       - assertVisible: "Delete this conversation?"
       # The guarantee, on the way past.
       - assertVisible: "Your notes, contacts, loans and money are not touched."
       - tapOn:
-          id: "delete-confirm-yes"
+          id: "delete-conversation-yes"
       - extendedWaitUntil:
           notVisible: "QA switch target.*"
           timeout: 20000
@@ -154,9 +154,9 @@ tags:
       - tapOn:
           id: "session-menu-delete"
       - assertVisible:
-          id: "delete-confirm"
+          id: "delete-conversation-confirm"
       - tapOn:
-          id: "delete-confirm-yes"
+          id: "delete-conversation-yes"
       - extendedWaitUntil:
           notVisible: "QA switch other.*"
           timeout: 20000

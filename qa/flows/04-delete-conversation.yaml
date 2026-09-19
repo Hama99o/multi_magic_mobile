@@ -44,10 +44,10 @@ tags:
 # THE GUARANTEE. Both halves: the question, and the sentence naming what is
 # NOT touched. It names the four apps rather than saying "your data".
 - assertVisible:
-    id: "delete-confirm"
+    id: "delete-conversation-confirm"
 - assertVisible: "Your notes, contacts, loans and money are not touched."
 - takeScreenshot: reports/32-delete-confirm
 - tapOn:
-    id: "delete-confirm-cancel"
+    id: "delete-conversation-cancel"
 - assertNotVisible:
-    id: "delete-confirm"
+    id: "delete-conversation-confirm"

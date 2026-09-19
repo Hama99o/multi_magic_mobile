@@ -128,7 +128,7 @@ describe("deleting", () => {
     fireEvent.press(screen.getByTestId("session-menu-delete"));
 
     await waitFor(() =>
-      expect(screen.getByTestId("delete-confirm-question")).toHaveTextContent(
+      expect(screen.getByTestId("delete-conversation-question")).toHaveTextContent(
         "Delete this conversation and the 3 files in it?",
       ),
     );
@@ -143,9 +143,9 @@ describe("deleting", () => {
     fireEvent.press(screen.getByTestId("session-menu-4"));
     await waitFor(() => expect(screen.getByTestId("session-menu-delete")).toBeTruthy());
     fireEvent.press(screen.getByTestId("session-menu-delete"));
-    await waitFor(() => expect(screen.getByTestId("delete-confirm-yes")).toBeTruthy());
+    await waitFor(() => expect(screen.getByTestId("delete-conversation-yes")).toBeTruthy());
 
-    fireEvent.press(screen.getByTestId("delete-confirm-yes"));
+    fireEvent.press(screen.getByTestId("delete-conversation-yes"));
 
     // The server never leaves the user with nowhere to talk.
     await waitFor(() => expect(onOpenSession).toHaveBeenCalledWith(9));

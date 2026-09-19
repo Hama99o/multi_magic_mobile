@@ -71,14 +71,17 @@ export function DeleteConfirm({
             padding: metrics.space.xl,
             gap: metrics.space.lg,
           }}
-          testID="delete-confirm"
+          // `delete-conversation-*`, never a bare `delete-confirm`: the account
+          // screen has a delete too, and the two must not share a handle any
+          // more than they may share a look (2026-09-19).
+          testID="delete-conversation-confirm"
         >
-          <Text variant="title" testID="delete-confirm-question">
+          <Text variant="title" testID="delete-conversation-question">
             {deleteQuestion(fileCount)}
           </Text>
 
           {/* The guarantee. Present whether or not there are files. */}
-          <Text tone="muted" testID="delete-confirm-safe">
+          <Text tone="muted" testID="delete-conversation-safe">
             {SAFE_SENTENCE}
           </Text>
 
@@ -88,7 +91,7 @@ export function DeleteConfirm({
               tone="danger"
               busy={busy}
               onPress={onConfirm}
-              testID="delete-confirm-yes"
+              testID="delete-conversation-yes"
             />
             <Pressable
               accessibilityRole="button"
@@ -96,7 +99,7 @@ export function DeleteConfirm({
               disabled={busy}
               hitSlop={8}
               style={{ minHeight: metrics.touch, alignItems: "center", justifyContent: "center" }}
-              testID="delete-confirm-cancel"
+              testID="delete-conversation-cancel"
             >
               <Text tone="muted">Keep it</Text>
             </Pressable>

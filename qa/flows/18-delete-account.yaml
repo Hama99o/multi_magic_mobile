@@ -63,7 +63,7 @@ tags:
 - assertVisible: "What the assistant cost — which provider ran, and how many tokens. Your name is removed from those rows, and they hold no part of any question or answer."
 # Not the sessions confirm: its question is not here.
 - assertNotVisible:
-    id: "delete-confirm-question"
+    id: "delete-conversation-question"
 - takeScreenshot: reports/91-delete-account-disclosure
 
 # ── The gate, shut ───────────────────────────────────────────────────────

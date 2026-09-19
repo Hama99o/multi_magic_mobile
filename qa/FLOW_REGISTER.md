@@ -173,10 +173,11 @@ cover a screen that does not exist, so it is recorded here as the gap it is.
 
 **Two more findings from writing 15 and 18, reported and not fixed:**
 
-- **The two deletes that must not look alike share a testID.** `delete-confirm`
-  is the sessions dialog (`DeleteConfirm.tsx:74`) and the account screen's
-  button (`app/delete-account.tsx:164`). Maestro never sees both at once, so no
-  flow is confused, but it is the one place the two are indistinguishable.
+- **The two deletes that must not look alike shared a testID — FIXED 2026-09-19.**
+  `delete-confirm` was both the sessions dialog (`DeleteConfirm.tsx`) and the
+  account screen's button (`app/delete-account.tsx`). Now `delete-conversation-
+  confirm` / `-question` / `-safe` / `-yes` / `-cancel` and `delete-account-confirm`;
+  `04`, `15`, `18`, the unit tests and the render table moved with them.
 - **`04-delete-conversation` creates a conversation on every run and deletes
   none.** At 50 the account is full and every flow that presses "New
   conversation" fails on a full fixture. `15-sessions-switch` deletes what it

@@ -280,7 +280,7 @@ const SCREENS: { name: string; element: () => ReactElement; handles: string[] }[
   { name: "change-password", element: () => <ChangePassword />, handles: ["password-current", "password-new", "password-confirm", "password-save", "password-current-reveal"] },
   { name: "ai-keys", element: () => <AiKeys />, handles: ["ai-keys-list", "ai-key-gemini", "ai-key-active-gemini", "ai-key-replace-gemini", "ai-key-remove-gemini"] },
   { name: "account", element: () => <AccountScreen />, handles: ["account-privacy", "account-delete"] },
-  { name: "delete-account", element: () => <DeleteAccount />, handles: ["delete-what-goes", "delete-password", "delete-confirm"] },
+  { name: "delete-account", element: () => <DeleteAccount />, handles: ["delete-what-goes", "delete-password", "delete-account-confirm"] },
   { name: "privacy", element: () => <Privacy />, handles: ["privacy-title", "privacy-body", "privacy-draft-banner"] },
 ];
 
@@ -357,7 +357,7 @@ describe("the deletion gate", () => {
     renderScreen(<DeleteAccount />);
 
     expect(await screen.findByTestId("delete-password")).toBeTruthy();
-    expect(await screen.findByTestId("delete-confirm")).toBeTruthy();
+    expect(await screen.findByTestId("delete-account-confirm")).toBeTruthy();
     expect(screen.queryByTestId("delete-unavailable")).toBeNull();
   });
 

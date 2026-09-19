@@ -161,7 +161,9 @@ export default function DeleteAccount() {
           ) : null}
 
           <Pressable
-            testID="delete-confirm"
+            // Says WHICH delete. The sessions dialog is `delete-conversation-*`;
+            // the two used to share `delete-confirm` (2026-09-19).
+            testID="delete-account-confirm"
             onPress={() => void confirm()}
             disabled={!password || busy}
             accessibilityRole="button"

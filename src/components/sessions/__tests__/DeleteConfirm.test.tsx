@@ -32,7 +32,7 @@ describe("the guarantee", () => {
 
     // In BOTH strings. It is not conditional on there being files, because it
     // is not about the files.
-    expect(screen.getByTestId("delete-confirm-safe")).toHaveTextContent(SAFE_SENTENCE);
+    expect(screen.getByTestId("delete-conversation-safe")).toHaveTextContent(SAFE_SENTENCE);
   });
 
   it("names the four things by name rather than saying 'your data'", () => {
@@ -49,13 +49,13 @@ describe("the dialog", () => {
       <DeleteConfirm visible={false} fileCount={2} onCancel={jest.fn()} onConfirm={jest.fn()} />,
     );
 
-    expect(screen.queryByTestId("delete-confirm")).toBeNull();
+    expect(screen.queryByTestId("delete-conversation-confirm")).toBeNull();
   });
 
   it("offers keeping it as well as deleting", () => {
     render(<DeleteConfirm visible fileCount={2} onCancel={jest.fn()} onConfirm={jest.fn()} />);
 
-    expect(screen.getByTestId("delete-confirm-yes")).toBeTruthy();
-    expect(screen.getByTestId("delete-confirm-cancel")).toBeTruthy();
+    expect(screen.getByTestId("delete-conversation-yes")).toBeTruthy();
+    expect(screen.getByTestId("delete-conversation-cancel")).toBeTruthy();
   });
 });

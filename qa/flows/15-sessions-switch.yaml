@@ -80,10 +80,35 @@ tags:
           id: "session-menu"
       # Clear FIRST — the order is the safety mechanism.
       - assertVisible: "Clear messages"
+      # ── ALL FOUR ENTRIES BY HANDLE, NOT JUST THE ONE WE USE ───────────
+      # `flow_lint --untouched` found `session-menu-clear`,
+      # `session-menu-instructions` and `session-menu-scope` reached by
+      # nothing in the suite — three entries on a menu this flow already
+      # opens and then walks past. Asserting they are PRESENT is not the
+      # same as exercising them, and neither Clear nor Scope nor
+      # Instructions is exercised here: Clear would empty a conversation
+      # and the other two open dialogs this flow does not enter. What this
+      # does prove is that the menu a person opens has all four, in a
+      # build where any of them could have been dropped silently.
+      - assertVisible:
+          id: "session-menu-clear"
+      - assertVisible:
+          id: "session-menu-rename"
+      - assertVisible:
+          id: "session-menu-instructions"
+      - assertVisible:
+          id: "session-menu-scope"
       - tapOn:
           id: "session-menu-rename"
       - assertVisible:
           id: "rename-dialog"
+      # The dialog's own two controls. `15` renames twice and had never named
+      # either — it saves with Enter, which the field's `onSubmitEditing`
+      # performs, so the BUTTON had never been asserted to exist at all.
+      - assertVisible:
+          id: "rename-save"
+      - assertVisible:
+          id: "rename-cancel"
       - tapOn:
           id: "rename-input"
       - eraseText: 60

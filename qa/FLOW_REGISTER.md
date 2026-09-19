@@ -363,7 +363,7 @@ list with the real gaps is how the real gaps stop being read.
 
 | bucket | count | what it means |
 |---|---|---|
-| **BACKLOG** | **25** | reachable on the QA account, and nothing has ever touched it |
+| **BACKLOG** | **20** | reachable on the QA account, and nothing has ever touched it |
 | unreachable | 18 | needs a server made to fail, a second signed-in account, or a lost network — states this rig cannot produce **against his real backend**. See the note below: this does not mean *uncovered* |
 | unit-only | 17 | counters, captions and containers, not interactive controls; the render tests cover them more cheaply and at three widths |
 | forbidden | 1 | `delete-account-confirm` — `RIG_CONTRACT.md` §3 forbids pressing it |
@@ -405,7 +405,31 @@ and since `049079e` the copy is `t("attach.photo")`, so "Camera" becomes
 "Appareil photo" in French and two of the three word assertions would fail on
 a French run while the handles hold in both.
 
-**The rest of the 25, and the one with his name on it.** `msg-retry` is the
+**Then five more, 25 to 20, on a menu two flows already open.** `15` opened
+the row menu, asserted its ORDER — Clear first, because the order is the
+safety mechanism — and walked past the other three entries without naming
+them, and it renamed twice without ever naming the rename dialog's own save or
+cancel. It saves with Enter, which the field's `onSubmitEditing` performs, so
+the BUTTON had never been asserted to exist at all. `session-menu-clear`,
+`session-menu-instructions`, `session-menu-scope`, `rename-save` and
+`rename-cancel` are now asserted PRESENT.
+
+**Present is not exercised, and the register should not let that blur.** Clear
+would empty a conversation; Scope and Instructions open dialogs this flow does
+not enter. What the five prove is that the menu a person opens still has all
+four entries in a build where any could have been dropped silently — which is
+worth having and is less than covering them. **And these assertions are UNRUN**
+— written while the device was with another session, so `15`'s PASS above is
+the run before they existed.
+
+**`msg-retry` went to a component test rather than a flow**, taken by da on
+2026-09-19: the failure can be passed in, where this rig would have to make
+his real backend fail. It found what no flow would have — a failed message must
+show **no tick**, because `mine && isLastSent && !pending && !failed` makes the
+receipt and the failure mutually exclusive by construction, and construction
+drifts silently.
+
+**The rest, and the one with his name on it.** `msg-retry` is the
 sharpest: a person presses retry when their message has failed, and nothing in
 this suite has ever exercised it. `file-preview-*` and `instructions-*` are
 whole features with no flow at all. The `answer-read-*` family landed at

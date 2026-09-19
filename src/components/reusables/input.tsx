@@ -21,12 +21,14 @@ export type InputProps = Omit<TextInputProps, "style"> & {
   label: string;
   /** Shown under the field in the danger tone. */
   error?: string | null;
+  /** A handle for the error line, so a flow can assert WHICH field complained. */
+  errorTestID?: string;
   /** Adds the reveal toggle and starts obscured. */
   secure?: boolean;
 };
 
 export const Input = forwardRef<TextInput, InputProps>(function Input(
-  { label, error, secure = false, onFocus, onBlur, ...rest },
+  { label, error, errorTestID, secure = false, onFocus, onBlur, ...rest },
   ref,
 ) {
   const colors = useColors();
@@ -94,7 +96,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
       </View>
 
       {error ? (
-        <Text variant="caption" tone="danger">
+        <Text variant="caption" tone="danger" testID={errorTestID}>
           {error}
         </Text>
       ) : null}

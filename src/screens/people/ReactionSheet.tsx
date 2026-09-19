@@ -94,6 +94,12 @@ export function ReactionSheet({
         <Pressable
           testID="reaction-sheet"
           onPress={() => {}}
+          // Exists ONLY to stop a press reaching the scrim behind it. A Pressable
+          // is an accessibility element by default (Pressable.js:245,
+          // `accessible: accessible !== false`), so without this it is a focus
+          // stop with no name — and on iOS an accessibility element groups its
+          // children, which would hide every row inside it.
+          accessible={false}
           style={{
             backgroundColor: colors.ground,
             borderTopLeftRadius: metrics.radius.lg,

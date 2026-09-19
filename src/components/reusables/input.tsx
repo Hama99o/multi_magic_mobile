@@ -98,7 +98,15 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
       </View>
 
       {error ? (
-        <Text variant="caption" tone="danger" testID={errorTestID}>
+        <Text
+          variant="caption"
+          tone="danger"
+          testID={errorTestID}
+          // The error appears AFTER a press, so nothing moves focus to it and a
+          // screen reader user gets silence where a sighted user gets a red line.
+          // `polite` waits for the current utterance rather than cutting it off.
+          accessibilityLiveRegion="polite"
+        >
           {error}
         </Text>
       ) : null}

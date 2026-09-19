@@ -63,6 +63,11 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
+      // WRITTEN, not inherited from the label Text below. `busy` swaps that Text
+      // for a spinner, so a name derived from children disappeared at exactly
+      // the moment a person most needs to know what they pressed — and
+      // `accessibilityState.busy` says that something is working, never what.
+      accessibilityLabel={label}
       accessibilityState={{ disabled: Boolean(inert), busy }}
       disabled={inert}
       hitSlop={8}

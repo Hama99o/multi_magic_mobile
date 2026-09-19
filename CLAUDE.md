@@ -278,6 +278,34 @@ and `src/` only.
 
 ---
 
+## Accessibility
+
+`docs/ACCESSIBILITY.md` is the audit: what was measured, what was fixed, what
+needs a device, and what is the owner's decision rather than a defect.
+
+`src/__tests__/a11y.test.tsx` is the gate, and it is the only test here that
+reads the **accessibility tree** — every other gate reads `testID`s, visible
+text, or the locales against each other. It asserts that no `Pressable` with a
+press handler is nameless, that a name computed from children survives the
+component changing shape, that headings carry the `header` role, and that a
+field error is a live region.
+
+**Three things its green does not mean**, all of them live rather than
+hypothetical: it does not mean a gesture can be performed (`06-people-chat`
+fails on a long press whose hint and handler are both correct — Android's
+text-selection ActionMode takes it first, and only the OS knows that); it does
+not mean a control is reachable (a `Pressable` is an accessibility element
+unless told otherwise, `Pressable.js:245`, and on iOS such an element groups its
+children — RNTL does not emulate that); and it measures no pixel, so touch
+targets are read from source and settled on a device.
+
+**An accessibility string is a user-facing string, and a `<Text>` child is one
+too.** The eslint rule guards `accessibilityLabel` and `accessibilityHint`
+only — three untranslated English literals sit in visible `<Text>` children in
+people-chat, one of which is a control's entire accessible name.
+
+---
+
 ## i18n
 
 English and French, on the same `users.lang` column the web's switcher writes,

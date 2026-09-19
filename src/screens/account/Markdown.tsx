@@ -160,6 +160,10 @@ export function Markdown({ source }: { source: string }) {
           ) : block.kind === "heading" ? (
             <Text
               variant={block.level === 1 ? "title" : "label"}
+              // Swipe-by-heading is how a screen reader reads a long document,
+              // and the privacy policy is the only long document here — a store
+              // requirement. Size alone is a heading to an eye and to nothing else.
+              accessibilityRole="header"
               style={{
                 fontSize: block.level === 1 ? 24 : block.level === 2 ? 18 : 16,
                 lineHeight: block.level === 1 ? 30 : 24,

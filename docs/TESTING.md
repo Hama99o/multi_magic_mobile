@@ -827,3 +827,36 @@ green, for the same reason — none of them changed a prop on a mounted dialog.
 Both have tests now, both go red when the fix is removed, and `useDraft` — the
 hook that decides whether somebody's half-typed question survives a screen
 change — had no test file at all.
+
+### And writing THAT file produced the sharpest plant of the night
+
+`useDraft` cancels a storage read when the person leaves a conversation before
+it resolves, so a slow read cannot land in the composer of the conversation
+they moved to. The new test switched conversations and asserted the composer
+was empty. Deleting the `cancelled` guard outright left **all eleven tests
+green**.
+
+The test was not missing an assertion. It was exercising a **different
+situation from the one its name described**: conversation four had nothing
+stored, so the slow read resolved to `null`, and there was nothing to arrive
+late. It proved that **null is not a draft** — true, and useless.
+
+The race needs the read to be both slow *and* non-empty. It holds a deferred
+promise now, releases it after the switch, and the same deletion turns it red.
+
+> **A plant that reveals the test was exercising a different situation than its
+> name says is a sharper instrument than one that reveals a missing
+> assertion.** A missing assertion is visible on reading; a test whose *setup*
+> cannot produce the condition is not, because every line of it is correct.
+> The only way to find out is to break the thing it claims to watch.
+
+That is twice in one evening that a plant was the only thing between a
+confident green and a report.
+
+### The free instance of the opposite shape
+
+Reading the chat spine for the same refactor turned up
+`setStatus(conversationId == null ? "loading" : "loading")` — both branches the
+same value. **Code that reads as a decision and decides nothing**, which is the
+mirror of a test that reads as a check and checks nothing, and survives for the
+same reason: it looks considered.

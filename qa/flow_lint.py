@@ -430,6 +430,73 @@ def unregistered(flow_paths, register_path):
     return hits
 
 
+# ── THE FOUR BUCKETS, BECAUSE A LIST OF SIXTY-ONE BECOMES WALLPAPER ─────────
+# Only the first is a backlog. The other three are answers, not debt, and
+# keeping them in the same list as the real gaps is how the real gaps stop
+# being read.
+#
+# Each entry carries its REASON, so the next session can disagree with the
+# judgement rather than with the bucket.
+BUCKETS = {
+    # ── 1. FORBIDDEN — a rule says never press it ──────────────────────────
+    "delete-account-confirm": ("forbidden", "RIG_CONTRACT.md §3: no test may call account deletion against a real account"),
+
+    # ── 2. UNREACHABLE — the rig cannot produce the state ──────────────────
+    # Everything here needs a server made to fail, a second signed-in account,
+    # or a moment this suite cannot manufacture against HIS REAL BACKEND.
+    "ai-keys-error":        ("unreachable", "needs the provider check to fail"),
+    "attach-error":         ("unreachable", "needs an upload to fail"),
+    "chat-answer-failed":   ("unreachable", "needs the answer job to fail"),
+    "chat-load-failed":     ("unreachable", "needs the history fetch to fail"),
+    "chat-rate-limited":    ("unreachable", "tripping the limit locks the QA account out of the suite"),
+    "chat-send-failed":     ("unreachable", "needs the send to fail"),
+    "delete-error":         ("unreachable", "needs the delete to fail"),
+    "password-error":       ("unreachable", "the 422 path IS covered by 14; this is the transport failure"),
+    "profile-error":        ("unreachable", "needs the save to fail"),
+    "sessions-error":       ("unreachable", "needs the list fetch to fail"),
+    "answer-undo-error":    ("unreachable", "needs the undo to fail"),
+    "composer-offline":     ("unreachable", "needs the device to lose the network mid-flow"),
+    "composer-mic-problem": ("unreachable", "needs the recogniser to error rather than refuse"),
+    "sign-in-notice":       ("unreachable", "needs a specific server response the rig cannot ask for"),
+    "thinking-slow":        ("unreachable", "needs an answer slow enough to cross the threshold"),
+    "ai-keys-borrowed":     ("unreachable", "needs a key granted by another user"),
+    "thread-typing":        ("unreachable", "needs a SECOND signed-in account typing"),
+    "unread-divider":       ("unreachable", "needs a message from somebody else"),
+
+    # ── 3. UNIT-ONLY — not an interactive control, and a test covers it ────
+    # Counters, captions and labels. A flow asserting these proves the render,
+    # which is what the render tests already do more cheaply and at three
+    # widths.
+    "attach-count":            ("unit-only", "a counter; asserted in the render tests"),
+    "attach-limits":           ("unit-only", "a caption; asserted in the render tests"),
+    "rename-count":            ("unit-only", "a counter"),
+    "delete-conversation-safe":("unit-only", "the guarantee sentence — 04 and 15 assert its TEXT, which is the point"),
+    "answer-undone":           ("unit-only", "a transient confirmation"),
+    "answer-copied":           ("unit-only", "a transient confirmation"),
+    "calendar-updated":        ("unit-only", "a freshness caption; Freshness.test covers it"),
+    "notifications-updated":   ("unit-only", "a freshness caption; Freshness.test covers it"),
+    "updated-line":            ("unit-only", "a freshness caption; Freshness.test covers it"),
+    "answer-actions":          ("unit-only", "the wrapper; its children are what matter"),
+    "answer-read-controls":    ("unit-only", "the wrapper; its children are what matter"),
+    "pending-files":           ("unit-only", "a container"),
+    "source-chips":            ("unit-only", "a container"),
+    "file-preview":            ("unit-only", "a container"),
+}
+
+
+def bucket_for(name):
+    """Which of the four a handle belongs in, and why.
+
+    Anything not named above is a BACKLOG item by default — a control a person
+    can reach on the QA account that no flow has ever touched. Defaulting to
+    backlog rather than to 'probably fine' is deliberate: the failure this
+    whole check exists to catch is a gap that looked like coverage.
+    """
+    if name in BUCKETS:
+        return BUCKETS[name]
+    return ("backlog", "reachable on the QA account; no flow touches it")
+
+
 def untouched(literals, templates):
     """WHICH testIDs EXIST AND NO FLOW HAS EVER TOUCHED.
 
@@ -480,10 +547,24 @@ def main(argv):
         print()
         print(f"  {len(literals)} literal testIDs in the app; "
               f"{len(literals) - len(orphans)} are reached by a flow.")
-        if orphans:
-            print(f"  {len(orphans)} that NO flow touches — not findings, a reading list:")
-            for o in orphans:
-                print(f"      {o}")
+        order = [
+            ("backlog",     "BACKLOG — reachable, and nothing has ever touched it"),
+            ("unreachable", "the rig cannot produce this state against his real backend"),
+            ("unit-only",   "not an interactive control; a unit test covers it"),
+            ("forbidden",   "a rule says never press it"),
+        ]
+        grouped = {}
+        for o in orphans:
+            b, why = bucket_for(o)
+            grouped.setdefault(b, []).append((o, why))
+        for key, title in order:
+            rows = grouped.get(key, [])
+            print()
+            print(f"  {len(rows):>3}  {title}")
+            for name, why in rows:
+                print(f"         {name:<28} {why}")
+        print()
+        print(f"  ONLY THE FIRST {len(grouped.get('backlog', []))} ARE A BACKLOG.")
         return 0
 
     if "--selftest" in argv:

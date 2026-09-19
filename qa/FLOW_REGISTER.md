@@ -355,26 +355,38 @@ sentence as an English literal two lines below it; Karwan's literal check read
 `en.ts` while its rig forced Pashto, so it compared two disjoint sets and
 reported clean by construction.
 
-Asked backwards, today: **153 literal testIDs in the app, 92 reached by a
-flow, 61 touched by nothing.**
+Asked backwards: **153 literal testIDs, 92 reached by a flow, 61 by nothing.**
 
-It prints a list and does **not** fail the gate, on purpose. A handle with no
-flow is not automatically wrong — some are reached only by unit tests, some
-mark a state a flow cannot reach, and `delete-account-confirm` is untouched
-because `RIG_CONTRACT.md` §3 forbids ever pressing it. A check that cried wolf
-here would be switched off, and the value is in reading the list.
+A list of sixty-one becomes wallpaper, so it is ranked. **Only the first
+bucket is a backlog**; the other three are answers, and keeping them in one
+list with the real gaps is how the real gaps stop being read.
 
-Reading it, three groups are worth naming:
+| bucket | count | what it means |
+|---|---|---|
+| **BACKLOG** | **25** | reachable on the QA account, and nothing has ever touched it |
+| unreachable | 18 | needs a server made to fail, a second signed-in account, or a lost network — states this rig cannot produce **against his real backend** |
+| unit-only | 17 | counters, captions and containers, not interactive controls; the render tests cover them more cheaply and at three widths |
+| forbidden | 1 | `delete-account-confirm` — `RIG_CONTRACT.md` §3 forbids pressing it |
 
-- **Reachable and simply never covered.** `attach-photo`, `attach-camera`,
-  `attach-document` — `05-upload` opens the sheet and asserts what it says,
-  and never asserts the three options by handle. `file-preview-*`,
-  `instructions-*` and `msg-retry` are whole features with no flow at all.
-- **Error and empty states**, which are most of the 61 — `chat-send-failed`,
-  `attach-error`, `ai-keys-error`, `composer-offline`. Reaching them needs a
-  server made to fail, which this rig cannot do against his real backend.
-- **Newly landed and not yet written into a flow**: the `answer-read-*` family,
-  enabled at `bf0ec10`.
+Each entry carries its own reason in `flow_lint.py`, so the next session can
+disagree with a judgement rather than with a bucket. **Anything unclassified
+defaults to BACKLOG**, deliberately: the failure this check exists to catch is
+a gap that looked like coverage, so the default must not be "probably fine".
 
-That list is the honest backlog. Until now it did not exist, and a flow suite
-with 0 findings looked complete while touching 60% of the app's handles.
+### The backlog, worked rather than listed
+
+**Started — 28 to 25.** `05-upload` already opened the attach sheet and
+asserted its words, so `attach-photo`, `attach-camera` and `attach-document`
+were three lines on a flow that exists. Worth noting *why* the words were not
+enough: a text assertion passes if the string appears anywhere on screen,
+including in a caption, and only the handle says the **control** is there —
+and since `049079e` the copy is `t("attach.photo")`, so "Camera" becomes
+"Appareil photo" in French and two of the three word assertions would fail on
+a French run while the handles hold in both.
+
+**The rest of the 25, and the one with his name on it.** `msg-retry` is the
+sharpest: a person presses retry when their message has failed, and nothing in
+this suite has ever exercised it. `file-preview-*` and `instructions-*` are
+whole features with no flow at all. The `answer-read-*` family landed at
+`bf0ec10` and has no flow yet.
+

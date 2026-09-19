@@ -17,6 +17,25 @@ tags:
     id: "composer-attach"
 - assertVisible:
     id: "attach-sheet"
+# BY HANDLE AND BY WORD, AND THE HANDLES ARE THE NEW HALF.
+#
+# This flow asserted only the words. `flow_lint --untouched` found that
+# `attach-photo`, `attach-camera` and `attach-document` were reached by
+# nothing in the suite — three controls on a screen this flow already opens.
+#
+# The words alone are weaker than they look for two reasons. A text assertion
+# passes if the string appears ANYWHERE on screen, including in a caption that
+# happens to mention it; only the handle says the CONTROL is there. And since
+# `049079e` the copy is `t("attach.photo")` — a French run makes "Photo" into
+# "Photo" but "Document" into "Document" and "Camera" into "Appareil photo",
+# so the word assertions below hold in English and two of three would fail in
+# French. The handles hold in both.
+- assertVisible:
+    id: "attach-photo"
+- assertVisible:
+    id: "attach-camera"
+- assertVisible:
+    id: "attach-document"
 - assertVisible: "Photo"
 - assertVisible: "Camera"
 - assertVisible: "Document"

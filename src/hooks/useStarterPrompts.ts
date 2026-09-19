@@ -13,16 +13,16 @@
  * it — and one naming an app he has never used actively misleads, because the
  * answer will be "I could not find anything" to a question the app suggested.
  *
- * ── What this can honestly derive today, and what it cannot ───────────────
- * There is no per-app record-count endpoint in multi_magic — I looked; `storage`
- * counts bytes and `search` needs a query. Building one request per app to
- * compose a greeting is worse than one endpoint, so the full version wants a
- * small endpoint in the API and that has been raised.
- *
- * What is derivable **right now, from clients this app already has**:
+ * ── What this derives, strongest signal first ─────────────────────────────
  *   - **files in this conversation** — a concrete noun, the strongest kind:
  *     the user chose that document, so a question about it is certainly useful
  *   - **events in the next week** — real, dated, and named
+ *   - **apps that hold anything** — `GET /api/v1/me/summary`, added
+ *     2026-09-19 (`multi_magic@39ec585`) because this file asked for it: "the
+ *     full version wants a small endpoint in the API and that has been
+ *     raised." It returns COUNTS ONLY, so a prompt from it can name an app but
+ *     never a record — which is exactly why it ranks below the two sources
+ *     that already have a noun, rather than replacing them.
  *
  * ── Three rules, and the third is the one that keeps it honest ────────────
  * 1. A concrete noun beats a category: "What does invoice.pdf say?" beats
@@ -35,12 +35,13 @@
 import { useQuery } from "@tanstack/react-query";
 import { documentsApi } from "@/api/ai";
 import { calendarApi } from "@/api/calendar";
+import { APP_NOUN, meApi, type AppKey } from "@/api/me";
 
 export interface StarterPrompt {
   /** The question asked verbatim when tapped. */
   text: string;
   /** Where it came from, so a reader can tell derived from invented. */
-  source: "file" | "calendar";
+  source: "file" | "calendar" | "app";
 }
 
 /** Longest a suggestion may be before it stops being readable on a 360 dp row. */
@@ -53,6 +54,8 @@ function shorten(noun: string): string {
 export function buildPrompts(
   files: { filename: string; status: string }[],
   events: { title: string }[],
+  /** Apps holding anything, best-stocked first — the server's ranking. */
+  stocked: AppKey[] = [],
 ): StarterPrompt[] {
   const prompts: StarterPrompt[] = [];
 
@@ -79,6 +82,28 @@ export function buildPrompts(
     prompts.push({ text: "What is on my calendar this week?", source: "calendar" });
   }
 
+  // ── AND ONLY THEN, THE APPS THAT HOLD SOMETHING ───────────────────────
+  //
+  // Last, because a count has no noun: "Ask about your loans" is weaker than
+  // "When is Dentist?" and must not displace it. `calendar` is skipped here
+  // when an event already spoke above — two questions about one fact is
+  // padding wearing a derivation's clothes, which is rule 2.
+  //
+  // Rule 3 is unchanged and is what this source must not break: an app with
+  // ZERO records never appears, because the server leaves it out of `stocked`.
+  // That is the whole reason this is a counts endpoint and not a guess.
+  const alreadySpokenFor: Partial<Record<AppKey, boolean>> = {
+    // A named event said it better; a named file did too. Offering the
+    // category as well is two questions about one fact.
+    events: prompts.some((p) => p.source === "calendar"),
+    documents: prompts.some((p) => p.source === "file"),
+  };
+  for (const app of stocked) {
+    if (prompts.length >= 3) break;
+    if (alreadySpokenFor[app]) continue;
+    prompts.push({ text: `What is in my ${APP_NOUN[app]}?`, source: "app" });
+  }
+
   return prompts.filter((p) => p.text.length <= MAX_LENGTH).slice(0, 3);
 }
 
@@ -99,9 +124,21 @@ export function useStarterPrompts(conversationId: number | null): {
     retry: false,
   });
 
+  const { data: summary, isLoading: summaryLoading } = useQuery({
+    queryKey: ["me", "summary"],
+    queryFn: meApi.summary,
+    // Same rule as the calendar above: a failure here means one suggestion
+    // fewer, never a broken empty state.
+    retry: false,
+  });
+
   return {
     // An Occurrence wraps the event; the title lives on the event itself.
-    prompts: buildPrompts(files, events.map((o) => ({ title: o.event.title }))),
-    loading: filesLoading || eventsLoading,
+    prompts: buildPrompts(
+      files,
+      events.map((o) => ({ title: o.event.title })),
+      summary?.stocked ?? [],
+    ),
+    loading: filesLoading || eventsLoading || summaryLoading,
   };
 }

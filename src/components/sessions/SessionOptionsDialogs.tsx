@@ -25,7 +25,7 @@
  */
 import { useEffect, useState } from "react";
 import {
-  KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, TextInput, View,
+  KeyboardAvoidingView, Modal, Pressable, ScrollView, TextInput, View,
 } from "react-native";
 import { Check } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
@@ -53,12 +53,12 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
   const metrics = useMetrics();
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      {/* See RenameDialog: iOS does not resize a Modal for the keyboard, and
-          the instructions field is a multiline box in the lower half. */}
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      {/* `padding` on BOTH platforms — see ScreenContainer's header. A Modal
+          is its own window, so it is not resized under edge-to-edge either,
+          and the measurement makes the padding 0 wherever the window IS
+          resized. RenameDialog autofocuses, so on a short phone the field
+          would be under the keyboard from the moment it opens. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
         <View
           style={{
             flex: 1,

@@ -8,8 +8,40 @@
  * stretching. A tablet is the one place a wide screen needs a decision instead
  * of a resize — a 760 dp line of serif text is unreadable.
  */
+
+/**
+ * THE KEYBOARD, ON BOTH PLATFORMS — and the comment that used to be here was
+ * wrong in a way that hid a real bug for a day.
+ *
+ * It said: *"padding is right on iOS; on Android the system already resizes
+ * the window, and adding padding on top double-counts it and leaves a gap."*
+ * The first half is true. The second is false twice over:
+ *
+ * 1. **It cannot double-count.** `KeyboardAvoidingView` does not assume; it
+ *    MEASURES — `Math.max(frame.y + frame.height - keyboardY, 0)`
+ *    (`KeyboardAvoidingView.js:109`). When the window has already resized,
+ *    the view's bottom edge is above the keyboard, the subtraction goes
+ *    negative and the padding is **0**. Passing `padding` on Android is
+ *    therefore free in the case the comment was worried about.
+ *
+ * 2. **Android does not always resize any more.** `app.json` sets
+ *    `edgeToEdgeEnabled: true`, and an edge-to-edge window is not resized for
+ *    the IME — the app is expected to consume that inset itself. So on the
+ *    very configuration this app ships, `behavior={undefined}` means nothing
+ *    moves and the composer goes under the keyboard.
+ *
+ * Measured on a device by the QA session: on a people thread with the
+ * keyboard up, the composer was not merely covered — it was off-screen, and
+ * `people-composer-send` was absent from the hierarchy entirely.
+ *
+ * **Why `09-keyboard` passed anyway** is the part worth keeping: that flow
+ * runs on an AVD where Gboard is in FLOATING mode, and its own header says a
+ * floating keyboard "produces no inset at all, so it is the easy case, not
+ * the hard one". A green flow, on the wrong keyboard mode, on the one screen
+ * that was checked.
+ */
 import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors, useMetrics } from "@/hooks/useColors";
 
@@ -62,12 +94,7 @@ export function Screen({
   );
 
   const content = avoidKeyboard ? (
-    <KeyboardAvoidingView
-      style={{ flex: 1 }}
-      // "padding" is right on iOS; on Android the system already resizes the
-      // window, and adding padding on top double-counts it and leaves a gap.
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
-    >
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       {body}
     </KeyboardAvoidingView>
   ) : (

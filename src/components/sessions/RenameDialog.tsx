@@ -9,7 +9,7 @@
  * a long title is trimmed by the field rather than rejected by a round trip.
  */
 import { useEffect, useState } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Pressable, View } from "react-native";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { Input } from "@/components/reusables/input";
@@ -46,15 +46,12 @@ export function RenameDialog({
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
-      {/* Android's adjustResize shrinks a Modal's window for the keyboard; iOS
-          does nothing, so on an iPhone SE a centred dialog with the field
-          focused sits half under the keyboard — with `autoFocus`, from the
-          moment it opens. "padding" shrinks this container instead and the
-          dialog re-centres in what is left. */}
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      {/* `padding` on BOTH platforms — see ScreenContainer's header. A Modal
+          is its own window, so it is not resized under edge-to-edge either,
+          and the measurement makes the padding 0 wherever the window IS
+          resized. RenameDialog autofocuses, so on a short phone the field
+          would be under the keyboard from the moment it opens. */}
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       <View
         style={{
           flex: 1,

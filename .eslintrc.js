@@ -33,6 +33,31 @@ module.exports = {
         message:
           "Pressable style must be a plain object — NativeWind's interop drops a function style silently, taking the background, height and padding with it. Track pressed in state (see components/reusables/button.tsx) or use android_ripple.",
       },
+      /**
+       * A `require` OF A VARIABLE MAKES THE WHOLE APP UNBUNDLEABLE.
+       *
+       * Metro resolves requires statically, so `require(name)` is rejected at
+       * transform time — `Invalid call at line N: require(name)` — while
+       * Node's resolver accepts it happily. That asymmetry is the entire
+       * failure: `tsc` passed, eslint passed (the line even carried a
+       * `no-require-imports` disable, which made it look considered), 465
+       * Jest tests passed because Jest runs on Node, and the app could not
+       * start at all. Seven hours, and it was found from a device.
+       *
+       * `npm run bundle` catches it in about a minute and CI runs it on every
+       * push. This catches it in milliseconds, on the gate every session
+       * already runs, which is the difference between a check that is
+       * available and one that is unavoidable.
+       *
+       * The legitimate form is a literal per module, each in its own `try`:
+       *   try { audio = require("expo-audio") as AudioModule; } catch { … }
+       * See `src/stores/readAloud.store.ts`.
+       */
+      {
+        selector: "CallExpression[callee.name='require'] > :first-child:not(Literal)",
+        message:
+          "require() needs a string LITERAL — Metro resolves requires statically and a variable makes the app unbundleable, while Node and Jest accept it. One try/catch per module with the name written out; see src/stores/readAloud.store.ts and docs/TESTING.md §1.",
+      },
     ],
   },
   ignorePatterns: [

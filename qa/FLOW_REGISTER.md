@@ -390,3 +390,30 @@ this suite has ever exercised it. `file-preview-*` and `instructions-*` are
 whole features with no flow at all. The `answer-read-*` family landed at
 `bf0ec10` and has no flow yet.
 
+
+---
+
+## `ICON` — one handle, two nodes
+
+A lucide icon hands its `testID` to **both its wrapper and the `Svg` inside
+it**, so `event-repeats`, `session-scoped-*` and `session-instructed-*` each
+resolve to **two nodes** in the rendered tree. Nothing else in `flow_lint.py`
+can see that: the source says `testID={...}` exactly once, and every other
+check in the file reads source.
+
+da found it walking handles backwards on 2026-09-19. **No flow taps one
+today**, which is precisely why the check went in now — the first flow that
+does will hear it from the linter rather than from a device at 3am, wondering
+why a tap landed oddly.
+
+Detected by SHAPE rather than by an import list: a lucide icon is the element
+taking `size` and `color` and rendering no children.
+
+**It was proved by making it fail**, not by reading it. A throwaway flow
+tapping `event-repeats` produces the finding; the real suite stays at 0. The
+first version of the detector silently missed the two template handles — a
+flat brace match stops at the `}` inside `${session.id}` — and it found only
+`event-repeats` while claiming to cover all three. That is the same shape as
+da's `edited` test, which asserted `getByText("edited")` and passed against
+the literal it was written to forbid, because English's value for that key
+*is* "edited". A check that has never failed is a hypothesis.

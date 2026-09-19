@@ -430,6 +430,42 @@ def unregistered(flow_paths, register_path):
     return hits
 
 
+
+# A lucide icon hands its `testID` to BOTH its wrapper and the Svg inside it,
+# so one handle resolves to TWO nodes in the rendered tree. Nothing in this
+# file can see that by reading source — the source says `testID={...}` once —
+# which is why it is detected by SHAPE here: a lucide icon is the element that
+# takes `size` and `color` and renders no children.
+#
+# da found it on 2026-09-19 while walking handles backwards. No flow taps one
+# today; this exists so the first flow that does finds out from the linter
+# rather than from a device at 3am.
+# The brace half must tolerate `${...}` NESTED inside the expression, which a
+# flat `\{[^}]*\}` stops at — so it reuses ID_EXPR's own nesting pattern.
+# Caught by this detector finding `event-repeats` and silently missing the two
+# template handles it exists for.
+ICON_ID = re.compile(
+    r"<[A-Z][A-Za-z]*\s+(?=[^>]*\bsize=)(?=[^>]*\bcolor=)[^>]*?"
+    r"testID\s*=\s*(\{(?:[^{}]|\{[^{}]*\})*\}|\"[^\"]*\")"
+)
+
+
+def icon_testids():
+    """Handles that sit on an icon, and so resolve to two nodes each."""
+    out = set()
+    for path in code_files():
+        src = io.open(path, encoding="utf-8").read()
+        for m in ICON_ID.finditer(src):
+            expr = m.group(1)
+            out.update(LIT_IN.findall(expr))
+            for tpl in TPL_IN.findall(expr):
+                # `session-scoped-${id}` -> the stable head, which is what a
+                # flow would match on.
+                head = INTERP.split(tpl)[0] if INTERP.search(tpl) else tpl
+                if head:
+                    out.add(head.rstrip("-"))
+    return out
+
 # ── THE FOUR BUCKETS, BECAUSE A LIST OF SIXTY-ONE BECOMES WALLPAPER ─────────
 # Only the first is a backlog. The other three are answers, not debt, and
 # keeping them in the same list as the real gaps is how the real gaps stop
@@ -618,6 +654,21 @@ def main(argv):
         for line, kind, why in check(p, strings, literals, templates):
             print(f"  {kind:<12} qa/flows/{os.path.basename(p)}:{line}  {why}")
             total += 1
+    # ICON — a handle that resolves to two nodes, not one.
+    icons = icon_testids()
+    for path in paths:
+        for n, line in enumerate(io.open(path, encoding="utf-8").read().splitlines(), 1):
+            m = re.search(r'id:\s*["\']([^"\']+)["\']', line)
+            if not m:
+                continue
+            sel = m.group(1)
+            hit = next((i for i in icons if sel == i or sel.startswith(i)), None)
+            if hit:
+                print(f"  {'ICON':<12} qa/flows/{os.path.basename(path)}:{n}  "
+                      f"`{sel}` sits on a lucide icon, which hands its testID to BOTH "
+                      f"its wrapper and the Svg inside — TWO nodes, not one")
+                total += 1
+
     for name, kind, why in unregistered(paths, REGISTER):
         # Helpers are decided against EVERY flow on disk, not only the targets.
         if os.path.join(FLOWS, name) in helpers(all_flows):

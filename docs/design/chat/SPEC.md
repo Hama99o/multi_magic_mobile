@@ -295,3 +295,9 @@ designs, not three spellings of one.
 
 So: the sentence is proposed on its own, and stands on its own if the switch
 never moves. **Neither is built.** Both wait on him.
+
+`docs/DICTATION_LANGUAGE.md` is the version written for him rather than for
+this file: the inversion in point (3) above drawn rather than argued, the three
+shapes side by side with what each costs and breaks, a recommendation, and the
+naming question as two columns of example sentences. Short enough to decide
+from.

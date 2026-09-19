@@ -226,5 +226,24 @@ a switch control, a stylus.
 A is the floor because it costs three strings and can ship tonight; it just
 should not be mistaken for the answer.
 
-**And fix the notification hint regardless**, because it is wrong under all
-three.
+**The notification hint is already fixed** (`2d7e6aa`), because it was wrong
+under all three: it now names the deletion as well as the tap. Nothing else
+here is built.
+
+### Whichever you pick, the answer should say what it cannot reach
+
+A convention is a rule, and the most useful thing to write beside a rule is
+the shape it does not cover — otherwise the next person reads "we have a
+convention for long presses" as "long presses are handled".
+
+Concretely, for these three: **any convention that leaves something reachable
+only by a long press cannot reach a person who cannot perform one.** A tremor,
+a switch control, a screen reader whose own gesture set has already claimed
+the hold. And it cannot reach a platform that takes the gesture first, which
+is not hypothetical — Android's text-selection menu ate the reaction gesture
+entirely until `67f698b`, while the code, the sheet and the spoken hint were
+all correct.
+
+That is the argument for C rather than a footnote to it. It is also the thing
+to record when you answer: not only which convention, but which gestures it
+still does not reach.

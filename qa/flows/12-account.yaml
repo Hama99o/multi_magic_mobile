@@ -1,0 +1,109 @@
+# APPEARANCE AND ACCOUNT — dark ACTUALLY on screen, and still there after a relaunch.
+#
+# `theme.store.ts`: *"System / Light / Dark — his instruction, alongside
+# language."* `IDENTITY.md` §1 calls dark the app's own, so somebody whose phone
+# is in light mode has never seen the app as designed until this control exists.
+#
+# ── WHAT A FLOW CAN AND CANNOT PROVE ABOUT A THEME ───────────────────────
+# No assertion reads a colour. Maestro sees the accessibility tree, and a dark
+# ground and a light ground have the same tree. So the proof that dark is
+# VISIBLE is the pair of photographs, 66 and 68, and a person compares them —
+# the same discipline as the sign-in button that had no background while every
+# instrument was green (`QA_HANDBOOK.md`).
+#
+# What a flow CAN assert, and does: the radio is `selected` after the tap
+# (`accessibilityState`), and — the store's whole reason — the choice SURVIVES
+# A RELAUNCH, because `hydrate()` runs before the first paint. That second
+# assertion is the one no screenshot can make.
+#
+# The flow starts by choosing System and ends by choosing System, so it leaves
+# the device as it found it and the "before" photograph is honest on every run.
+#
+# ── LANGUAGE: NOT HERE, AND THAT IS THE FINDING ──────────────────────────
+# The queue names a language switch. There is none in this app — nothing under
+# app/ or src/ reads a locale, calls i18next or offers a language row — so this
+# flow asserts nothing about it, and the register records the gap.
+appId: ${APP_ID}
+tags:
+  - account
+---
+- runFlow: login.yaml
+
+# ── Baseline: System, photographed ───────────────────────────────────────
+- tapOn:
+    id: "chat-open-sessions"
+- assertVisible:
+    id: "sessions-sheet"
+- assertVisible:
+    id: "theme-row"
+- assertVisible: "Appearance"
+- tapOn:
+    id: "theme-system"
+- assertVisible:
+    id: "theme-system"
+    selected: true
+- tapOn:
+    id: "sessions-close"
+- assertVisible:
+    id: "composer-input"
+- takeScreenshot: reports/66-assistant-system-theme
+
+# ── Dark ─────────────────────────────────────────────────────────────────
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn:
+    id: "theme-dark"
+- assertVisible:
+    id: "theme-dark"
+    selected: true
+- takeScreenshot: reports/67-sheet-dark
+- tapOn:
+    id: "sessions-close"
+- assertVisible:
+    id: "composer-input"
+# THE ARTEFACT. Compare with 66: if these two look the same, dark is not
+# visible and nothing above this line matters.
+- takeScreenshot: reports/68-assistant-dark
+
+# ── Persisted: the choice is there after the app is launched again ───────
+# `login.yaml` launches the app (and signs in only if it has to), so this is a
+# real relaunch and `hydrate()` is what put the value back.
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-open-sessions"
+- assertVisible:
+    id: "theme-dark"
+    selected: true
+- takeScreenshot: reports/69-dark-survived-relaunch
+
+# ── Restored ─────────────────────────────────────────────────────────────
+- tapOn:
+    id: "theme-system"
+- assertVisible:
+    id: "theme-system"
+    selected: true
+
+# ── The Account screen: the ordinary row, and the destructive one apart ──
+# Two rows and a great deal of space between them: the privacy policy in its
+# own card, and the delete row at the bottom with its warning BEFORE the tap
+# (Wabi's caption). Nothing here is tapped past this screen — 17-privacy and
+# 18-delete-account go through the doors.
+- tapOn:
+    id: "sessions-account"
+- extendedWaitUntil:
+    visible:
+      id: "account-privacy"
+    timeout: 30000
+- assertVisible: "Account"
+- assertVisible: "Privacy policy"
+- assertVisible:
+    id: "account-delete"
+- assertVisible: "Delete account"
+# `.*` because the caption gains " Not available in the app yet." whenever the
+# deletion gate is shut; which state the gate is in is 18's question, not this
+# flow's.
+- assertVisible: "This removes everything and cannot be undone.*"
+- takeScreenshot: reports/70-account
+- tapOn: "Back"
+- assertVisible:
+    id: "composer-input"

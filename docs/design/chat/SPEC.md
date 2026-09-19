@@ -1,6 +1,6 @@
 # Chat — the app
 
-**Status: `SPECIFIED`** · `src/screens/Chat` · references pulled 2026-09-18
+**Status: `SPECIFIED`** · `app/chat.tsx` · references pulled 2026-09-18
 
 ## The one fact that shapes everything
 
@@ -112,3 +112,56 @@ under the composer stays.
 The conversation takes a **max measure of about 640 dp and centres**. A
 full-width line of serif text on a tablet is unreadable — this is the one place
 a wide screen needs a decision rather than a resize.
+
+## How we code it — written 2026-09-19 from the code, `main` at `bbdfc2b`
+
+This section was missing (README rule 3) and is written from what exists, not
+from what was planned. Where the code went somewhere the decisions above did
+not anticipate, it is recorded as a divergence below rather than rewritten.
+
+| Thing | Where |
+|---|---|
+| the screen | `app/chat.tsx` — `Screen measure={false} avoidKeyboard`; the list and the composer wrapper each take `metrics.maxMeasure` (640) themselves, so §8's centring is theirs, not the container's |
+| the session id | `useQuery(["ai","currentSession"])` → `aiApi.currentSessionId()` → `GET /api/v1/ai/conversation` (`{id}` only); overridden by this device's remembered choice, `src/lib/rememberedSession.ts` |
+| asking | `aiApi.ask({ conversationId, body })` → `POST /api/v1/ai/show`, 202; the question is drawn at once from the 202's `userMessageId` via `addPending` so the socket echo merges rather than doubles |
+| transcript + live + resync | `useConversation({ conversationId, channel: "MessageChannel" })` (`src/hooks/useConversation.ts`): `messagesApi.list/older` → `GET /api/v1/conversations/:id/messages` (`?before_id=`), `subscribeToChannel` from `src/lib/cable.ts`, re-read on `onConnected`, a 3 s poll (`RESYNC_MS`) while a reply is awaited, released after 180 s (`REPLY_TIMEOUT_MS`) |
+| the rows | `src/components/chat/MessageRow.tsx` — the user's words in a bubble, the answer as `AnswerMarkdown` (`variant="answer"`, serif, `selectable`, code in a `horizontal` `ScrollView` in `FONTS.mono`), `testID="assistant-answer"` |
+| thinking | `src/components/chat/ThinkingDots.tsx` — `testID="thinking"`, and after `SLOW_AFTER_MS` (45 s) `thinking-slow` with the "taking a while" copy |
+| the two failures | `chat-answer-failed` ("That question did not get an answer." + **Ask again**) when `useConversation` reports `failed` (the socket's `aiError`, or the 180 s release); `chat-send-failed` (**Retry**) when the POST itself failed — 429, offline, or the server's own sentence via `apiErrorMessage` |
+| the composer | `src/components/chat/Composer.tsx` — one pill: `composer-attach` (+), `composer-input` (`multiline`), `composer-clear` (✕ with a draft), `composer-mic`, `composer-send` |
+| the draft | `useDraft(conversationId)` (`src/hooks/useDraft.ts`) — AsyncStorage per conversation, so it survives backgrounding; notifications and calendar `setDraft` into it and push `/chat` |
+| dictation | `useSpeechToText` (`src/hooks/useSpeechToText.ts`) over `expo-speech-recognition@3.1.3`: `DEFAULT_LANG = "fr-FR"`, `LANGUAGES` (fr/en), the choice in AsyncStorage `mm-stt-lang`; interim words beside the field (`composer-listening`), `composer-dictation-cancel`, final text appended; `denied` is never restored from storage; `composer-mic-refused` is the one-line degradation; the mic is **absent** when the module is missing (`available` false) |
+| sources | `src/components/chat/SourceChips.tsx` (`source-chips`, none → no row) and `SourceSheet.tsx` (`source-sheet`, `source-sheet-close`, **Open in MultiMagic** = `source-sheet-open` via `Linking`) reading `message.sources` from `message_serializer.rb:55` |
+| under an answer | `src/components/chat/AnswerActions.tsx` (`answer-actions`, `answer-copied`, `answer-undo` on the newest undoable reply only → `undoApi.undo` `POST /api/v1/ai/undos`; feedback → `POST /api/v1/ai/feedbacks`) |
+| files in an answer | `src/components/chat/FilePreview.tsx` (`file-preview`, `file-preview-image`, `file-preview-open`) for a link that `isFileLink` |
+| the empty state | `src/components/chat/EmptyState.tsx` (`chat-empty`) with prompts from `useStarterPrompts` — `buildPrompts` derives at most three (≤ 64 chars) from what the account actually holds |
+| the doors | `chat-open-chats` · `chat-open-notifications` · `chat-open-calendar` · `chat-open-sessions` in the title bar, badges from `notificationsApi.unreadCount` and `conversationsApi.unreadCount` (threads, not messages) |
+| errors from `http` | `isRateLimited` · `isNetworkFailure` · `apiErrorMessage` (`src/api/http.ts`) |
+| flows | `01-ask` (the socket — NOT MEASURED until the send button is found in the tree), `03-dictation` (VERIFIED, four states, dev build), `09-keyboard`; `07` and `08` end in this composer, composed and not sent |
+
+### Divergence notes — 2026-09-19
+
+- **Recording inside the pill is thinner than Alan's.** The decision names a
+  waveform, a timer and a send arrow; the code shows the interim words and an
+  `✕`. The interim text is the proof it is hearing you, which is the job; the
+  waveform and timer were never built. Decision stands; state recorded.
+- **The language switch is a long-press on the mic**, remembered, with no
+  visible affordance beyond the accessibility label *"Dictate in Français"*.
+  "EN switchable" is true; "discoverable" is not asserted anywhere.
+- **The empty state's three questions are derived, and may be none.** The
+  decision says three example questions drawn from the apps that exist; the
+  code derives them from the person's own records and, for an account with
+  nothing to derive from, offers the one line and no questions
+  (`useStarterPrompts.ts` header, rule 3). `01-ask` types its question for
+  exactly this reason.
+- **Two failure branches, not one.** "Retry under the question" became **Ask
+  again** for an answer that never came and **Retry** for a question that never
+  posted. Both keep the question on screen, which was the point.
+- **On 429 the copy names the minute but does not count it down** at `bbdfc2b`
+  ("Try again in a minute."). `Retry-After` handling is in flight in
+  `multi-magic-mobile-ae`'s failure-paths work, uncommitted as this is written.
+- **Additions the decisions did not anticipate**: the four title-bar doors
+  (his instruction, `70c68b6`); Undo and feedback under an answer (from the web's
+  §Undo); file previews for links in an answer; the device-remembered session
+  (`rememberedSession.ts`, because `ai/conversation` follows whichever client
+  spoke last).

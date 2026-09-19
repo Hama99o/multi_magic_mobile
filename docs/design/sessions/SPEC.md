@@ -57,3 +57,40 @@ session.** That is intended and it is the one real loss.
 - **Sign out lives at the bottom of this sheet** and **never clears the device
   fingerprint** — the web comment says clearing it causes a re-authentication
   cycle.
+
+## How we code it — written 2026-09-19 from the code, `main` at `bbdfc2b`
+
+This section was missing (README rule 3) and is written from what exists.
+Divergences from the decisions above are recorded below, not folded in.
+
+| Thing | Where |
+|---|---|
+| the sheet | `src/components/sessions/SessionsSheet.tsx` — a `Modal`, `testID="sessions-sheet"`, opened from `chat-open-sessions`; `sessions-close` |
+| the list | `useQuery(["ai","sessions"])` → `sessionsApi.list()` → `GET /api/v1/ai/sessions`, grouped `Today` / `Earlier` by `isToday(updatedAt)` (`src/lib/relativeTime.ts`) |
+| a row | `src/components/sessions/SessionRow.tsx` — relative time above the title, `messageCount` · `documentCount` beneath, a dot coloured by `categoryColorFor(session.id)`, `session-scoped-*` / `session-instructed-*` glyphs; `testID`s `session-row-<id>` and `session-menu-<id>` |
+| new | `sessions-new` → `sessionsApi.create()` → `POST /api/v1/ai/sessions` (server title `New chat`); disabled at `LIMITS.maxSessions` (50) with `sessions-at-limit` naming the limit |
+| the row menu | `session-menu` — `session-menu-clear` → `POST /api/v1/ai/sessions/:id/clear` · `session-menu-rename` → `RenameDialog.tsx` (`rename-input`, `maxLength={LIMITS.titleLimit}` = 60, Enter saves) → `PATCH /api/v1/ai/sessions/:id {title}` · `session-menu-scope` → `ScopeDialog` (`scope-<app>`, `scope-all`, `scope-save`) → `PATCH {apps}` · `session-menu-instructions` → `InstructionsDialog` (`instructions-input`, `instructions-save`) → `PATCH {instructions}` · `session-menu-delete` |
+| the confirm | `src/components/sessions/DeleteConfirm.tsx` — `delete-conversation-confirm`, `deleteQuestion(fileCount)` in `delete-conversation-question`, the guarantee in `delete-conversation-safe`, `delete-conversation-yes` / `-cancel` ("Keep it") → `sessionsApi.destroy` → `DELETE /api/v1/ai/sessions/:id`, which answers with the session to fall back to |
+| the choice | `onOpenSession` → `chooseSession` in `app/chat.tsx`, remembered per user in `src/lib/rememberedSession.ts` |
+| below the list | `ThemeRow.tsx` (`theme-row`, `theme-system` / `-light` / `-dark`, `useThemeStore`), then an **Account** heading under a divider: `sessions-profile` → `/profile`, `sessions-account` → `/account`, `sessions-sign-out` → `useAuthStore.signOut()` → `DELETE /users/logout`, token and email cleared, **fingerprint kept** (`src/api/auth.ts`) |
+| flows | `04-delete-conversation` (menu order, confirm wording, cancels), `15-sessions-switch` (new → empty, rename, switch by title, deletes what it made), `12-account` (theme) |
+
+### Divergence notes — 2026-09-19
+
+- **Five actions per row, not three.** Clear is still first and Delete still
+  last, as decided; between them sit **Search in** (which apps this chat may
+  draw on, `apps`) and **How to answer** (standing `instructions`), both
+  `PATCH`es the server offered and the decisions did not anticipate. The
+  safety argument — the non-destructive answer first — is intact.
+- **The sheet carries more than conversations.** Appearance (System · Light ·
+  Dark) and an Account group live under a divider at the bottom, on his
+  instruction; `../account/SPEC.md` §3.1 is why the account rows sit apart
+  from the list rather than in it.
+- **A device remembers its own choice.** Not in the decisions: `ai/conversation`
+  returns whichever session was spoken in last from ANY client, so a laptop
+  question would move the phone mid-thread. `rememberedSession.ts` makes the
+  server's answer the fallback only.
+- **Row testIDs are database ids.** `session-row-<id>` and `session-menu-<id>`
+  cannot be named by a flow ahead of time; `flow_lint`'s DBID rule reports them
+  and `15` names rows by title and menus by their `Options for <title>` label.
+  A stable per-row handle would need a slug, and none is on the serializer.

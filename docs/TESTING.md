@@ -502,6 +502,22 @@ structure, and the idea lives in the structure.
 > it, and nobody could see that until somebody asked the question from the other
 > end.
 
+**A fourth, an hour after this entry was written, in the instrument that
+supplied its first example.** `keys.test.ts` had by then written down the two
+*names* `t` is imported under, with a test that fails if a third appears. It
+had not written down the *quote*: the pattern matched `"` only, so
+`t('session.expired')` in single quotes would have been invisible twice —
+never resolved in either language, and never counted as a caller by §8's
+inverse check, which would then have reported a live key as **dead** and
+invited somebody to delete a working string. Nothing in the repo writes it that
+way and nothing enforces that; there is no prettier config in this tree, so the
+convention is a habit, which is precisely the kind of fact the rule above says
+a grep must not rest on. Fixed in `d2e196b`; the key count did not move, and a
+planted single-quoted missing key now fails in both languages.
+
+Writing the rule down did not protect the file the rule was written from. §2's
+corollary, one level up.
+
 ---
 
 ## What each gate is actually for

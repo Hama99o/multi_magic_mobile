@@ -1,0 +1,40 @@
+# `docker compose up` from THIS folder starts the backend this app talks to.
+#
+# There is nothing in this repository to containerise. It is an Expo / React
+# Native client: it builds to an APK or an iOS build, and Metro plus an Android
+# emulator cannot live in a container in any way that helps — adb, the file
+# watcher and the device all sit on the host.
+#
+# What `docker compose up` here DOES do is remove the step everybody forgets:
+# it brings up `multi_magic`, the Rails backend, so the phone has something to
+# talk to. That backend is fully composed already — web, cable, worker,
+# postgres, redis — and this file simply includes it, so there is one command
+# and one answer to "is it up?" whichever folder you are standing in.
+#
+#   docker compose up -d      the backend, in the background
+#   docker compose ps         what is actually running
+#   docker compose logs -f web
+#   docker compose down       stop it; the data stays
+#
+# NEVER `docker compose down -v`. The volumes hold the only copy of the
+# development database — his real notes, contacts, loans and documents.
+#
+# Then start Metro on the host, which is the half that cannot be containerised:
+#
+#   npx expo start --port 3029 --dev-client     for the emulator
+#   npx expo start --lan --go                   for a phone on the same network
+#
+# The path below assumes `multi_magic` sits beside this repo, which is how the
+# Apps folder is laid out. If it does not, compose says so plainly rather than
+# starting half a stack.
+# The project NAME matters more than it looks: without it, compose would name
+# the stack after THIS folder and create a second, empty copy of every service
+# beside the one already running — two postgres containers fighting for one
+# port, and the app talking to whichever won. `name:` pins both folders to the
+# same stack, so `up` here attaches to what is already running rather than
+# duplicating it, and `ps` answers about the real thing.
+name: "multi_magic"
+
+include:
+  - path: "../multi_magic/docker-compose.yml"
+    project_directory: "../multi_magic"

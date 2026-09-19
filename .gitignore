@@ -85,3 +85,7 @@ qa/reports/.claims.lock
 # them.
 docs/read-aloud/samples/
 .docker-home/
+
+# The bundle gate writes Metro's response here to be read after a failure.
+# Regenerates on every run and can be 13 MB of JavaScript on a pass.
+qa/reports/bundle-check.out

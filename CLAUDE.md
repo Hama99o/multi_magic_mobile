@@ -315,14 +315,22 @@ device means you measured nothing — it has found no bug, it has found nothing.
 Counting it as a failure is how a quiet evening turns into a bug report about a
 feature nobody ran; counting it as a pass is worse.
 
-**A pass is only as strong as the hardest case the run actually executed, and
-the environment decides that, not the flow.** `09-keyboard` asserted the
-composer stays visible with the keyboard up and went green against a *floating*
-Gboard, which produces no inset at all — it raised a keyboard that could not
-possibly have covered the composer. The flow's own header said floating "is the
-easy case, not the hard one", and that caveat did not travel with the verdict,
-which went into the register as keyboard coverage. **Say in the result which
-branch ran**, not only in the file which branches exist (`docs/TESTING.md` §6).
+**A verdict is only as strong as the hardest case the run actually executed —
+and a caveat written in a header is a claim about the world, not evidence about
+it.** `09-keyboard` asserts the composer stays visible with the keyboard up.
+That is the right assertion, aimed squarely at §5's defect, and it sat in the
+register as keyboard coverage while having **never executed once**. A flow
+written and never run proves exactly as much as no flow, and is worse in one
+respect: it occupies the slot where somebody would otherwise notice the gap.
+
+*This section's first draft repeated §6's own retracted first version — that the
+flow had been passing against a floating Gboard, the easy case with no inset.
+None of that happened. It came from the flow's header, and the first real run
+photographed a docked, full-width keyboard. The header was a guess in a
+convincing typeface and so was my summary of it; both were corrected from a
+screenshot rather than from an argument.*
+
+**Say in the result which case ran**, not only in the file which cases exist.
 Several current passes are thin for exactly this reason and say so: `07` and
 `08` took empty-state branches because the QA account has no notifications and
 no events.

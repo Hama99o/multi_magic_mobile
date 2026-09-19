@@ -744,6 +744,28 @@ false result — and that is exactly the failure mode worth a rule rather than
 an apology. The remedy is one line of discipline: **fix, then reach for the
 two-minute case, and only then for the one you actually want.**
 
+**Karwan's corollary, and it is the better half:** the cheapest case is also
+**the one you can afford to run twice**, which is what turns a value into a
+reading. A single number from an expensive run is a value — you accept it,
+because getting another costs what the first one did. Two numbers from a cheap
+run are a reading, and the second is what tells you whether the first was
+about the thing you meant. It found the clipping bug below by happening to
+scroll and measure again; a two-minute case makes that second measurement a
+habit rather than an accident.
+
+**And the same night gave the two halves of one mistake**, which are worth
+seeing side by side because they look nothing alike from inside:
+
+| what you read | the real number is about |
+|---|---|
+| a **child** node's bounds | the wrong **region** — clipped to what is visible |
+| the **root** node's bounds | the wrong **window** — whatever is in front |
+
+Karwan's cost a false 31.6 dp touch target on the role whose premise is huge
+targets in sunlight; a scroll and a second measurement made it 56 dp, exactly
+its token. Mine cost two refusals on a device that was ready. **Both
+instruments were honest and both readers were not.**
+
 Related: §10 asks which way a gate's error runs. `qa/QA_HANDBOOK.md`'s "a check
 that returns SOME of the answer is the hardest kind to doubt" asks how
 convincing its output is. This one asks what you re-run after changing it.

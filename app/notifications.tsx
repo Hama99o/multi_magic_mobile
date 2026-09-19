@@ -11,6 +11,21 @@
  * And the question is **composed, not sent**. A tap that fires a question at
  * the model spends one of the 15-per-minute (`ai_controller.rb:5`) on a guess
  * about what he meant by it. He edits it first.
+ *
+ * ── REFRESHING, AND WHY THIS SCREEN NEEDED LESS OF IT ─────────────────────
+ * His instruction covers this screen and the calendar together: *"you can say
+ * reload it — there should be an option."* The calendar had a real staleness
+ * problem; this screen already did not, and the difference is worth stating
+ * rather than adding the same machinery twice.
+ *
+ * `NotificationChannel` pushes every new row to this user
+ * (`notifications/deliver.rb:62-66`) and this screen has always refetched on
+ * that frame AND on every reconnect. So it is live already. What it lacked is
+ * any way to SAY so, and any answer when the socket is the thing that is
+ * wrong — a subscription that was rejected, or a phone that has been asleep.
+ * Hence the same three affordances as the calendar: the socket first, pull to
+ * refresh, then a quiet header glyph; and a muted line saying when this was
+ * last true.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
@@ -20,6 +35,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import { RefreshButton, UpdatedLine } from "@/components/Freshness";
 import { subscribeToChannel } from "@/lib/cable";
 import { aiApi } from "@/api/ai";
 import { failureMessage } from "@/api/failure";
@@ -42,7 +58,7 @@ export default function Notifications() {
   const queryClient = useQueryClient();
   const [composed, setComposed] = useState<string | null>(null);
 
-  const { data, isLoading, error, refetch, isRefetching } = useQuery({
+  const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt } = useQuery({
     queryKey: ["notifications"],
     queryFn: () => notificationsApi.list(),
   });
@@ -227,7 +243,18 @@ export default function Notifications() {
         >
           <Trash2 size={20} color={colors.inkMuted} />
         </Pressable>
+
+        {/* Last, and the quietest of the three — the socket usually gets here
+            first. See this file's header. */}
+        <RefreshButton
+          refreshing={isRefetching}
+          onPress={() => void refetch()}
+          label="Refresh notifications"
+          testID="notifications-refresh"
+        />
       </View>
+
+      <UpdatedLine at={dataUpdatedAt} refreshing={isRefetching} testID="notifications-updated" />
 
       {/* Said once, where the question was composed — so a tap that navigated
           away is not silent about what it did. */}

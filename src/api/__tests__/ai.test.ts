@@ -135,7 +135,11 @@ describe("the message parser", () => {
 
     // The app's whole claim is that it answers from his own data. An answer
     // with no receipt under it is any chat app he could install instead.
-    expect(m.sources).toEqual([{ label: "Loan to Ahmad", path: "/loans/3" }]);
+    //
+    // `key` is carried too — the route key is the server's own statement of
+    // WHICH app a link belongs to (`frontend_routes.rb`), and it is what lets
+    // a screen know the assistant just wrote to it without parsing a path.
+    expect(m.sources).toEqual([{ label: "Loan to Ahmad", path: "/loans/3", key: "loan" }]);
   });
 
   it("treats a missing collection as empty, not as a shape error", async () => {

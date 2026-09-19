@@ -201,3 +201,71 @@ Checked by the verifier session against `main` at `971f951`.
 3. A tap landing in the composer **unsent**, with the draft surviving a
    backgrounding (`useDraft`).
 4. `npx tsc --noEmit` + Jest for `src/api/notifications.ts`.
+
+## Refreshing a stale screen — 2026-09-19
+
+Hamma9900: *"if AI agent calendar and it is not applied you can say reload it
+— there should be an option — same for notification; it should not be very big
+which can break design but it should be stylish."*
+
+### Rule Zero, and what it could NOT settle
+
+Mobbin's DNS **does** resolve from this box (the note passed to this session
+said it did not), but the site needs a signed-in session, so the downloaded set
+of 18 September is what was checked — `references/` in this folder, six images.
+
+**None of the six shows a manual refresh control, a "last updated" line, or a
+pull-to-refresh state.** That is the honest limit of the check and it is
+recorded rather than papered over: the decision below is taken from what the
+references DO settle (header treatment) plus platform convention, and it is the
+one part of these two screens that no shipped app in our set was consulted on.
+
+**What the references did settle — the header.** Outlook's agenda
+(`outlook-agenda-time-left-duration-repeat.webp`) and Mesh's notifications
+(`mesh-dismiss-all-items-overflow.webp`) both put their controls as **small
+unlabelled outline glyphs at the top right**, no text, no filled buttons, and
+neither ever covers the list with a spinner. That is exactly `IDENTITY.md` §7's
+"quiet doors" rule, arrived at from two directions, so the control takes it.
+
+### What we built
+
+Three affordances, in the order they act:
+
+1. **The screen refreshes itself** when the assistant writes here. An assistant
+   reply carries what it created as `links`, each with a `FrontendRoutes` key,
+   and `MessageChannel` streams that reply to the USER — so it reaches this
+   screen although the question was asked on the chat screen
+   (`src/hooks/useAssistantEcho.ts`, `CALENDAR_KEYS = ["calendar_event"]`).
+   **Nothing is polled**: the alternative, asking every thirty seconds in case,
+   would spend a request a minute for ever to catch an event written a few
+   times a week.
+2. **Pull to refresh** — already present, and what a list on a phone means.
+3. **A header glyph** (`calendar-refresh` / `notifications-refresh`), for when
+   a gesture is not discoverable. **The busy state is inside the control**, an
+   `ActivityIndicator` where the glyph was, never over the list somebody is
+   reading.
+
+And **a muted line, not a banner**: `calendar-updated` /
+`notifications-updated` says "Updated just now" and **ages on a 30 s tick**, so
+it cannot go on claiming a freshness it no longer has. It says "Updating…"
+while a refresh is in flight.
+
+### The difference between the two screens, stated rather than hidden
+
+The calendar had a real staleness problem. **Notifications did not**:
+`NotificationChannel` already pushes every new row and that screen has always
+refetched on the frame and on every reconnect. What it lacked was any way to
+SAY it was current, and any answer when the socket itself is the thing that is
+wrong — a rejected subscription, or a phone that has been asleep. So it gets
+the same control and the same line, and `NOTIFICATION_KEYS` is deliberately
+empty with the reason written beside it.
+
+### Evidence
+
+`src/hooks/__tests__/useAssistantEcho.test.ts` (the key matches, another app's
+does not, the question does not, an unreadable frame is not a signal, the
+subscription survives a re-render and closes on unmount) and
+`src/components/__tests__/Freshness.test.tsx` (touch-floor target with no
+visible label, busy state inside the control, the line ages, no timer left
+behind). Both handles are in the every-screen table at 360, 411 and 800 dp in
+light and dark. Two breaks were planted and watched fail first.

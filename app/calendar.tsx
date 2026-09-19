@@ -16,6 +16,25 @@
  * month grid on a phone answers 'what does my month look like', which is not a
  * question anybody asks on a phone between two appointments."
  *
+ * ── STALE IS A REAL STATE, AND IT HAS AN ANSWER ───────────────────────────
+ * His words: *"if AI agent calendar and it is not applied you can say reload
+ * it — there should be an option… it should not be very big which can break
+ * design but it should be stylish."*
+ *
+ * The assistant can create an event from the chat screen, and this list is
+ * then wrong with nothing to say so. Three things, in the order they act:
+ *
+ * 1. **It refreshes ITSELF when the assistant writes here.** An assistant
+ *    reply carries the records it created as `links`, each with a route key,
+ *    and `MessageChannel` streams that reply to this user wherever they are
+ *    (`useAssistantEcho`). So the common case needs no gesture at all.
+ * 2. **Pull to refresh** — already here, and what a list on a phone means.
+ * 3. **A header glyph**, for when a gesture is not discoverable, with the
+ *    busy state inside the control rather than over the list.
+ *
+ * And a muted "Updated just now" line rather than a banner, so the question
+ * "is this still true?" has an answer on screen before it is asked.
+ *
  * ── AND EMPTINESS IS SAID ONCE ────────────────────────────────────────────
  * Teams and Google Home print "No events" under every empty day — six lines of
  * emptiness and one appointment, on a sparse week. His instruction is narrower
@@ -27,6 +46,8 @@ import { FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router } from "expo-router";
 import { ChevronLeft } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
+import { RefreshButton, UpdatedLine } from "@/components/Freshness";
+import { CALENDAR_KEYS, useAssistantEcho } from "@/hooks/useAssistantEcho";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -79,10 +100,21 @@ export default function Calendar() {
   const metrics = useMetrics();
   const [composed, setComposed] = useState(false);
 
-  const { data, isLoading, error, refetch, isRefetching } = useQuery({
+  const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt } = useQuery({
     queryKey: ["calendar", "upcoming", WINDOW_DAYS],
     queryFn: () => calendarApi.upcoming(WINDOW_DAYS),
   });
+
+  const reload = useCallback(() => {
+    void refetch();
+  }, [refetch]);
+
+  /**
+   * The assistant just wrote an event — re-read, without being asked. This is
+   * the case his instruction is about, and it is the one the control is the
+   * FALLBACK for rather than the answer to.
+   */
+  useAssistantEcho(CALENDAR_KEYS, reload);
 
   const { data: sessionId } = useQuery({
     queryKey: ["ai", "currentSession"],
@@ -162,7 +194,17 @@ export default function Calendar() {
         <Text variant="title" style={{ flex: 1 }}>
           What&apos;s next
         </Text>
+        {/* Quiet, unlabelled, top right — Outlook's agenda header and Mesh's
+            notification header both do exactly this. */}
+        <RefreshButton
+          refreshing={isRefetching}
+          onPress={reload}
+          label="Refresh the calendar"
+          testID="calendar-refresh"
+        />
       </View>
+
+      <UpdatedLine at={dataUpdatedAt} refreshing={isRefetching} testID="calendar-updated" />
 
       {composed ? (
         <Text variant="caption" tone="muted" style={{ paddingBottom: metrics.space.sm }}>

@@ -77,7 +77,7 @@ const SHEETS: { name: string; testID: string; element: () => ReactElement }[] = 
   {
     name: "source",
     testID: "source-sheet",
-    element: () => <SourceSheet source={{ label: "Loan to Ahmad", path: "/loans/3" }} onClose={noop} />,
+    element: () => <SourceSheet source={{ label: "Loan to Ahmad", path: "/loans/3", key: "loan" }} onClose={noop} />,
   },
   {
     name: "file preview",

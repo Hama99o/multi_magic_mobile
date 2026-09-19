@@ -36,6 +36,16 @@ export type MessageRole = "user" | "assistant" | "system";
 export interface MessageLink {
   label: string | null;
   path: string | null;
+  /**
+   * The ROUTE KEY — `calendar_event`, `note`, `contact`, `loan`…
+   *
+   * `FrontendRoutes.present` merges the stored `{ key, params }` with a
+   * rebuilt `path`, so this has always been on the wire and was always
+   * dropped here. It is the precise statement of WHICH APP a reply changed,
+   * and parsing a path for that would be a second implementation of a table
+   * the server owns (`frontend_routes.rb`).
+   */
+  key: string | null;
 }
 
 export interface MessageReaction {
@@ -188,7 +198,7 @@ export const ALLOWED_UPLOAD_MIME_TYPES = [
 
 function parseLink(payload: unknown): MessageLink {
   const record = obj(payload, "link");
-  return { label: optStr(record.label), path: optStr(record.path) };
+  return { label: optStr(record.label), path: optStr(record.path), key: optStr(record.key) };
 }
 
 function parseReaction(payload: unknown): MessageReaction {

@@ -1,0 +1,81 @@
+# THE PRIVACY POLICY — rendered in the app, end to end, and the gate it carries.
+#
+# `docs/design/account/SPEC.md` §3.3-3.4. Both stores require a reachable
+# privacy policy before a listing is approved. Ours renders the bundled text
+# rather than opening a web view, so it works on a bad connection, does not
+# look like leaving the app, and cannot show a store reviewer a 404.
+#
+# ── RENDERED, NOT A WEB VIEW — and a flow can tell the difference ────────
+# A web view's content is not in the accessibility tree Maestro reads; a
+# rendered document's headings ARE. So asserting the first heading and, after
+# scrolling, the last one proves both that the text is ours and that the whole
+# of it is on screen, not a page that stopped at the first fold.
+#
+# ── THE DRAFT BANNER IS A RELEASE GATE, AND THE FLOW SAYS WHICH WAY IT IS ─
+# `PRIVACY_IS_DRAFT` is read off the document's own title line at build time.
+# While it is true the banner renders and a store build must not ship. The
+# flow does not assert the banner one way or the other — that would fail the
+# day he approves the text — it photographs whichever state it finds under a
+# filename that says so, because the screenshot is the artefact.
+appId: ${APP_ID}
+tags:
+  - account
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn:
+    id: "sessions-account"
+- extendedWaitUntil:
+    visible:
+      id: "account-privacy"
+    timeout: 30000
+- tapOn:
+    id: "account-privacy"
+- extendedWaitUntil:
+    visible:
+      id: "privacy-body"
+    timeout: 30000
+- assertVisible:
+    id: "privacy-title"
+- assertVisible: "Privacy"
+# The first heading of the document is a Text node in OUR tree.
+# lint: anchored-ok — a markdown heading renders as its own node; the linter
+# sees it inside the one big PRIVACY_TEXT literal.
+- assertVisible: "Who holds your data"
+- takeScreenshot: reports/88-privacy-top
+
+- runFlow:
+    when:
+      visible:
+        id: "privacy-draft-banner"
+    commands:
+      - assertVisible: "Draft — not yet approved"
+      - takeScreenshot: reports/89-privacy-DRAFT-BANNER-ON-release-gate
+
+- runFlow:
+    when:
+      notVisible:
+        id: "privacy-draft-banner"
+    commands:
+      - takeScreenshot: reports/89-privacy-approved-no-banner
+
+# ── To the end: the last heading is reachable, so the whole text rendered ─
+- scrollUntilVisible:
+    element:
+      # lint: anchored-ok — a markdown heading is its own node (see above).
+      text: "What we do not do"
+    direction: DOWN
+    timeout: 60000
+# lint: anchored-ok — same heading, same reason.
+- assertVisible: "What we do not do"
+- takeScreenshot: reports/90-privacy-end
+
+- tapOn: "Back"
+- extendedWaitUntil:
+    visible:
+      id: "account-privacy"
+    timeout: 20000
+- tapOn: "Back"
+- assertVisible:
+    id: "composer-input"

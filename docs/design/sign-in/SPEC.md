@@ -85,3 +85,47 @@ revoked token cannot leave the app half-authenticated. Fields from
 `components/reusables/input.tsx`; the primary from `button.tsx`; colours from
 the `IDENTITY.md` tokens. 360 / 411 / 800 dp, and at 800 the form takes a max
 width and centres rather than stretching to a 700 dp line.
+
+---
+
+### Divergence note — 2026-09-20, the first walk of this file
+
+Everything load-bearing here holds, and it is worth saying which, because this
+SPEC made several claims that could quietly have gone unbuilt:
+
+- **202 is recognised.** `TwoFactorRequiredError` (`api/auth.ts:52`) is thrown
+  and rendered as its own sentence rather than hanging on a response the app
+  never expected.
+- **429 says *too many attempts*, never *wrong password*** —
+  `sign-in.tsx:39`, `isRateLimited` before `isUnauthorized`, which is the
+  order that matters.
+- **Forgot password is two screens and does not leak.** `forgot-password.tsx`
+  has the `sent` state, and its copy is *"if that address has an account"* —
+  the wording the SPEC asked for, so a stranger cannot learn which addresses
+  exist. The server guarantees it too (`user&.reset_password!` then an
+  unconditional 200), and the screen does not undo it.
+- **Create an account is in**, on its own screen rather than a toggle.
+
+**Two things diverged, one now fixed.**
+
+- **The 800 dp rule was never built.** This file says *"at 800 the form takes
+  a max width and centres rather than stretching to a 700 dp line."* All three
+  auth screens rendered `<Screen scroll avoidKeyboard>` — **without
+  `measure`**, which is the prop that applies `maxMeasure`. So on a tablet the
+  sign-in form stretched the full width, which is the thing the sentence was
+  written to prevent. Fixed: `measure` added to sign-in, sign-up and
+  forgot-password. Nothing below 640 dp changes.
+
+- **And no gate could have told us.** `screens.render.test.tsx` renders every
+  screen at 360, 411 and 800 dp in both schemes and both languages — and its
+  table does **not include sign-in, sign-up or forgot-password.** The three
+  screens a person sees before they have an account are the three the width
+  matrix skips. They have behaviour tests, which is why the gap is invisible:
+  the files exist, they are thorough, and they assert failure copy rather than
+  layout.
+
+  That is why the 800 dp rule could sit unbuilt in a SPEC for two days without
+  anything going red. Adding the three rows is the fix and is **not done here**
+  — their mocks differ from the table's (`expo-router` is mocked per-file for
+  the auth screens), so it is a real change to that file rather than three
+  lines, and it belongs to whoever next touches the table.

@@ -75,7 +75,7 @@ export default function SignIn() {
   }
 
   return (
-    <Screen scroll avoidKeyboard>
+    <Screen measure scroll avoidKeyboard>
       {/* Anchored near the top rather than vertically centred. `justifyContent:
           "center"` left a quarter of a 2400 px screen as empty sky above the
           title — calm in a screenshot, slightly abandoned in a hand. */}

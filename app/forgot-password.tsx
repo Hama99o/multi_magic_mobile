@@ -61,7 +61,7 @@ export default function ForgotPassword() {
   }
 
   return (
-    <Screen scroll avoidKeyboard>
+    <Screen measure scroll avoidKeyboard>
       <View style={{ flex: 1, justifyContent: "center", gap: metrics.space.xl, paddingVertical: metrics.space.xl }}>
         {sent ? (
           <View style={{ gap: metrics.space.md }} testID="forgot-password-sent">

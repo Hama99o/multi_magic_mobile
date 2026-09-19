@@ -179,7 +179,7 @@ export default function SignUp() {
   }
 
   return (
-    <Screen scroll avoidKeyboard>
+    <Screen measure scroll avoidKeyboard>
       <View style={{ flex: 1, justifyContent: "center", gap: metrics.space.xl, paddingVertical: metrics.space.xl }}>
         <View style={{ gap: metrics.space.sm }}>
           <Text variant="title">{t("signUp.title")}</Text>

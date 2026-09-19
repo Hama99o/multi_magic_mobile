@@ -1,78 +1,47 @@
-# SDK 57 — the 27 the React Compiler objects to, deferred on purpose
+# The React Compiler's list: 22 → 11, and why the eleven stop
 
-**Not migration breakage.** Every one of these behaves under SDK 57 exactly as
-it did under 54: the tests pass, the app bundles, the types agree. They are
-red because `eslint-config-expo@57` turns on the **React Compiler** rules,
-which are a new standard rather than a new failure.
+`eslint-config-expo@57` turns on the React Compiler rules. **Eleven of the
+twenty-two are fixed and committed.** The remaining eleven are listed below
+with the reason each stops, so the number is something to act on rather than a
+wall.
 
-They are turned **off** in `.eslintrc.js` with a pointer to this file, and
-that is a deferral, not a fix. It is itemised here rather than left as a
-sentence so it cannot quietly become permanent — `docs/TESTING.md` §1 is about
-exactly the disable comment that looked considered.
+None of the twenty-two was SDK 57 breakage. Every one behaved under 57 exactly
+as it did under 54. They are a new standard, and this is the work of meeting
+it.
 
-## Why not tonight
+## Done — 11
 
-Two sampled at random are both deliberate, commented, working patterns:
-
-- `app/chat/[id].tsx:299` latches the unread divider on a ref during render,
-  and its own comment explains that recomputing it slides the divider one
-  message further down with every message received — *"exactly the bug the
-  anchor-to-an-id rule exists to prevent."* The compiler-clean version is a
-  restructure, not an edit.
-- `app/profile.tsx:108` seeds a form from the profile once it lands, keyed on
-  the id so switching accounts cannot leave one person's name in another's
-  form. The compiler prefers a remount key or derived state. Also a
-  restructure.
-
-Ten files, twenty-two errors, on screens QA verified on a device **hours**
-before this branch existed — `06-people-chat` and `09-keyboard` among them.
-Refactoring hooks on those screens to satisfy a new linter, at the end of the
-same night, with no device left to re-verify on, is the trade this file exists
-to refuse.
-
-## The list
-
-| Where | Rule | What it says |
+| What | Where | The shape |
 |---|---|---|
-| `app/chat.tsx:161` | `preserve-manual-memoization` | Compilation Skipped: Existing memoization could not be preserved |
-| `app/chat/[id].tsx:299` | `refs` | Error: Cannot access refs during render |
-| `app/chat/[id].tsx:299` | `refs` | Error: Cannot access refs during render |
-| `app/chat/[id].tsx:301` | `refs` | Error: Cannot access refs during render |
-| `app/chat/[id].tsx:302` | `refs` | Error: Cannot access refs during render |
-| `app/chat/[id].tsx:302` | `refs` | Error: Cannot access refs during render |
-| `app/chat/[id].tsx:306` | `refs` | Error: Cannot access refs during render |
-| `app/chat/[id].tsx:328` | `refs` | Error: Cannot access refs during render |
-| `app/profile.tsx:108` | `set-state-in-effect` | Error: Calling setState synchronously within an effect can trigger cas |
-| `src/__tests__/setup.ts:64` | `@typescript-eslint/no-require-imports` | A `require()` style import is forbidden. |
-| `src/__tests__/setup.ts:73` | `@typescript-eslint/no-require-imports` | A `require()` style import is forbidden. |
-| `src/__tests__/setup.ts:122` | `@typescript-eslint/no-require-imports` | A `require()` style import is forbidden. |
-| `src/components/chat/ThinkingDots.tsx:28` | `refs` | Error: Cannot access refs during render |
-| `src/components/chat/ThinkingDots.tsx:28` | `refs` | Error: Cannot access refs during render |
-| `src/components/chat/ThinkingDots.tsx:28` | `refs` | Error: Cannot access refs during render |
-| `src/components/chat/ThinkingDots.tsx:28` | `refs` | Error: Cannot access refs during render |
-| `src/components/sessions/RenameDialog.tsx:40` | `set-state-in-effect` | Error: Calling setState synchronously within an effect can trigger cas |
-| `src/components/sessions/SessionOptionsDialogs.tsx:109` | `set-state-in-effect` | Error: Calling setState synchronously within an effect can trigger cas |
-| `src/components/sessions/SessionOptionsDialogs.tsx:182` | `set-state-in-effect` | Error: Calling setState synchronously within an effect can trigger cas |
-| `src/hooks/useAssistantEcho.ts:56` | `refs` | Error: Cannot access refs during render |
-| `src/hooks/useConversation.ts:127` | `refs` | Error: Cannot access refs during render |
-| `src/hooks/useConversation.ts:190` | `set-state-in-effect` | Error: Calling setState synchronously within an effect can trigger cas |
-| `src/hooks/useDraft.ts:32` | `set-state-in-effect` | Error: Calling setState synchronously within an effect can trigger cas |
-| `src/hooks/useSpeechToText.ts:198` | `refs` | Error: Cannot access refs during render |
-| `src/hooks/useSpeechToText.ts:217` | `set-state-in-effect` | Error: Calling setState synchronously within an effect can trigger cas |
-| `src/lib/cable.ts:44` | `@typescript-eslint/no-require-imports` | A `require()` style import is forbidden. |
-| `src/screens/__tests__/screens.render.test.tsx:326` | `@typescript-eslint/no-require-imports` | A `require()` style import is forbidden. |
+| Latest-callback refs written during render | `useSpeechToText`, `useAssistantEcho`, `useConversation` | moved into an effect; every read is in a callback or a socket frame, never a render |
+| `useRef(new Animated.Value(…)).current` | `ThinkingDots` (4 of the 22 on one line) | `useState` with an initialiser — also stops constructing a throwaway value per render |
+| `useState(seed)` + an effect re-seeding on `[visible, initial]` | `RenameDialog`, `InstructionsDialog`, `ScopeDialog` | the state exists only while the dialog does; a `key` on the seed covers the rest |
+| A component skipped whole over `user?.id` in a dep array | `app/chat.tsx` | one narrowed local |
 
-## The five `no-require-imports`
+**Two of those found holes that nothing watched**, and both now have tests that
+go red when the fix is removed: a stale `onFinal` in `useSpeechToText` (every
+test in the file stayed green with the ref update deleted outright), and the
+`key` branch in `ScopeDialog` (all ten green without it).
 
-All in test files, all deliberate: `jest.mock()` factories cannot use an
-import, and `babel-plugin-jest-hoist` rejects a destructured `require` in one.
-They were warnings the old config did not carry. Scoped off for `__tests__`
-rather than globally, so a `require` in shipped code is still caught — which
-matters more here than in most repos, because `.eslintrc.js` already has a
-rule about `require` arguments that cost this app seven hours.
+## Left — 11, and what each is waiting on
 
-## What turning them back on looks like
+### Device-bound — 8
 
-`react-hooks/refs`, `react-hooks/set-state-in-effect` and
-`react-hooks/preserve-manual-memoization` in `.eslintrc.js`, set back to
-`error`. Ten files. Every one needs the device pass its screen already had.
+| Where | n | Why it needs a device |
+|---|---|---|
+| `app/chat/[id].tsx` | **7** | The unread-divider anchor, latched on a ref during render because recomputing it slides the divider one message further down with every message received — its own comment says so. The compiler-clean form changes **where the divider lands**, which no unit test can see and which `06-people-chat` passed on hours ago. |
+| `app/profile.tsx` | 1 | Seeding the form from the loaded profile. The clean form is a keyed sub-component, which restructures the screen `13-profile` runs against. |
+
+### Blocked on a test that does not exist — 1
+
+| `src/hooks/useDraft.ts` | 1 | **There is no `useDraft` test file.** Refactoring the one hook that decides whether somebody's half-typed question survives, with nothing watching, is the trade this file refuses. A test first, then the refactor — and the test is worth having whether or not the refactor happens. |
+
+### Doable, not device-bound, but not small — 2
+
+| `src/hooks/useConversation.ts` | 1 | `setMessages([])` and friends when the conversation id changes. Covered by `useConversation.test.ts`, so it can be done safely; the clean form keys the hook from its caller, which is the chat spine. |
+| `src/hooks/useSpeechToText.ts` | 1 | `setAvailable(recogniserPresent())` syncing to a native module. The clean form is `useSyncExternalStore`. Tested — but the mic cannot be verified in Expo Go at any SDK, so a real check needs a dev build anyway. |
+
+## Turning the rules back on
+
+The three in `.eslintrc.js` are still `off`. They go back to `error` when the
+eleven are done, and the file that lists them is this one.

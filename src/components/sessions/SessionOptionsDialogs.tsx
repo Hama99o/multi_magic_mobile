@@ -24,7 +24,9 @@
  * key this app invented would simply be dropped server-side.
  */
 import { useEffect, useState } from "react";
-import { Modal, Pressable, ScrollView, TextInput, View } from "react-native";
+import {
+  KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, TextInput, View,
+} from "react-native";
 import { Check } from "lucide-react-native";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
@@ -50,29 +52,36 @@ function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () =
   const metrics = useMetrics();
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose}>
-      <View
-        style={{
-          flex: 1,
-          backgroundColor: "rgba(0,0,0,0.6)",
-          alignItems: "center",
-          justifyContent: "center",
-          padding: metrics.space.lg,
-        }}
+      {/* See RenameDialog: iOS does not resize a Modal for the keyboard, and
+          the instructions field is a multiline box in the lower half. */}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
       >
         <View
           style={{
-            width: "100%",
-            maxWidth: 420,
-            backgroundColor: colors.ground,
-            borderRadius: metrics.radius.lg,
-            padding: metrics.space.xl,
-            gap: metrics.space.lg,
-            maxHeight: "80%",
+            flex: 1,
+            backgroundColor: "rgba(0,0,0,0.6)",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: metrics.space.lg,
           }}
         >
-          {children}
+          <View
+            style={{
+              width: "100%",
+              maxWidth: 420,
+              backgroundColor: colors.ground,
+              borderRadius: metrics.radius.lg,
+              padding: metrics.space.xl,
+              gap: metrics.space.lg,
+              maxHeight: "80%",
+            }}
+          >
+            {children}
+          </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -11,11 +11,16 @@
  *    money. A serif is what makes a paragraph read as a document rather than a
  *    text message, and it is why the Claude app sets its answers in one.
  *
+ *    The family itself comes from `theme/fonts.ts`, because `"serif"` is a
+ *    font on Android and a warning on iOS — where it fell back to San
+ *    Francisco and the whole argument silently did not render.
+ *
  * `textAlign` is left unset. RN resolves it from the layout direction, and this
  * app is LTR throughout — Karwan's RTL machinery is deliberately not carried.
  */
 import { Text as RNText, type TextProps as RNTextProps, type TextStyle } from "react-native";
 import { useColors } from "@/hooks/useColors";
+import { FONTS } from "@/theme/fonts";
 
 export type TextTone = "default" | "muted" | "accent" | "onAccent" | "danger";
 export type TextVariant = "body" | "answer" | "label" | "title" | "caption";
@@ -33,7 +38,7 @@ const VARIANTS: Record<TextVariant, TextStyle> = {
    * uses: these are the longest passages in the app and the only ones somebody
    * reads rather than scans.
    */
-  answer: { fontSize: 17, lineHeight: 27, fontFamily: "serif" },
+  answer: { fontSize: 17, lineHeight: 27, fontFamily: FONTS.serif },
   label: { fontSize: 14, lineHeight: 18, fontWeight: "600" },
   caption: { fontSize: 13, lineHeight: 17 },
 };

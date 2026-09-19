@@ -77,6 +77,10 @@ jest.mock("expo-speech-recognition", () => ({
     requestPermissionsAsync: jest.fn(async () => ({ granted: true, status: "granted" })),
     getPermissionsAsync: jest.fn(async () => ({ granted: true, status: "granted" })),
     getSpeechRecognitionServices: jest.fn(() => ["com.google.android.googlequicksearchbox"]),
+    // `SFSpeechRecognizer.isAvailable` on iOS, `SpeechRecognizer.isRecognitionAvailable`
+    // on Android. True by default: a working device.
+    isRecognitionAvailable: jest.fn(() => true),
+    supportsOnDeviceRecognition: jest.fn(() => false),
     getSupportedLocales: jest.fn(async () => ({ locales: [], installedLocales: [] })),
   },
   useSpeechRecognitionEvent: jest.fn(),

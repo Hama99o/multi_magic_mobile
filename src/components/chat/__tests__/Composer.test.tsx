@@ -12,7 +12,7 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 const mockSpeech = {
   available: true, status: "idle", listening: false, interim: "",
   lang: "fr-FR", setLang: jest.fn(), start: jest.fn(), stop: jest.fn(),
-  cancel: jest.fn(), refused: false,
+  cancel: jest.fn(), refused: false, problem: null,
 };
 let mockOnFinalCapture: ((text: string) => void) | null = null;
 
@@ -34,7 +34,7 @@ import { Composer } from "../Composer";
 beforeEach(() => {
   jest.clearAllMocks();
   Object.assign(mockSpeech, {
-    available: true, listening: false, interim: "", refused: false, lang: "fr-FR",
+    available: true, listening: false, interim: "", refused: false, lang: "fr-FR", problem: null,
   });
   mockOnFinalCapture = null;
 });

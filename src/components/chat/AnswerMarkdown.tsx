@@ -27,6 +27,7 @@ import { Linking, ScrollView, Text as RNText, View } from "react-native";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { API_URL } from "@/config/env";
+import { FONTS } from "@/theme/fonts";
 
 export interface AnswerLink {
   label: string;
@@ -87,7 +88,7 @@ function renderInline(
       out.push(<RNText key={`i${match.index}`} style={{ fontStyle: "italic" }}>{token.slice(1, -1)}</RNText>);
     } else {
       out.push(
-        <RNText key={`c${match.index}`} style={{ fontFamily: "monospace", color: colors.inkMuted }}>
+        <RNText key={`c${match.index}`} style={{ fontFamily: FONTS.mono, color: colors.inkMuted }}>
           {token.slice(1, -1)}
         </RNText>,
       );
@@ -149,7 +150,7 @@ export function AnswerMarkdown({
               padding: metrics.space.md,
             }}
           >
-            <RNText selectable style={{ fontFamily: "monospace", color: colors.ink, fontSize: 13 }}>
+            <RNText selectable style={{ fontFamily: FONTS.mono, color: colors.ink, fontSize: 13 }}>
               {code.join("\n")}
             </RNText>
           </ScrollView>,

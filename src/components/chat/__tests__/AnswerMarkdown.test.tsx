@@ -3,7 +3,9 @@
  * answer has to become something a finger can open.
  */
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { StyleSheet, Text as RNText } from "react-native";
 import { AnswerMarkdown, absoluteUrl, isFileLink } from "../AnswerMarkdown";
+import { FONTS } from "@/theme/fonts";
 
 describe("a file the assistant found", () => {
   // `Ai::Actions::FindFiles` puts the download link in the ANSWER, precisely so
@@ -83,5 +85,27 @@ describe("the subset it claims", () => {
     render(<AnswerMarkdown content="You lent Ahmad 500 EUR in March." />);
 
     expect(screen.getByText("You lent Ahmad 500 EUR in March.")).toBeTruthy();
+  });
+});
+
+describe("the code face", () => {
+  // "monospace" is a font on Android and a warning on iOS — where it rendered
+  // in San Francisco. Every node that names a family here must name the
+  // platform's own.
+  it("uses the platform's monospace for inline and fenced code", () => {
+    render(<AnswerMarkdown content={"Run `rails db:migrate` then:\n```\nbin/rails s\n```"} />);
+
+    const families = screen
+      .UNSAFE_getAllByType(RNText)
+      .map((node) => (StyleSheet.flatten(node.props.style) as { fontFamily?: string }).fontFamily)
+      .filter((family): family is string => Boolean(family));
+
+    // Two code nodes in the platform's monospace; the prose around them is the
+    // answer serif. Nothing anywhere names a generic family.
+    expect(families.filter((family) => family === FONTS.mono).length).toBeGreaterThanOrEqual(2);
+    expect(new Set(families)).toEqual(new Set([FONTS.mono, FONTS.serif]));
+    expect(families).not.toContain("monospace");
+    expect(families).not.toContain("serif");
+    expect(FONTS.mono).toBe("Menlo");
   });
 });

@@ -18,11 +18,38 @@
  * the splash is hidden, so the first frame is already the right one.
  */
 import { create } from "zustand";
+import { Appearance, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export type ThemeChoice = "system" | "light" | "dark";
 
 const KEY = "mm-theme";
+
+/**
+ * THE NATIVE WINDOW FOLLOWS THE CHOICE — on iOS.
+ *
+ * `useColors()` resolves our palette from this store, so every View and Text
+ * is right whichever mode the phone is in. What that cannot reach is what iOS
+ * draws for us: the keyboard, `Alert`, the document and photo pickers, the
+ * share sheet. Those read the window's `overrideUserInterfaceStyle`, and with
+ * `userInterfaceStyle: "automatic"` in app.json that is the PHONE's setting —
+ * so somebody who chose Dark on a light phone types into a white keyboard over
+ * a #102125 ground, and every alert is a light box on a dark app.
+ *
+ * `Appearance.setColorScheme` sets that override on every window
+ * (RCTAppearance.mm), and as a consequence `useColorScheme()` agrees with the
+ * store too — the two can no longer disagree anywhere. `null` hands control
+ * back to the phone, which is what "System" means.
+ *
+ * iOS only, tonight. On Android the same call goes through
+ * `AppCompatDelegate.setDefaultNightMode`, a configuration change, and the
+ * Android build is being driven by flows on the one emulator this evening. It
+ * can be widened after a device pass; it must not be widened before one.
+ */
+function applyToNativeWindow(choice: ThemeChoice): void {
+  if (Platform.OS !== "ios") return;
+  Appearance.setColorScheme(choice === "system" ? null : choice);
+}
 
 interface ThemeState {
   choice: ThemeChoice;
@@ -38,6 +65,7 @@ export const useThemeStore = create<ThemeState>((set) => ({
 
   setChoice: (choice) => {
     set({ choice });
+    applyToNativeWindow(choice);
     // Fire and forget: the choice is already applied, and a failed write costs
     // the preference on next launch rather than the tap the user just made.
     void AsyncStorage.setItem(KEY, choice).catch(() => {});
@@ -48,6 +76,7 @@ export const useThemeStore = create<ThemeState>((set) => ({
       const stored = await AsyncStorage.getItem(KEY);
       if (stored === "light" || stored === "dark" || stored === "system") {
         set({ choice: stored });
+        applyToNativeWindow(stored);
       }
     } catch {
       // System is the right fallback: it is what the app did before anybody

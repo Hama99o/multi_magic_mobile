@@ -25,7 +25,7 @@
  * is remembered for this launch only.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Platform } from "react-native";
+import { AppState, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /**
@@ -69,6 +69,12 @@ interface SpeechModule {
     abort: () => void;
     requestPermissionsAsync: () => Promise<{ granted: boolean }>;
     getSpeechRecognitionServices: () => string[];
+    /**
+     * `SFSpeechRecognizer.isAvailable` on iOS; `SpeechRecognizer.isRecognitionAvailable`
+     * on Android. Optional in the type because older builds of the module did
+     * not have it, and an absent function must read as "assume yes", not crash.
+     */
+    isRecognitionAvailable?: () => boolean;
   };
   useSpeechRecognitionEvent: <K extends keyof SpeechEventMap>(
     event: K,
@@ -101,6 +107,56 @@ export const LANGUAGES = [
 
 export type SttStatus = "idle" | "listening" | "unavailable";
 
+/**
+ * Is there a recogniser that could work RIGHT NOW?
+ *
+ * Android can genuinely have none installed — a cheap phone without Google's
+ * app — and the services list is the specific question for that. iOS always
+ * HAS the Speech framework; what it may not have is a working recogniser:
+ * Siri & Dictation switched off under Screen Time, or — on a phone without
+ * on-device models — no network for Apple's server. `isRecognitionAvailable`
+ * is the one question that covers both platforms' "present but cannot work".
+ *
+ * Before this function iOS was `true` unconditionally, which offered a mic
+ * that could only fail — the exact shape the header says not to ship.
+ */
+function recogniserPresent(): boolean {
+  if (!ExpoSpeechRecognitionModule) return false;
+  try {
+    if (Platform.OS === "android") {
+      const services = ExpoSpeechRecognitionModule.getSpeechRecognitionServices();
+      if (!Array.isArray(services) || services.length === 0) return false;
+    }
+    const available = ExpoSpeechRecognitionModule.isRecognitionAvailable?.();
+    return available === undefined ? true : available;
+  } catch {
+    // A module that cannot answer is a module we do not offer.
+    return false;
+  }
+}
+
+/**
+ * The recogniser's error codes, as a sentence or as silence.
+ *
+ * `not-allowed` / `service-not-allowed` are a REFUSAL and handled apart. Of
+ * the rest, only the ones the person can act on get a sentence: no connection
+ * (a server-based engine, which is both platforms' default), a microphone held
+ * by another app, a language the phone cannot do. `no-speech` and `aborted`
+ * are the ordinary end of an attempt and say nothing.
+ */
+export function problemSentence(code: string, langLabel: string): string | null {
+  switch (code) {
+    case "network":
+      return "Dictation needs a connection right now. You can still type.";
+    case "audio-capture":
+      return "The microphone is busy or unavailable. You can still type.";
+    case "language-not-supported":
+      return `Your phone cannot dictate in ${langLabel} yet. You can still type.`;
+    default:
+      return null;
+  }
+}
+
 export interface UseSpeechToText {
   /** False means render NO mic at all — not a disabled one. */
   available: boolean;
@@ -116,6 +172,11 @@ export interface UseSpeechToText {
   cancel: () => void;
   /** Set once when a permission is refused, so the UI can explain. */
   refused: boolean;
+  /**
+   * A recogniser that exists but could not work on the last attempt — one
+   * sentence the person can act on, or null. Cleared when they try again.
+   */
+  problem: string | null;
 }
 
 export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToText {
@@ -123,6 +184,7 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
   const [listening, setListening] = useState(false);
   const [interim, setInterim] = useState("");
   const [refused, setRefused] = useState(false);
+  const [problem, setProblem] = useState<string | null>(null);
   const [lang, setLangState] = useState<string>(DEFAULT_LANG);
 
   // Kept in a ref so the event subscriptions never need rebuilding when the
@@ -145,26 +207,19 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
   }, []);
 
   useEffect(() => {
-    void (async () => {
-      // No native module at all — Expo Go, or a build without the plugin.
-      if (!ExpoSpeechRecognitionModule) {
-        setAvailable(false);
-        return;
-      }
-      try {
-        // Android can genuinely have no recogniser installed. iOS always has
-        // the Speech framework, so an empty list there is not a refusal.
-        if (Platform.OS === "android") {
-          const services = ExpoSpeechRecognitionModule.getSpeechRecognitionServices();
-          setAvailable(Array.isArray(services) && services.length > 0);
-        } else {
-          setAvailable(true);
-        }
-      } catch {
-        // A module that cannot answer is a module we do not offer.
-        setAvailable(false);
-      }
-    })();
+    // No native module at all — Expo Go, or a build without the plugin — is
+    // just the first way `recogniserPresent` says no.
+    setAvailable(recogniserPresent());
+
+    // Re-asked when the app comes back to the foreground. Availability is not
+    // a constant: somebody switches Dictation back on in Settings, or walks out
+    // of the tunnel, and comes straight back to the composer. A mic that only
+    // ever appears after a restart is the cached-`denied` mistake in another
+    // costume.
+    const sub = AppState.addEventListener("change", (status) => {
+      if (status === "active") setAvailable(recogniserPresent());
+    });
+    return () => sub.remove();
   }, []);
 
   useSpeechRecognitionEvent("result", (event) => {
@@ -191,10 +246,14 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
     setListening(false);
     setInterim("");
     // "not-allowed" is a refusal; the rest are ordinary failures (no speech
-    // heard, network, busy) and must not hide the button.
+    // heard, network, busy) and must not hide the button. The ones a person
+    // can act on get one sentence; the rest stay quiet.
     if (event.error === "not-allowed" || event.error === "service-not-allowed") {
       setRefused(true);
+      return;
     }
+    const label = LANGUAGES.find((l) => l.code === lang)?.label ?? lang;
+    setProblem(problemSentence(event.error, label));
   });
 
   const setLang = useCallback((next: string) => {
@@ -205,6 +264,8 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
   const start = useCallback(async () => {
     if (!ExpoSpeechRecognitionModule) return;
     cancelledRef.current = false;
+    // A new attempt starts clean: the last problem may be gone.
+    setProblem(null);
     try {
       const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
       if (!permission.granted) {
@@ -261,5 +322,6 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
     stop,
     cancel,
     refused,
+    problem,
   };
 }

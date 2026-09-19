@@ -17,6 +17,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, View } from "react-native";
 import { router } from "expo-router";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react-native";
 import { Text } from "@/components/reusables/text";
@@ -50,6 +51,7 @@ export function SessionsSheet({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const [pending, setPending] = useState<Pending>(null);
   const [error, setError] = useState<string | null>(null);
@@ -160,7 +162,11 @@ export function SessionsSheet({
             borderTopRightRadius: metrics.radius.lg,
             paddingTop: metrics.space.lg,
             paddingHorizontal: metrics.space.lg,
-            paddingBottom: metrics.space.xl,
+            // The same measurement AttachSheet already carries: without the
+            // inset the LAST row — which here is "Sign out" — sits under the
+            // gesture bar on Android and under the 34 pt home indicator on
+            // every iPhone since the X.
+            paddingBottom: metrics.space.xl + insets.bottom,
             gap: metrics.space.lg,
             maxHeight: "85%",
             width: "100%",

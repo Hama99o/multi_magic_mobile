@@ -18,6 +18,7 @@
  * open and says where it is going.
  */
 import { Image, Linking, Modal, Pressable, ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
@@ -35,6 +36,7 @@ export function FilePreview({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const insets = useSafeAreaInsets();
 
   if (!link) return null;
   const isImage = IMAGE.test(link.url);
@@ -48,6 +50,9 @@ export function FilePreview({
             borderTopLeftRadius: metrics.radius.lg,
             borderTopRightRadius: metrics.radius.lg,
             padding: metrics.space.lg,
+            // The "Open file" button is the last row; keep it above the home
+            // indicator.
+            paddingBottom: metrics.space.lg + insets.bottom,
             gap: metrics.space.lg,
             maxHeight: "85%",
             width: "100%",

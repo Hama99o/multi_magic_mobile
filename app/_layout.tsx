@@ -10,12 +10,12 @@ import "@/styles/global.css";
 import { useEffect, useState } from "react";
 import { Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
-import { useColorScheme } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import * as SplashScreen from "expo-splash-screen";
 import { wireAuthStore, useAuthStore } from "@/stores/auth.store";
 import { useThemeStore } from "@/stores/theme.store";
+import { useScheme } from "@/hooks/useColors";
 import { loadToken } from "@/api/http";
 import { TOKENS } from "@/theme/tokens";
 
@@ -36,7 +36,16 @@ const queryClient = new QueryClient({
 wireAuthStore();
 
 export default function RootLayout() {
-  const scheme = useColorScheme();
+  /**
+   * The STORE's answer, not the phone's. Every View resolves its colours
+   * through `useColors()`, which reads the theme chooser; this used to read
+   * `useColorScheme()` directly, so somebody who chose Dark on a light phone
+   * got a #102125 ground under a status bar drawn in dark glyphs — invisible —
+   * and a light Stack background flashing between screens. Two sources of
+   * truth for one question, and they disagreed exactly when the chooser was
+   * used.
+   */
+  const scheme = useScheme();
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
@@ -65,7 +74,7 @@ export default function RootLayout() {
           screenOptions={{
             headerShown: false,
             contentStyle: {
-              backgroundColor: TOKENS[scheme === "light" ? "light" : "dark"].ground,
+              backgroundColor: TOKENS[scheme].ground,
             },
           }}
         />

@@ -90,6 +90,16 @@ export function Composer({
         </Text>
       ) : null}
 
+      {/* A recogniser that exists but cannot work right now — no connection
+          for a server-based engine, a microphone another app holds — says so
+          in one line. Stopping silently reads as "the mic is broken", and
+          the person taps it again. */}
+      {speech.problem ? (
+        <Text variant="caption" tone="muted" style={{ paddingHorizontal: metrics.space.md }} testID="composer-mic-problem">
+          {speech.problem}
+        </Text>
+      ) : null}
+
     <View
       style={{
         flexDirection: "row",

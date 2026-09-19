@@ -133,6 +133,30 @@ real Gemini answer over ActionCable, and the PDF join returning facts that
 exist nowhere but the uploaded file. The flow would automate a thing already
 known to work; its absence costs repeatability, not confidence.
 
+## Run 7 — six verdicts on the development build
+
+All against the real backend on `qa_phone2`, dev build (`co.byseven.multimagic`).
+
+| Flow | Verdict | What it establishes |
+|---|---|---|
+| `login` | **PASS** | signs in only if not already; waits on either end state |
+| `01-ask` | **PASS** | a real question, a real Gemini answer over ActionCable |
+| dictation (manual) | **PASS** | mic present; permission dialog fires; refusal keeps the button |
+| `10-sign-up` | **PASS** | the server's own "has already been taken"; nothing created |
+| `11-forgot-password` | **PASS** | accepted on 2xx; the copy that reveals nothing is pinned |
+| `12-account` | **PASS** | dark selected and surviving a real relaunch; account rows |
+
+**`12-account` found a bug in `login.yaml` that the others could not.** It
+relaunches deliberately, to prove the theme survives — and a cold relaunch has
+a window where NEITHER the composer nor the sign-in field is on screen. The
+conditional fired during it and then demanded a sign-in field from an app that
+was already signed in. It now settles that window before deciding which state
+it is in. Deciding early was the bug.
+
+**A finding with no flow: there is no language switch in the app.** The theme
+chooser was asked for "like the theme system — same thing language and theme",
+and only half of that exists. Recorded here rather than silently passing.
+
 ## Rules this register enforces
 
 - **An empty list is a legitimate state, not a pass.** A flow that reaches an

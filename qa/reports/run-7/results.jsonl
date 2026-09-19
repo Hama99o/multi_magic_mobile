@@ -1,3 +1,6 @@
-{"run":7,"flow":"01-ask","verdict":"PASS","binary":"dev-build","device":"qa_phone2","backend":"http://10.0.2.2:3001","note":"real question -> real Gemini answer over ActionCable, end to end"}
-{"run":7,"flow":"login","verdict":"PASS","binary":"dev-build","note":"signs in only if not already; no forced sign-out"}
-{"run":7,"flow":"dictation","verdict":"PASS","binary":"dev-build","note":"mic present, permission dialog fires, refusal keeps the button and explains"}
+{"run":7,"flow":"login","verdict":"PASS","binary":"dev-build","note":"signs in only if not already; waits on either end state, twice"}
+{"run":7,"flow":"01-ask","verdict":"PASS","binary":"dev-build","note":"real question -> real Gemini answer over ActionCable, end to end"}
+{"run":7,"flow":"dictation","verdict":"PASS","binary":"dev-build","note":"mic present; permission dialog fires; refusal keeps the button and explains"}
+{"run":7,"flow":"10-sign-up","verdict":"PASS","binary":"dev-build","owner":"multi-magic-mobile-31","note":"server's own 'has already been taken' shown; nothing created; nobody signed in"}
+{"run":7,"flow":"11-forgot-password","verdict":"PASS","binary":"dev-build","owner":"multi-magic-mobile-31","note":"accepted on 2xx; the copy that does not reveal whether the address exists is pinned"}
+{"run":7,"flow":"12-account","verdict":"PASS","binary":"dev-build","owner":"multi-magic-mobile-31","note":"theme dark selected and survives a real relaunch (hydrate before first paint); account rows and caption"}

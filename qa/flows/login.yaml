@@ -19,11 +19,15 @@ appId: ${APP_ID}
 
 # The bundle is fetched over the network on a cold start and this box is slow.
 # Wait on EITHER end state rather than assuming which one.
+# lint: optional-ok — waits on ONE of two legitimate end states; the other
+# branch below handles absence, so this is a race, not an assertion.
 - extendedWaitUntil:
     visible:
       id: "composer-input"
     timeout: 120000
     optional: true
+# lint: optional-ok — the other of those two end states; whichever arrives,
+# the guards below read it.
 - extendedWaitUntil:
     visible:
       id: "sign-in-email"
@@ -61,6 +65,8 @@ appId: ${APP_ID}
         id: "chat-open-sessions"
     commands:
       - pressKey: Back
+      # lint: optional-ok — one Back may or may not land on the assistant; the
+      # sign-in branch below is the answer either way.
       - extendedWaitUntil:
           visible:
             id: "composer-input"
@@ -74,24 +80,44 @@ appId: ${APP_ID}
       notVisible:
         id: "composer-input"
     commands:
-      - extendedWaitUntil:
-          visible:
-            id: "sign-in-email"
-          timeout: 60000
-      - tapOn:
-          id: "sign-in-email"
-      - inputText: ${EMAIL}
-      - tapOn:
-          id: "sign-in-password"
-      - inputText: ${PASSWORD}
-      - hideKeyboard
-      - takeScreenshot: reports/01-sign-in-filled
-      - tapOn:
-          id: "sign-in-submit"
+      # WAIT ON EITHER, AGAIN, before demanding the sign-in screen.
+      #
+      # A cold relaunch has a window where NEITHER is on screen, and the
+      # conditional above fires during it — so a signed-in app was asked for a
+      # sign-in field it would never show. Found by 12-account, which relaunches
+      # deliberately to prove the theme survives it.
+      # lint: optional-ok — settles the cold-relaunch window before deciding
+      # which state we are in; deciding early is the bug this replaced.
       - extendedWaitUntil:
           visible:
             id: "composer-input"
-          timeout: 60000
+          timeout: 45000
+          optional: true
+      - runFlow:
+          when:
+            notVisible:
+              id: "composer-input"
+          commands:
+            - extendedWaitUntil:
+                visible:
+                  id: "sign-in-email"
+                timeout: 60000
+            - tapOn:
+                id: "sign-in-email"
+            - inputText: ${EMAIL}
+            - tapOn:
+                id: "sign-in-password"
+            - inputText: ${PASSWORD}
+            # NOT `hideKeyboard`: dismissing it relayouts the form through
+            # KeyboardAvoidingView and Maestro's snapshot catches the submit
+            # button mid-transition. That cost 01-ask five runs.
+            - takeScreenshot: reports/01-sign-in-filled
+            - tapOn:
+                id: "sign-in-submit"
+            - extendedWaitUntil:
+                visible:
+                  id: "composer-input"
+                timeout: 60000
 
 - assertVisible:
     id: "composer-input"

@@ -275,6 +275,48 @@ export function isNetworkFailure(error: unknown): boolean {
  * fingerprint is not a secret, but it is the other half of the pair — printing
  * both together in a log would make that log enough to impersonate the device.
  */
+/**
+ * DOES THIS REQUEST CARRY THE USER'S OWN PASSWORD?
+ *
+ * A 401 means two completely different things, and the difference is in the
+ * request rather than the response.
+ *
+ * `DELETE /api/v1/users/me` re-sends the password on purpose — a valid token
+ * is not evidence that the OWNER is the one pressing delete on a phone
+ * somebody else might be holding (`account.ts`). So a wrong password there is
+ * a 401 on a request that also carried a perfectly good token, and the guard
+ * below could not tell it from a dead session: it cleared the token, signed
+ * the person out of the most consequential screen in the app, and told them
+ * their session had expired — which was false, and which hid the true reason,
+ * because the screen setting "that password is not right" was being replaced
+ * as it set it.
+ *
+ * `../../docs/design/profile/SPEC.md` §0.2 is about exactly this class and
+ * says how the server protected the OTHER inline re-authentication: a wrong
+ * `current_password` on change-password answers **422, not 401**, with a
+ * comment saying "the client treats every 401 as an expired session and signs
+ * the user out". Deletion did not get that treatment, so the client has to.
+ *
+ * The rule, rather than a list of endpoints: **a request that re-authenticates
+ * is asking the server about that password, so the answer is about that
+ * password.** If the session really had ended too, the next request — which
+ * will not carry a password — says so properly.
+ *
+ * Key presence only. The value is never read, never logged, never compared.
+ */
+function reauthenticates(body: unknown): boolean {
+  if (body == null) return false;
+  if (typeof body === "string") {
+    try {
+      const parsed: unknown = JSON.parse(body);
+      return typeof parsed === "object" && parsed !== null && "password" in parsed;
+    } catch {
+      return false;
+    }
+  }
+  return typeof body === "object" && "password" in (body as Record<string, unknown>);
+}
+
 function logApiFailure(error: AxiosError): void {
   if (!__DEV__) return;
   const method = (error.config?.method ?? "?").toUpperCase();
@@ -338,7 +380,15 @@ http.interceptors.response.use(
       // somebody who mistyped their password that their session had expired.
       const headers = error.config?.headers as Record<string, unknown> | undefined;
       const carried = headers?.Authorization ?? headers?.authorization;
-      if (typeof carried === "string" && carried.trim() !== "") {
+      // …and only when it was not ASKING about a password. See
+      // `reauthenticates` — `DELETE /users/me` carries both a token and the
+      // password, and before this the wrong-password answer signed the person
+      // out and blamed their session.
+      if (
+        typeof carried === "string" &&
+        carried.trim() !== "" &&
+        !reauthenticates(error.config?.data)
+      ) {
         const reason = sessionEndReason(carried);
         // Clear FIRST, then notify. The other order leaves a window in which a
         // retry re-sends the token the server just rejected.

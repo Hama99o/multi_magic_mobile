@@ -233,3 +233,22 @@ Checked by the verifier session against `main` at `971f951`.
   `delete-conversation-*`.
 - Flows: `12-account`, `17-privacy`, `18-delete-account` (`qa/FLOW_REGISTER.md`,
   Run 7). `18` asserts both states of the gate and never fills the password.
+
+### Divergence note — 2026-09-19, later
+
+- **A wrong password on the confirm screen used to sign you out.** The screen
+  maps a 401 to *"that password is not right"* and always has, but the HTTP
+  interceptor got there first: it saw a 401 on a request carrying a token,
+  cleared the session and handed the root layout a reason to show on sign-in.
+  The person was thrown out of the app, told their session had expired, and
+  never saw the sentence this screen wrote for them. Fixed in `src/api/http.ts`
+  — a 401 ends a session only when the request carried a token and **no
+  password**. See `../profile/SPEC.md` §0.2, which is where the rule is stated
+  and where this turned out to be its second instance.
+- **This screen still has no behaviour test.** `screens.render.test.tsx` proves
+  its handles exist in both languages and `18-account-delete` asserts both
+  states of the gate without ever filling the password. Nothing asserts that
+  the confirm stays disabled until a password is typed, that a failure leaves
+  the person on the screen, or that the disclosure renders in full when the
+  gate is closed. It is the most consequential screen in the app and the
+  least covered, and that is worth saying out loud rather than leaving implied.

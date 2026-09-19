@@ -133,6 +133,51 @@ describe("the 401 path", () => {
     expect(handler).not.toHaveBeenCalled();
   });
 
+  // ── AND NEITHER IS A 401 ABOUT A PASSWORD THE REQUEST ITSELF CARRIED ─────
+  //
+  // `DELETE /api/v1/users/me` sends the password on purpose, because a valid
+  // token is not evidence that the OWNER is the one pressing delete. So a
+  // typo there is a 401 on a request that ALSO carried a good token, and the
+  // old guard — token present, therefore session over — signed the person out
+  // of the most consequential screen in the app and told them their session
+  // had expired. It had not. And the screen's own "that password is not
+  // right" was set on a view being replaced as it set it, so the true reason
+  // never reached the screen either.
+  //
+  // `docs/design/profile/SPEC.md` §0.2 is this class: the server answers a
+  // wrong `current_password` with 422 precisely so the client cannot make
+  // this mistake. Deletion answers 401, so the client has to not make it.
+  it("does not end the session on a 401 for a password the request carried", async () => {
+    await setToken(bearer(IN_AN_HOUR));
+    const handler = jest.fn();
+    setUnauthorizedHandler(handler);
+    mock.onDelete("/api/v1/users/me").reply(401, { error: "Password is incorrect" });
+
+    await expect(
+      http.delete("/api/v1/users/me", { data: { password: "wrong" } }),
+    ).rejects.toBeDefined();
+
+    expect(handler).not.toHaveBeenCalled();
+    // And the token SURVIVES: the person is still signed in, still on the
+    // screen, and free to try the password again.
+    expect(await loadToken()).toBe(bearer(IN_AN_HOUR));
+  });
+
+  it("still ends the session on a 401 for a request with no password in it", async () => {
+    await setToken(bearer(IN_AN_HOUR));
+    const handler = jest.fn();
+    setUnauthorizedHandler(handler);
+    mock.onDelete("/api/v1/users/me").reply(401);
+
+    await expect(http.delete("/api/v1/users/me", { data: { confirm: true } })).rejects.toBeDefined();
+
+    // The exemption is about the password, not about the endpoint — otherwise
+    // a genuinely dead session on this route would leave the app signed in
+    // and failing every request.
+    expect(handler).toHaveBeenCalledWith("revoked");
+    expect(await loadToken()).toBeNull();
+  });
+
   it("says REVOKED when a live token is refused — the fingerprint, or another device", async () => {
     await setToken(bearer(IN_AN_HOUR));
     const handler = jest.fn();

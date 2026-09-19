@@ -190,3 +190,46 @@ replacing it with "Something went wrong".
 3. A photo taken on the device, uploaded, and surviving a restart.
 4. A deliberately bad API key, showing **the provider's own refusal**.
 5. `npx tsc --noEmit`, eslint, and the API tests for both modules.
+
+---
+
+### Divergence note — 2026-09-19, the first walk of this file
+
+- **§0.3 is fixed, and by this repo rather than reported onward.** The root
+  layout now calls `connected_user` after restoring a token
+  (`app/_layout.tsx:76-99`), deliberately *after* the splash and not awaited —
+  blocking on a request would hold a blank screen for up to the 15 s timeout to
+  learn something every screen can do without. So `useAuthStore.user` is
+  populated on a cold start, `app/chat.tsx`'s remembered-session restore fires,
+  and the app stops silently falling back to the server's cross-device default.
+  The same call carries `lang`, which is what makes a language chosen on the
+  laptop reach the phone.
+- **§0.2 had a SECOND instance, and the server did not protect this one.** The
+  rule here — *a wrong password must not sign you out* — is stated against
+  `change_password`, which the server defends by answering **422**. Account
+  deletion re-sends the password too (`account.ts`, and for the same reason:
+  a valid token is not evidence the owner is holding the phone), but a wrong
+  one there is a **401 on a request that also carried a good token**. The
+  interceptor's guard exempted only requests with no token at all, so a typo on
+  the most consequential screen in the app cleared the session, navigated to
+  sign-in, and said *"your session expired"* — which was false, and which hid
+  the real reason, because the screen's own *"that password is not right"* was
+  set on a view being replaced as it set it.
+
+  Fixed in `src/api/http.ts`: a 401 ends a session only when the request
+  carried a token **and did not carry a password**. The rule is about the
+  request rather than the endpoint — a request that re-authenticates is asking
+  about that password, so the answer is about that password — and if the
+  session really had ended too, the next request, which carries no password,
+  says so properly. Two tests, one of them asserting that a 401 on the *same*
+  route without a password still signs you out.
+
+  **Not device-verified.** That `DELETE /api/v1/users/me` answers 401 rather
+  than 422 for a wrong password is taken from `account.ts`'s own design and
+  from what the screen does with it, not from a live call — nothing here may be
+  run against his account. The change is safe either way: if the server answers
+  422 the guard never fires.
+- **§5 is still open**, and all of it needs a device: the three screens at three
+  widths in both schemes, a photo taken and surviving a restart, and a
+  deliberately bad API key showing the provider's own refusal. Only §5.2 has a
+  test, and only its API half (`src/api/__tests__/profile.test.ts`).

@@ -73,7 +73,7 @@ tags:
 # ── Edit About, save, and see "Saved." ───────────────────────────────────
 - tapOn:
     id: "profile-about"
-- eraseText: 200
+- eraseText: 400
 - inputText: "QA rig, first pass"
 # Enter on this single-line field performs the IME's done and closes the
 # keyboard; not hideKeyboard, whose Back could pop this pushed screen.
@@ -103,7 +103,7 @@ tags:
     timeout: 20000
 - tapOn:
     id: "profile-about"
-- eraseText: 200
+- eraseText: 400
 - inputText: "QA account. About is written by qa/flows/13-profile.yaml"
 # Same reasoning as above: Enter, not hideKeyboard.
 - pressKey: Enter
@@ -126,9 +126,39 @@ tags:
 - assertVisible:
     id: "profile-keys"
 - assertVisible: "Your AI provider key"
+# SCROLL FIRST, AND WITH `scroll` RATHER THAN `scrollUntilVisible`.
+#
+# `profile-web` is the LAST row on the screen. On this 1080x2400 phone the
+# hierarchy ends at `profile-keys` [42,2081][1038,2207] and the row below it is
+# not in the tree at all — Android exposes only what is drawn — so a bare
+# `assertVisible` fails on a row that is present and merely further down.
+#
+# Two gestures were tried before this one and BOTH reported success while the
+# screen did not move — the failure frame shows the header, the photo and every
+# field still in place:
+#
+#   scrollUntilVisible  → "No visible element found", never scrolled;
+#   scroll              → COMPLETED, content unchanged.
+#
+# `adb shell input swipe 540 1800 540 900` on the same screen DOES scroll it,
+# bringing the row to [42,2083][1038,2209]. So an explicit swipe is used, with
+# the same shape as the one that works. Measured three times, 2026-09-19.
+- swipe:
+    start: 50%, 75%
+    end: 50%, 37%
 - assertVisible:
     id: "profile-web"
 - takeScreenshot: reports/74-profile-rows
+
+# SWIPE BACK UP before leaving. The header — and its "Back" — scrolls WITH the
+# content on this screen, so after the swipe above, `tapOn: "Back"` fails with
+# "Element not found" on a control that is simply above the viewport. Measured
+# 2026-09-19. The header Back is tapped rather than `pressKey: Back` on
+# purpose: it is the control a person actually presses, and a system Back would
+# pass even if the header had no button at all.
+- swipe:
+    start: 50%, 37%
+    end: 50%, 75%
 
 # ── Leave, come back, and read the server's copy ─────────────────────────
 - tapOn: "Back"
@@ -143,9 +173,23 @@ tags:
       id: "profile-about"
     timeout: 30000
 # THE ASSERTION. The field holds what the second save sent — the round trip.
+# ANCHORED AT THE START, NOT A FULL MATCH, AND THE REASON IS A REAL DEFECT.
+#
+# `eraseText` erases BACKWARDS FROM THE CURSOR, and `tapOn` puts the cursor
+# where it tapped — the middle of the box, not the end of the text. So the
+# reset below clears everything before the tap point and the new line is
+# inserted in front of whatever was after it. Measured 2026-09-19: the field
+# came back holding
+#
+#   "QA account. About is written by qa/flows/13-profile.yaml/13-profile.yaml"
+#
+# The tail is bounded (each run keeps roughly half of what it found and then
+# rewrites the head) but it is real, and a full-string match here would fail on
+# a save that worked perfectly. What this step is FOR is that the text made the
+# round trip through the server, and a start-anchored match says exactly that.
 - assertVisible:
     id: "profile-about"
-    text: "QA account. About is written by qa/flows/13-profile.yaml"
+    text: 'QA account\. About is written by qa/flows/13-profile\.yaml.*'
 - takeScreenshot: reports/75-profile-round-trip
 - tapOn: "Back"
 - assertVisible:

@@ -60,6 +60,13 @@ below are read out of the source and are settled on a device, not by this file.
 
 ---
 
+> **A correction that belongs where the claim is.** Commit `67f9cc5`'s message
+> says *"a test asserts the link survives the attribution."* It does not. That
+> test passes whether or not the answer is wrapped in a named container — the
+> naive fix was planted and it stayed green, because RNTL does not emulate
+> native accessibility grouping. `docs/TESTING.md` §9 is the entry; this line is
+> here so the next reader finds the correction where they find the claim.
+
 ## FIXED — unambiguous, each watched failing first
 
 Four defects. Each test was written against the broken code and watched go red
@@ -131,16 +138,66 @@ and on iOS that is absolute. If it behaves as documented, VoiceOver announces
 one "Close" button for the entire modal and **the photo rows and the six
 reaction emoji are not reachable at all.**
 
-The standard fix is structural — make the scrim an absolutely-positioned sibling
-*behind* the content rather than its parent, at which point the press-swallowing
-Pressable in F4 becomes unnecessary too. **Not applied here.** It changes the
-layout composition of two sheets whose `ours/` screenshots are part of their
-`DONE`, this session is off the device by assignment, and iOS is not in the rig
-at all (`qa/RIG_CONTRACT.md` §2 lists Android AVDs only). Applying an unverified
-visual change to two modals to fix a bug nobody has watched is how §5 happens.
+### What it would cost, and why it is probably iOS only
 
-**To close it:** VoiceOver on an iOS build, or an Android TalkBack pass that
-shows whether the rows take focus individually.
+Costed because "pinned for later" with no number attached is how five screens
+stay broken. It is **one shape, five times** — every scrim is
+`style={{ flex: 1, backgroundColor: <translucent>, justifyContent: "flex-end" }}`
+(SessionsSheet's menu uses `"center"`) with the sheet as its children. The three
+variants differ only in what stops a tap inside the sheet from reaching the
+scrim, and that difference disappears in the fix:
+
+| Sheet | What swallows the inside tap today |
+|---|---|
+| `AttachSheet:56`, `SessionsSheet:304` | nothing — the content is a plain `View` |
+| `SourceSheet:45` | an inner `Pressable` calling `e.stopPropagation()` |
+| `PhotoSheet:103`, `ReactionSheet:87` | an inner `Pressable` with a no-op `onPress` (given `accessible={false}` in F4) |
+
+**The change, identical in all five:** the scrim stops being the parent and
+becomes an absolutely-positioned sibling *behind* the content.
+
+```jsx
+<View style={{ flex: 1, justifyContent: "flex-end" }}>
+  <Pressable
+    style={StyleSheet.absoluteFill}
+    onPress={onClose}
+    accessibilityRole="button"
+    accessibilityLabel={t("common.close")}
+  />
+  <View style={sheetStyle}>{…}</View>
+</View>
+```
+
+The inner press-swallowing `Pressable`s then have nothing to swallow and go —
+including the two F4 touched, so that fix is subsumed rather than duplicated.
+
+**The `ours/` screenshots should not need retaking**, and that is the claim to
+check rather than trust: the scrim covers the same area in the same colour, the
+parent keeps `flex: 1` and the same `justifyContent`, and the sheet's own style
+is untouched, so the rendered pixels should be identical. If they are, `DONE`
+survives the change. That is a question for the picture pass, not for this file.
+
+**Android is very likely NOT affected, and that halves the urgency.** From the
+framework's own source rather than from belief:
+`ReactAccessibilityDelegate.java:467`, `hasNonActionableSpeakingDescendants`
+walks a view's children and **`continue`s past any child that is itself
+`isAccessibilityFocusable`**. Android's model is to merge *non-actionable*
+speaking descendants into their parent and leave actionable ones addressable —
+so a `Pressable` row inside a labelled `Pressable` scrim should still take
+TalkBack focus on its own. iOS has no such carve-out: an accessibility element
+groups its children, full stop.
+
+So the expected result is **broken on iOS, fine on Android** — and iOS is the
+platform with no build, no simulator and no rig here.
+
+**The probe that settles it**, handed to e0 as a device item: open the attach
+sheet with TalkBack on and swipe right through it. If *Take a photo*, *Choose a
+photo* and *Choose a file* each take focus and read out, Android does not group
+and this finding narrows to iOS, where it stays real and unverifiable in this
+rig. If instead the whole sheet reads as one "Close" button, the source reading
+above is wrong and this becomes the most urgent item in the audit, because it
+would then be five screens a blind user cannot operate on the platform we
+actually ship to first.
 
 ### N2 · A correct hint pointing at an unreachable gesture
 
@@ -244,10 +301,17 @@ rest of the section is worth keeping: a hint that describes the *wrong* action
 is wrong whatever convention the app later adopts, so it did not need the
 decision. What the convention should be still does.
 
-This is the opposite arrangement to the composer's mic (D4), and between them
-they make the point: **this app has three long-press gestures and no convention
-for announcing any of them.** One is described correctly (and unreachable, N2),
-one is described as something else (here), and one is not described at all (D4).
+**The convention question is now one document, not three findings.**
+`docs/DICTATION_LANGUAGE.md` §4 draws all three long presses side by side with
+their costs and a recommendation — reaction on a message, delete on a
+notification, switch language on the mic — and it closes on the point that
+matters most: whichever convention is chosen, the answer should record which
+gestures it still cannot reach. Anything reachable only by a long press cannot
+reach somebody with a tremor, somebody on switch control, or a screen reader
+whose own gesture set has claimed the hold — and cannot reach a platform that
+takes the gesture first, which is not hypothetical: Android's text selection ate
+the reaction entirely until `67f698b`, while the handler, the sheet and the hint
+were all correct. Read that rather than this.
 
 ### D4 · The mic announces a language the screen never prints
 

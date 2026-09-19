@@ -452,6 +452,58 @@ shape that prompted it is the shape it cannot check.
 
 ---
 
+## 10 · A grep for a spelling finds a spelling, not an idea
+
+**2026-09-19. Three instances in one evening, by three different sessions, and
+none of them recognised it until the third.**
+
+§8 is about a check that only runs in one direction. This is its neighbour and
+it is narrower: **a check built by searching for how an idea was WRITTEN finds
+only the places it was written that way**, and the places it was written
+differently are invisible in exactly the same manner as the places it was not
+written at all.
+
+The three, in the order they surfaced:
+
+1. **`keys.test.ts` knew `t("…")` and not `translate("…")`.** The alias is the
+   module-level import used outside components, so every key reached through it
+   had never been resolved in either language — not a weak check, no check. §8.
+2. **The `no-restricted-syntax` accessibility rule guards `accessibilityLabel`
+   and `accessibilityHint`.** A worded English literal in a `<Text>` child is
+   neither, so three of them sat in people-chat. `49a0a7a` fixed two literals in
+   `PersonMessageRow.tsx` and one survived it two lines away, in the same file,
+   on the same day. §8 again.
+3. **The scrim audit grepped for `onPress={() => {}}`** — the press-swallowing
+   child that the two sheets it found happen to use. `SourceSheet` writes
+   `e.stopPropagation()` instead and `AttachSheet` and `SessionsSheet` have no
+   swallower at all. The hand-read reported **two** sheets with the grouping
+   defect. The static check that asked the structural question instead — *is
+   there a named container with a control inside it* — reported **five**. Every
+   modal in the app, not two of them.
+
+The third is the one that makes the pattern legible, because the search term was
+not even wrong. `onPress={() => {}}` really is how two of the five are written.
+It was a correct grep for a true spelling, and it under-reported the finding by
+more than half, and it would have gone into the audit as "two sheets" and been
+believed — by the session that had just written §8 up.
+
+**What distinguishes the instrument that worked**: it did not look for a
+spelling at all. It parsed the tree and asked a question about the shape — a
+name on a container, a control inside it — which is the same question however
+anybody chooses to write it. A regex searches the text; a parser searches the
+structure, and the idea lives in the structure.
+
+> **The rule: when a check is built from a search term, the term is a hypothesis
+> about how people write, and it will be wrong about somebody.** Prefer a
+> question about the SHAPE — an AST, a rendered tree, a type — over a question
+> about the characters. Where a grep is genuinely the only instrument, **write
+> down the spellings it knows** next to it, because that list is the finding
+> waiting to happen: `t(` was one such list and `translate(` was missing from
+> it, and nobody could see that until somebody asked the question from the other
+> end.
+
+---
+
 ## What each gate is actually for
 
 | Gate | Proves | Cannot see |

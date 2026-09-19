@@ -149,20 +149,28 @@ export default function Chat() {
   const conversationId = chosenId ?? sessionId ?? null;
   const [sessionsOpen, setSessionsOpen] = useState(false);
 
+  // Read once into a plain local rather than depending on `user?.id` in two
+  // places. The React Compiler (SDK 57) skipped this whole component with
+  // "existing memoization could not be preserved": it cannot follow an
+  // optional chain through a dependency array, so it declines to compile
+  // rather than risk changing when the callback is rebuilt. A narrowed local
+  // is the same value, visibly.
+  const userId = user?.id;
+
   // Restore this device's choice once, before the server's default is used.
   useEffect(() => {
-    if (!user?.id) return;
-    void loadRememberedSession(user.id).then((id) => {
+    if (!userId) return;
+    void loadRememberedSession(userId).then((id) => {
       if (id) setChosenId(id);
     });
-  }, [user?.id]);
+  }, [userId]);
 
   const chooseSession = useCallback(
     (id: number) => {
       setChosenId(id);
-      if (user?.id) void rememberSession(user.id, id);
+      if (userId) void rememberSession(userId, id);
     },
-    [user?.id],
+    [userId],
   );
   const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addPending, mergeMessage, resync } =
     useConversation({ conversationId, channel: "MessageChannel" });

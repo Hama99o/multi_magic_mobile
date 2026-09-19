@@ -1,0 +1,152 @@
+# PROFILE — an edit that goes to the server and comes back.
+#
+# His instruction: *"you should have a well user edit — you can change the
+# password, you can change the information about user, you can change the
+# photo… For more information like they can visit to web."*
+# `docs/design/profile/SPEC.md`.
+#
+# ── THE ROUND TRIP IS THE ASSERTION ──────────────────────────────────────
+# "Saved." proves the PATCH answered. It does not prove what it saved. So the
+# flow edits About, saves, edits it back to ONE FIXED LINE, saves again, leaves
+# the screen and comes back — and asserts the field shows exactly that line.
+# The value on the second visit came from the server (the PATCH response or a
+# fresh `connected_user`), so it is the server's copy of the edit, not the
+# form's memory of it.
+#
+# Two edits rather than one, because Save is disabled until something CHANGED
+# (Venmo's rule, SPEC §2.1). A single fixed line would be dirty on the first
+# run and never again; two lines are dirty on every run, and the account ends
+# every run reading the same.
+#
+# The QA account's About is the only thing written (`RIG_CONTRACT.md` §3).
+# The names are left alone so the account stays recognisable in his people
+# chat, and the photo path stops at the sheet — the system picker is outside
+# the app, the same line `05-upload` draws.
+#
+# ── THE EMAIL IS LOCKED, AND IT SAYS WHY ─────────────────────────────────
+# The socket identifies the user by email; a change would kill the cable
+# silently on the next reconnect. Asserted as the whole caption, because a
+# locked field with no explanation reads as a bug.
+appId: ${APP_ID}
+tags:
+  - account
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn:
+    id: "sessions-profile"
+# The screen fetches `connected_user` itself (SPEC §0.3); the form appears once
+# it lands.
+- extendedWaitUntil:
+    visible:
+      id: "profile-firstname"
+    timeout: 30000
+- assertVisible: "Profile"
+- assertVisible:
+    id: "profile-photo"
+- assertVisible:
+    id: "profile-lastname"
+- assertVisible:
+    id: "profile-about"
+
+# ── Locked, with the reason ──────────────────────────────────────────────
+- assertVisible:
+    id: "profile-email-locked"
+- assertVisible: "Changing your email signs you out of live updates until you sign in again, so it is done on the website for now."
+- takeScreenshot: reports/71-profile
+
+# ── The photo: the sheet, not the picker ─────────────────────────────────
+- tapOn:
+    id: "profile-photo"
+- assertVisible:
+    id: "photo-sheet"
+- assertVisible: "Choose from library"
+- assertVisible: "Take a photo"
+- takeScreenshot: reports/72-photo-sheet
+# Back closes the Modal through its onRequestClose — the same way 05-upload
+# leaves the attach sheet. Nothing is picked.
+- pressKey: Back
+- assertNotVisible:
+    id: "photo-sheet"
+
+# ── Edit About, save, and see "Saved." ───────────────────────────────────
+- tapOn:
+    id: "profile-about"
+- eraseText: 200
+- inputText: "QA rig, first pass"
+# Enter on this single-line field performs the IME's done and closes the
+# keyboard; not hideKeyboard, whose Back could pop this pushed screen.
+- pressKey: Enter
+# Save sits under the email block and may be below the fold on a phone; a
+# disabled Pressable can also drop out of the tree, which is why the DISABLED
+# state is never asserted here — only the enabled path is.
+- scrollUntilVisible:
+    element:
+      id: "profile-save"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "profile-save"
+- extendedWaitUntil:
+    visible:
+      id: "profile-saved"
+    timeout: 30000
+- assertVisible: "Saved."
+- takeScreenshot: reports/73-profile-saved
+
+# ── Back to the fixed line, so the account reads the same after every run ─
+- scrollUntilVisible:
+    element:
+      id: "profile-about"
+    direction: UP
+    timeout: 20000
+- tapOn:
+    id: "profile-about"
+- eraseText: 200
+- inputText: "QA account. About is written by qa/flows/13-profile.yaml"
+# Same reasoning as above: Enter, not hideKeyboard.
+- pressKey: Enter
+- scrollUntilVisible:
+    element:
+      id: "profile-save"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "profile-save"
+- extendedWaitUntil:
+    visible:
+      id: "profile-saved"
+    timeout: 30000
+
+# ── The two rows onward, and the web link, are there ─────────────────────
+- assertVisible:
+    id: "profile-password"
+- assertVisible: "Change password"
+- assertVisible:
+    id: "profile-keys"
+- assertVisible: "Your AI provider key"
+- assertVisible:
+    id: "profile-web"
+- takeScreenshot: reports/74-profile-rows
+
+# ── Leave, come back, and read the server's copy ─────────────────────────
+- tapOn: "Back"
+- assertVisible:
+    id: "composer-input"
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn:
+    id: "sessions-profile"
+- extendedWaitUntil:
+    visible:
+      id: "profile-about"
+    timeout: 30000
+# THE ASSERTION. The field holds what the second save sent — the round trip.
+- assertVisible:
+    id: "profile-about"
+    text: "QA account. About is written by qa/flows/13-profile.yaml"
+- takeScreenshot: reports/75-profile-round-trip
+- tapOn: "Back"
+- assertVisible:
+    id: "composer-input"

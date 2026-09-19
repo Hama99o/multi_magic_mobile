@@ -259,11 +259,18 @@ because the tree is what TalkBack walks and it is quotable:
 | `attach-camera` | `Camera. Take one now` | **true** |
 | `attach-document` | `Document. PDF or CSV` | **true** |
 
-**Four separate stops, each carrying its own hint.** Android does not group,
-so the rows are reachable and the change is **not harmful** on the platform we
-ship to first.
+**Four separate stops, each carrying its own hint.** The rows are reachable,
+so the change is **not harmful** on the platform we ship to first.
 
-It does NOT prove the fix was necessary. da's reading of
+**IT SAYS NOTHING ABOUT WHETHER ANDROID GROUPS, and an earlier version of this
+entry claimed it did.** That was wrong and it is da's catch. This ran against
+`4359205`, which is after `d2f9e7d` — the scrim was already a SIBLING of the
+rows, so nothing was nested. Four focusable stops is what the repaired
+structure produces whether Android groups or not; the fix had deleted the very
+thing that would have triggered the behaviour under test. A run cannot measure
+a condition that no longer exists in the tree it is pointed at.
+
+It also does NOT prove the fix was necessary. da's reading of
 `ReactAccessibilityDelegate.java:467` — `hasNonActionableSpeakingDescendants`
 skips any child that is itself focusable — predicted exactly this, and the
 result is consistent with Android never having been affected. **The defect it

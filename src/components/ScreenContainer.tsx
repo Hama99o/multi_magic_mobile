@@ -24,11 +24,19 @@
  *    negative and the padding is **0**. Passing `padding` on Android is
  *    therefore free in the case the comment was worried about.
  *
- * 2. **Android does not always resize any more.** `app.json` sets
- *    `edgeToEdgeEnabled: true`, and an edge-to-edge window is not resized for
- *    the IME — the app is expected to consume that inset itself. So on the
- *    very configuration this app ships, `behavior={undefined}` means nothing
- *    moves and the composer goes under the keyboard.
+ * 2. **Android does not resize any more, and there is no longer a flag that
+ *    could turn that back on.** Under SDK 54 this was a choice:
+ *    `app.json` set `edgeToEdgeEnabled: true`, and an edge-to-edge window is
+ *    not resized for the IME — the app is expected to consume that inset
+ *    itself. **Under SDK 57 the key does not exist.** Edge to edge is
+ *    unconditional on every Android build from here, and `expo-doctor`
+ *    rejects the app config if you try to write the flag back.
+ *
+ *    So this `behavior="padding"` is **load-bearing, not belt-and-braces.**
+ *    Deleting it does not restore a previous behaviour — there is no
+ *    behaviour to restore. On Android it is the only thing that moves the
+ *    composer out from under the keyboard, and point 1 is why passing it
+ *    costs nothing on the platforms that do resize.
  *
  * Measured on a device by the QA session: on a people thread with the
  * keyboard up, the composer was not merely covered — it was off-screen, and

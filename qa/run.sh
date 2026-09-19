@@ -63,5 +63,11 @@ errs=$(grep -E 'FATAL EXCEPTION|E AndroidRuntime|Cannot find native module|React
 if [ -n "$errs" ]; then
   echo; echo "Runtime errors during the run (full log: $LOG):"; echo "$errs" | sed 's/^/  /'
 fi
-echo; echo "screenshots: $DIR/reports/"
+# The screenshots are NOT in $DIR/reports — this line said they were, for as
+# long as the file has existed, and nothing has ever written a .png there.
+# Maestro keeps them under ~/.maestro/tests/<timestamp>/<flow>/, which is
+# outside the repo entirely. `evidence.sh` is what brings them in, to both the
+# run's own record and the `ours/` folder each screen's DONE is measured by.
+echo
+"$DIR/evidence.sh" || echo "evidence.sh did not file anything — the pictures are still under ~/.maestro/tests/"
 exit $rc

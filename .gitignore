@@ -60,6 +60,13 @@ expo-env.d.ts
 qa/reports/*.png
 qa/reports/logcat-*.txt
 
+# Same rule as `ours/`, for the same two reasons: they are large, and they
+# regenerate from the rig. `qa/evidence/` is the run's own record — every
+# picture a flow took, plus the frame and view hierarchy of any step that did
+# not hold. The hierarchy dumps are ignored too: they are a snapshot of a real
+# session's screen in a PUBLIC repo.
+qa/evidence/
+
 # The device claim is machine-local state, not a fact about the repo.
 qa/reports/.claims
 qa/reports/.claims.lock

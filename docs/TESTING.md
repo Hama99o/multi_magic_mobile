@@ -100,6 +100,15 @@ were written by somebody who had just written the rule above.
 > one check that would have told you. The moment it feels unnecessary is the
 > moment to do it.
 
+The same applies to a deferral. On 2026-09-20 three screens were left out of
+the width matrix because they "needed their own `expo-router` mocks" — a real
+change to that file rather than three lines. They needed nothing of the kind;
+the shared mock already had everything, and the whole job took under an hour.
+**An estimate made from the outside is a guess with a number on it**, and the
+cheapest way to check a deferral is to spend ten minutes trying it. The reason
+this belongs beside the plant is that it is the same instinct: reasoning about
+a thing instead of touching it, because the reasoning feels sufficient.
+
 ### And the worst shape of all: a rule that cannot fire
 
 The fourth was a `no-restricted-syntax` selector. It was added with the defect

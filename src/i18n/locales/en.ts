@@ -205,6 +205,9 @@ export const en = {
     atLimit:
       "You have {{max}} conversations, which is the most MultiMagic keeps. Delete one to start another.",
     options: "Options for {{title}}",
+    // A funnel and a pen on the row, and nothing else says either one.
+    scopedBadge: "search narrowed",
+    instructedBadge: "standing instructions",
     messages_one: "{{count}} message",
     messages_other: "{{count}} messages",
     files_one: "{{count}} file",
@@ -411,6 +414,10 @@ export const en = {
     unread: "Unread",
     deleted: "This message was deleted.",
     notSent: "Not sent. Tap to retry.",
+    edited: "edited",
+    // The tick is a SHAPE and nothing else. Spoken, it needs words.
+    sent: "Sent",
+    read: "Read by everyone",
   },
 
   notifications: {

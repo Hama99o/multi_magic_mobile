@@ -252,7 +252,7 @@ export function PersonMessageRow({
             worse than no editing at all" — `messages_controller.rb:50-52`. */}
         {message.editedAt ? (
           <Text variant="caption" tone="muted" style={{ fontSize: 11 }}>
-            edited
+            {t("thread.edited")}
           </Text>
         ) : null}
 
@@ -261,11 +261,21 @@ export function PersonMessageRow({
             of five that is a strong claim, which is why it is shown only under
             the last sent message rather than under each one. */}
         {mine && isLastSent && !pending && !failed ? (
-          message.readAt ? (
-            <CheckCheck size={14} color={colors.accent} />
-          ) : (
-            <Check size={14} color={colors.inkMuted} />
-          )
+          // One tick or two is the entire difference between "it arrived" and
+          // "they read it", carried by a shape. `accessible` groups the icon
+          // deliberately — there is nothing interactive inside it to hide.
+          <View
+            accessible
+            accessibilityRole="image"
+            accessibilityLabel={message.readAt ? t("thread.read") : t("thread.sent")}
+            testID={`msg-receipt-${message.readAt ? "read" : "sent"}`}
+          >
+            {message.readAt ? (
+              <CheckCheck size={14} color={colors.accent} />
+            ) : (
+              <Check size={14} color={colors.inkMuted} />
+            )}
+          </View>
         ) : null}
       </View>
 

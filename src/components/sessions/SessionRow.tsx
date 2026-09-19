@@ -49,7 +49,18 @@ export function SessionRow({
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ selected: active }}
-        accessibilityLabel={`${session.title}, ${counts}`}
+        // The funnel and the pen below are settings that change EVERY answer,
+        // and the comment beside them says they are "otherwise invisible from
+        // the list" — which for a screen reader was invisible full stop, because
+        // this label named neither. An icon is not a name.
+        accessibilityLabel={[
+          session.title,
+          counts,
+          session.apps.length > 0 ? t("sessions.scopedBadge") : null,
+          session.instructions ? t("sessions.instructedBadge") : null,
+        ]
+          .filter(Boolean)
+          .join(", ")}
         onPress={onOpen}
         style={{
           flex: 1,

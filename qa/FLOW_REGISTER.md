@@ -86,7 +86,30 @@ That last one is the decision the design turns on: a refusal is FIXABLE, so the
 mic stays for the person who might grant it in Settings. It is now a photograph
 rather than an assertion.
 
-**`01-ask` remains NOT MEASURED, and the reason narrowed to one selector.** The
+**`01-ask`: PASS.** Run 7, dev build, real backend — the question posts, the
+answer arrives over ActionCable, and `assistant-answer` renders. The flow that
+has been NOT MEASURED since Expo Go now has a verdict.
+
+**The cause was one step, found by bisection and not by guessing: `hideKeyboard`.**
+After `inputText`, `composer-send` asserts VISIBLE; after `hideKeyboard`, the
+same assertion FAILS. The button is enabled either way — `composer-clear`
+renders only when the field has a value and it is present, so React state
+updated and `canSend` is true. Dismissing the keyboard relayouts the composer
+through KeyboardAvoidingView and Maestro's tree snapshot catches it
+mid-transition.
+
+So "Element not found: composer-send" was never about the selector. testID and
+label both failed because the node was genuinely absent for that instant, and
+the step was not needed at all: a person taps send with the keyboard up.
+
+Two assertions were also made honest rather than lucky. The question is waited
+for rather than asserted the same millisecond as the tap — it moves from the
+composer to a bubble on the next render. And the thinking indicator is
+`optional`: on a fast turn the answer lands before the assertion runs, and
+failing then would report a bug for the app being quick. Its behaviour is unit
+tested; what this flow exists for is the answer arriving, which cannot be raced.
+
+**Superseded, kept for the record:** The
 flow now launches, signs in, types the question — and cannot find the send
 button, by `testID` or by its label. A disabled `Pressable` drops out of the
 accessibility tree, which Maestro reads, so "Element not found" means "not in

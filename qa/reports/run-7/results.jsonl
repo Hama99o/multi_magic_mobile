@@ -1,0 +1,3 @@
+{"run":7,"flow":"01-ask","verdict":"PASS","binary":"dev-build","device":"qa_phone2","backend":"http://10.0.2.2:3001","note":"real question -> real Gemini answer over ActionCable, end to end"}
+{"run":7,"flow":"login","verdict":"PASS","binary":"dev-build","note":"signs in only if not already; no forced sign-out"}
+{"run":7,"flow":"dictation","verdict":"PASS","binary":"dev-build","note":"mic present, permission dialog fires, refusal keeps the button and explains"}

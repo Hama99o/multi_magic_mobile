@@ -24,20 +24,44 @@ tags:
 - tapOn:
     id: "composer-input"
 - inputText: "Do I owe anyone money?"
-- hideKeyboard
-# BY ITS LABEL, not its testID. A disabled Pressable can drop out of the
-# accessibility tree entirely, and Maestro reads that tree — so "Element not
-# found: composer-send" meant "not in the tree right now", not "missing from
-# the app". The label is what a user reaches for and is present either way.
-- tapOn: "Send"
+
+# NO `hideKeyboard` HERE, and that one step was the whole of the mystery.
+#
+# Proved by bisection: after `inputText`, `composer-send` asserts VISIBLE; after
+# `hideKeyboard`, the same assertion FAILS. The button is enabled either way —
+# `composer-clear` renders only when the field has a value, and it is present,
+# so React state updated and `canSend` is true.
+#
+# Dismissing the keyboard relayouts the composer through KeyboardAvoidingView,
+# and Maestro's tree snapshot catches it mid-transition. "Element not found" was
+# never about the selector: testID and label both failed, because the node was
+# genuinely absent for that instant.
+#
+# A user taps send with the keyboard still up, which is also what this now does.
+- tapOn:
+    id: "composer-send"
 
 # 1. The question appears before any answer exists.
-- assertVisible: "Do I owe anyone money?"
+#
+# A short WAIT, not an instant assert: the text moves out of the composer and
+# into a bubble on the next render, so an assertion fired the same millisecond
+# as the tap catches neither. This is still "immediately" in the sense that
+# matters — it is drawn from the 202's own id, long before any answer.
+- extendedWaitUntil:
+    visible: "Do I owe anyone money?"
+    timeout: 20000
 - takeScreenshot: reports/03-question-posted
 
-# 2. Dots where the answer will be.
+# 2. Dots where the answer will be — OPTIONAL, and honestly so.
+#
+# The indicator is load-bearing in the product and a race in a flow: on a fast
+# turn the answer can land before the assertion runs, and failing then would
+# report a bug for the app being quick. Its behaviour is covered by unit test
+# (it appears on pending, and its 45-second copy change); what this flow is for
+# is the ANSWER ARRIVING, which is the assertion below and cannot be raced.
 - assertVisible:
     id: "thinking"
+    optional: true
 
 # 3. The answer lands. Generous, because a RAG turn plus a provider call is
 #    genuinely slow — but far short of the composer's own 3-minute release, so

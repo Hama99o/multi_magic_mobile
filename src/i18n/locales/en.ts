@@ -18,7 +18,6 @@ export const en = {
     saving: "Saving…",
     saved: "Saved.",
     delete: "Delete",
-    loading: "Loading…",
     justNow: "just now",
     minutesAgo: "{{count}} min ago",
     hoursAgo: "{{count}} h ago",
@@ -269,8 +268,6 @@ export const en = {
 
   language: {
     title: "Language",
-    english: "English",
-    french: "Français",
   },
 
   profile: {

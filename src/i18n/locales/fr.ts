@@ -35,7 +35,6 @@ export const fr: Translations = {
     saving: "Enregistrement…",
     saved: "Enregistré.",
     delete: "Supprimer",
-    loading: "Chargement…",
     justNow: "à l\u2019instant",
     minutesAgo: "il y a {{count}} min",
     hoursAgo: "il y a {{count}} h",
@@ -296,8 +295,6 @@ export const fr: Translations = {
 
   language: {
     title: "Langue",
-    english: "English",
-    french: "Français",
   },
 
   profile: {

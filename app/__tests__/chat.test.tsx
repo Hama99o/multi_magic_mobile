@@ -22,7 +22,8 @@ jest.mock("@/hooks/useConversation", () => ({
 import Chat from "../chat";
 import { aiApi, documentsApi, type ChatMessage } from "@/api/ai";
 import { useReachability } from "@/stores/reachability.store";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { testQueryClient } from "@/__tests__/queryClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 function message(id: number, role: "user" | "assistant", body: string, sources: unknown[] = []) {
@@ -60,9 +61,7 @@ async function waitForSession() {
 let client: QueryClient | null = null;
 
 function renderChat() {
-  client = new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: 0, staleTime: 0 } },
-  });
+  client = testQueryClient({ queries: { staleTime: 0 } });
   return render(
     <QueryClientProvider client={client}>
       <Chat />

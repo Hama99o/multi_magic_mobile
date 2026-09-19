@@ -28,7 +28,8 @@
  * a test is a second implementation of the thing under test.
  */
 import { render, screen } from "@testing-library/react-native";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { testQueryClient } from "@/__tests__/queryClient";
 import type { ReactElement } from "react";
 
 // ── Router ─────────────────────────────────────────────────────────────────
@@ -327,9 +328,7 @@ function setWidth(width: number): void {
 }
 
 function renderScreen(element: ReactElement) {
-  const client = new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: 0 } },
-  });
+  const client = testQueryClient();
   return render(<QueryClientProvider client={client}>{element}</QueryClientProvider>);
 }
 

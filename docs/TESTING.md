@@ -187,13 +187,114 @@ Native source rather than witnessed.
 
 ---
 
+## 7 · A warning whose own diagnostic cannot reproduce it
+
+**Arrived 2026-09-18 with `0de82e7`, chased 2026-09-19. Cost: a day of full
+runs force-killing a worker, and about 50 seconds on every one of them.**
+
+Every full `npm test` ended with:
+
+> A worker process has failed to exit gracefully and has been force exited.
+> This is likely caused by tests leaking due to improper teardown. Try running
+> with `--detectOpenHandles` to find leaks.
+
+It names no file, no test and no library, and nothing failed, so it read as
+noise. It was a **five-minute timer**, and the path to it has three turns worth
+remembering.
+
+**`gcTime: 0` has to be said twice.** Every test client set
+`defaultOptions.queries.gcTime = 0`. Mutations are a *separate cache with a
+separate default*, and that default is 300 000 ms. `0de82e7` gave
+`SessionsSheet` its first mutation and its test the queries-only client in the
+same commit, so from that moment any suite that actually **ran** a mutation
+scheduled a five-minute garbage collection on unmount. Only one suite did,
+which is why it looked intermittent and unattributable.
+
+**`client.clear()` in an `afterEach` does not save you.** Jest runs `afterEach`
+in reverse order of registration, and RNTL registers its auto-cleanup from
+`setupFilesAfterEnv` — before any test file body. So the file's own `clear()`
+runs **first** and the unmount that schedules the timer runs after it. Clearing
+a cache cannot cancel a timer that does not exist yet.
+
+**And the suggested diagnostic is the one thing that cannot see it.**
+`--detectOpenHandles` implies `--runInBand`. In band there is no worker, so
+there is nothing to fail to exit: the run is clean and reports no handles. The
+warning and the flag it recommends are mutually exclusive. Finding it took
+wrapping `setInterval`/`setTimeout` in a throwaway setup file and printing what
+was still pending in an `afterAll` — five minutes of work that a day of reading
+the warning never started.
+
+The fix is `src/__tests__/queryClient.ts`, one helper instead of four literals,
+so the next client cannot be written with only half of it. The full suite went
+from 84 s to 33 s, all of the difference being a worker nobody was waiting for.
+
+> **The rule: a warning that names nothing is still a measurement.** This file
+> has four entries about gates that could not see a problem; this is the
+> opposite — a gate saw it, said so on every run for a day, and was read as
+> noise because it could not say what it had seen. If a tool keeps saying
+> something, the cost of finding out is bounded and the cost of ignoring it is
+> not.
+
+---
+
+## 8 · A key that existed, was tested, and was called by nothing
+
+**Found 2026-09-19 while fixing §5's sibling — the untranslated accessibility
+strings. Cost: a screen reader read an English sentence to a French user for as
+long as the key sat there unused.**
+
+`calendar.event` was defined in `en.ts`. It was defined in `fr.ts`. It was
+asserted by `locales.test.ts`, which compares the two locales for the same keys,
+no empty values and matching interpolations. It was listed in
+`docs/LANGUAGES.md` for review. Four places agreed the translation existed.
+
+`EventRow` never called it. Two lines below the key's own value, the component
+interpolated its own template and wrote its hint as an English literal.
+
+**Every gate was pointed the same way.** `keys.test.ts` starts from the calls
+and asks whether the key exists — it cannot see a key nothing asks for.
+`locales.test.ts` compares the locales *to each other*, so a key present in both
+and wanted by neither is perfectly consistent. The render tests read `testID`s
+and visible text, and an `accessibilityHint` is neither.
+
+An unused key is not a broken screen, which is why it sits for weeks. **It is
+the sign of one.** A key gets written because a string was going somewhere; a
+key with no caller means the string went somewhere *else*, and somewhere else is
+a literal in a component — untranslated by definition. The orphan is not the
+bug, it is the receipt for the bug.
+
+`karwan-a3` hit the mirror image this week and called it dead code that was
+alive. This is a live key that was dead.
+
+**Two gates now, and they do different jobs.** The `no-restricted-syntax` rule
+in `.eslintrc.js` rejects a bare worded string in `accessibilityLabel` or
+`accessibilityHint` — that is what *found* this one, and it only finds the cases
+where the literal happens to be spoken. The check that *catches* the class is
+the inverse of `keys.test.ts`: every key defined in `en.ts` must be called by
+something. Deliberately no allowlist, because a key kept for later is a key
+nobody can tell from a key that was forgotten.
+
+Turning it on found three more dead keys, and — more usefully — a hole in the
+forward check. The grep knew `t("…")` and not `translate("…")`, the aliased
+module-level import used outside components, so every key reached through the
+alias had never been resolved in either language. The inverse check found the
+forward check's blind spot. There is now a test asserting that the set of names
+`t` is imported under is the set the grep knows.
+
+> **The rule: a check that only runs in one direction only proves one
+> direction.** Every gate here asked "is what we call defined?" and none asked
+> "is what we define called?" — and the second question is the cheaper one,
+> because the answer is a list you can read.
+
+---
+
 ## What each gate is actually for
 
 | Gate | Proves | Cannot see |
 |---|---|---|
 | `npm run typecheck` | the shapes agree | anything about runtime, bundling, or words on a screen |
 | `npm run lint` | the banned forms are absent | a banned form with a `disable` comment on it |
-| `npm test` | behaviour, under **Node's** resolver and with **no layout** | whether the app bundles; whether anything fits; whether a colour is legible |
+| `npm test` | behaviour, under **Node's** resolver and with **no layout** | whether the app bundles; whether anything fits; whether a colour is legible — and it will keep passing while telling you something is wrong in a sentence that names nothing (§7) |
 | `npm run bundle` | Metro, Babel, NativeWind, expo-router and the config plugins agree — **the app can start** | whether it then works |
 | the flows, on a device | it works, for a person, **on that device in that state** | only what a flow asserts — and only the cases that device actually produced (§6) |
 

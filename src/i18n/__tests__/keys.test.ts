@@ -25,7 +25,20 @@ import path from "path";
 import i18n from "..";
 
 const ROOTS = ["app", "src"];
-const CALL = /\bt\(\s*"([a-zA-Z][\w.]*)"/g;
+/**
+ * `t("…")` and `translate("…")`.
+ *
+ * `translate` is `import { t as translate }` — the module-level `t`, aliased
+ * because these call sites are outside a component and cannot use the hook
+ * (`DeleteConfirm.tsx:28`, `sign-up.tsx:38`). The first version of this grep
+ * knew only about `t(`, so every key reached through the alias was never
+ * resolved by the test below and never counted as called by the one at the
+ * foot of the file. `ALIASES` is checked against the source, so a third
+ * spelling fails here instead of quietly shrinking what is covered.
+ */
+const ALIASES = ["translate"];
+const CALL = new RegExp(`\\b(?:t|${ALIASES.join("|")})\\(\\s*"([a-zA-Z][\\w.]*)"`, "g");
+const ALIASED_IMPORT = /\bt\s+as\s+(\w+)/g;
 
 function sourceFiles(dir: string): string[] {
   return fs.readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
@@ -91,6 +104,19 @@ describe("the keys the app actually calls", () => {
     expect(CALLED.size).toBeGreaterThan(200);
   });
 
+  it("knows every name `t` is imported under, so the grep cannot go blind", () => {
+    const unknown = new Set<string>();
+    for (const root of ROOTS) {
+      for (const file of sourceFiles(root)) {
+        for (const match of fs.readFileSync(file, "utf8").matchAll(ALIASED_IMPORT)) {
+          if (!ALIASES.includes(match[1])) unknown.add(`${match[1]} (in ${file})`);
+        }
+      }
+    }
+    // Add the alias to ALIASES above — not to this expectation.
+    expect([...unknown]).toEqual([]);
+  });
+
   describe.each(["en", "fr"])("in %s", (language) => {
     beforeAll(async () => {
       await i18n.changeLanguage(language);
@@ -129,5 +155,47 @@ describe("the plural keys", () => {
     expect(i18n.t(key, { count: 1 })).not.toBe(key);
     expect(i18n.t(key, { count: 5 })).not.toBe(key);
     expect(i18n.t(key, { count: 1 })).not.toBe(i18n.t(key, { count: 5 }));
+  });
+});
+
+/**
+ * THE OTHER DIRECTION, WHICH NOTHING ASKED UNTIL A KEY WENT UNUSED.
+ *
+ * Everything above starts from the calls and asks whether the key exists.
+ * `calendar.event` was the reverse: written in `en.ts`, written in `fr.ts`,
+ * asserted by `locales.test.ts`, listed in `docs/LANGUAGES.md` — and called
+ * by nobody, while `EventRow` interpolated its own English template beside
+ * it. Three gates agreed the translation was present. None of them asked
+ * whether anything wanted it.
+ *
+ * An unused key is not a broken screen, which is why it can sit for weeks. It
+ * is the SIGN of one: a key is written because a string was going somewhere,
+ * so a key with no caller means the string went somewhere else, and "somewhere
+ * else" is a literal in a component — untranslated by definition.
+ *
+ * Deliberately no allowlist. A key kept for later is a key nobody can tell
+ * from a key that was forgotten.
+ */
+describe("the keys the app defines", () => {
+  /** `{ a: { b: "x" } }` → `a.b`, with plural suffixes folded back to the
+   *  name the call site actually writes. */
+  function definedKeys(node: unknown, prefix = ""): string[] {
+    if (typeof node !== "object" || node === null) return [];
+    return Object.entries(node).flatMap(([key, value]) => {
+      const dotted = prefix ? `${prefix}.${key}` : key;
+      if (typeof value === "string") {
+        return [dotted.replace(/_(zero|one|two|few|many|other)$/, "")];
+      }
+      return definedKeys(value, dotted);
+    });
+  }
+
+  it("is called by something, every one of them", () => {
+    const wanted = new Set(ALL);
+    const orphans = [...new Set(definedKeys(i18n.getResourceBundle("en", "translation")))]
+      .filter((key) => !wanted.has(key))
+      .sort();
+
+    expect(orphans).toEqual([]);
   });
 });

@@ -4,7 +4,8 @@
  * destructive confirm rare.
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { testQueryClient } from "@/__tests__/queryClient";
 import { SessionsSheet } from "../SessionsSheet";
 import { sessionsApi, type AiSession } from "@/api/ai";
 
@@ -19,7 +20,7 @@ function session(over: Partial<AiSession> = {}): AiSession {
 let client: QueryClient | null = null;
 
 function renderSheet(props: Partial<React.ComponentProps<typeof SessionsSheet>> = {}) {
-  client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+  client = testQueryClient();
   return render(
     <QueryClientProvider client={client}>
       <SessionsSheet

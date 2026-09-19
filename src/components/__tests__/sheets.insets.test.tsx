@@ -15,7 +15,8 @@
 import { render, screen } from "@testing-library/react-native";
 import { StyleSheet } from "react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { testQueryClient } from "@/__tests__/queryClient";
 import type { ReactElement } from "react";
 
 jest.mock("expo-image-picker", () => ({
@@ -89,7 +90,7 @@ const SHEETS: { name: string; testID: string; element: () => ReactElement }[] = 
 let client: QueryClient;
 
 beforeEach(() => {
-  client = new QueryClient({ defaultOptions: { queries: { retry: false, gcTime: 0 } } });
+  client = testQueryClient();
   jest.spyOn(sessionsApi, "list").mockResolvedValue([]);
 });
 

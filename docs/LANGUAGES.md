@@ -36,6 +36,8 @@ French app and what the screen it opens is titled).
 | Every screen renders every handle **and reads French** at 360 dp | `src/screens/__tests__/screens.render.test.tsx`. Each row carries a distinctive French sentence, because a handle is on a container and the English text inside it survives a language switch untouched — proven by planting exactly that |
 | The choice survives a restart, reaches the server, and is not overridden by it | `src/stores/__tests__/language.store.test.ts` |
 | No `accessibilityLabel` or `accessibilityHint` is a bare English string | `no-restricted-syntax` in `.eslintrc.js`. Added after two of them shipped |
+| Every key **defined** is called by something | `keys.test.ts`, the other direction. An orphan key is the receipt for a string that went into a component as a literal instead — `docs/TESTING.md` §8 |
+| The grep knows every name `t` is imported under | same file. It knew `t(` and not `translate(`, so keys reached through the alias were never resolved at all |
 
 **Two strings were English until 2026-09-19, and no gate above could have seen
 them.** `EventRow`'s hint and `PersonMessageRow`'s *"Long press to react"* were
@@ -45,6 +47,13 @@ nobody looks, for the users least able to route around it. `keys.test.ts`
 resolves every key the app *asks for*; it cannot see a sentence that never asks.
 The render tests read `testID`s and visible text, not the accessibility tree.
 The gate is now an eslint rule, and it failed on both of them before it passed.
+
+Chasing it turned up that `calendar.event` had been written in both locales,
+asserted, and listed here — and called by nothing, while `EventRow`
+interpolated its own English template beside it. Three more dead keys came out
+with it (`common.loading`, `language.english`, `language.french`), and they are
+gone rather than kept, because a key kept for later is a key nobody can tell
+from a key that was forgotten.
 
 **Not checked: whether a French string FITS.** Jest has no layout, so nothing
 here measures pixels. The 1.9× length budget in `locales.test.ts` is a proxy
@@ -139,7 +148,6 @@ not been done.
 | `common.delete` | Delete | Supprimer |
 | `common.hoursAgo` | {{count}} h ago | il y a {{count}} h |
 | `common.justNow` | just now | à l\u2019instant |
-| `common.loading` | Loading… | Chargement… |
 | `common.minutesAgo` | {{count}} min ago | il y a {{count}} min |
 | `common.refresh` | Refresh | Actualiser |
 | `common.saved` | Saved. | Enregistré. |

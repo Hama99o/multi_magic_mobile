@@ -7,9 +7,20 @@
 #
 # What it can prove on an emulator: that with the keyboard raised, the field,
 # its send button and its attach button are all still on screen and hittable.
-# What it cannot: how it looks on iOS, and whether a FLOATING keyboard (Gboard's
-# mode on this AVD) behaves the same — a floating keyboard produces no inset at
-# all, so it is the easy case, not the hard one.
+# What it cannot: how it looks on iOS.
+#
+# ── A CORRECTION, 2026-09-19 ──────────────────────────────────────────────
+# This header used to say Gboard was in FLOATING mode on this AVD, and that a
+# floating keyboard produces no inset — "the easy case, not the hard one". That
+# claim was wrong, and it was load-bearing: it was the reason to doubt this
+# flow rather than the screen. `reports/50-keyboard-up.png` from the first real
+# run shows a DOCKED, full-width Gboard with the composer sitting above it.
+# This flow runs the hard case and always did.
+#
+# It had also never been run. The row said UNRUN, so when
+# `28cf795` fixed a composer that really did go under the keyboard, there was
+# no green here to have been vacuous — there was nothing at all. A flow that is
+# written and never executed proves exactly as much as no flow.
 appId: ${APP_ID}
 tags:
   - smoke

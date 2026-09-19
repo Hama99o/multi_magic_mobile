@@ -687,3 +687,143 @@ always and the third when the staged change touches how a module is loaded.
 and the argument for leaving it alone — chiefly that the `require()` rule in
 `.eslintrc.js` already catches §1's exact class in milliseconds, on a gate
 everybody runs.
+
+---
+
+## 12 · Prove the fix on the cheapest case first
+
+*(There are two sections numbered 11 above. Left as they are — renumbering
+another session's file mid-night is how a cross-reference stops resolving.)*
+
+**The rule.** When a check, a gate or a rig is repaired, re-run it on the
+**cheapest case that can show the repair worked** before re-running it on the
+expensive one that motivated it. A fix is a hypothesis about a mechanism, and
+the cheap case tests the mechanism for a fraction of the cost.
+
+**2026-09-19, four attempts at one picture set.** The picture pass shoots nine
+screens at a width. 360 dp costs about two minutes; 800 dp costs the same but
+needs a size AND density change, an app relaunch and a settled display, and it
+is the combination where everything goes wrong. Every repair that night was
+verified by going straight back to 800.
+
+The three failures, all in the instrument rather than the app:
+
+1. `wait_for_geometry "$1"` — inside the loop body `$1` is the **script's**
+   argument, not the width. It asked the device for a window `800-light` px
+   wide, which nothing will ever be, and refused with a message that read
+   exactly like the display failing to settle. `return` was also used in a
+   `while` body rather than a function.
+2. `screens.sh` never set `USE_DEV_BUILD`, so `APP_ID` resolved to **Expo Go**.
+   The pass had always worked anyway, because `login.yaml` does `launchApp`
+   (Expo Go) and then `openLink` with the dev-client URL, which hands over to
+   our own app. It surfaced only once something **outside** maestro had to
+   launch the right binary.
+3. The check read the root node of `uiautomator dump`. **That dump describes
+   the foreground window, not the display.** With an ANR dialog on screen the
+   entire dump is the dialog, there is no `[0,0]` root at all, and the check
+   reported "window reports nothing px" while the display had settled
+   perfectly.
+
+**Every one of the three would have appeared at 360 dp**, for two minutes each,
+and each was instead discovered by a full 800 dp attempt. Three of them in a
+row, and then the battery went before any fix could be proved green.
+
+**What this is not.** It is not "the checks were bad". Two things stayed true
+all night and the rule depends on both:
+
+- **The one false picture that escaped did so BEFORE the check existed.** It
+  reached the owner, who photographed a sign-in screen with every line clipped
+  and sent it up as a product defect. Nothing has escaped since.
+- **All three failures were the check REFUSING TO SHOOT.** An instrument that
+  fails closed costs time; one that fails open costs credibility, and the
+  second is what the deleted 800 dp set nearly spent. Refusing for the wrong
+  reason is the right direction to be wrong in.
+
+So the cost of not having this rule was three wasted expensive runs, not a
+false result — and that is exactly the failure mode worth a rule rather than
+an apology. The remedy is one line of discipline: **fix, then reach for the
+two-minute case, and only then for the one you actually want.**
+
+**Karwan's corollary, and it is the better half:** the cheapest case is also
+**the one you can afford to run twice**, which is what turns a value into a
+reading. A single number from an expensive run is a value — you accept it,
+because getting another costs what the first one did. Two numbers from a cheap
+run are a reading, and the second is what tells you whether the first was
+about the thing you meant. It found the clipping bug below by happening to
+scroll and measure again; a two-minute case makes that second measurement a
+habit rather than an accident.
+
+**And the same night gave the two halves of one mistake**, which are worth
+seeing side by side because they look nothing alike from inside:
+
+| what you read | the real number is about |
+|---|---|
+| a **child** node's bounds | the wrong **region** — clipped to what is visible |
+| the **root** node's bounds | the wrong **window** — whatever is in front |
+
+Karwan's cost a false 31.6 dp touch target on the role whose premise is huge
+targets in sunlight; a scroll and a second measurement made it 56 dp, exactly
+its token. Mine cost two refusals on a device that was ready. **Both
+instruments were honest and both readers were not.**
+
+Related: §10 asks which way a gate's error runs. `qa/QA_HANDBOOK.md`'s "a check
+that returns SOME of the answer is the hardest kind to doubt" asks how
+convincing its output is. This one asks what you re-run after changing it.
+
+---
+
+## 13 · A test that never re-renders cannot see a stale closure
+
+**2026-09-20, on the SDK 57 branch, found by planting — and the tests it got
+past were not vacuous.**
+
+Three hooks kept a "latest callback" in a ref, written in the render body:
+
+```ts
+const onFinalRef = useRef(onFinal);
+onFinalRef.current = onFinal;      // ← rejected by the React Compiler
+```
+
+SDK 57's eslint config rejects that, so it moved into an effect. To check the
+move was safe, the update was deleted outright — so the hook would call
+whatever callback it was handed on its **first render, for the rest of the
+session.**
+
+`useAssistantEcho`'s suite caught it. **`useSpeechToText`'s did not: every one
+of its tests stayed green.** The defect that shape ships is a dictated sentence
+appended to a draft belonging to a conversation the person had already left —
+the composer re-renders on every keystroke and passes `onFinal` inline, so the
+ref is the only thing keeping the callback current.
+
+### Why this is not §2 again
+
+**The tests were not vacuous and they were not weak.** They test the right
+things — availability, permissions, the four failure sentences, interim and
+final transcripts — and every assertion in them can fail. What they never do
+is **render the hook twice with a different callback.**
+
+A stale closure is invisible to any test that renders once. There is no
+assertion to strengthen, no name that overclaims, nothing wrong with the file
+at all. The gap is not in what it checks; it is in the *shape of the exercise*
+— one mount, one prop set, one interaction. A whole class of bug lives on the
+far side of a second render and cannot be reached from this side of it.
+
+> **The rule: when state or a callback is held across renders, the test has to
+> re-render.** `rerender` with a different function, then fire the thing that
+> calls it, and assert the SECOND one ran and the first did not. Anything that
+> mounts once is testing the first render's world, and a stale closure is by
+> definition a bug about the second.
+>
+> And the corollary for refactors: **the compiler-clean form of a ref is not
+> always behaviour-identical.** Moving a write from render to effect changes
+> *when* it lands. The way to find out whether that matters is to plant the
+> stale value and watch — not to reason about the ordering, which is exactly
+> what makes it look safe.
+
+The same evening, `ScopeDialog` had the twin: removing the `key` that re-seeds
+a dialog whose seed changes **while it is open** left all ten of its tests
+green, for the same reason — none of them changed a prop on a mounted dialog.
+
+Both have tests now, both go red when the fix is removed, and `useDraft` — the
+hook that decides whether somebody's half-typed question survives a screen
+change — had no test file at all.

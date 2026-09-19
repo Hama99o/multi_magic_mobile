@@ -12,7 +12,9 @@ import { fireEvent, render, screen } from "@testing-library/react-native";
 const mockSpeech = {
   available: true, status: "idle", listening: false, interim: "",
   lang: "fr-FR", setLang: jest.fn(), start: jest.fn(), stop: jest.fn(),
-  cancel: jest.fn(), refused: false, problem: null,
+  // `as string | null` — without it the literal infers as `null`, and a test
+  // that sets a problem sentence fails to compile rather than to run.
+  cancel: jest.fn(), refused: false, problem: null as string | null,
 };
 let mockOnFinalCapture: ((text: string) => void) | null = null;
 
@@ -152,5 +154,53 @@ describe("sending", () => {
     fireEvent.press(screen.getByTestId("composer-clear"));
 
     expect(onChange).toHaveBeenCalledWith("");
+  });
+});
+
+describe("a recogniser that exists but cannot work right now", () => {
+  /**
+   * `composer-mic-problem` was named by no flow and no test. `problemSentence`
+   * is covered in `useSpeechToText.test.ts` — which sentence is chosen for which
+   * error code — but nothing had ever asserted that the sentence REACHES the
+   * screen, or what happens to the mic when it does.
+   *
+   * The component's header is explicit about why that matters: "Stopping
+   * silently reads as 'the mic is broken', and the person taps it again."
+   */
+  it("says the one line, rather than stopping silently", () => {
+    mockSpeech.problem = "The microphone is busy or unavailable. You can still type.";
+    render(<Composer value="" onChange={jest.fn()} onSend={jest.fn()} />);
+
+    expect(screen.getByTestId("composer-mic-problem")).toBeTruthy();
+    expect(
+      screen.getByText("The microphone is busy or unavailable. You can still type."),
+    ).toBeTruthy();
+  });
+
+  it("KEEPS the mic, because a problem is not a refusal and may be gone next time", () => {
+    // `available: false` renders no mic at all — a device with no recogniser.
+    // A *problem* is different: the recogniser exists and the next attempt may
+    // work, so removing the button would hide it from somebody who has just
+    // plugged in a headset or reconnected.
+    mockSpeech.problem = "Dictation needs a connection for now. You can still type.";
+    render(<Composer value="" onChange={jest.fn()} onSend={jest.fn()} />);
+
+    expect(screen.getByTestId("composer-mic")).toBeTruthy();
+  });
+
+  it("says nothing at all when there is nothing to say", () => {
+    render(<Composer value="" onChange={jest.fn()} onSend={jest.fn()} />);
+    expect(screen.queryByTestId("composer-mic-problem")).toBeNull();
+  });
+
+  it("does not stand in the way of sending", () => {
+    // The line is a caption above the pill, not a blocker: a person who cannot
+    // dictate can still type the question and send it.
+    mockSpeech.problem = "Dictation needs a connection for now. You can still type.";
+    const onSend = jest.fn();
+    render(<Composer value="what is my rent?" onChange={jest.fn()} onSend={onSend} />);
+
+    fireEvent.press(screen.getByTestId("composer-send"));
+    expect(onSend).toHaveBeenCalledTimes(1);
   });
 });

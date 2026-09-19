@@ -25,11 +25,12 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { categoryColorFor } from "@/theme/tokens";
 import type { Occurrence } from "@/api/calendar";
+import { t } from "@/i18n";
 
 function timeLabel(occurrence: Occurrence): string {
-  if (occurrence.allDay || !occurrence.startsAt) return "All day";
+  if (occurrence.allDay || !occurrence.startsAt) return t("calendar.allDay");
   const at = new Date(occurrence.startsAt);
-  if (Number.isNaN(at.getTime())) return "All day";
+  if (Number.isNaN(at.getTime())) return t("calendar.allDay");
   return at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 
@@ -40,9 +41,9 @@ function durationLabel(occurrence: Occurrence): string | null {
     (new Date(occurrence.endsAt).getTime() - new Date(occurrence.startsAt).getTime()) / 60_000,
   );
   if (!Number.isFinite(minutes) || minutes <= 0) return null;
-  if (minutes < 60) return `${minutes} min`;
+  if (minutes < 60) return t("calendar.minutes", { count: minutes });
   const hours = minutes / 60;
-  return Number.isInteger(hours) ? `${hours} h` : `${hours.toFixed(1)} h`;
+  return t("calendar.hours", { count: Number.isInteger(hours) ? hours : Number(hours.toFixed(1)) });
 }
 
 export function EventRow({

@@ -31,6 +31,7 @@
 import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { Check, ChevronLeft, KeyRound, Trash2 } from "lucide-react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
@@ -42,6 +43,7 @@ import { failureMessage } from "@/api/failure";
 export default function AiKeys() {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch } = useQuery({
@@ -70,7 +72,7 @@ export default function AiKeys() {
       setRefusal(e.message);
       return;
     }
-    setFailure(failureMessage(e, "Could not do that."));
+    setFailure(failureMessage(e, t("aiKeys.failed")));
   };
 
   const add = useMutation({
@@ -115,30 +117,28 @@ export default function AiKeys() {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t("common.back")}
           hitSlop={8}
           style={{ width: 32, height: 32, justifyContent: "center" }}
         >
           <ChevronLeft size={24} color={colors.ink} />
         </Pressable>
         <Text variant="title" style={{ flex: 1, fontSize: 22 }}>
-          Your AI key
+          {t("aiKeys.title")}
         </Text>
       </View>
 
       <Text tone="muted" style={{ marginBottom: metrics.space.lg }}>
-        Add a key of your own and the assistant runs on your account, with your
-        provider, at your cost. The key is checked with the provider before it is
-        saved, and it is never shown again afterwards.
+        {t("aiKeys.intro")}
       </Text>
 
       {error ? (
         <View style={{ gap: metrics.space.sm }}>
           <Text tone="muted">
-            {failureMessage(error, "Could not load your keys.")}
+            {failureMessage(error, t("aiKeys.loadFailed"))}
           </Text>
           <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
-            <Text tone="accent">Try again</Text>
+            <Text tone="accent">{t("common.tryAgain")}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -177,7 +177,7 @@ export default function AiKeys() {
                   >
                     <Check size={14} color={colors.accent} />
                     <Text variant="caption" tone="accent">
-                      In use
+                      {t("aiKeys.inUse")}
                     </Text>
                   </View>
                 ) : null}
@@ -186,7 +186,7 @@ export default function AiKeys() {
               {/* The mask is all a screen ever gets, and all it needs. */}
               <Text variant="caption" tone="muted">
                 {key.masked ?? "••••"}
-                {key.verified ? " · verified" : ""}
+                {key.verified ? t("aiKeys.verified") : ""}
               </Text>
 
               {key.verificationError ? (
@@ -206,7 +206,7 @@ export default function AiKeys() {
                     style={{ minHeight: 32, justifyContent: "center" }}
                   >
                     <Text tone="accent" variant="caption">
-                      Use this one
+                      {t("aiKeys.useThisOne")}
                     </Text>
                   </Pressable>
                 ) : null}
@@ -224,7 +224,7 @@ export default function AiKeys() {
                   style={{ minHeight: 32, justifyContent: "center" }}
                 >
                   <Text tone="accent" variant="caption">
-                    Replace
+                    {t("aiKeys.replace")}
                   </Text>
                 </Pressable>
 
@@ -233,7 +233,7 @@ export default function AiKeys() {
                   onPress={() => remove.mutate(key.id)}
                   disabled={busy}
                   accessibilityRole="button"
-                  accessibilityLabel={`Remove the ${key.provider} key`}
+                  accessibilityLabel={t("aiKeys.removeLabel", { provider: key.provider })}
                   hitSlop={8}
                   style={{
                     flexDirection: "row",
@@ -244,7 +244,7 @@ export default function AiKeys() {
                 >
                   <Trash2 size={13} color={colors.danger} />
                   <Text tone="danger" variant="caption">
-                    Remove
+                    {t("aiKeys.remove")}
                   </Text>
                 </Pressable>
               </View>
@@ -253,7 +253,7 @@ export default function AiKeys() {
         </View>
       ) : isLoading || error ? null : (
         <Text testID="ai-keys-empty" tone="muted">
-          No key of your own yet. The assistant runs on MultiMagic&apos;s.
+          {t("aiKeys.empty")}
         </Text>
       )}
 
@@ -262,7 +262,12 @@ export default function AiKeys() {
         <View testID="ai-keys-borrowed" style={{ marginTop: metrics.space.lg }}>
           <Text variant="caption" tone="muted">
             {data?.borrowed
-              .map((b) => `${b.provider} — lent to you by ${b.ownerName ?? "someone"}`)
+              .map((b) =>
+                t("aiKeys.lentToYou", {
+                  provider: b.provider,
+                  name: b.ownerName ?? t("aiKeys.someone"),
+                }),
+              )
               .join("\n")}
           </Text>
         </View>
@@ -270,7 +275,11 @@ export default function AiKeys() {
 
       {/* ── Adding or replacing one ────────────────────────────────────── */}
       <View style={{ marginTop: metrics.space.xl, gap: metrics.space.md }}>
-        <Text variant="label">{replacing ? `Replace your ${replacing.provider} key` : "Add a key"}</Text>
+        <Text variant="label">
+          {replacing
+            ? t("aiKeys.replaceTitle", { provider: replacing.provider })
+            : t("aiKeys.addTitle")}
+        </Text>
 
         {!replacing ? (
           available.length > 0 ? (
@@ -307,7 +316,7 @@ export default function AiKeys() {
             </View>
           ) : (
             <Text tone="muted" variant="caption">
-              You already have a key for every provider this app can use.
+              {t("aiKeys.allProvidersKeyed")}
             </Text>
           )
         ) : null}
@@ -321,7 +330,7 @@ export default function AiKeys() {
                 setPasted(v);
                 setRefusal(null);
               }}
-              placeholder={`Paste your ${provider} key`}
+              placeholder={t("aiKeys.paste", { provider })}
               placeholderTextColor={colors.inkMuted}
               autoCapitalize="none"
               autoCorrect={false}
@@ -364,7 +373,7 @@ export default function AiKeys() {
                 variant="label"
                 style={{ color: !pasted.trim() || busy ? colors.inkMuted : colors.onAccent }}
               >
-                {add.isPending ? "Checking with the provider…" : "Check and save"}
+                {add.isPending ? t("aiKeys.checking") : t("aiKeys.checkAndSave")}
               </Text>
             </Pressable>
 
@@ -378,7 +387,7 @@ export default function AiKeys() {
                 accessibilityRole="button"
                 style={{ minHeight: metrics.touch, alignItems: "center", justifyContent: "center" }}
               >
-                <Text tone="muted">Cancel</Text>
+                <Text tone="muted">{t("common.cancel")}</Text>
               </Pressable>
             ) : null}
           </>

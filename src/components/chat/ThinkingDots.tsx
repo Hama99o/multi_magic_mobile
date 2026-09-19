@@ -18,6 +18,7 @@ import { useEffect, useRef, useState } from "react";
 import { Animated, View } from "react-native";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import { useTranslation } from "react-i18next";
 
 /** Long enough that a normal slow answer never trips it. */
 const SLOW_AFTER_MS = 45_000;
@@ -59,6 +60,7 @@ function Dot({ delay }: { delay: number }) {
 
 export function ThinkingDots() {
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const [slow, setSlow] = useState(false);
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export function ThinkingDots() {
   return (
     <View
       accessibilityRole="progressbar"
-      accessibilityLabel={slow ? "Still working on your answer" : "Thinking"}
+      accessibilityLabel={slow ? t("chat.stillWorking") : t("chat.thinking")}
       style={{ paddingVertical: metrics.space.md, gap: metrics.space.sm }}
       testID="thinking"
     >
@@ -80,7 +82,7 @@ export function ThinkingDots() {
       </View>
       {slow ? (
         <Text variant="caption" tone="muted" testID="thinking-slow">
-          Still working — this one is taking a while.
+          {t("chat.slow")}
         </Text>
       ) : null}
     </View>

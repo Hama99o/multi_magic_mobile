@@ -15,6 +15,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
 import { Bell, CalendarDays, MessageSquareText, Users } from "lucide-react-native";
 import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -65,11 +66,12 @@ function HeaderIcon({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={badge > 0 ? `${label}, ${badge} unread` : label}
+      accessibilityLabel={badge > 0 ? t("chat.unreadBadge", { label, count: badge }) : label}
       hitSlop={6}
       onPress={onPress}
       style={{
@@ -126,6 +128,7 @@ const RATE_LIMIT_WAIT_S = 60;
 export default function Chat() {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
 
   const { data: sessionId } = useQuery({
@@ -301,15 +304,15 @@ export default function Chat() {
           setFailedQuestion({
             body: question,
             reason: isNetworkFailure(e)
-              ? "Could not reach MultiMagic. Your question is still here."
-              : (apiErrorMessage(e) ?? "That did not send."),
+              ? t("chat.sendUnreachable")
+              : (apiErrorMessage(e) ?? t("chat.sendFailed")),
           });
         }
       } finally {
         setPosting(false);
       }
     },
-    [conversationId, posting, clear, addPending, setDraft, user],
+    [conversationId, posting, clear, addPending, setDraft, user, t],
   );
 
   // Follow new messages. `onContentSizeChange` rather than an effect on
@@ -339,7 +342,7 @@ export default function Chat() {
             paddingVertical: metrics.space.md,
           }}
         >
-          <Text variant="title">Assistant</Text>
+          <Text variant="title">{t("chat.title")}</Text>
 
           {/* The doors out of here.
               QUIET, per IDENTITY.md §7: outline glyphs, muted, the touch floor
@@ -348,21 +351,21 @@ export default function Chat() {
               without being loud. */}
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <HeaderIcon
-              label="Chats"
+              label={t("chat.chats")}
               icon={Users}
               badge={unreadChats}
               onPress={() => router.push("/chats")}
               testID="chat-open-chats"
             />
             <HeaderIcon
-              label="Notifications"
+              label={t("chat.notifications")}
               icon={Bell}
               badge={unreadNotifications}
               onPress={() => router.push("/notifications")}
               testID="chat-open-notifications"
             />
             <HeaderIcon
-              label="Calendar"
+              label={t("chat.calendar")}
               icon={CalendarDays}
               onPress={() => router.push("/calendar")}
               testID="chat-open-calendar"
@@ -370,7 +373,7 @@ export default function Chat() {
             {/* This one stays last and is the assistant's own: an app with one
                 destination does not need a persistent drawer. */}
             <HeaderIcon
-              label="Conversations"
+              label={t("chat.conversations")}
               icon={MessageSquareText}
               onPress={() => setSessionsOpen(true)}
               testID="chat-open-sessions"
@@ -414,9 +417,9 @@ export default function Chat() {
             status === "loading" ? null : status === "failed" ? (
               <View style={{ gap: metrics.space.md, paddingVertical: metrics.space.xl }}>
                 <Text tone="muted" testID="chat-load-failed">
-                  Could not load this conversation.
+                  {t("chat.loadFailed")}
                 </Text>
-                <Button label="Try again" tone="neutral" onPress={() => void resync()} />
+                <Button label={t("common.tryAgain")} tone="neutral" onPress={() => void resync()} />
               </View>
             ) : (
               <EmptyState onPick={(q) => void send(q)} prompts={prompts} />
@@ -429,10 +432,10 @@ export default function Chat() {
               {failed ? (
                 <View style={{ gap: metrics.space.sm }} testID="chat-answer-failed">
                   <Text variant="caption" tone="danger">
-                    That question did not get an answer.
+                    {t("chat.answerFailed")}
                   </Text>
                   <Button
-                    label="Ask again"
+                    label={t("chat.askAgain")}
                     tone="neutral"
                     block={false}
                     onPress={() => {
@@ -447,9 +450,11 @@ export default function Chat() {
                 <View style={{ gap: metrics.space.xs }} testID="chat-rate-limited">
                   {/* Muted, no button. The number is the whole message. */}
                   <Text variant="caption" tone="muted">
-                    You have asked a lot in a short time. MultiMagic takes{" "}
-                    {LIMITS.questionsPerMinute} questions a minute and {LIMITS.questionsPerHour} an
-                    hour. Your question is kept — you can send it in {secondsLeft} s.
+                    {t("chat.rateLimited", {
+                      perMinute: LIMITS.questionsPerMinute,
+                      perHour: LIMITS.questionsPerHour,
+                      seconds: secondsLeft,
+                    })}
                   </Text>
                 </View>
               ) : null}
@@ -460,7 +465,7 @@ export default function Chat() {
                     {failedQuestion.reason}
                   </Text>
                   <Button
-                    label="Retry"
+                    label={t("chat.retry")}
                     tone="neutral"
                     block={false}
                     onPress={() => void send(failedQuestion.body)}
@@ -499,8 +504,7 @@ export default function Chat() {
           />
           {/* Mindvalley's one line, once, under the composer. */}
           <Text variant="caption" tone="muted" style={{ textAlign: "center", color: colors.inkMuted }}>
-            Answers come from your MultiMagic data and can be wrong. Check anything that
-            matters.
+            {t("chat.disclaimer")}
           </Text>
         </View>
       </View>

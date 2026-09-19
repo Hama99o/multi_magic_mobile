@@ -27,6 +27,7 @@
  * somebody writing their question.
  */
 import { Pressable, TextInput, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { ArrowUp, Mic, Plus, Square, X } from "lucide-react-native";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -52,6 +53,7 @@ export function Composer({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
 
   const speech = useSpeechToText((final) => {
     // APPENDED, never replacing. Someone who typed half a question and dictated
@@ -79,11 +81,11 @@ export function Composer({
         >
           <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.danger }} />
           <Text variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1 }}>
-            {speech.interim || "Listening…"}
+            {speech.interim || t("composer.listening")}
           </Text>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Cancel dictation"
+            accessibilityLabel={t("composer.cancelDictation")}
             hitSlop={8}
             onPress={speech.cancel}
             testID="composer-dictation-cancel"
@@ -97,8 +99,7 @@ export function Composer({
           rather than a mic that silently does nothing. */}
       {speech.refused ? (
         <Text variant="caption" tone="muted" style={{ paddingHorizontal: metrics.space.md }} testID="composer-mic-refused">
-          I can&apos;t listen without the microphone. You can still type, or allow it in
-          Settings.
+          {t("composer.micRefused")}
         </Text>
       ) : null}
 
@@ -116,8 +117,7 @@ export function Composer({
           will happen next rather than what went wrong. */}
       {offline ? (
         <Text variant="caption" tone="muted" style={{ paddingHorizontal: metrics.space.md }} testID="composer-offline">
-          Can&apos;t reach MultiMagic right now. Your question is kept — send it when the
-          connection is back.
+          {t("composer.offline")}
         </Text>
       ) : null}
 
@@ -136,7 +136,7 @@ export function Composer({
     >
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Add a photo or a document"
+        accessibilityLabel={t("composer.attach")}
         accessibilityState={{ disabled: !canAttach }}
         disabled={!canAttach}
         hitSlop={8}
@@ -159,9 +159,9 @@ export function Composer({
         // Short enough to stay on ONE line at 360 dp: the long version
         // wrapped, which made the pill taller and left the + floating against
         // two lines of grey text.
-        placeholder="Ask anything…"
+        placeholder={t("composer.placeholder")}
         placeholderTextColor={colors.inkMuted}
-        accessibilityLabel="Your question"
+        accessibilityLabel={t("composer.yourQuestion")}
         multiline
         // Grows with the question, then scrolls. A dictated paragraph is long,
         // and a single-line field that hides its own start is unusable.
@@ -179,7 +179,7 @@ export function Composer({
       {value.length > 0 ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Clear"
+          accessibilityLabel={t("composer.clear")}
           hitSlop={8}
           onPress={() => onChange("")}
           style={{ width: 32, height: 40, alignItems: "center", justifyContent: "center" }}
@@ -193,7 +193,13 @@ export function Composer({
       {speech.available ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={speech.listening ? "Stop dictating" : `Dictate in ${LANGUAGES.find((l) => l.code === speech.lang)?.label ?? speech.lang}`}
+          accessibilityLabel={
+            speech.listening
+              ? t("composer.stopDictating")
+              : t("composer.dictateIn", {
+                  language: LANGUAGES.find((l) => l.code === speech.lang)?.label ?? speech.lang,
+                })
+          }
           hitSlop={8}
           onPress={() => (speech.listening ? speech.stop() : void speech.start())}
           onLongPress={() => {
@@ -215,7 +221,7 @@ export function Composer({
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Send"
+        accessibilityLabel={t("composer.send")}
         accessibilityState={{ disabled: !canSend }}
         disabled={!canSend}
         hitSlop={8}

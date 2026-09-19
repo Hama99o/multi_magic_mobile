@@ -20,10 +20,11 @@ import { Pressable, ScrollView, View } from "react-native";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import type { MessageLink } from "@/api/ai";
+import { useTranslation } from "react-i18next";
 
 export function SourceChips({
   sources,
-  label = "From",
+  label,
   onOpen,
 }: {
   sources: MessageLink[];
@@ -39,13 +40,14 @@ export function SourceChips({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
 
   if (sources.length === 0) return null;
 
   return (
     <View style={{ gap: 2 }}>
       <Text variant="caption" tone="muted">
-        {label}
+        {label ?? t("answer.from")}
       </Text>
     <ScrollView
       horizontal
@@ -59,7 +61,7 @@ export function SourceChips({
         <Pressable
           key={`${source.path ?? "source"}-${index}`}
           accessibilityRole="button"
-          accessibilityLabel={`Source: ${source.label ?? "record"}`}
+          accessibilityLabel={t("sources.chip", { label: source.label ?? t("sources.record") })}
           hitSlop={6}
           onPress={() => onOpen(source)}
           style={{
@@ -75,7 +77,7 @@ export function SourceChips({
         >
           <View style={{ maxWidth: 220 }}>
             <Text variant="caption" tone="muted" numberOfLines={1}>
-              {source.label ?? "Record"}
+              {source.label ?? t("sources.record")}
             </Text>
           </View>
         </Pressable>

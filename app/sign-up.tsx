@@ -26,6 +26,7 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { Link, router } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
@@ -34,27 +35,34 @@ import { useMetrics } from "@/hooks/useColors";
 import { signUp } from "@/api/auth";
 import { useAuthStore } from "@/stores/auth.store";
 import { apiErrorMessage, isNetworkFailure } from "@/api/http";
+import { t as translate } from "@/i18n";
 
 type Field = "firstname" | "lastname" | "email" | "password";
 const FIELDS: Field[] = ["firstname", "lastname", "email", "password"];
 
-const LABELS: Record<Field, string> = {
-  firstname: "First name",
-  lastname: "Last name",
-  email: "Email",
-  password: "Password",
+/**
+ * Functions rather than constants: a constant is evaluated at import, before
+ * the stored language has been read, and never again after a switch.
+ */
+const LABEL_KEYS: Record<Field, string> = {
+  firstname: "signUp.firstName",
+  lastname: "signUp.lastName",
+  email: "signUp.email",
+  password: "signUp.password",
 };
 
 /** What a blank field is told, against the field. */
-const MISSING: Record<Field, string> = {
-  firstname: "Enter your first name.",
-  lastname: "Enter your last name.",
-  email: "Enter your email.",
-  password: "Choose a password.",
+const MISSING_KEYS: Record<Field, string> = {
+  firstname: "signUp.missingFirstName",
+  lastname: "signUp.missingLastName",
+  email: "signUp.missingEmail",
+  password: "signUp.missingPassword",
 };
 
 /** The one sentence for an untouched form — a flow asserts it word for word. */
-export const EMPTY_FORM_SENTENCE = "Fill in your name, email and a password.";
+export function emptyFormSentence(): string {
+  return translate("signUp.emptyForm");
+}
 
 /** `/data/attributes/email` → "email"; the confirmation belongs to the password. */
 function fieldFor(pointer: unknown): Field | null {
@@ -92,7 +100,7 @@ export function serverErrors(error: unknown): {
     const field = fieldFor(record.source?.pointer);
     if (field) {
       // The first complaint about a field is the one that is drawn.
-      fields[field] ??= `${LABELS[field]} ${record.detail}`;
+      fields[field] ??= `${translate(LABEL_KEYS[field])} ${record.detail}`;
     } else {
       const attribute = typeof record.source?.pointer === "string"
         ? record.source.pointer.split("/").pop() ?? ""
@@ -105,6 +113,7 @@ export function serverErrors(error: unknown): {
 
 export default function SignUp() {
   const metrics = useMetrics();
+  const { t } = useTranslation();
 
   const [values, setValues] = useState<Record<Field, string>>({
     firstname: "",
@@ -132,11 +141,11 @@ export default function SignUp() {
     // requires, so nothing travels only to come back as "can't be blank".
     const missing = FIELDS.filter((field) => !values[field].trim());
     if (missing.length === FIELDS.length) {
-      setError(EMPTY_FORM_SENTENCE);
+      setError(emptyFormSentence());
       return;
     }
     if (missing.length > 0) {
-      setFieldErrors(Object.fromEntries(missing.map((field) => [field, MISSING[field]])));
+      setFieldErrors(Object.fromEntries(missing.map((field) => [field, t(MISSING_KEYS[field])])));
       return;
     }
 
@@ -161,8 +170,8 @@ export default function SignUp() {
       }
       setError(
         isNetworkFailure(e)
-          ? "Could not reach MultiMagic. Check your connection."
-          : (apiErrorMessage(e) ?? "Could not create that account."),
+          ? t("failure.checkConnection")
+          : (apiErrorMessage(e) ?? t("signUp.failed")),
       );
     } finally {
       setBusy(false);
@@ -173,13 +182,13 @@ export default function SignUp() {
     <Screen scroll avoidKeyboard>
       <View style={{ flex: 1, justifyContent: "center", gap: metrics.space.xl, paddingVertical: metrics.space.xl }}>
         <View style={{ gap: metrics.space.sm }}>
-          <Text variant="title">Create an account</Text>
-          <Text tone="muted">One account for your notes, money, contacts and calendar.</Text>
+          <Text variant="title">{t("signUp.title")}</Text>
+          <Text tone="muted">{t("signUp.subtitle")}</Text>
         </View>
 
         <View style={{ gap: metrics.space.lg }}>
           <Input
-            label={LABELS.firstname}
+            label={t(LABEL_KEYS.firstname)}
             value={values.firstname}
             onChangeText={setField("firstname")}
             autoCapitalize="words"
@@ -189,7 +198,7 @@ export default function SignUp() {
             testID="sign-up-firstname"
           />
           <Input
-            label={LABELS.lastname}
+            label={t(LABEL_KEYS.lastname)}
             value={values.lastname}
             onChangeText={setField("lastname")}
             autoCapitalize="words"
@@ -199,7 +208,7 @@ export default function SignUp() {
             testID="sign-up-lastname"
           />
           <Input
-            label={LABELS.email}
+            label={t(LABEL_KEYS.email)}
             value={values.email}
             onChangeText={setField("email")}
             autoCapitalize="none"
@@ -210,7 +219,7 @@ export default function SignUp() {
             testID="sign-up-email"
           />
           <Input
-            label={LABELS.password}
+            label={t(LABEL_KEYS.password)}
             value={values.password}
             onChangeText={setField("password")}
             secure
@@ -232,14 +241,14 @@ export default function SignUp() {
         </View>
 
         <View style={{ gap: metrics.space.lg }}>
-          <Button label="Create account" busy={busy} onPress={() => void submit()} testID="sign-up-submit" />
+          <Button label={t("signUp.submit")} busy={busy} onPress={() => void submit()} testID="sign-up-submit" />
           <View style={{ flexDirection: "row", justifyContent: "center", gap: metrics.space.xs }}>
             <Text variant="caption" tone="muted">
-              Already have an account?
+              {t("signUp.haveAccount")}
             </Text>
             <Link href="/sign-in" asChild>
               <Text variant="caption" tone="accent" testID="sign-up-to-sign-in">
-                Sign in
+                {t("signUp.signIn")}
               </Text>
             </Link>
           </View>

@@ -20,6 +20,7 @@
 import { Image, Linking, Modal, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -37,6 +38,7 @@ export function FilePreview({
   const colors = useColors();
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   if (!link) return null;
   const isImage = IMAGE.test(link.url);
@@ -64,7 +66,7 @@ export function FilePreview({
           <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.md }}>
             <View style={{ flex: 1 }}>
               <Text variant="label" tone="muted">
-                From your files
+                {t("files.fromYourFiles")}
               </Text>
               <Text variant="title" numberOfLines={2}>
                 {link.label}
@@ -72,7 +74,7 @@ export function FilePreview({
             </View>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Close"
+              accessibilityLabel={t("common.close")}
               hitSlop={10}
               onPress={onClose}
               style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
@@ -93,13 +95,11 @@ export function FilePreview({
               />
             </ScrollView>
           ) : (
-            <Text tone="muted">
-              This opens outside MultiMagic, in whatever on your phone reads this kind of file.
-            </Text>
+            <Text tone="muted">{t("files.opensOutside")}</Text>
           )}
 
           <Button
-            label={isImage ? "Open full size" : "Open file"}
+            label={isImage ? t("files.openFullSize") : t("files.openFile")}
             tone="neutral"
             onPress={() => void Linking.openURL(link.url)}
             testID="file-preview-open"

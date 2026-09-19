@@ -20,6 +20,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { Copy, ThumbsDown, ThumbsUp, Undo2 } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { feedbackApi, undoApi, type ChatMessage } from "@/api/ai";
@@ -38,6 +39,7 @@ export function AnswerActions({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [rating, setRating] = useState<"positive" | "negative" | null>(null);
   const [undoing, setUndoing] = useState(false);
@@ -69,7 +71,7 @@ export function AnswerActions({
       const { message: updated } = await undoApi.undo(message.id);
       onUndone(updated);
     } catch (e) {
-      setError(apiErrorMessage(e) ?? "I could not take that back.");
+      setError(apiErrorMessage(e) ?? t("answer.undoFailed"));
     } finally {
       setUndoing(false);
     }
@@ -99,9 +101,9 @@ export function AnswerActions({
   return (
     <View style={{ gap: metrics.space.xs }} testID="answer-actions">
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
-        {iconButton("copy", copied ? "Copied" : "Copy answer", Copy, () => void copy())}
-        {iconButton("up", "Good answer", ThumbsUp, () => void rate("positive"), rating === "positive")}
-        {iconButton("down", "Bad answer", ThumbsDown, () => void rate("negative"), rating === "negative")}
+        {iconButton("copy", copied ? t("answer.copied") : t("answer.copy"), Copy, () => void copy())}
+        {iconButton("up", t("answer.good"), ThumbsUp, () => void rate("positive"), rating === "positive")}
+        {iconButton("down", t("answer.bad"), ThumbsDown, () => void rate("negative"), rating === "negative")}
 
         {/* Read aloud — behind READ_ALOUD_ENABLED; renders nothing until it
             flips. See ReadAloud.tsx. */}
@@ -109,12 +111,12 @@ export function AnswerActions({
 
         {message.undoneAt ? (
           <Text variant="caption" tone="muted" testID="answer-undone">
-            Taken back
+            {t("answer.undone")}
           </Text>
         ) : showUndo ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Undo what this created"
+            accessibilityLabel={t("answer.undoLabel")}
             accessibilityState={{ busy: undoing }}
             disabled={undoing}
             hitSlop={10}
@@ -134,7 +136,7 @@ export function AnswerActions({
           >
             <Undo2 size={15} color={colors.inkMuted} />
             <Text variant="caption" tone="muted">
-              {undoing ? "Taking back…" : "Undo"}
+              {undoing ? t("answer.undoing") : t("answer.undo")}
             </Text>
           </Pressable>
         ) : null}
@@ -142,7 +144,7 @@ export function AnswerActions({
 
       {copied ? (
         <Text variant="caption" tone="muted" testID="answer-copied">
-          Copied
+          {t("answer.copied")}
         </Text>
       ) : null}
 

@@ -22,6 +22,7 @@
 import { Pressable, View } from "react-native";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import { useTranslation } from "react-i18next";
 
 export function EmptyState({
   onPick,
@@ -33,13 +34,11 @@ export function EmptyState({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
 
   return (
     <View style={{ gap: metrics.space.lg, paddingVertical: metrics.space.xl }} testID="chat-empty">
-      <Text tone="muted">
-        Ask about anything you have kept in MultiMagic — your notes, money, contacts and
-        calendar.
-      </Text>
+      <Text tone="muted">{t("chat.emptyTitle")}</Text>
 
       <View style={{ gap: metrics.space.sm }}>
         {prompts.map((prompt) => (

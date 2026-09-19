@@ -46,6 +46,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SpeechUnavailable, speechApi } from "@/api/speech";
 import { authHeaders } from "@/api/http";
 import { DEFAULT_LANG, STT_LANG_KEY } from "@/hooks/useSpeechToText";
+import { t } from "@/i18n";
 
 // ── The two modules, as this file uses them ──────────────────────────────────
 
@@ -174,13 +175,13 @@ function noticeFor(error: SpeechUnavailable): string {
   switch (error.kind) {
     case "rate_limited":
       // A wait, in the chat's own terms — never "failed".
-      return "MultiMagic's voice is busy — too many read-alouds in a minute. Try again in a moment.";
+      return t("answer.voiceBusy");
     case "no_text":
-      return "This message has no text to read.";
+      return t("answer.noText");
     case "not_found":
-      return "This answer can't be read aloud.";
+      return t("answer.cannotRead");
     default:
-      return "MultiMagic's voice isn't available right now.";
+      return t("answer.voiceUnavailable");
   }
 }
 
@@ -202,7 +203,7 @@ export const useReadAloud = create<ReadAloudState>((set, get) => {
   /** The phone's own voice. The fallback, never the first choice. */
   const speakOnDevice = async (id: number, body: string) => {
     if (!device) {
-      set({ ...IDLE, notice: { messageId: id, text: "MultiMagic's voice isn't available right now." } });
+      set({ ...IDLE, notice: { messageId: id, text: t("answer.voiceUnavailable") } });
       return;
     }
     const language = await deviceLanguage();

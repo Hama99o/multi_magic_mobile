@@ -25,6 +25,7 @@
  */
 import { ApiShapeError } from "./parse";
 import { apiErrorMessage, isNetworkFailure, isRateLimited, isUnauthorized } from "./http";
+import { t } from "@/i18n";
 
 /**
  * A shape error is OUR bug, and the sentence says so.
@@ -34,17 +35,14 @@ import { apiErrorMessage, isNetworkFailure, isRateLimited, isUnauthorized } from
  * and the fault is ours. It is deliberately not phrased as "try again" either —
  * retrying a payload we cannot parse produces the same payload.
  */
-const UNREADABLE =
-  "MultiMagic sent something this app could not read. That is a bug in the app, not your connection.";
-
 export function failureMessage(error: unknown, fallback: string): string {
   // FIRST, before the network check — the ordering is the whole point.
-  if (error instanceof ApiShapeError) return UNREADABLE;
-  if (isNetworkFailure(error)) return "Could not reach MultiMagic.";
-  if (isRateLimited(error)) return "Too many requests just now. Give it a minute.";
+  if (error instanceof ApiShapeError) return t("failure.unreadable");
+  if (isNetworkFailure(error)) return t("failure.unreachable");
+  if (isRateLimited(error)) return t("failure.rateLimited");
   // A 401 has already signed the user out through the interceptor; saying
   // anything else about it here would be describing a screen they have left.
-  if (isUnauthorized(error)) return "Your session ended. Sign in again.";
+  if (isUnauthorized(error)) return t("failure.sessionEnded");
   return apiErrorMessage(error) ?? fallback;
 }
 

@@ -35,22 +35,34 @@
 import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft, TriangleAlert } from "lucide-react-native";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import {
-  ACCOUNT_DELETION_AVAILABLE,
-  DELETED_WITH_ACCOUNT,
-  KEPT_AFTER_DELETION,
-  deleteAccount,
-} from "@/api/account";
+import { ACCOUNT_DELETION_AVAILABLE, deleteAccount } from "@/api/account";
 import { apiErrorMessage, isNetworkFailure, isUnauthorized } from "@/api/http";
 
 export default function DeleteAccount() {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const [password, setPassword] = useState("");
+
+  /**
+   * What goes, in the words the confirm uses. The list lived in
+   * `src/api/account.ts` as a constant; a constant is evaluated at import,
+   * before the stored language is read, so it would have stayed English after
+   * a switch. Each line still maps to one `dependent: :destroy` on `User`.
+   */
+  const deletedWithAccount = [
+    t("deleteAccount.goes.conversations"),
+    t("deleteAccount.goes.notes"),
+    t("deleteAccount.goes.contacts"),
+    t("deleteAccount.goes.money"),
+    t("deleteAccount.goes.events"),
+    t("deleteAccount.goes.devices"),
+  ];
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -66,10 +78,10 @@ export default function DeleteAccount() {
     } catch (e) {
       setError(
         isUnauthorized(e)
-          ? "That password is not right."
+          ? t("deleteAccount.wrongPassword")
           : isNetworkFailure(e)
-            ? "Could not reach MultiMagic. Nothing was deleted."
-            : (apiErrorMessage(e) ?? "Could not delete the account. Nothing was deleted."),
+            ? t("deleteAccount.unreachable")
+            : (apiErrorMessage(e) ?? t("deleteAccount.failed")),
       );
     } finally {
       setBusy(false);
@@ -89,7 +101,7 @@ export default function DeleteAccount() {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t("common.back")}
           hitSlop={8}
           style={{ width: 32, height: 32, justifyContent: "center" }}
         >
@@ -100,21 +112,21 @@ export default function DeleteAccount() {
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
         <TriangleAlert size={22} color={colors.danger} />
         <Text variant="title" tone="danger" style={{ flex: 1, fontSize: 22 }}>
-          Delete your account
+          {t("deleteAccount.title")}
         </Text>
       </View>
 
       {/* Said once, plainly. Not repeated, because a warning repeated is a
           warning skimmed. */}
       <Text tone="muted" style={{ marginTop: metrics.space.sm }}>
-        This cannot be undone.
+        {t("deleteAccount.cannotBeUndone")}
       </Text>
 
       <Text variant="label" style={{ marginTop: metrics.space.xl }}>
-        What is deleted
+        {t("deleteAccount.whatIsDeleted")}
       </Text>
       <View testID="delete-what-goes" style={{ marginTop: metrics.space.sm, gap: metrics.space.sm }}>
-        {DELETED_WITH_ACCOUNT.map((line) => (
+        {deletedWithAccount.map((line) => (
           <View key={line} style={{ flexDirection: "row", gap: metrics.space.sm }}>
             <Text tone="danger">•</Text>
             <Text style={{ flex: 1 }}>{line}</Text>
@@ -123,15 +135,15 @@ export default function DeleteAccount() {
       </View>
 
       <Text variant="label" style={{ marginTop: metrics.space.xl }}>
-        What is kept
+        {t("deleteAccount.whatIsKept")}
       </Text>
       <Text tone="muted" style={{ marginTop: metrics.space.sm }}>
-        {KEPT_AFTER_DELETION}
+        {t("deleteAccount.kept")}
       </Text>
 
       {ACCOUNT_DELETION_AVAILABLE ? (
         <View style={{ marginTop: metrics.space.xl, gap: metrics.space.sm }}>
-          <Text variant="label">Type your password to confirm</Text>
+          <Text variant="label">{t("deleteAccount.typePassword")}</Text>
           <TextInput
             testID="delete-password"
             value={password}
@@ -139,9 +151,9 @@ export default function DeleteAccount() {
             secureTextEntry
             autoCapitalize="none"
             autoComplete="current-password"
-            placeholder="Password"
+            placeholder={t("deleteAccount.password")}
             placeholderTextColor={colors.inkMuted}
-            accessibilityLabel="Password"
+            accessibilityLabel={t("deleteAccount.password")}
             style={{
               backgroundColor: colors.surface,
               borderWidth: 1,
@@ -167,7 +179,7 @@ export default function DeleteAccount() {
             onPress={() => void confirm()}
             disabled={!password || busy}
             accessibilityRole="button"
-            accessibilityLabel="Delete my account"
+            accessibilityLabel={t("deleteAccount.confirm")}
             accessibilityState={{ disabled: !password || busy }}
             style={{
               marginTop: metrics.space.sm,
@@ -182,7 +194,7 @@ export default function DeleteAccount() {
               variant="label"
               style={{ color: !password || busy ? colors.inkMuted : colors.onAccent }}
             >
-              {busy ? "Deleting…" : "Delete my account"}
+              {busy ? t("deleteAccount.deleting") : t("deleteAccount.confirm")}
             </Text>
           </Pressable>
 
@@ -194,7 +206,7 @@ export default function DeleteAccount() {
             accessibilityRole="button"
             style={{ minHeight: metrics.touch, alignItems: "center", justifyContent: "center" }}
           >
-            <Text tone="muted">Keep my account</Text>
+            <Text tone="muted">{t("deleteAccount.keep")}</Text>
           </Pressable>
         </View>
       ) : (
@@ -208,12 +220,9 @@ export default function DeleteAccount() {
             gap: metrics.space.xs,
           }}
         >
-          <Text variant="label">Not available in the app yet</Text>
+          <Text variant="label">{t("deleteAccount.unavailableTitle")}</Text>
           <Text tone="muted" variant="caption">
-            Deleting an account is not something this app can do today — the
-            server does not offer it yet. Nothing on this screen has changed
-            anything. It is written down here so you know exactly what will go
-            when it does.
+            {t("deleteAccount.unavailableBody")}
           </Text>
         </View>
       )}

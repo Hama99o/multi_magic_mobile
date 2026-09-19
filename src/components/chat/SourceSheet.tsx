@@ -15,6 +15,7 @@
 import { Linking, Modal, Pressable, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -31,6 +32,7 @@ export function SourceSheet({
   const colors = useColors();
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   if (!source) return null;
 
@@ -42,7 +44,7 @@ export function SourceSheet({
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Close"
+        accessibilityLabel={t("common.close")}
         onPress={onClose}
         style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}
       >
@@ -68,15 +70,15 @@ export function SourceSheet({
           <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.md }}>
             <View style={{ flex: 1 }}>
               <Text variant="label" tone="muted">
-                Where this came from
+                {t("sources.sheetLabel")}
               </Text>
               <Text variant="title" numberOfLines={2}>
-                {source.label ?? "Record"}
+                {source.label ?? t("sources.record")}
               </Text>
             </View>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Close"
+              accessibilityLabel={t("common.close")}
               hitSlop={10}
               onPress={onClose}
               style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
@@ -90,15 +92,12 @@ export function SourceSheet({
             {/* The excerpt the serializer does not send yet. Saying so is
                 better than an empty panel that looks broken — and it keeps the
                 sheet honest about being a preview rather than the record. */}
-            <Text tone="muted">
-              This is the record the answer drew on. Open it in MultiMagic to read it in
-              full.
-            </Text>
+            <Text tone="muted">{t("sources.body")}</Text>
           </ScrollView>
 
           {webUrl ? (
             <Button
-              label="Open in MultiMagic"
+              label={t("sources.openInWeb")}
               tone="neutral"
               onPress={() => void Linking.openURL(webUrl)}
               testID="source-sheet-open"

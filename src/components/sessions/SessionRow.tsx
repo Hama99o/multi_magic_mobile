@@ -19,6 +19,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { categoryColorFor } from "@/theme/tokens";
 import { relativeTime } from "@/lib/relativeTime";
 import type { AiSession } from "@/api/ai";
+import { useTranslation } from "react-i18next";
 
 export function SessionRow({
   session,
@@ -33,13 +34,12 @@ export function SessionRow({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
 
   const counts = [
-    `${session.messageCount} ${session.messageCount === 1 ? "message" : "messages"}`,
+    t("sessions.messages", { count: session.messageCount }),
     // Only mentioned when there are any — same reasoning as the delete copy.
-    session.documentCount > 0
-      ? `${session.documentCount} ${session.documentCount === 1 ? "file" : "files"}`
-      : null,
+    session.documentCount > 0 ? t("sessions.files", { count: session.documentCount }) : null,
   ]
     .filter(Boolean)
     .join(" · ");
@@ -97,7 +97,7 @@ export function SessionRow({
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={`Options for ${session.title}`}
+        accessibilityLabel={t("sessions.options", { title: session.title })}
         hitSlop={8}
         onPress={onMenu}
         style={{

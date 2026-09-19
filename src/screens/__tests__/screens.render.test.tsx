@@ -244,6 +244,7 @@ jest.mock("@/api/ai", () => ({
 
 /* eslint-disable import/first */
 import { useThemeStore } from "@/stores/theme.store";
+import i18n from "@/i18n";
 import Chats from "../../../app/chats";
 import Thread from "../../../app/chat/[id]";
 import Notifications from "../../../app/notifications";
@@ -261,9 +262,35 @@ import Privacy from "../../../app/privacy";
  * 360 is the cheap phone and the required size; 411 is the emulator's default
  * and what most shots are taken at; 800 is the tablet, where `METRICS.maxMeasure`
  * caps the column at 640 and centres it.
+ *
+ * ── AND THE LANGUAGE IS THE THIRD DIMENSION ──────────────────────────────
+ * French is the longer language — reliably 15–20% more characters than
+ * English for the same sentence — so **360 dp in French is the tightest pane
+ * this app has**, and it is the one that would break first. Every screen is
+ * rendered there in both modes, plus one wide French pane so the tablet's
+ * measure is not left unchecked.
+ *
+ * The claim is the same as the width one and is worth stating: **the set of
+ * handles does not depend on the language.**
+ *
+ * **And that claim is weaker than it sounds, so it is paired with a second
+ * one.** A handle is on a container; the English text INSIDE it can survive
+ * a language switch untouched and every handle still resolves. Proven by
+ * planting exactly that — one hardcoded English sentence in the chats empty
+ * state — and watching this table stay green. So each row also carries a
+ * `french`: a distinctive sentence that must be on the screen once the
+ * language is French, which is what actually fails when a string was missed.
  */
 const WIDTHS = [360, 411, 800] as const;
 const SCHEMES = ["light", "dark"] as const;
+
+const PANES = [
+  ...WIDTHS.flatMap((width) => SCHEMES.map((scheme) => ({ width, scheme, language: "en" }))),
+  // The tightest pane there is, in both modes.
+  ...SCHEMES.map((scheme) => ({ width: 360, scheme, language: "fr" })),
+  // And the widest, once, so the measure is checked in French too.
+  { width: 800, scheme: "dark" as const, language: "fr" },
+];
 
 /**
  * One WRITTEN list per screen — typed out rather than derived from the source,
@@ -271,17 +298,23 @@ const SCHEMES = ["light", "dark"] as const;
  * component by construction and assert nothing; this one disagrees the day a
  * handle is renamed or dropped, which is the only day it matters.
  */
-const SCREENS: { name: string; element: () => ReactElement; handles: string[] }[] = [
-  { name: "chats", element: () => <Chats />, handles: ["chats-list", "chat-row-266", "chat-unread-266"] },
-  { name: "thread", element: () => <Thread />, handles: ["thread-list", "thread-title", "msg-mine-2311", "people-composer-input", "people-composer-send"] },
-  { name: "notifications", element: () => <Notifications />, handles: ["notifications-list", "notification-row-9", "notification-unread-9", "notifications-refresh", "notifications-updated"] },
-  { name: "calendar", element: () => <Calendar />, handles: ["calendar-list", "calendar-day-today", "calendar-event-5:2026-09-19", "calendar-refresh", "calendar-updated"] },
-  { name: "profile", element: () => <Profile />, handles: ["profile-photo", "profile-firstname", "profile-lastname", "profile-email-locked", "profile-save", "profile-password", "profile-keys", "profile-web"] },
-  { name: "change-password", element: () => <ChangePassword />, handles: ["password-current", "password-new", "password-confirm", "password-save", "password-current-reveal"] },
-  { name: "ai-keys", element: () => <AiKeys />, handles: ["ai-keys-list", "ai-key-gemini", "ai-key-active-gemini", "ai-key-replace-gemini", "ai-key-remove-gemini"] },
-  { name: "account", element: () => <AccountScreen />, handles: ["account-privacy", "account-delete"] },
-  { name: "delete-account", element: () => <DeleteAccount />, handles: ["delete-what-goes", "delete-password", "delete-account-confirm"] },
-  { name: "privacy", element: () => <Privacy />, handles: ["privacy-title", "privacy-body", "privacy-draft-banner"] },
+const SCREENS: {
+  name: string;
+  element: () => ReactElement;
+  handles: string[];
+  /** A sentence that can only be on screen if this screen reads French. */
+  french: string;
+}[] = [
+  { name: "chats", element: () => <Chats />, handles: ["chats-list", "chat-row-266", "chat-unread-266"], french: "Discussions" },
+  { name: "thread", element: () => <Thread />, handles: ["thread-list", "thread-title", "msg-mine-2311", "people-composer-input", "people-composer-send"], french: "En ligne" },
+  { name: "notifications", element: () => <Notifications />, handles: ["notifications-list", "notification-row-9", "notification-unread-9", "notifications-refresh", "notifications-updated"], french: "Aujourd’hui" },
+  { name: "calendar", element: () => <Calendar />, handles: ["calendar-list", "calendar-day-today", "calendar-event-5:2026-09-19", "calendar-refresh", "calendar-updated"], french: "À venir" },
+  { name: "profile", element: () => <Profile />, handles: ["profile-photo", "profile-firstname", "profile-lastname", "profile-email-locked", "profile-save", "profile-password", "profile-keys", "profile-web"], french: "Profil" },
+  { name: "change-password", element: () => <ChangePassword />, handles: ["password-current", "password-new", "password-confirm", "password-save", "password-current-reveal"], french: "Au moins 6 caractères." },
+  { name: "ai-keys", element: () => <AiKeys />, handles: ["ai-keys-list", "ai-key-gemini", "ai-key-active-gemini", "ai-key-replace-gemini", "ai-key-remove-gemini"], french: "Votre clé IA" },
+  { name: "account", element: () => <AccountScreen />, handles: ["account-privacy", "account-delete"], french: "Confidentialité" },
+  { name: "delete-account", element: () => <DeleteAccount />, handles: ["delete-what-goes", "delete-password", "delete-account-confirm"], french: "Ce qui est supprimé" },
+  { name: "privacy", element: () => <Privacy />, handles: ["privacy-title", "privacy-body", "privacy-draft-banner"], french: "Brouillon — pas encore approuvé" },
 ];
 
 function setWidth(width: number): void {
@@ -300,25 +333,47 @@ function renderScreen(element: ReactElement) {
   return render(<QueryClientProvider client={client}>{element}</QueryClientProvider>);
 }
 
-afterEach(() => {
+afterEach(async () => {
   jest.restoreAllMocks();
   useThemeStore.setState({ choice: "system" });
+  await i18n.changeLanguage("en");
 });
 
-describe.each(SCREENS)("$name", ({ element, handles }) => {
-  it.each(
-    WIDTHS.flatMap((width) => SCHEMES.map((scheme) => ({ width, scheme }))),
-  )("renders every handle at $width dp in $scheme", async ({ width, scheme }) => {
+describe.each(SCREENS)("$name", ({ element, handles, french }) => {
+  it.each(PANES)(
+    "renders every handle at $width dp in $scheme, in $language",
+    async ({ width, scheme, language }) => {
     setWidth(width);
     // The store, not a `useColorScheme` mock: it is the seam the app actually
     // resolves through now, so this exercises the real path.
     useThemeStore.setState({ choice: scheme });
+    await i18n.changeLanguage(language);
 
     renderScreen(element());
 
     for (const handle of handles) {
       expect(await screen.findByTestId(handle)).toBeTruthy();
     }
+    },
+  );
+
+  /**
+   * The second claim, and the one a handle cannot make: the screen is
+   * actually READ in French. A hardcoded English string keeps every handle
+   * and fails this.
+   */
+  it("reads in French", async () => {
+    setWidth(360);
+    await i18n.changeLanguage("fr");
+
+    renderScreen(element());
+
+    // `findAllByText`: a sentence a screen uses twice — a title and its
+    // button — is still proof it reads French, and `findByText` would call
+    // that an error.
+    expect(
+      (await screen.findAllByText(french, { exact: false, includeHiddenElements: true })).length,
+    ).toBeGreaterThan(0);
   });
 });
 
@@ -335,6 +390,14 @@ describe("the width invariant", () => {
     expect(SCREENS.every((s) => s.handles.length > 0)).toBe(true);
     expect(WIDTHS).toContain(360);
     expect(WIDTHS).toContain(800);
+  });
+
+  it("is that no screen hides a handle in the longer language either", () => {
+    // 360 dp in French is the tightest pane in the app, and both modes of it
+    // are in the table.
+    const tightest = PANES.filter((p) => p.width === 360 && p.language === "fr");
+    expect(tightest).toHaveLength(SCHEMES.length);
+    expect(PANES.some((p) => p.width === 800 && p.language === "fr")).toBe(true);
   });
 });
 

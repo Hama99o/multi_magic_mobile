@@ -27,6 +27,7 @@
  */
 import { Pressable, View } from "react-native";
 import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react-native";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -36,6 +37,7 @@ import { ACCOUNT_DELETION_AVAILABLE } from "@/api/account";
 export default function Account() {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
 
   return (
     <Screen measure>
@@ -50,14 +52,14 @@ export default function Account() {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t("common.back")}
           hitSlop={8}
           style={{ width: 32, height: 32, justifyContent: "center" }}
         >
           <ChevronLeft size={24} color={colors.ink} />
         </Pressable>
         <Text variant="title" style={{ flex: 1 }}>
-          Account
+          {t("account.title")}
         </Text>
       </View>
 
@@ -81,7 +83,7 @@ export default function Account() {
             minHeight: metrics.touch,
           }}
         >
-          <Text style={{ flex: 1 }}>Privacy policy</Text>
+          <Text style={{ flex: 1 }}>{t("account.privacyPolicy")}</Text>
           <ChevronRight size={18} color={colors.inkMuted} />
         </Pressable>
       </View>
@@ -95,8 +97,8 @@ export default function Account() {
           testID="account-delete"
           onPress={() => router.push("/delete-account")}
           accessibilityRole="button"
-          accessibilityLabel="Delete account"
-          accessibilityHint="Opens a confirmation. This cannot be undone."
+          accessibilityLabel={t("account.deleteAccount")}
+          accessibilityHint={t("account.deleteHint")}
           android_ripple={{ color: colors.border }}
           style={{
             flexDirection: "row",
@@ -110,7 +112,7 @@ export default function Account() {
           {/* No chevron. Six references and not one filled button — and a
               chevron here would promise an ordinary screen. */}
           <Text tone="danger" style={{ flex: 1 }}>
-            Delete account
+            {t("account.deleteAccount")}
           </Text>
         </Pressable>
 
@@ -121,8 +123,8 @@ export default function Account() {
           style={{ paddingHorizontal: metrics.space.lg, marginTop: metrics.space.xs }}
         >
           {ACCOUNT_DELETION_AVAILABLE
-            ? "This removes everything and cannot be undone."
-            : "This removes everything and cannot be undone. Not available in the app yet."}
+            ? t("account.deleteCaption")
+            : t("account.deleteCaptionUnavailable")}
         </Text>
       </View>
     </Screen>

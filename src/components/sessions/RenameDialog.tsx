@@ -15,6 +15,7 @@ import { Button } from "@/components/reusables/button";
 import { Input } from "@/components/reusables/input";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { LIMITS } from "@/api/ai";
+import { useTranslation } from "react-i18next";
 
 export function RenameDialog({
   visible,
@@ -31,6 +32,7 @@ export function RenameDialog({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const [title, setTitle] = useState(initialTitle);
 
   // Reopening on a different row must not show the previous row's title.
@@ -73,10 +75,10 @@ export function RenameDialog({
           }}
           testID="rename-dialog"
         >
-          <Text variant="title">Rename conversation</Text>
+          <Text variant="title">{t("sessions.renameTitle")}</Text>
 
           <Input
-            label="Name"
+            label={t("sessions.name")}
             value={title}
             onChangeText={setTitle}
             maxLength={LIMITS.titleLimit}
@@ -94,7 +96,7 @@ export function RenameDialog({
 
           <View style={{ gap: metrics.space.sm }}>
             <Button
-              label="Save"
+              label={t("common.save")}
               busy={busy}
               disabled={trimmed.length === 0}
               onPress={() => onSave(trimmed)}
@@ -108,7 +110,7 @@ export function RenameDialog({
               style={{ minHeight: metrics.touch, alignItems: "center", justifyContent: "center" }}
               testID="rename-cancel"
             >
-              <Text tone="muted">Cancel</Text>
+              <Text tone="muted">{t("common.cancel")}</Text>
             </Pressable>
           </View>
         </View>

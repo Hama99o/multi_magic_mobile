@@ -27,6 +27,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AppState, Platform } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { t } from "@/i18n";
 
 /**
  * LOADED DEFENSIVELY, AND THE REASON IS A BUG THIS ALREADY CAUSED.
@@ -151,11 +152,11 @@ function recogniserPresent(): boolean {
 export function problemSentence(code: string, langLabel: string): string | null {
   switch (code) {
     case "network":
-      return "Dictation needs a connection right now. You can still type.";
+      return t("dictation.network");
     case "audio-capture":
-      return "The microphone is busy or unavailable. You can still type.";
+      return t("dictation.audioCapture");
     case "language-not-supported":
-      return `Your phone cannot dictate in ${langLabel} yet. You can still type.`;
+      return t("dictation.languageNotSupported", { language: langLabel });
     default:
       return null;
   }

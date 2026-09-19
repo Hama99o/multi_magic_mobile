@@ -20,6 +20,7 @@
  */
 import { Pressable, ScrollView, View } from "react-native";
 import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react-native";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -30,6 +31,7 @@ import { Markdown } from "@/screens/account/Markdown";
 export default function Privacy() {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
 
   return (
     <Screen measure>
@@ -44,7 +46,7 @@ export default function Privacy() {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t("common.back")}
           hitSlop={8}
           style={{ width: 32, height: 32, justifyContent: "center" }}
         >
@@ -54,7 +56,7 @@ export default function Privacy() {
             a reviewer — "needs Hamma9900's approval" — and is stripped by
             `scripts/build-privacy.mjs`, which is also what caught it. */}
         <Text testID="privacy-title" variant="title" style={{ flex: 1 }}>
-          Privacy
+          {t("privacy.title")}
         </Text>
       </View>
 
@@ -71,11 +73,10 @@ export default function Privacy() {
           }}
         >
           <Text variant="label" tone="danger">
-            Draft — not yet approved
+            {t("privacy.draftTitle")}
           </Text>
           <Text variant="caption" tone="muted" style={{ marginTop: 2 }}>
-            Every sentence here was checked against the code, but this text is
-            still waiting on approval and must not ship in this state.
+            {t("privacy.draftBody")}
           </Text>
         </View>
       ) : null}

@@ -19,6 +19,7 @@
  * disagree the first time an id arrived as a string.
  */
 import { View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import type { ChatMessage, MessageLink } from "@/api/ai";
@@ -43,12 +44,13 @@ export function MessageRow({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
 
   if (message.deleted) {
     return (
       <View style={{ paddingVertical: metrics.space.sm }}>
         <Text variant="caption" tone="muted">
-          This message was deleted.
+          {t("answer.deleted")}
         </Text>
       </View>
     );
@@ -99,8 +101,8 @@ export function MessageRow({
           AI keys page, and "Created / AI keys" reads as though the assistant
           had just made something. `links` carries both created records and
           plain navigation, so only the weaker word is true of both. */}
-      <SourceChips sources={message.sources} label="From" onOpen={onOpenSource} />
-      <SourceChips sources={message.links} label="Open" onOpen={onOpenSource} />
+      <SourceChips sources={message.sources} label={t("answer.from")} onOpen={onOpenSource} />
+      <SourceChips sources={message.links} label={t("answer.open")} onOpen={onOpenSource} />
 
       <AnswerActions
         message={message}

@@ -20,17 +20,20 @@ import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { LIMITS, sessionsApi, type AiSession } from "@/api/ai";
 import { apiErrorMessage } from "@/api/http";
 import { isToday } from "@/lib/relativeTime";
+import { useAuthStore } from "@/stores/auth.store";
 import { SessionRow } from "./SessionRow";
 import { RenameDialog } from "./RenameDialog";
 import { DeleteConfirm } from "./DeleteConfirm";
 import { InstructionsDialog, ScopeDialog } from "./SessionOptionsDialogs";
 import { ThemeRow } from "./ThemeRow";
+import { LanguageRow } from "./LanguageRow";
 
 type Pending =
   | { kind: "rename" | "delete" | "menu" | "instructions" | "scope"; session: AiSession }
@@ -53,6 +56,8 @@ export function SessionsSheet({
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
+  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const { t } = useTranslation();
   const [pending, setPending] = useState<Pending>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -71,7 +76,7 @@ export function SessionsSheet({
       onOpenSession(session.id);
       onClose();
     },
-    onError: (e) => setError(apiErrorMessage(e) ?? "Could not start a new conversation."),
+    onError: (e) => setError(apiErrorMessage(e) ?? t("sessions.createFailed")),
   });
 
   const rename = useMutation({
@@ -80,7 +85,7 @@ export function SessionsSheet({
       void refresh();
       setPending(null);
     },
-    onError: (e) => setError(apiErrorMessage(e) ?? "Could not rename that conversation."),
+    onError: (e) => setError(apiErrorMessage(e) ?? t("sessions.renameFailed")),
   });
 
   const setInstructions = useMutation({
@@ -90,7 +95,7 @@ export function SessionsSheet({
       void refresh();
       setPending(null);
     },
-    onError: (e) => setError(apiErrorMessage(e) ?? "Could not save those instructions."),
+    onError: (e) => setError(apiErrorMessage(e) ?? t("sessions.instructionsFailed")),
   });
 
   const setScope = useMutation({
@@ -99,7 +104,7 @@ export function SessionsSheet({
       void refresh();
       setPending(null);
     },
-    onError: (e) => setError(apiErrorMessage(e) ?? "Could not change what this chat searches."),
+    onError: (e) => setError(apiErrorMessage(e) ?? t("sessions.scopeFailed")),
   });
 
   const clear = useMutation({
@@ -110,7 +115,7 @@ export function SessionsSheet({
       void queryClient.invalidateQueries({ queryKey: ["ai", "currentSession"] });
       setPending(null);
     },
-    onError: (e) => setError(apiErrorMessage(e) ?? "Could not clear that conversation."),
+    onError: (e) => setError(apiErrorMessage(e) ?? t("sessions.clearFailed")),
   });
 
   const destroy = useMutation({
@@ -122,7 +127,7 @@ export function SessionsSheet({
       // the session to fall back to — so the caller does not create one.
       onOpenSession(fallback.id);
     },
-    onError: (e) => setError(apiErrorMessage(e) ?? "Could not delete that conversation."),
+    onError: (e) => setError(apiErrorMessage(e) ?? t("sessions.deleteFailed")),
   });
 
   if (!visible) return null;
@@ -130,6 +135,10 @@ export function SessionsSheet({
   const atLimit = sessions.length >= LIMITS.maxSessions;
   const today = sessions.filter((s) => isToday(s.updatedAt));
   const earlier = sessions.filter((s) => !isToday(s.updatedAt));
+  const groups: { label: string; rows: AiSession[] }[] = [
+    { label: t("sessions.today"), rows: today },
+    { label: t("sessions.earlier"), rows: earlier },
+  ];
 
   const group = (label: string, rows: AiSession[]) =>
     rows.length === 0 ? null : (
@@ -177,11 +186,11 @@ export function SessionsSheet({
         >
           <View style={{ flexDirection: "row", alignItems: "center" }}>
             <Text variant="title" style={{ flex: 1 }}>
-              Conversations
+              {t("sessions.title")}
             </Text>
             <Pressable
               accessibilityRole="button"
-              accessibilityLabel="Close"
+              accessibilityLabel={t("common.close")}
               hitSlop={10}
               onPress={onClose}
               style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
@@ -201,8 +210,7 @@ export function SessionsSheet({
             <ActivityIndicator color={colors.accent} />
           ) : (
             <ScrollView contentContainerStyle={{ gap: metrics.space.lg }}>
-              {group("Today", today)}
-              {group("Earlier", earlier)}
+              {groups.map((entry) => group(entry.label, entry.rows))}
             </ScrollView>
           )}
 
@@ -210,12 +218,11 @@ export function SessionsSheet({
           <View style={{ gap: metrics.space.sm }}>
             {atLimit ? (
               <Text variant="caption" tone="muted" testID="sessions-at-limit">
-                You have {LIMITS.maxSessions} conversations, which is the most MultiMagic keeps.
-                Delete one to start another.
+                {t("sessions.atLimit", { max: LIMITS.maxSessions })}
               </Text>
             ) : null}
             <Button
-              label="New conversation"
+              label={t("sessions.newConversation")}
               busy={create.isPending}
               disabled={atLimit}
               onPress={() => create.mutate()}
@@ -243,8 +250,14 @@ export function SessionsSheet({
             >
               <ThemeRow />
 
+              {/* Beside the theme, because he named them together and they are
+                  the same kind of choice. `userId` is what lets the choice
+                  reach the web too; it is absent for one launch after a cold
+                  start, and the language still applies locally. */}
+              <LanguageRow userId={userId} />
+
               <Text variant="label" tone="muted" style={{ paddingHorizontal: metrics.space.sm, paddingTop: metrics.space.sm }}>
-                Account
+                {t("sessions.account")}
               </Text>
 
               <Pressable
@@ -256,7 +269,7 @@ export function SessionsSheet({
                 style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }}
                 testID="sessions-profile"
               >
-                <Text>Your profile</Text>
+                <Text>{t("sessions.yourProfile")}</Text>
               </Pressable>
 
               <Pressable
@@ -268,7 +281,7 @@ export function SessionsSheet({
                 style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }}
                 testID="sessions-account"
               >
-                <Text>Privacy and account</Text>
+                <Text>{t("sessions.privacyAndAccount")}</Text>
               </Pressable>
 
               <Pressable
@@ -278,7 +291,7 @@ export function SessionsSheet({
                 style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }}
                 testID="sessions-sign-out"
               >
-                <Text tone="muted">Sign out</Text>
+                <Text tone="muted">{t("sessions.signOut")}</Text>
               </Pressable>
             </View>
           </View>
@@ -290,7 +303,7 @@ export function SessionsSheet({
         <Modal visible transparent animationType="fade" onRequestClose={() => setPending(null)}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel="Close menu"
+            accessibilityLabel={t("common.close")}
             onPress={() => setPending(null)}
             style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "center", padding: metrics.space.xl }}
           >
@@ -316,9 +329,9 @@ export function SessionsSheet({
                 style={{ minHeight: metrics.touch, justifyContent: "center" }}
                 testID="session-menu-clear"
               >
-                <Text>Clear messages</Text>
+                <Text>{t("sessions.clear")}</Text>
                 <Text variant="caption" tone="muted">
-                  Empties this chat. Its files stay.
+                  {t("sessions.clearHint")}
                 </Text>
               </Pressable>
 
@@ -328,7 +341,7 @@ export function SessionsSheet({
                 style={{ minHeight: metrics.touch, justifyContent: "center" }}
                 testID="session-menu-rename"
               >
-                <Text>Rename</Text>
+                <Text>{t("sessions.rename")}</Text>
               </Pressable>
 
               <Pressable
@@ -337,11 +350,11 @@ export function SessionsSheet({
                 style={{ minHeight: metrics.touch, justifyContent: "center" }}
                 testID="session-menu-scope"
               >
-                <Text>Search in</Text>
+                <Text>{t("sessions.searchIn")}</Text>
                 <Text variant="caption" tone="muted">
                   {pending.session.apps.length === 0
-                    ? "All apps"
-                    : `${pending.session.apps.length} apps`}
+                    ? t("sessions.allApps")
+                    : t("sessions.someApps", { count: pending.session.apps.length })}
                 </Text>
               </Pressable>
 
@@ -351,9 +364,11 @@ export function SessionsSheet({
                 style={{ minHeight: metrics.touch, justifyContent: "center" }}
                 testID="session-menu-instructions"
               >
-                <Text>How to answer</Text>
+                <Text>{t("sessions.howToAnswer")}</Text>
                 <Text variant="caption" tone="muted">
-                  {pending.session.instructions ? "Set" : "Not set"}
+                  {pending.session.instructions
+                    ? t("sessions.instructionsSet")
+                    : t("sessions.instructionsNotSet")}
                 </Text>
               </Pressable>
 
@@ -363,7 +378,7 @@ export function SessionsSheet({
                 style={{ minHeight: metrics.touch, justifyContent: "center" }}
                 testID="session-menu-delete"
               >
-                <Text tone="danger">Delete</Text>
+                <Text tone="danger">{t("sessions.delete")}</Text>
               </Pressable>
             </View>
           </Pressable>

@@ -21,7 +21,7 @@ jest.mock("expo-router", () => ({
 
 /* eslint-disable import/first */
 import SignIn from "../sign-in";
-import { SESSION_END_SENTENCE, useAuthStore } from "@/stores/auth.store";
+import { sessionEndSentence, useAuthStore } from "@/stores/auth.store";
 import { TwoFactorRequiredError } from "@/api/auth";
 
 function axiosError(status: number) {
@@ -43,15 +43,15 @@ describe("arriving here because a session ended", () => {
     useAuthStore.setState({ signedOutReason: "revoked" });
     render(<SignIn />);
 
-    expect(screen.getByTestId("sign-in-notice")).toHaveTextContent(SESSION_END_SENTENCE.revoked);
-    expect(SESSION_END_SENTENCE.revoked).toMatch(/device/);
+    expect(screen.getByTestId("sign-in-notice")).toHaveTextContent(sessionEndSentence("revoked"));
+    expect(sessionEndSentence("revoked")).toMatch(/device/);
   });
 
   it("says the session EXPIRED when it simply ran out", () => {
     useAuthStore.setState({ signedOutReason: "expired" });
     render(<SignIn />);
 
-    expect(screen.getByTestId("sign-in-notice")).toHaveTextContent(SESSION_END_SENTENCE.expired);
+    expect(screen.getByTestId("sign-in-notice")).toHaveTextContent(sessionEndSentence("expired"));
   });
 
   it("says nothing on an ordinary arrival", () => {

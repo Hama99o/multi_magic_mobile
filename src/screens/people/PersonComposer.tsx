@@ -23,6 +23,7 @@
 import { useEffect, useRef } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { ArrowUp, X } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { useColors, useMetrics } from "@/hooks/useColors";
 
 /** Long enough that a pause between words does not re-announce. */
@@ -46,6 +47,7 @@ export function PersonComposer({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const lastTyping = useRef(0);
 
   useEffect(() => {
@@ -85,7 +87,7 @@ export function PersonComposer({
           testID="people-composer-input"
           value={value}
           onChangeText={onChange}
-          placeholder={editing ? "Edit message" : "Message"}
+          placeholder={editing ? t("thread.editMessage") : t("thread.message")}
           placeholderTextColor={colors.inkMuted}
           multiline
           // Five lines, then it scrolls — a pasted paragraph must not take the
@@ -97,7 +99,7 @@ export function PersonComposer({
             paddingVertical: metrics.space.md,
             maxHeight: 120,
           }}
-          accessibilityLabel={editing ? "Edit message" : "Message"}
+          accessibilityLabel={editing ? t("thread.editMessage") : t("thread.message")}
         />
 
         {/* Tolan's `✕` inside the field. Only when there is something to clear. */}
@@ -105,7 +107,7 @@ export function PersonComposer({
           <Pressable
             onPress={() => onChange("")}
             accessibilityRole="button"
-            accessibilityLabel="Clear"
+            accessibilityLabel={t("composer.clear")}
             hitSlop={8}
           >
             <X size={18} color={colors.inkMuted} />
@@ -118,7 +120,7 @@ export function PersonComposer({
         onPress={onSend}
         disabled={!canSend}
         accessibilityRole="button"
-        accessibilityLabel="Send"
+        accessibilityLabel={t("composer.send")}
         accessibilityState={{ disabled: !canSend }}
         style={{
           width: metrics.touch,

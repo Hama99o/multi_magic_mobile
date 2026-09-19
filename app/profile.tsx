@@ -25,6 +25,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, ExternalLink, Pencil } from "lucide-react-native";
 import * as Linking from "expo-linking";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -85,6 +86,7 @@ function Field({
 export default function ProfileScreen() {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const { data: profile, isLoading, error, refetch } = useQuery({
@@ -123,8 +125,7 @@ export default function ProfileScreen() {
     setSaved(true);
   };
 
-  const onFailed = (e: unknown) =>
-    setFailure(failureMessage(e, "Could not save that."));
+  const onFailed = (e: unknown) => setFailure(failureMessage(e, t("profile.saveFailed")));
 
   const save = useMutation({
     mutationFn: (changes: ProfileChanges) => profileApi.update(profile!.id, changes),
@@ -159,24 +160,24 @@ export default function ProfileScreen() {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t("common.back")}
           hitSlop={8}
           style={{ width: 32, height: 32, justifyContent: "center" }}
         >
           <ChevronLeft size={24} color={colors.ink} />
         </Pressable>
         <Text variant="title" style={{ flex: 1 }}>
-          Profile
+          {t("profile.title")}
         </Text>
       </View>
 
       {error ? (
         <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
           <Text tone="muted">
-            {failureMessage(error, "Could not load your profile.")}
+            {failureMessage(error, t("profile.loadFailed"))}
           </Text>
           <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
-            <Text tone="accent">Try again</Text>
+            <Text tone="accent">{t("common.tryAgain")}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -192,7 +193,7 @@ export default function ProfileScreen() {
               testID="profile-photo"
               onPress={() => setSheetOpen(true)}
               accessibilityRole="button"
-              accessibilityLabel="Change your photo"
+              accessibilityLabel={t("profile.changeYourPhoto")}
               disabled={busy}
             >
               <Avatar
@@ -217,22 +218,22 @@ export default function ProfileScreen() {
               <Pencil size={14} color={colors.accent} />
               <Text tone="accent" variant="label">
                 {setPhoto.isPending || clearPhoto.isPending
-                  ? "Updating photo…"
+                  ? t("profile.updatingPhoto")
                   : profile.avatar
-                    ? "Change photo"
-                    : "Add a photo"}
+                    ? t("profile.changePhoto")
+                    : t("profile.addPhoto")}
               </Text>
             </Pressable>
           </View>
 
           <View style={{ gap: metrics.space.lg, marginTop: metrics.space.lg }}>
-            <Field label="First name" value={firstName} onChange={setFirstName} testID="profile-firstname" />
-            <Field label="Last name" value={lastName} onChange={setLastName} testID="profile-lastname" />
+            <Field label={t("profile.firstName")} value={firstName} onChange={setFirstName} testID="profile-firstname" />
+            <Field label={t("profile.lastName")} value={lastName} onChange={setLastName} testID="profile-lastname" />
             <Field
-              label="About"
+              label={t("profile.about")}
               value={about}
               onChange={setAbout}
-              placeholder="A line about you"
+              placeholder={t("profile.aboutPlaceholder")}
               testID="profile-about"
               autoCapitalize="none"
             />
@@ -242,7 +243,7 @@ export default function ProfileScreen() {
                 as a bug. See this file's header. */}
             <View style={{ gap: metrics.space.xs }}>
               <Text variant="caption" tone="muted">
-                Email
+                {t("profile.email")}
               </Text>
               <View
                 testID="profile-email-locked"
@@ -259,8 +260,7 @@ export default function ProfileScreen() {
                 <Text tone="muted">{profile.email ?? "—"}</Text>
               </View>
               <Text variant="caption" tone="muted">
-                Changing your email signs you out of live updates until you sign
-                in again, so it is done on the website for now.
+                {t("profile.emailLocked")}
               </Text>
             </View>
           </View>
@@ -271,7 +271,7 @@ export default function ProfileScreen() {
             </Text>
           ) : saved ? (
             <Text testID="profile-saved" tone="accent" variant="caption" style={{ marginTop: metrics.space.md }}>
-              Saved.
+              {t("common.saved")}
             </Text>
           ) : null}
 
@@ -287,7 +287,7 @@ export default function ProfileScreen() {
             }}
             disabled={!dirty || busy}
             accessibilityRole="button"
-            accessibilityLabel="Save"
+            accessibilityLabel={t("common.save")}
             accessibilityState={{ disabled: !dirty || busy }}
             style={{
               marginTop: metrics.space.lg,
@@ -299,7 +299,7 @@ export default function ProfileScreen() {
             }}
           >
             <Text variant="label" style={{ color: !dirty || busy ? colors.inkMuted : colors.onAccent }}>
-              {save.isPending ? "Saving…" : "Save"}
+              {save.isPending ? t("common.saving") : t("common.save")}
             </Text>
           </Pressable>
 
@@ -315,8 +315,8 @@ export default function ProfileScreen() {
             }}
           >
             {[
-              { key: "password", label: "Change password", to: "/change-password" as const },
-              { key: "keys", label: "Your AI provider key", to: "/ai-keys" as const },
+              { key: "password", label: t("profile.changePassword"), to: "/change-password" as const },
+              { key: "keys", label: t("profile.yourAiKey"), to: "/ai-keys" as const },
             ].map((row, index) => (
               <Pressable
                 key={row.key}
@@ -358,7 +358,7 @@ export default function ProfileScreen() {
           >
             <ExternalLink size={16} color={colors.inkMuted} />
             <Text tone="muted" style={{ flex: 1 }}>
-              Notes, money, contacts and the rest — open MultiMagic on the web
+              {t("profile.openWeb")}
             </Text>
           </Pressable>
 

@@ -24,13 +24,26 @@ import { Modal, Pressable, View } from "react-native";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import { useTranslation } from "react-i18next";
+import { t as translate } from "@/i18n";
 
-export const SAFE_SENTENCE = "Your notes, contacts, loans and money are not touched.";
+/**
+ * The guarantee, as a function of the current language.
+ *
+ * It was a `const`, and a const is evaluated once at import — before the
+ * stored language has been read, and never again after a switch. The tests
+ * compare against this same call, so the sentence and its assertion cannot
+ * drift apart.
+ */
+export function safeSentence(): string {
+  return translate("deleteConversation.safe");
+}
 
 export function deleteQuestion(fileCount: number): string {
-  if (fileCount === 1) return "Delete this conversation and the 1 file in it?";
-  if (fileCount > 1) return `Delete this conversation and the ${fileCount} files in it?`;
-  return "Delete this conversation?";
+  if (fileCount > 0) {
+    return translate("deleteConversation.questionWithFiles", { count: fileCount });
+  }
+  return translate("deleteConversation.question");
 }
 
 export function DeleteConfirm({
@@ -48,6 +61,7 @@ export function DeleteConfirm({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
 
   if (!visible) return null;
 
@@ -82,12 +96,12 @@ export function DeleteConfirm({
 
           {/* The guarantee. Present whether or not there are files. */}
           <Text tone="muted" testID="delete-conversation-safe">
-            {SAFE_SENTENCE}
+            {t("deleteConversation.safe")}
           </Text>
 
           <View style={{ gap: metrics.space.sm }}>
             <Button
-              label="Delete conversation"
+              label={t("deleteConversation.confirm")}
               tone="danger"
               busy={busy}
               onPress={onConfirm}
@@ -101,7 +115,7 @@ export function DeleteConfirm({
               style={{ minHeight: metrics.touch, alignItems: "center", justifyContent: "center" }}
               testID="delete-conversation-cancel"
             >
-              <Text tone="muted">Keep it</Text>
+              <Text tone="muted">{t("deleteConversation.keep")}</Text>
             </Pressable>
           </View>
         </View>

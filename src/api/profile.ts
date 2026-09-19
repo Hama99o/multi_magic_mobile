@@ -29,6 +29,12 @@ import { obj, optStr, id as parseId } from "./parse";
 export interface Profile {
   id: number;
   email: string | null;
+  /**
+   * The interface language, `"en"` or `"fr"` — the SAME column the web's
+   * switcher writes (`AuthContext.tsx` → `PATCH /users/:id { user: { lang } }`),
+   * so a switch on the laptop reaches the phone and back.
+   */
+  lang: string | null;
   firstName: string | null;
   lastName: string | null;
   fullName: string | null;
@@ -47,6 +53,8 @@ export interface ProfileChanges {
   username?: string;
   about?: string;
   phone_number?: string;
+  /** `"en"` | `"fr"`. Written by the language row, not by the profile form. */
+  lang?: string;
 }
 
 export function parseProfile(payload: unknown): Profile {
@@ -54,6 +62,7 @@ export function parseProfile(payload: unknown): Profile {
   return {
     id: parseId(record.id, "user.id"),
     email: optStr(record.email),
+    lang: optStr(record.lang),
     firstName: optStr(record.firstname),
     lastName: optStr(record.lastname),
     fullName: optStr(record.fullname),

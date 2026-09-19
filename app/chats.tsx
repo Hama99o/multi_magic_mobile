@@ -21,6 +21,7 @@
 import { useCallback, useEffect } from "react";
 import { FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react-native";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
@@ -34,6 +35,7 @@ import { ConversationRow } from "@/screens/people/ConversationRow";
 export default function Chats() {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch, isRefetching } = useQuery({
@@ -94,24 +96,24 @@ export default function Chats() {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t("common.back")}
           hitSlop={8}
           style={{ width: 32, height: 32, justifyContent: "center" }}
         >
           <ChevronLeft size={24} color={colors.ink} />
         </Pressable>
         <Text variant="title" style={{ flex: 1 }}>
-          Chats
+          {t("chats.title")}
         </Text>
       </View>
 
       {error ? (
         <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
           <Text tone="muted">
-            {failureMessage(error, "Could not load your chats.")}
+            {failureMessage(error, t("chats.loadFailed"))}
           </Text>
           <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
-            <Text tone="accent">Try again</Text>
+            <Text tone="accent">{t("common.tryAgain")}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -142,8 +144,8 @@ export default function Chats() {
               testID="chats-empty"
               style={{ paddingVertical: metrics.space.xl * 2, gap: metrics.space.sm }}
             >
-              <Text variant="label">No conversations yet</Text>
-              <Text tone="muted">Chats you start on MultiMagic appear here.</Text>
+              <Text variant="label">{t("chats.emptyTitle")}</Text>
+              <Text tone="muted">{t("chats.emptyBody")}</Text>
             </View>
           )
         }

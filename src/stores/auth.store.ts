@@ -10,6 +10,7 @@ import { create } from "zustand";
 import { signIn as apiSignIn, signOut as apiSignOut, type CurrentUser } from "@/api/auth";
 import { setUnauthorizedHandler, type SessionEndReason } from "@/api/http";
 import { resetCable } from "@/lib/cable";
+import { t } from "@/i18n";
 
 /**
  * What the sign-in screen says after a FORCED sign-out — one sentence per
@@ -17,11 +18,9 @@ import { resetCable } from "@/lib/cable";
  * is the fingerprint check or another device, and the person should know that
  * something other than time ended their session.
  */
-export const SESSION_END_SENTENCE: Record<SessionEndReason, string> = {
-  expired: "Your session expired. Sign in again to carry on.",
-  revoked:
-    "MultiMagic no longer recognises this phone's session — it was ended from another device, or the device check did not match. Sign in again to carry on.",
-};
+export function sessionEndSentence(reason: SessionEndReason): string {
+  return t(`session.${reason}`);
+}
 
 interface AuthState {
   user: CurrentUser | null;

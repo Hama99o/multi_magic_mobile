@@ -1,0 +1,453 @@
+/**
+ * The English strings. The source language: `fallbackLng` is `en`, so a key
+ * missing from `fr.ts` renders these words rather than the key itself.
+ *
+ * Grouped by where they appear, not by part of speech, so a screen's copy can
+ * be read in one place and reviewed as a whole.
+ */
+export const en = {
+  common: {
+    back: "Back",
+    refresh: "Refresh",
+    updated: "Updated {{when}}",
+    updating: "Updating…",
+    cancel: "Cancel",
+    close: "Close",
+    tryAgain: "Try again",
+    save: "Save",
+    saving: "Saving…",
+    saved: "Saved.",
+    delete: "Delete",
+    loading: "Loading…",
+    justNow: "just now",
+    minutesAgo: "{{count}} min ago",
+    hoursAgo: "{{count}} h ago",
+    yesterday: "Yesterday",
+    daysAgo: "{{count}} days ago",
+  },
+
+  failure: {
+    unreachable: "Could not reach MultiMagic.",
+    unreadable:
+      "MultiMagic sent something this app could not read. That is a bug in the app, not your connection.",
+    rateLimited: "Too many requests just now. Give it a minute.",
+    sessionEnded: "Your session ended. Sign in again.",
+    checkConnection: "Could not reach MultiMagic. Check your connection.",
+  },
+
+  session: {
+    expired: "Your session expired. Sign in again to carry on.",
+    revoked:
+      "MultiMagic no longer recognises this phone's session — it was ended from another device, or the device check did not match. Sign in again to carry on.",
+  },
+
+  signIn: {
+    title: "Sign in",
+    subtitle: "Your notes, money, contacts and calendar — answered.",
+    email: "Email",
+    password: "Password",
+    forgot: "Forgot your password?",
+    submit: "Sign in with email",
+    newHere: "New here?",
+    createAccount: "Create an account",
+    missing: "Enter your email and password.",
+    wrongCredentials: "That email and password do not match.",
+    tooManyAttempts: "Too many attempts. Try again in a few minutes.",
+    failed: "Something went wrong signing in.",
+  },
+
+  signUp: {
+    title: "Create an account",
+    subtitle: "One account for your notes, money, contacts and calendar.",
+    firstName: "First name",
+    lastName: "Last name",
+    email: "Email",
+    password: "Password",
+    submit: "Create account",
+    haveAccount: "Already have an account?",
+    signIn: "Sign in",
+    emptyForm: "Fill in your name, email and a password.",
+    missingFirstName: "Enter your first name.",
+    missingLastName: "Enter your last name.",
+    missingEmail: "Enter your email.",
+    missingPassword: "Choose a password.",
+    failed: "Could not create that account.",
+  },
+
+  forgotPassword: {
+    title: "Reset your password",
+    subtitle: "Enter your email and we will send a link to set a new password.",
+    email: "Email",
+    submit: "Send reset link",
+    backToSignIn: "Back to sign in",
+    sentTitle: "Check your email",
+    sentBody:
+      "If that address has a MultiMagic account, we have sent it a link to reset the password. The link opens MultiMagic on the web.",
+    missing: "Enter the email you signed up with.",
+    failed: "Could not send the link.",
+  },
+
+  chat: {
+    title: "Assistant",
+    chats: "Chats",
+    notifications: "Notifications",
+    calendar: "Calendar",
+    conversations: "Conversations",
+    unreadBadge: "{{label}}, {{count}} unread",
+    disclaimer:
+      "Answers come from your MultiMagic data and can be wrong. Check anything that matters.",
+    loadFailed: "Could not load this conversation.",
+    answerFailed: "That question did not get an answer.",
+    askAgain: "Ask again",
+    retry: "Retry",
+    sendFailed: "That did not send.",
+    sendUnreachable: "Could not reach MultiMagic. Your question is still here.",
+    rateLimited:
+      "You have asked a lot in a short time. MultiMagic takes {{perMinute}} questions a minute and {{perHour}} an hour. Your question is kept — you can send it in {{seconds}} s.",
+    emptyTitle:
+      "Ask about anything you have kept in MultiMagic — your notes, money, contacts and calendar.",
+    thinking: "Thinking",
+    stillWorking: "Still working on your answer",
+    slow: "Still working — this one is taking a while.",
+  },
+
+  composer: {
+    placeholder: "Ask anything…",
+    yourQuestion: "Your question",
+    send: "Send",
+    clear: "Clear",
+    attach: "Add a photo or a document",
+    listening: "Listening…",
+    cancelDictation: "Cancel dictation",
+    dictateIn: "Dictate in {{language}}",
+    stopDictating: "Stop dictating",
+    micRefused:
+      "I can't listen without the microphone. You can still type, or allow it in Settings.",
+    offline:
+      "Can't reach MultiMagic right now. Your question is kept — send it when the connection is back.",
+  },
+
+  dictation: {
+    network: "Dictation needs a connection right now. You can still type.",
+    audioCapture: "The microphone is busy or unavailable. You can still type.",
+    languageNotSupported: "Your phone cannot dictate in {{language}} yet. You can still type.",
+  },
+
+  answer: {
+    copy: "Copy answer",
+    copied: "Copied",
+    good: "Good answer",
+    bad: "Bad answer",
+    undo: "Undo",
+    undoing: "Taking back…",
+    undone: "Taken back",
+    undoLabel: "Undo what this created",
+    undoFailed: "I could not take that back.",
+    from: "From",
+    open: "Open",
+    deleted: "This message was deleted.",
+    readAloud: "Read aloud",
+    stopReading: "Stop reading",
+    pauseReading: "Pause reading",
+    resumeReading: "Resume reading",
+    restartReading: "Start reading again",
+    deviceVoice: "your phone's voice",
+    voiceBusy:
+      "MultiMagic's voice is busy — too many read-alouds in a minute. Try again in a moment.",
+    voiceUnavailable: "MultiMagic's voice isn't available right now.",
+    noText: "This message has no text to read.",
+    cannotRead: "This answer can't be read aloud.",
+  },
+
+  sources: {
+    chip: "Source: {{label}}",
+    sheetLabel: "Where this came from",
+    record: "Record",
+    body: "This is the record the answer drew on. Open it in MultiMagic to read it in full.",
+    openInWeb: "Open in MultiMagic",
+  },
+
+  files: {
+    fromYourFiles: "From your files",
+    openFullSize: "Open full size",
+    openFile: "Open file",
+    opensOutside: "This opens outside MultiMagic, in whatever on your phone reads this kind of file.",
+    addToConversation: "Add to this conversation",
+    ofFiles: "{{count}} of {{max}} files",
+    limits: "Up to {{max}} files of {{mb}} MB each. {{types}}.",
+    photo: "Photo",
+    photoHint: "From your library",
+    camera: "Camera",
+    cameraHint: "Take one now",
+    document: "Document",
+    documentHint: "PDF or CSV",
+    uploading: "Uploading…",
+    didNotUpload: "Did not upload",
+    uploadFailed: "That file did not upload.",
+    remove: "Remove {{name}}",
+    showMore: "Show {{count}} more files",
+    more: "+{{count}} more",
+    tooMany: "This conversation already has {{max}} files, which is the most it can hold.",
+    tooBig: "{{name}} is {{size}}. Files have to be under {{max}} MB.",
+    wrongType: "MultiMagic can read PDFs, images and CSVs. {{name}} is not one of those.",
+    needPhotoPermission: "MultiMagic needs permission to open your photos.",
+    needCameraPermission: "MultiMagic needs permission to use the camera.",
+  },
+
+  sessions: {
+    title: "Conversations",
+    today: "Today",
+    earlier: "Earlier",
+    newConversation: "New conversation",
+    atLimit:
+      "You have {{max}} conversations, which is the most MultiMagic keeps. Delete one to start another.",
+    options: "Options for {{title}}",
+    messages_one: "{{count}} message",
+    messages_other: "{{count}} messages",
+    files_one: "{{count}} file",
+    files_other: "{{count}} files",
+    clear: "Clear messages",
+    clearHint: "Empties this chat. Its files stay.",
+    rename: "Rename",
+    renameTitle: "Rename conversation",
+    name: "Name",
+    searchIn: "Search in",
+    allApps: "All apps",
+    someApps: "{{count}} apps",
+    howToAnswer: "How to answer",
+    instructionsSet: "Set",
+    instructionsNotSet: "Not set",
+    delete: "Delete",
+    account: "Account",
+    yourProfile: "Your profile",
+    privacyAndAccount: "Privacy and account",
+    signOut: "Sign out",
+    createFailed: "Could not start a new conversation.",
+    renameFailed: "Could not rename that conversation.",
+    clearFailed: "Could not clear that conversation.",
+    deleteFailed: "Could not delete that conversation.",
+    instructionsFailed: "Could not save those instructions.",
+    scopeFailed: "Could not change what this chat searches.",
+  },
+
+  deleteConversation: {
+    question: "Delete this conversation?",
+    questionWithFiles_one: "Delete this conversation and the {{count}} file in it?",
+    questionWithFiles_other: "Delete this conversation and the {{count}} files in it?",
+    safe: "Your notes, contacts, loans and money are not touched.",
+    confirm: "Delete conversation",
+    keep: "Keep it",
+  },
+
+  instructions: {
+    title: "How to answer in this chat",
+    hint: "Written once, read every time. “This chat is about my flat renovation, answer in French.”",
+    label: "Standing instructions",
+    optional: "Optional",
+  },
+
+  scope: {
+    title: "Search in",
+    allHint: "All apps. Choose some to narrow this chat.",
+    someHint: "Only {{count}} of {{total}} apps.",
+    searchAll: "Search all apps",
+    notes: "Notes",
+    pages: "Pages",
+    contacts: "Contacts",
+    todos: "To-dos",
+    money: "Money",
+    flow: "Flow",
+    calendar: "Calendar",
+  },
+
+  appearance: {
+    title: "Appearance",
+    system: "System",
+    light: "Light",
+    dark: "Dark",
+  },
+
+  language: {
+    title: "Language",
+    english: "English",
+    french: "Français",
+  },
+
+  profile: {
+    title: "Profile",
+    changePhoto: "Change photo",
+    addPhoto: "Add a photo",
+    updatingPhoto: "Updating photo…",
+    changeYourPhoto: "Change your photo",
+    firstName: "First name",
+    lastName: "Last name",
+    about: "About",
+    aboutPlaceholder: "A line about you",
+    email: "Email",
+    emailLocked:
+      "Changing your email signs you out of live updates until you sign in again, so it is done on the website for now.",
+    changePassword: "Change password",
+    yourAiKey: "Your AI provider key",
+    openWeb: "Notes, money, contacts and the rest — open MultiMagic on the web",
+    loadFailed: "Could not load your profile.",
+    saveFailed: "Could not save that.",
+    chooseFromLibrary: "Choose from library",
+    takePhoto: "Take a photo",
+    removePhoto: "Remove photo",
+  },
+
+  password: {
+    title: "Change password",
+    current: "Current password",
+    new: "New password",
+    repeat: "Repeat new password",
+    minimum: "At least {{count}} characters.",
+    mismatch: "These do not match.",
+    wrongCurrent: "That password is not right.",
+    submit: "Change password",
+    changing: "Changing…",
+    done: "Your password was changed. You are still signed in on this phone.",
+    failed: "Could not change your password.",
+    notChanged: "Your password was not changed.",
+    show: "Show {{label}}",
+    hide: "Hide {{label}}",
+    showPassword: "Show password",
+    hidePassword: "Hide password",
+  },
+
+  aiKeys: {
+    title: "Your AI key",
+    intro:
+      "Add a key of your own and the assistant runs on your account, with your provider, at your cost. The key is checked with the provider before it is saved, and it is never shown again afterwards.",
+    empty: "No key of your own yet. The assistant runs on MultiMagic's.",
+    inUse: "In use",
+    verified: " · verified",
+    useThisOne: "Use this one",
+    replace: "Replace",
+    remove: "Remove",
+    removeLabel: "Remove the {{provider}} key",
+    replaceTitle: "Replace your {{provider}} key",
+    addTitle: "Add a key",
+    allProvidersKeyed: "You already have a key for every provider this app can use.",
+    paste: "Paste your {{provider}} key",
+    checking: "Checking with the provider…",
+    checkAndSave: "Check and save",
+    lentToYou: "{{provider}} — lent to you by {{name}}",
+    someone: "someone",
+    loadFailed: "Could not load your keys.",
+    failed: "Could not do that.",
+  },
+
+  account: {
+    title: "Account",
+    privacyPolicy: "Privacy policy",
+    deleteAccount: "Delete account",
+    deleteHint: "Opens a confirmation. This cannot be undone.",
+    deleteCaption: "This removes everything and cannot be undone.",
+    deleteCaptionUnavailable:
+      "This removes everything and cannot be undone. Not available in the app yet.",
+  },
+
+  deleteAccount: {
+    title: "Delete your account",
+    cannotBeUndone: "This cannot be undone.",
+    whatIsDeleted: "What is deleted",
+    whatIsKept: "What is kept",
+    typePassword: "Type your password to confirm",
+    password: "Password",
+    confirm: "Delete my account",
+    deleting: "Deleting…",
+    keep: "Keep my account",
+    wrongPassword: "That password is not right.",
+    unreachable: "Could not reach MultiMagic. Nothing was deleted.",
+    failed: "Could not delete the account. Nothing was deleted.",
+    unavailableTitle: "Not available in the app yet",
+    unavailableBody:
+      "Deleting an account is not something this app can do today — the server does not offer it yet. Nothing on this screen has changed anything. It is written down here so you know exactly what will go when it does.",
+    goes: {
+      conversations: "Every conversation, and the files uploaded into them",
+      notes: "Your notes and documents",
+      contacts: "Your contacts",
+      money: "Your expenses, incomes, loans and budgets",
+      events: "Your calendar events",
+      devices: "Saved devices, sign-in history and API keys",
+    },
+    kept:
+      "What the assistant cost — which provider ran, and how many tokens. Your name is removed from those rows, and they hold no part of any question or answer.",
+  },
+
+  privacy: {
+    title: "Privacy",
+    draftTitle: "Draft — not yet approved",
+    draftBody:
+      "Every sentence here was checked against the code, but this text is still waiting on approval and must not ship in this state.",
+  },
+
+  chats: {
+    title: "Chats",
+    emptyTitle: "No conversations yet",
+    emptyBody: "Chats you start on MultiMagic appear here.",
+    loadFailed: "Could not load your chats.",
+  },
+
+  thread: {
+    typing: "typing…",
+    someoneTyping: "{{name}} is typing…",
+    someone: "Someone",
+    online: "Online",
+    chat: "Chat",
+    noMessages: "No messages yet.",
+    loadFailed: "Could not load this conversation.",
+    editing: "Editing a message — tap to cancel",
+    message: "Message",
+    editMessage: "Edit message",
+    copy: "Copy",
+    edit: "Edit",
+    delete: "Delete",
+    react: "React {{emoji}}",
+    removeReaction: "Remove {{emoji}}",
+  },
+
+  notifications: {
+    title: "Notifications",
+    refresh: "Refresh notifications",
+    markAllRead: "Mark all as read",
+    clearRead: "Clear read notifications",
+    empty: "You're all caught up.",
+    loadFailed: "Could not load your notifications.",
+    composed: "Question ready in the chat — edit it before you ask.",
+    question: "What is this about: {{title}}?",
+    deleteQuestion: "Delete this notification?",
+    clearQuestion: "Clear read notifications?",
+    clearBody: "Anything still unread stays where it is.",
+    clear: "Clear",
+    today: "Today",
+    earlier: "Earlier",
+    unread: "Unread: {{title}}",
+    hint: "Opens the assistant with a question about this",
+  },
+
+  calendar: {
+    title: "What's next",
+    refresh: "Refresh the calendar",
+    today: "Today",
+    tomorrow: "Tomorrow",
+    nothingToday: "Nothing today.",
+    footer: "The next {{days}} days. Ask the assistant about anything further out.",
+    loadFailed: "Could not load your calendar.",
+    composed: "Question ready in the chat — edit it before you ask.",
+    question: 'Tell me about "{{title}}" ({{when}}).',
+    allDay: "All day",
+    minutes: "{{count}} min",
+    hours: "{{count}} h",
+    event: "{{title}}, {{when}}",
+  },
+};
+
+/**
+ * The SHAPE, not the words: `en` is declared without `as const`, so every leaf
+ * is `string` and `fr.ts` is checked for the same keys rather than for the
+ * same sentences. A missing key is a compile error; a different translation is
+ * the point.
+ */
+export type Translations = typeof en;

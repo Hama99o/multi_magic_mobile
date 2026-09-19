@@ -7,7 +7,7 @@
  * just written.
  */
 import { render, screen } from "@testing-library/react-native";
-import { DeleteConfirm, SAFE_SENTENCE, deleteQuestion } from "../DeleteConfirm";
+import { DeleteConfirm, deleteQuestion, safeSentence } from "../DeleteConfirm";
 
 describe("the question", () => {
   // "and the 0 files in it" is the kind of sentence that tells a user nobody
@@ -32,14 +32,14 @@ describe("the guarantee", () => {
 
     // In BOTH strings. It is not conditional on there being files, because it
     // is not about the files.
-    expect(screen.getByTestId("delete-conversation-safe")).toHaveTextContent(SAFE_SENTENCE);
+    expect(screen.getByTestId("delete-conversation-safe")).toHaveTextContent(safeSentence());
   });
 
   it("names the four things by name rather than saying 'your data'", () => {
-    expect(SAFE_SENTENCE).toMatch(/notes/);
-    expect(SAFE_SENTENCE).toMatch(/contacts/);
-    expect(SAFE_SENTENCE).toMatch(/loans/);
-    expect(SAFE_SENTENCE).toMatch(/money/);
+    expect(safeSentence()).toMatch(/notes/);
+    expect(safeSentence()).toMatch(/contacts/);
+    expect(safeSentence()).toMatch(/loans/);
+    expect(safeSentence()).toMatch(/money/);
   });
 });
 

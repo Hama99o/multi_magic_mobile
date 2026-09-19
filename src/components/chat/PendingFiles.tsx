@@ -17,6 +17,7 @@
 import { useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { X } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { describeSize, type PendingFile } from "@/hooks/useAttachments";
@@ -30,6 +31,7 @@ export function PendingFiles({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
 
   const [expanded, setExpanded] = useState(false);
 
@@ -69,15 +71,15 @@ export function PendingFiles({
             </Text>
             <Text variant="caption" tone={file.status === "failed" ? "danger" : "muted"}>
               {file.status === "failed"
-                ? (file.error ?? "Did not upload")
+                ? (file.error ?? t("files.didNotUpload"))
                 : file.status === "uploading"
-                  ? "Uploading…"
+                  ? t("files.uploading")
                   : describeSize(file.size)}
             </Text>
           </View>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={`Remove ${file.name}`}
+            accessibilityLabel={t("files.remove", { name: file.name })}
             hitSlop={8}
             onPress={() => onRemove(file.key)}
             testID={`pending-file-remove-${file.key}`}
@@ -90,7 +92,7 @@ export function PendingFiles({
       {hidden > 0 && !expanded ? (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`Show ${hidden} more files`}
+          accessibilityLabel={t("files.showMore", { count: hidden })}
           onPress={() => setExpanded(true)}
           style={{
             justifyContent: "center",
@@ -103,7 +105,7 @@ export function PendingFiles({
           testID="pending-files-more"
         >
           <Text variant="caption" tone="muted">
-            +{hidden} more
+            {t("files.more", { count: hidden })}
           </Text>
         </Pressable>
       ) : null}

@@ -26,11 +26,12 @@ import { RotateCw } from "lucide-react-native";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { relativeTime } from "@/lib/relativeTime";
+import { useTranslation } from "react-i18next";
 
 export function RefreshButton({
   refreshing,
   onPress,
-  label = "Refresh",
+  label,
   testID,
 }: {
   refreshing: boolean;
@@ -40,11 +41,12 @@ export function RefreshButton({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
 
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
+      accessibilityLabel={label ?? t("common.refresh")}
       accessibilityState={{ busy: refreshing, disabled: refreshing }}
       disabled={refreshing}
       hitSlop={6}
@@ -86,6 +88,7 @@ export function UpdatedLine({
   testID?: string;
 }) {
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const [, tick] = useState(0);
 
   useEffect(() => {
@@ -99,7 +102,9 @@ export function UpdatedLine({
   return (
     <View style={{ paddingBottom: metrics.space.xs }}>
       <Text variant="caption" tone="muted" testID={testID}>
-        {refreshing ? "Updating…" : `Updated ${relativeTime(new Date(at).toISOString())}`}
+        {refreshing
+          ? t("common.updating")
+          : t("common.updated", { when: relativeTime(new Date(at).toISOString()) })}
       </Text>
     </View>
   );

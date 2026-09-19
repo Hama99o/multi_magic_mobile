@@ -12,6 +12,7 @@
  */
 import { Modal, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { useTranslation } from "react-i18next";
 import { Camera, FileText, Image as ImageIcon } from "lucide-react-native";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -40,20 +41,21 @@ export function AttachSheet({
   const colors = useColors();
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   if (!visible) return null;
 
   const rows = [
-    { icon: ImageIcon, label: "Photo", hint: "From your library", onPress: onPickImage, testID: "attach-photo" },
-    { icon: Camera, label: "Camera", hint: "Take one now", onPress: onTakePhoto, testID: "attach-camera" },
-    { icon: FileText, label: "Document", hint: "PDF or CSV", onPress: onPickDocument, testID: "attach-document" },
+    { icon: ImageIcon, label: t("files.photo"), hint: t("files.photoHint"), onPress: onPickImage, testID: "attach-photo" },
+    { icon: Camera, label: t("files.camera"), hint: t("files.cameraHint"), onPress: onTakePhoto, testID: "attach-camera" },
+    { icon: FileText, label: t("files.document"), hint: t("files.documentHint"), onPress: onPickDocument, testID: "attach-document" },
   ];
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Close"
+        accessibilityLabel={t("common.close")}
         onPress={onClose}
         style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}
       >
@@ -74,12 +76,12 @@ export function AttachSheet({
         >
           <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
             <Text variant="label" tone="muted">
-              Add to this conversation
+              {t("files.addToConversation")}
             </Text>
             {/* Shown while filling up, not only at refusal. */}
             {fileCount > 0 ? (
               <Text variant="caption" tone="muted" testID="attach-count">
-                {fileCount} of {LIMITS.maxFilesPerSession} files
+                {t("files.ofFiles", { count: fileCount, max: LIMITS.maxFilesPerSession })}
               </Text>
             ) : null}
           </View>
@@ -90,8 +92,11 @@ export function AttachSheet({
               of it (`AiDocument::MAX_BYTES`, `MAX_PER_CONVERSATION`,
               `ALLOWED_EXTENSIONS`). */}
           <Text variant="caption" tone="muted" testID="attach-limits">
-            Up to {LIMITS.maxFilesPerSession} files of {LIMITS.maxFileBytes / (1024 * 1024)} MB
-            each. {describeAllowedTypes()}.
+            {t("files.limits", {
+              max: LIMITS.maxFilesPerSession,
+              mb: LIMITS.maxFileBytes / (1024 * 1024),
+              types: describeAllowedTypes(),
+            })}
           </Text>
 
           {rows.map((row) => (

@@ -19,6 +19,7 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { Link } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
@@ -29,6 +30,7 @@ import { apiErrorMessage, isNetworkFailure } from "@/api/http";
 
 export default function ForgotPassword() {
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -39,7 +41,7 @@ export default function ForgotPassword() {
     setError(null);
 
     if (!email.trim()) {
-      setError("Enter the email you signed up with.");
+      setError(t("forgotPassword.missing"));
       return;
     }
 
@@ -50,8 +52,8 @@ export default function ForgotPassword() {
     } catch (e) {
       setError(
         isNetworkFailure(e)
-          ? "Could not reach MultiMagic. Check your connection."
-          : (apiErrorMessage(e) ?? "Could not send the link."),
+          ? t("failure.checkConnection")
+          : (apiErrorMessage(e) ?? t("forgotPassword.failed")),
       );
     } finally {
       setBusy(false);
@@ -63,31 +65,26 @@ export default function ForgotPassword() {
       <View style={{ flex: 1, justifyContent: "center", gap: metrics.space.xl, paddingVertical: metrics.space.xl }}>
         {sent ? (
           <View style={{ gap: metrics.space.md }} testID="forgot-password-sent">
-            <Text variant="title">Check your email</Text>
+            <Text variant="title">{t("forgotPassword.sentTitle")}</Text>
             {/* Deliberately "if that address has an account". Saying "we sent
                 you a link" would confirm the account exists. */}
-            <Text tone="muted">
-              If that address has a MultiMagic account, we have sent it a link to reset the
-              password. The link opens MultiMagic on the web.
-            </Text>
+            <Text tone="muted">{t("forgotPassword.sentBody")}</Text>
             <Link href="/sign-in" asChild>
               <Text tone="accent" testID="forgot-password-back">
-                Back to sign in
+                {t("forgotPassword.backToSignIn")}
               </Text>
             </Link>
           </View>
         ) : (
           <>
             <View style={{ gap: metrics.space.sm }}>
-              <Text variant="title">Reset your password</Text>
-              <Text tone="muted">
-                Enter your email and we will send a link to set a new password.
-              </Text>
+              <Text variant="title">{t("forgotPassword.title")}</Text>
+              <Text tone="muted">{t("forgotPassword.subtitle")}</Text>
             </View>
 
             <View style={{ gap: metrics.space.lg }}>
               <Input
-                label="Email"
+                label={t("forgotPassword.email")}
                 value={email}
                 onChangeText={(t) => {
                   setEmail(t);
@@ -108,11 +105,11 @@ export default function ForgotPassword() {
             </View>
 
             <View style={{ gap: metrics.space.lg }}>
-              <Button label="Send reset link" busy={busy} onPress={() => void submit()} testID="forgot-password-submit" />
+              <Button label={t("forgotPassword.submit")} busy={busy} onPress={() => void submit()} testID="forgot-password-submit" />
               <View style={{ alignItems: "center" }}>
                 <Link href="/sign-in" asChild>
                   <Text variant="caption" tone="muted">
-                    Back to sign in
+                    {t("forgotPassword.backToSignIn")}
                   </Text>
                 </Link>
               </View>

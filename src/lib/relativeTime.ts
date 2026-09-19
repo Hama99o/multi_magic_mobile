@@ -8,6 +8,8 @@
  *
  * Absolute dates past a week: "37 days ago" is arithmetic nobody asked for.
  */
+import { t } from "@/i18n";
+
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
 const DAY = 24 * HOUR;
@@ -19,14 +21,14 @@ export function relativeTime(iso: string, now: Date = new Date()): string {
   const delta = now.getTime() - then.getTime();
   // A clock that is slightly behind the server's should read "just now", not
   // "in 3 seconds".
-  if (delta < MINUTE) return "just now";
-  if (delta < HOUR) return `${Math.floor(delta / MINUTE)} min ago`;
-  if (delta < DAY) return `${Math.floor(delta / HOUR)} h ago`;
+  if (delta < MINUTE) return t("common.justNow");
+  if (delta < HOUR) return t("common.minutesAgo", { count: Math.floor(delta / MINUTE) });
+  if (delta < DAY) return t("common.hoursAgo", { count: Math.floor(delta / HOUR) });
 
   const midnight = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const daysBack = Math.floor((midnight.getTime() - then.getTime()) / DAY);
-  if (daysBack < 1) return "Yesterday";
-  if (daysBack < 6) return `${daysBack + 1} days ago`;
+  if (daysBack < 1) return t("common.yesterday");
+  if (daysBack < 6) return t("common.daysAgo", { count: daysBack + 1 });
 
   return then.toLocaleDateString(undefined, { day: "numeric", month: "short" });
 }

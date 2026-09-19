@@ -22,7 +22,7 @@ jest.mock("@/api/auth", () => ({
 }));
 
 /* eslint-disable import/first */
-import SignUp, { EMPTY_FORM_SENTENCE, serverErrors } from "../sign-up";
+import SignUp, { emptyFormSentence, serverErrors } from "../sign-up";
 import { useAuthStore } from "@/stores/auth.store";
 
 const USER = { id: 9, email: "new@example.com", firstName: "QA", lastName: "Mobile", fullName: "QA Mobile" };
@@ -71,7 +71,7 @@ describe("before the request", () => {
 
     fireEvent.press(screen.getByTestId("sign-up-submit"));
 
-    expect(screen.getByTestId("sign-up-error")).toHaveTextContent(EMPTY_FORM_SENTENCE);
+    expect(screen.getByTestId("sign-up-error")).toHaveTextContent(emptyFormSentence());
     expect(mockSignUp).not.toHaveBeenCalled();
   });
 

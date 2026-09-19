@@ -15,12 +15,13 @@
 import { useState } from "react";
 import { View } from "react-native";
 import { Link, router } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { Input } from "@/components/reusables/input";
 import { useMetrics } from "@/hooks/useColors";
-import { SESSION_END_SENTENCE, useAuthStore } from "@/stores/auth.store";
+import { sessionEndSentence, useAuthStore } from "@/stores/auth.store";
 import { TwoFactorRequiredError } from "@/api/auth";
 import { apiErrorMessage, isNetworkFailure, isRateLimited, isUnauthorized } from "@/api/http";
 
@@ -33,16 +34,17 @@ import { apiErrorMessage, isNetworkFailure, isRateLimited, isUnauthorized } from
  * either — Karwan shipped "check your connection" on a 401 and people went and
  * restarted their routers.
  */
-function messageFor(error: unknown): string {
+function messageFor(error: unknown, t: (key: string) => string): string {
   if (error instanceof TwoFactorRequiredError) return error.message;
-  if (isRateLimited(error)) return "Too many attempts. Try again in a few minutes.";
-  if (isUnauthorized(error)) return "That email and password do not match.";
-  if (isNetworkFailure(error)) return "Could not reach MultiMagic. Check your connection.";
-  return apiErrorMessage(error) ?? "Something went wrong signing in.";
+  if (isRateLimited(error)) return t("signIn.tooManyAttempts");
+  if (isUnauthorized(error)) return t("signIn.wrongCredentials");
+  if (isNetworkFailure(error)) return t("failure.checkConnection");
+  return apiErrorMessage(error) ?? t("signIn.failed");
 }
 
 export default function SignIn() {
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const signIn = useAuthStore((s) => s.signIn);
   const signedOutReason = useAuthStore((s) => s.signedOutReason);
 
@@ -57,7 +59,7 @@ export default function SignIn() {
 
     // Validated on press, not on keystroke — see the header.
     if (!email.trim() || !password) {
-      setError("Enter your email and password.");
+      setError(t("signIn.missing"));
       return;
     }
 
@@ -66,7 +68,7 @@ export default function SignIn() {
       await signIn({ email, password });
       router.replace("/chat");
     } catch (e) {
-      setError(messageFor(e));
+      setError(messageFor(e, t));
     } finally {
       setBusy(false);
     }
@@ -79,21 +81,21 @@ export default function SignIn() {
           title — calm in a screenshot, slightly abandoned in a hand. */}
       <View style={{ flex: 1, gap: metrics.space.xl, paddingTop: metrics.space.xl * 2, paddingBottom: metrics.space.xl }}>
         <View style={{ gap: metrics.space.sm }}>
-          <Text variant="title">Sign in</Text>
-          <Text tone="muted">Your notes, money, contacts and calendar — answered.</Text>
+          <Text variant="title">{t("signIn.title")}</Text>
+          <Text tone="muted">{t("signIn.subtitle")}</Text>
           {/* Only after a FORCED sign-out. Arriving here from a 401 with no
               sentence looks like the app forgot you; arriving here because the
               device check failed deserves to be told so in words. */}
           {signedOutReason ? (
             <Text variant="caption" tone="accent" testID="sign-in-notice">
-              {SESSION_END_SENTENCE[signedOutReason]}
+              {sessionEndSentence(signedOutReason)}
             </Text>
           ) : null}
         </View>
 
         <View style={{ gap: metrics.space.lg }}>
           <Input
-            label="Email"
+            label={t("signIn.email")}
             value={email}
             onChangeText={(t) => {
               setEmail(t);
@@ -109,7 +111,7 @@ export default function SignIn() {
 
           <View style={{ gap: metrics.space.xs }}>
             <Input
-              label="Password"
+              label={t("signIn.password")}
               value={password}
               onChangeText={(t) => {
                 setPassword(t);
@@ -131,7 +133,7 @@ export default function SignIn() {
             <View style={{ alignItems: "flex-end" }}>
               <Link href="/forgot-password" asChild>
                 <Text variant="caption" tone="accent" testID="sign-in-forgot">
-                  Forgot your password?
+                  {t("signIn.forgot")}
                 </Text>
               </Link>
             </View>
@@ -147,7 +149,7 @@ export default function SignIn() {
         {/* GoPro's rule: the button says what it does, because it is the only
             method on offer. */}
         <Button
-          label="Sign in with email"
+          label={t("signIn.submit")}
           busy={busy}
           onPress={() => void submit()}
           testID="sign-in-submit"
@@ -158,11 +160,11 @@ export default function SignIn() {
             above by position rather than by colour. */}
         <View style={{ flexDirection: "row", justifyContent: "center", gap: metrics.space.xs }}>
           <Text variant="caption" tone="muted">
-            New here?
+            {t("signIn.newHere")}
           </Text>
           <Link href="/sign-up" asChild>
             <Text variant="caption" tone="accent" testID="sign-in-create-account">
-              Create an account
+              {t("signIn.createAccount")}
             </Text>
           </Link>
         </View>

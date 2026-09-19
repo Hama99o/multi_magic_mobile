@@ -25,6 +25,7 @@
 import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft, Eye, EyeOff } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
@@ -52,6 +53,7 @@ function SecretField({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const [shown, setShown] = useState(false);
 
   return (
@@ -87,7 +89,7 @@ function SecretField({
           testID={`${testID}-reveal`}
           onPress={() => setShown((s) => !s)}
           accessibilityRole="button"
-          accessibilityLabel={shown ? `Hide ${label}` : `Show ${label}`}
+          accessibilityLabel={shown ? t("password.hide", { label }) : t("password.show", { label })}
           hitSlop={8}
         >
           {shown ? (
@@ -104,6 +106,7 @@ function SecretField({
 export default function ChangePassword() {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
 
   const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: profileApi.me });
 
@@ -145,7 +148,7 @@ export default function ChangePassword() {
       } else {
         // Whatever went wrong, nothing changed — which is the fact that
         // decides what to do next, so it is appended rather than replaced.
-        setError(`${failureMessage(e, "Could not change your password.")} Your password was not changed.`);
+        setError(`${failureMessage(e, t("password.failed"))} ${t("password.notChanged")}`);
       }
     } finally {
       setBusy(false);
@@ -165,21 +168,21 @@ export default function ChangePassword() {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t("common.back")}
           hitSlop={8}
           style={{ width: 32, height: 32, justifyContent: "center" }}
         >
           <ChevronLeft size={24} color={colors.ink} />
         </Pressable>
         <Text variant="title" style={{ flex: 1, fontSize: 22 }}>
-          Change password
+          {t("password.title")}
         </Text>
       </View>
 
       <View style={{ gap: metrics.space.lg, marginTop: metrics.space.md }}>
         <View style={{ gap: metrics.space.xs }}>
           <SecretField
-            label="Current password"
+            label={t("password.current")}
             value={current}
             onChange={(v) => {
               setCurrent(v);
@@ -190,14 +193,14 @@ export default function ChangePassword() {
           />
           {wrongCurrent ? (
             <Text testID="password-wrong-current" tone="danger" variant="caption">
-              That password is not right.
+              {t("password.wrongCurrent")}
             </Text>
           ) : null}
         </View>
 
         <View style={{ gap: metrics.space.xs }}>
           <SecretField
-            label="New password"
+            label={t("password.new")}
             value={next}
             onChange={setNext}
             testID="password-new"
@@ -205,13 +208,13 @@ export default function ChangePassword() {
           />
           {/* The one real rule, stated once. Not five invented ones. */}
           <Text tone={tooShort ? "danger" : "muted"} variant="caption">
-            At least {PASSWORD_MIN_LENGTH} characters.
+            {t("password.minimum", { count: PASSWORD_MIN_LENGTH })}
           </Text>
         </View>
 
         <View style={{ gap: metrics.space.xs }}>
           <SecretField
-            label="Repeat new password"
+            label={t("password.repeat")}
             value={confirm}
             onChange={setConfirm}
             testID="password-confirm"
@@ -219,7 +222,7 @@ export default function ChangePassword() {
           />
           {mismatch ? (
             <Text tone="danger" variant="caption">
-              These do not match.
+              {t("password.mismatch")}
             </Text>
           ) : null}
         </View>
@@ -231,7 +234,7 @@ export default function ChangePassword() {
         </Text>
       ) : done ? (
         <Text testID="password-done" tone="accent" variant="caption" style={{ marginTop: metrics.space.md }}>
-          Your password was changed. You are still signed in on this phone.
+          {t("password.done")}
         </Text>
       ) : null}
 
@@ -240,7 +243,7 @@ export default function ChangePassword() {
         onPress={() => void submit()}
         disabled={!canSubmit}
         accessibilityRole="button"
-        accessibilityLabel="Change password"
+        accessibilityLabel={t("password.submit")}
         accessibilityState={{ disabled: !canSubmit }}
         style={{
           marginTop: metrics.space.xl,
@@ -252,7 +255,7 @@ export default function ChangePassword() {
         }}
       >
         <Text variant="label" style={{ color: canSubmit ? colors.onAccent : colors.inkMuted }}>
-          {busy ? "Changing…" : "Change password"}
+          {busy ? t("password.changing") : t("password.submit")}
         </Text>
       </Pressable>
     </Screen>

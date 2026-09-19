@@ -28,6 +28,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { relativeTime } from "@/lib/relativeTime";
 import type { AppNotification } from "@/api/notifications";
 import { Avatar } from "./Avatar";
+import { useTranslation } from "react-i18next";
 
 export function NotificationRow({
   notification,
@@ -41,6 +42,7 @@ export function NotificationRow({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const unread = notification.readAt == null;
 
   return (
@@ -51,9 +53,9 @@ export function NotificationRow({
       delayLongPress={350}
       accessibilityRole="button"
       accessibilityLabel={
-        unread ? `Unread: ${notification.title}` : notification.title
+        unread ? t("notifications.unread", { title: notification.title }) : notification.title
       }
-      accessibilityHint="Opens the assistant with a question about this"
+      accessibilityHint={t("notifications.hint")}
       android_ripple={{ color: colors.border }}
       style={{
         flexDirection: "row",

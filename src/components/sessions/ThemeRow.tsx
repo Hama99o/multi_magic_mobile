@@ -18,11 +18,12 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { TOKENS } from "@/theme/tokens";
 import { useThemeStore, type ThemeChoice } from "@/stores/theme.store";
+import { useTranslation } from "react-i18next";
 
-const CHOICES: { key: ThemeChoice; label: string }[] = [
-  { key: "system", label: "System" },
-  { key: "light", label: "Light" },
-  { key: "dark", label: "Dark" },
+const CHOICES: { key: ThemeChoice; labelKey: string }[] = [
+  { key: "system", labelKey: "appearance.system" },
+  { key: "light", labelKey: "appearance.light" },
+  { key: "dark", labelKey: "appearance.dark" },
 ];
 
 function Swatch({ choice, selected }: { choice: ThemeChoice; selected: boolean }) {
@@ -80,23 +81,25 @@ function Swatch({ choice, selected }: { choice: ThemeChoice; selected: boolean }
 
 export function ThemeRow() {
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const choice = useThemeStore((s) => s.choice);
   const setChoice = useThemeStore((s) => s.setChoice);
 
   return (
     <View style={{ gap: metrics.space.sm }} testID="theme-row">
       <Text variant="label" tone="muted" style={{ paddingHorizontal: metrics.space.sm }}>
-        Appearance
+        {t("appearance.title")}
       </Text>
       <View style={{ flexDirection: "row", gap: metrics.space.lg, paddingHorizontal: metrics.space.sm }}>
         {CHOICES.map((option) => {
           const selected = option.key === choice;
+          const label = t(option.labelKey);
           return (
             <Pressable
               key={option.key}
               accessibilityRole="radio"
               accessibilityState={{ selected }}
-              accessibilityLabel={option.label}
+              accessibilityLabel={label}
               onPress={() => setChoice(option.key)}
               hitSlop={6}
               style={{ alignItems: "center", gap: metrics.space.xs, minHeight: metrics.touch }}
@@ -104,7 +107,7 @@ export function ThemeRow() {
             >
               <Swatch choice={option.key} selected={selected} />
               <Text variant="caption" tone={selected ? "accent" : "muted"}>
-                {option.label}
+                {label}
               </Text>
             </Pressable>
           );

@@ -28,6 +28,7 @@ import {
   KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, TextInput, View,
 } from "react-native";
 import { Check } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -38,13 +39,13 @@ const INSTRUCTIONS_LIMIT = 2000;
 
 /** `Ai::AppScope::APPS` — do not invent keys; unknown ones are dropped. */
 export const SCOPE_APPS = [
-  { key: "notes", label: "Notes" },
-  { key: "page_app", label: "Pages" },
-  { key: "contacts", label: "Contacts" },
-  { key: "todos", label: "To-dos" },
-  { key: "finance", label: "Money" },
-  { key: "flow", label: "Flow" },
-  { key: "calendar", label: "Calendar" },
+  { key: "notes", labelKey: "scope.notes" },
+  { key: "page_app", labelKey: "scope.pages" },
+  { key: "contacts", labelKey: "scope.contacts" },
+  { key: "todos", labelKey: "scope.todos" },
+  { key: "finance", labelKey: "scope.money" },
+  { key: "flow", labelKey: "scope.flow" },
+  { key: "calendar", labelKey: "scope.calendar" },
 ] as const;
 
 function Sheet({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
@@ -101,6 +102,7 @@ export function InstructionsDialog({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const [text, setText] = useState(initial);
 
   useEffect(() => {
@@ -112,11 +114,8 @@ export function InstructionsDialog({
   return (
     <Sheet onClose={onCancel}>
       <View style={{ gap: metrics.space.xs }}>
-        <Text variant="title">How to answer in this chat</Text>
-        <Text variant="caption" tone="muted">
-          Written once, read every time. &ldquo;This chat is about my flat renovation, answer
-          in French.&rdquo;
-        </Text>
+        <Text variant="title">{t("instructions.title")}</Text>
+        <Text variant="caption" tone="muted">{t("instructions.hint")}</Text>
       </View>
 
       <View
@@ -133,8 +132,8 @@ export function InstructionsDialog({
           onChangeText={setText}
           multiline
           maxLength={INSTRUCTIONS_LIMIT}
-          accessibilityLabel="Standing instructions"
-          placeholder="Optional"
+          accessibilityLabel={t("instructions.label")}
+          placeholder={t("instructions.optional")}
           placeholderTextColor={colors.inkMuted}
           style={{ color: colors.ink, fontSize: 16, minHeight: 110, paddingVertical: metrics.space.md }}
           testID="instructions-input"
@@ -147,14 +146,14 @@ export function InstructionsDialog({
 
       <View style={{ gap: metrics.space.sm }}>
         {/* Sent even when emptied — clearing is a real instruction. */}
-        <Button label="Save" busy={busy} onPress={() => onSave(text)} testID="instructions-save" />
+        <Button label={t("common.save")} busy={busy} onPress={() => onSave(text)} testID="instructions-save" />
         <Pressable
           accessibilityRole="button"
           onPress={onCancel}
           style={{ minHeight: metrics.touch, alignItems: "center", justifyContent: "center" }}
           testID="instructions-cancel"
         >
-          <Text tone="muted">Cancel</Text>
+          <Text tone="muted">{t("common.cancel")}</Text>
         </Pressable>
       </View>
     </Sheet>
@@ -176,6 +175,7 @@ export function ScopeDialog({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<string[]>(initial);
 
   useEffect(() => {
@@ -192,12 +192,12 @@ export function ScopeDialog({
   return (
     <Sheet onClose={onCancel}>
       <View style={{ gap: metrics.space.xs }}>
-        <Text variant="title">Search in</Text>
+        <Text variant="title">{t("scope.title")}</Text>
         {/* The sentence that stops "none selected" reading as "search nothing". */}
         <Text variant="caption" tone="muted">
           {selected.length === 0
-            ? "All apps. Choose some to narrow this chat."
-            : `Only ${selected.length} of ${SCOPE_APPS.length} apps.`}
+            ? t("scope.allHint")
+            : t("scope.someHint", { count: selected.length, total: SCOPE_APPS.length })}
         </Text>
       </View>
 
@@ -209,7 +209,7 @@ export function ScopeDialog({
               key={app.key}
               accessibilityRole="checkbox"
               accessibilityState={{ checked: on }}
-              accessibilityLabel={app.label}
+              accessibilityLabel={t(app.labelKey)}
               onPress={() => toggle(app.key)}
               style={{
                 flexDirection: "row",
@@ -233,14 +233,14 @@ export function ScopeDialog({
               >
                 {on ? <Check size={15} color={colors.onAccent} /> : null}
               </View>
-              <Text>{app.label}</Text>
+              <Text>{t(app.labelKey)}</Text>
             </Pressable>
           );
         })}
       </ScrollView>
 
       <View style={{ gap: metrics.space.sm }}>
-        <Button label="Save" busy={busy} onPress={() => onSave(selected)} testID="scope-save" />
+        <Button label={t("common.save")} busy={busy} onPress={() => onSave(selected)} testID="scope-save" />
         {selected.length > 0 ? (
           <Pressable
             accessibilityRole="button"
@@ -248,7 +248,7 @@ export function ScopeDialog({
             style={{ minHeight: metrics.touch, alignItems: "center", justifyContent: "center" }}
             testID="scope-all"
           >
-            <Text tone="accent">Search all apps</Text>
+            <Text tone="accent">{t("scope.searchAll")}</Text>
           </Pressable>
         ) : null}
         <Pressable
@@ -257,7 +257,7 @@ export function ScopeDialog({
           style={{ minHeight: metrics.touch, alignItems: "center", justifyContent: "center" }}
           testID="scope-cancel"
         >
-          <Text tone="muted">Cancel</Text>
+          <Text tone="muted">{t("common.cancel")}</Text>
         </Pressable>
       </View>
     </Sheet>

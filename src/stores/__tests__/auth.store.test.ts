@@ -12,7 +12,7 @@ jest.mock("@/api/auth", () => ({
 }));
 
 /* eslint-disable import/first */
-import { SESSION_END_SENTENCE, useAuthStore, wireAuthStore } from "../auth.store";
+import { sessionEndSentence, useAuthStore, wireAuthStore } from "../auth.store";
 import { __resetTokenCache, http, setToken, setUnauthorizedHandler } from "@/api/http";
 import { resetCable } from "@/lib/cable";
 
@@ -95,8 +95,8 @@ describe("wired to the transport", () => {
 
 describe("the sentences", () => {
   it("exist for both reasons and differ in what they ask", () => {
-    expect(SESSION_END_SENTENCE.expired).toMatch(/expired/i);
-    expect(SESSION_END_SENTENCE.revoked).toMatch(/device/i);
-    expect(SESSION_END_SENTENCE.revoked).not.toBe(SESSION_END_SENTENCE.expired);
+    expect(sessionEndSentence("expired")).toMatch(/expired/i);
+    expect(sessionEndSentence("revoked")).toMatch(/device/i);
+    expect(sessionEndSentence("revoked")).not.toBe(sessionEndSentence("expired"));
   });
 });

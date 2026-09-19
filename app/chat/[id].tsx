@@ -36,6 +36,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react-native";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
@@ -77,6 +78,7 @@ type Row =
 export default function PersonThread() {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const params = useLocalSearchParams<{
     id: string;
@@ -87,7 +89,7 @@ export default function PersonThread() {
 
   const conversationId = Number(params.id);
   const isGroup = params.isGroup === "1";
-  const title = params.name ?? "Chat";
+  const title = params.name ?? t("thread.chat");
 
   /**
    * `mergeMessage`, never `addPending` — and the difference is a poll storm.
@@ -163,7 +165,7 @@ export default function PersonThread() {
       {
         onData: (event) => {
           if (event?.typing) {
-            setTypingName(event.user?.fullname ?? "Someone");
+            setTypingName(event.user?.fullname ?? t("thread.someone"));
             if (timer) clearTimeout(timer);
             timer = setTimeout(() => setTypingName(null), TYPING_LINGER_MS);
             return;
@@ -182,7 +184,7 @@ export default function PersonThread() {
       if (timer) clearTimeout(timer);
       stop();
     };
-  }, [conversationId, resync]);
+  }, [conversationId, resync, t]);
 
   /** Fire-and-forget: `performOnChannel` returns false when the subscription is
    *  not up, and a lost typing indicator costs nothing. */
@@ -381,7 +383,7 @@ export default function PersonThread() {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t("common.back")}
           hitSlop={8}
           style={{ width: 32, height: 32, justifyContent: "center" }}
         >
@@ -405,11 +407,11 @@ export default function PersonThread() {
               header does not change height and shove the thread down. */}
           {typingName ? (
             <Text testID="thread-typing" variant="caption" tone="accent">
-              {isGroup ? `${typingName} is typing…` : "typing…"}
+              {isGroup ? t("thread.someoneTyping", { name: typingName }) : t("thread.typing")}
             </Text>
           ) : detail?.isOnline ? (
             <Text variant="caption" tone="muted">
-              Online
+              {t("thread.online")}
             </Text>
           ) : null}
         </View>
@@ -485,14 +487,14 @@ export default function PersonThread() {
         ListEmptyComponent={
           status === "loading" ? null : status === "failed" ? (
             <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
-              <Text tone="muted">Could not load this conversation.</Text>
+              <Text tone="muted">{t("thread.loadFailed")}</Text>
               <Pressable onPress={() => void resync()} accessibilityRole="button" hitSlop={8}>
-                <Text tone="accent">Try again</Text>
+                <Text tone="accent">{t("common.tryAgain")}</Text>
               </Pressable>
             </View>
           ) : (
             <View style={{ flex: 1, justifyContent: "flex-end", paddingBottom: metrics.space.lg }}>
-              <Text tone="muted">No messages yet.</Text>
+              <Text tone="muted">{t("thread.noMessages")}</Text>
             </View>
           )
         }
@@ -508,7 +510,7 @@ export default function PersonThread() {
           style={{ paddingVertical: metrics.space.xs }}
         >
           <Text variant="caption" tone="accent">
-            Editing a message — tap to cancel
+            {t("thread.editing")}
           </Text>
         </Pressable>
       ) : null}

@@ -16,6 +16,7 @@
  */
 import { ActivityIndicator, Pressable, View } from "react-native";
 import { Pause, Play, RotateCcw, Square, Volume2 } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { READ_ALOUD_ENABLED } from "@/config/features";
@@ -28,6 +29,7 @@ function readable(message: ReadAloudMessage & { deleted?: boolean }): boolean {
 export function ReadAloudButtons({ message }: { message: ReadAloudMessage & { deleted?: boolean } }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const supported = useReadAloud((s) => s.supported);
   const speaking = useReadAloud((s) => s.speakingId === message.id);
   const loading = useReadAloud((s) => s.loadingId === message.id);
@@ -68,7 +70,7 @@ export function ReadAloudButtons({ message }: { message: ReadAloudMessage & { de
     <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.xs }} testID="answer-read-controls">
       {button(
         "read",
-        speaking ? "Stop reading" : "Read aloud",
+        speaking ? t("answer.stopReading") : t("answer.readAloud"),
         () => void toggle(message),
         loading ? (
           // The FIRST play waits on synthesis; a replay is instant because the
@@ -89,9 +91,9 @@ export function ReadAloudButtons({ message }: { message: ReadAloudMessage & { de
       {speaking && voice === "server"
         ? [
             paused
-              ? button("read-resume", "Resume reading", resume, <Play size={15} color={colors.inkMuted} />)
-              : button("read-pause", "Pause reading", pause, <Pause size={15} color={colors.inkMuted} />),
-            button("read-restart", "Start reading again", restart, <RotateCcw size={15} color={colors.inkMuted} />),
+              ? button("read-resume", t("answer.resumeReading"), resume, <Play size={15} color={colors.inkMuted} />)
+              : button("read-pause", t("answer.pauseReading"), pause, <Pause size={15} color={colors.inkMuted} />),
+            button("read-restart", t("answer.restartReading"), restart, <RotateCcw size={15} color={colors.inkMuted} />),
           ]
         : null}
 
@@ -100,7 +102,7 @@ export function ReadAloudButtons({ message }: { message: ReadAloudMessage & { de
           thinking the good one sounds like that. */}
       {speaking && voice === "device" ? (
         <Text variant="caption" tone="muted" style={{ fontStyle: "italic" }} testID="answer-read-device-voice">
-          your phone&apos;s voice
+          {t("answer.deviceVoice")}
         </Text>
       ) : null}
     </View>

@@ -26,6 +26,7 @@
 import { Modal, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Copy, Pencil, Trash2 } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { REACTION_EMOJI } from "@/api/conversations";
@@ -50,6 +51,7 @@ export function ReactionSheet({
   const colors = useColors();
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   if (!message) return null;
 
@@ -63,12 +65,12 @@ export function ReactionSheet({
   const mine = message.sentByMe;
 
   const actions = [
-    { key: "copy", label: "Copy", icon: Copy, tone: "default" as const, run: onCopy },
+    { key: "copy", label: t("thread.copy"), icon: Copy, tone: "default" as const, run: onCopy },
     ...(mine
       ? [
-          { key: "edit", label: "Edit", icon: Pencil, tone: "default" as const, run: onEdit },
+          { key: "edit", label: t("thread.edit"), icon: Pencil, tone: "default" as const, run: onEdit },
           // Last and red — X's ordering, and the one destructive row.
-          { key: "delete", label: "Delete", icon: Trash2, tone: "danger" as const, run: onDelete },
+          { key: "delete", label: t("thread.delete"), icon: Trash2, tone: "danger" as const, run: onDelete },
         ]
       : []),
   ];
@@ -85,7 +87,7 @@ export function ReactionSheet({
       <Pressable
         onPress={onClose}
         accessibilityRole="button"
-        accessibilityLabel="Close"
+        accessibilityLabel={t("common.close")}
         style={{ flex: 1, backgroundColor: "#00000088", justifyContent: "flex-end" }}
       >
         {/* Stops a press inside the sheet from reaching the scrim behind it. */}
@@ -118,7 +120,11 @@ export function ReactionSheet({
                   testID={`reaction-${id}`}
                   onPress={() => onReact(emoji)}
                   accessibilityRole="button"
-                  accessibilityLabel={mineAlready ? `Remove ${emoji}` : `React ${emoji}`}
+                  accessibilityLabel={
+                    mineAlready
+                      ? t("thread.removeReaction", { emoji })
+                      : t("thread.react", { emoji })
+                  }
                   accessibilityState={{ selected: mineAlready }}
                   style={{
                     width: metrics.touch,

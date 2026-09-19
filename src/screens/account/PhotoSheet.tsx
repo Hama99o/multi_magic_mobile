@@ -15,6 +15,7 @@ import { Modal, Pressable, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Camera, Images, Trash2 } from "lucide-react-native";
+import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 
@@ -48,6 +49,7 @@ export function PhotoSheet({
   const colors = useColors();
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
 
   const fromLibrary = async () => {
     onClose();
@@ -79,13 +81,13 @@ export function PhotoSheet({
   if (!visible) return null;
 
   const rows = [
-    { key: "library", label: "Choose from library", icon: Images, run: fromLibrary },
-    { key: "camera", label: "Take a photo", icon: Camera, run: fromCamera },
+    { key: "library", label: t("profile.chooseFromLibrary"), icon: Images, run: fromLibrary },
+    { key: "camera", label: t("profile.takePhoto"), icon: Camera, run: fromCamera },
     ...(hasPhoto
       ? [
           {
             key: "remove",
-            label: "Remove photo",
+            label: t("profile.removePhoto"),
             icon: Trash2,
             run: () => {
               onClose();
@@ -101,7 +103,7 @@ export function PhotoSheet({
       <Pressable
         onPress={onClose}
         accessibilityRole="button"
-        accessibilityLabel="Close"
+        accessibilityLabel={t("common.close")}
         style={{ flex: 1, backgroundColor: "#00000088", justifyContent: "flex-end" }}
       >
         <Pressable

@@ -30,6 +30,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft, CheckCheck, Trash2 } from "lucide-react-native";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
@@ -55,6 +56,7 @@ type Row =
 export default function Notifications() {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [composed, setComposed] = useState<string | null>(null);
 
@@ -115,12 +117,12 @@ export default function Notifications() {
       if (notification.readAt == null) markRead.mutate(notification.id);
 
       // Composed and NOT sent — see this file's header.
-      const question = `What is this about: ${notification.title}?`;
+      const question = t("notifications.question", { title: notification.title });
       setDraft(question);
       setComposed(question);
       router.push("/chat");
     },
-    [markRead, setDraft],
+    [markRead, setDraft, t],
   );
 
   const remove = useMutation({
@@ -142,16 +144,16 @@ export default function Notifications() {
    */
   const confirmRemove = useCallback(
     (notification: AppNotification) => {
-      Alert.alert("Delete this notification?", notification.title, [
-        { text: "Cancel", style: "cancel" },
+      Alert.alert(t("notifications.deleteQuestion"), notification.title, [
+        { text: t("common.cancel"), style: "cancel" },
         {
-          text: "Delete",
+          text: t("common.delete"),
           style: "destructive",
           onPress: () => remove.mutate(notification.id),
         },
       ]);
     },
-    [remove],
+    [remove, t],
   );
 
   const markAllRead = useMutation({
@@ -168,15 +170,11 @@ export default function Notifications() {
     // The endpoint deletes ONLY what is already read
     // (`notifications_controller.rb:41`), and that scope is the whole safety of
     // the action — so it is in the question, not only in the code.
-    Alert.alert(
-      "Clear read notifications?",
-      "Anything still unread stays where it is.",
-      [
-        { text: "Cancel", style: "cancel" },
-        { text: "Clear", style: "destructive", onPress: () => clearRead.mutate() },
-      ],
-    );
-  }, [clearRead]);
+    Alert.alert(t("notifications.clearQuestion"), t("notifications.clearBody"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("notifications.clear"), style: "destructive", onPress: () => clearRead.mutate() },
+    ]);
+  }, [clearRead, t]);
 
   /** `Today` and `Earlier` — two groups, because the scope has a 90-day floor
    *  (`notification.rb:46`) and the relative time on each row carries the rest. */
@@ -187,15 +185,15 @@ export default function Notifications() {
 
     const out: Row[] = [];
     if (today.length > 0) {
-      out.push({ kind: "heading", key: "h-today", label: "Today" });
+      out.push({ kind: "heading", key: "h-today", label: t("notifications.today") });
       for (const n of today) out.push({ kind: "row", key: `n-${n.id}`, notification: n });
     }
     if (earlier.length > 0) {
-      out.push({ kind: "heading", key: "h-earlier", label: "Earlier" });
+      out.push({ kind: "heading", key: "h-earlier", label: t("notifications.earlier") });
       for (const n of earlier) out.push({ kind: "row", key: `n-${n.id}`, notification: n });
     }
     return out;
-  }, [data]);
+  }, [data, t]);
 
   const unread = data?.unreadCount ?? 0;
 
@@ -212,21 +210,21 @@ export default function Notifications() {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t("common.back")}
           hitSlop={8}
           style={{ width: 32, height: 32, justifyContent: "center" }}
         >
           <ChevronLeft size={24} color={colors.ink} />
         </Pressable>
         <Text variant="title" style={{ flex: 1 }}>
-          Notifications
+          {t("notifications.title")}
         </Text>
 
         {unread > 0 ? (
           <Pressable
             onPress={() => markAllRead.mutate()}
             accessibilityRole="button"
-            accessibilityLabel="Mark all as read"
+            accessibilityLabel={t("notifications.markAllRead")}
             hitSlop={8}
             style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
           >
@@ -237,7 +235,7 @@ export default function Notifications() {
         <Pressable
           onPress={confirmClear}
           accessibilityRole="button"
-          accessibilityLabel="Clear read notifications"
+          accessibilityLabel={t("notifications.clearRead")}
           hitSlop={8}
           style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
         >
@@ -249,7 +247,7 @@ export default function Notifications() {
         <RefreshButton
           refreshing={isRefetching}
           onPress={() => void refetch()}
-          label="Refresh notifications"
+          label={t("notifications.refresh")}
           testID="notifications-refresh"
         />
       </View>
@@ -260,17 +258,17 @@ export default function Notifications() {
           away is not silent about what it did. */}
       {composed ? (
         <Text variant="caption" tone="muted" style={{ paddingBottom: metrics.space.sm }}>
-          Question ready in the chat — edit it before you ask.
+          {t("notifications.composed")}
         </Text>
       ) : null}
 
       {error ? (
         <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
           <Text tone="muted">
-            {failureMessage(error, "Could not load your notifications.")}
+            {failureMessage(error, t("notifications.loadFailed"))}
           </Text>
           <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
-            <Text tone="accent">Try again</Text>
+            <Text tone="accent">{t("common.tryAgain")}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -307,7 +305,7 @@ export default function Notifications() {
           isLoading || error ? null : (
             // One line, no icon — IDENTITY.md §6.
             <View testID="notifications-empty" style={{ paddingVertical: metrics.space.xl * 2 }}>
-              <Text tone="muted">You&apos;re all caught up.</Text>
+              <Text tone="muted">{t("notifications.empty")}</Text>
             </View>
           )
         }

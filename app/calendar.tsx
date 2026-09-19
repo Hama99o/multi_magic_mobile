@@ -44,6 +44,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router } from "expo-router";
+import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react-native";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshButton, UpdatedLine } from "@/components/Freshness";
@@ -68,18 +69,25 @@ type Row =
 
 /** `Today · Thu 18 Sep` — Craft names the day AND the date, so "Today" never
  *  floats free of when today is. */
-function headingFor(on: string, today: string): { label: string; isToday: boolean } {
+function headingFor(
+  on: string,
+  today: string,
+  t: (key: string) => string,
+  locale?: string,
+): { label: string; isToday: boolean } {
   const date = new Date(`${on}T00:00:00`);
+  // The APP's language, not the phone's: the heading has to read in the
+  // language the person chose, on whatever phone they chose it.
   const pretty = Number.isNaN(date.getTime())
     ? on
-    : date.toLocaleDateString(undefined, { weekday: "short", day: "numeric", month: "short" });
+    : date.toLocaleDateString(locale, { weekday: "short", day: "numeric", month: "short" });
 
-  if (on === today) return { label: `Today · ${pretty}`, isToday: true };
+  if (on === today) return { label: `${t("calendar.today")} · ${pretty}`, isToday: true };
 
   const tomorrow = new Date(`${today}T00:00:00`);
   tomorrow.setDate(tomorrow.getDate() + 1);
   const tomorrowKey = localDateKey(tomorrow);
-  if (on === tomorrowKey) return { label: `Tomorrow · ${pretty}`, isToday: false };
+  if (on === tomorrowKey) return { label: `${t("calendar.tomorrow")} · ${pretty}`, isToday: false };
 
   return { label: pretty, isToday: false };
 }
@@ -98,6 +106,7 @@ function localDateKey(date: Date): string {
 export default function Calendar() {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t, i18n } = useTranslation();
   const [composed, setComposed] = useState(false);
 
   const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt } = useQuery({
@@ -127,12 +136,12 @@ export default function Calendar() {
    *  not sent. */
   const ask = useCallback(
     (occurrence: Occurrence) => {
-      const when = headingFor(occurrence.on, localDateKey(new Date())).label;
-      setDraft(`Tell me about "${occurrence.event.title}" (${when}).`);
+      const when = headingFor(occurrence.on, localDateKey(new Date()), t, i18n.language).label;
+      setDraft(t("calendar.question", { title: occurrence.event.title, when }));
       setComposed(true);
       router.push("/chat");
     },
-    [setDraft],
+    [setDraft, t, i18n.language],
   );
 
   const rows = useMemo<Row[]>(() => {
@@ -149,7 +158,7 @@ export default function Calendar() {
     for (const occurrence of occurrences) {
       if (occurrence.on !== currentDay) {
         currentDay = occurrence.on;
-        const heading = headingFor(occurrence.on, today);
+        const heading = headingFor(occurrence.on, today, t, i18n.language);
         if (heading.isToday) todaySeen = true;
         out.push({
           kind: "day",
@@ -164,13 +173,13 @@ export default function Calendar() {
     // Today ALWAYS appears — the emptiness is the answer. Later empty days do
     // not; see this file's header.
     if (!todaySeen) {
-      const heading = headingFor(today, today);
+      const heading = headingFor(today, today, t, i18n.language);
       out.unshift({ kind: "nothing", key: "nothing-today" });
       out.unshift({ kind: "day", key: `day-${today}`, label: heading.label, isToday: true });
     }
 
     return out;
-  }, [data]);
+  }, [data, t, i18n.language]);
 
   return (
     <Screen measure>
@@ -185,21 +194,21 @@ export default function Calendar() {
         <Pressable
           onPress={() => router.back()}
           accessibilityRole="button"
-          accessibilityLabel="Back"
+          accessibilityLabel={t("common.back")}
           hitSlop={8}
           style={{ width: 32, height: 32, justifyContent: "center" }}
         >
           <ChevronLeft size={24} color={colors.ink} />
         </Pressable>
         <Text variant="title" style={{ flex: 1 }}>
-          What&apos;s next
+          {t("calendar.title")}
         </Text>
         {/* Quiet, unlabelled, top right — Outlook's agenda header and Mesh's
             notification header both do exactly this. */}
         <RefreshButton
           refreshing={isRefetching}
           onPress={reload}
-          label="Refresh the calendar"
+          label={t("calendar.refresh")}
           testID="calendar-refresh"
         />
       </View>
@@ -208,17 +217,17 @@ export default function Calendar() {
 
       {composed ? (
         <Text variant="caption" tone="muted" style={{ paddingBottom: metrics.space.sm }}>
-          Question ready in the chat — edit it before you ask.
+          {t("calendar.composed")}
         </Text>
       ) : null}
 
       {error ? (
         <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
           <Text tone="muted">
-            {failureMessage(error, "Could not load your calendar.")}
+            {failureMessage(error, t("calendar.loadFailed"))}
           </Text>
           <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
-            <Text tone="accent">Try again</Text>
+            <Text tone="accent">{t("common.tryAgain")}</Text>
           </Pressable>
         </View>
       ) : null}
@@ -247,7 +256,7 @@ export default function Calendar() {
                 tone="muted"
                 style={{ paddingVertical: metrics.space.md }}
               >
-                Nothing today.
+                {t("calendar.nothingToday")}
               </Text>
             );
           }
@@ -267,7 +276,7 @@ export default function Calendar() {
               tone="muted"
               style={{ paddingTop: metrics.space.xl, paddingBottom: metrics.space.lg }}
             >
-              The next {WINDOW_DAYS} days. Ask the assistant about anything further out.
+              {t("calendar.footer", { days: WINDOW_DAYS })}
             </Text>
           )
         }

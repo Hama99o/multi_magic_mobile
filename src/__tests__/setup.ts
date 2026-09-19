@@ -1,4 +1,19 @@
 /**
+ * i18next, initialised once for the whole suite.
+ *
+ * `useTranslation()` resolves against the DEFAULT i18next instance, and an
+ * uninitialised one returns the KEY — so a component test would assert
+ * against `files.limits` and a screen would render it. In the app
+ * `app/_layout.tsx` imports this first, before any screen; here the setup
+ * file is the equivalent guarantee, and it is a real one: a component that
+ * forgot its provider would still fail, because the instance is what is
+ * missing, not the provider.
+ *
+ * English, which is the default language and the source of the strings.
+ */
+import "@/i18n";
+
+/**
  * One in-memory SecureStore for the whole suite.
  *
  * The device fingerprint and the token both live in SecureStore, and both are

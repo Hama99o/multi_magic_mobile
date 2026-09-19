@@ -16,6 +16,7 @@ import {
 import { Eye, EyeOff } from "lucide-react-native";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { Text } from "./text";
+import { useTranslation } from "react-i18next";
 
 export type InputProps = Omit<TextInputProps, "style"> & {
   label: string;
@@ -33,6 +34,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
 ) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
 
@@ -81,7 +83,7 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         {secure ? (
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={revealed ? "Hide password" : "Show password"}
+            accessibilityLabel={revealed ? t("password.hidePassword") : t("password.showPassword")}
             hitSlop={12}
             onPress={() => setRevealed((v) => !v)}
             style={{ paddingLeft: metrics.space.sm }}

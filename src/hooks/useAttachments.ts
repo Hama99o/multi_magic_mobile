@@ -23,6 +23,7 @@ import {
   type AiDocument,
 } from "@/api/ai";
 import { failureMessage } from "@/api/failure";
+import { t } from "@/i18n";
 
 export interface PendingFile {
   /** Local, and only for React's key — the server's id arrives on success. */
@@ -60,13 +61,17 @@ export function rejectionFor(
   existingCount: number,
 ): string | null {
   if (existingCount >= LIMITS.maxFilesPerSession) {
-    return `This conversation already has ${LIMITS.maxFilesPerSession} files, which is the most it can hold.`;
+    return t("files.tooMany", { max: LIMITS.maxFilesPerSession });
   }
   if (file.size > LIMITS.maxFileBytes) {
-    return `${file.name} is ${describeSize(file.size)}. Files have to be under ${LIMITS.maxFileBytes / (1024 * 1024)} MB.`;
+    return t("files.tooBig", {
+      name: file.name,
+      size: describeSize(file.size),
+      max: LIMITS.maxFileBytes / (1024 * 1024),
+    });
   }
   if (!ALLOWED_UPLOAD_EXTENSIONS.includes(extensionOf(file.name) as never)) {
-    return `MultiMagic can read PDFs, images and CSVs. ${file.name} is not one of those.`;
+    return t("files.wrongType", { name: file.name });
   }
   return null;
 }
@@ -103,7 +108,7 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
         setPending((current) =>
           current.map((p) =>
             p.key === key
-              ? { ...p, status: "failed", error: failureMessage(e, "That file did not upload.") }
+              ? { ...p, status: "failed", error: failureMessage(e, t("files.uploadFailed")) }
               : p,
           ),
         );
@@ -131,7 +136,7 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
   const pickImage = useCallback(async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      setError("MultiMagic needs permission to open your photos.");
+      setError(t("files.needPhotoPermission"));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({ quality: 1 });
@@ -148,7 +153,7 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
   const takePhoto = useCallback(async () => {
     const permission = await ImagePicker.requestCameraPermissionsAsync();
     if (!permission.granted) {
-      setError("MultiMagic needs permission to use the camera.");
+      setError(t("files.needCameraPermission"));
       return;
     }
     const result = await ImagePicker.launchCameraAsync({ quality: 1 });

@@ -54,6 +54,9 @@ tags:
 
 # 2. Dots where the answer will be — OPTIONAL, and honestly so.
 #
+# lint: optional-ok — a RACE, not a weak assertion. The step that is the point
+# of this flow is the answer arriving, and that one is hard.
+#
 # The indicator is load-bearing in the product and a race in a flow: on a fast
 # turn the answer can land before the assertion runs, and failing then would
 # report a bug for the app being quick. Its behaviour is covered by unit test

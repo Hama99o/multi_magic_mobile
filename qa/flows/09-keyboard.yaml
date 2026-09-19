@@ -31,14 +31,25 @@ tags:
     id: "composer-attach"
 - takeScreenshot: reports/50-keyboard-up
 
+# ── THE DRAFT SURVIVES THE KEYBOARD CLOSING ────────────────────────────────
+# `hideKeyboard` on Android is a BACK press, which is only safe while an IME is
+# up to consume it. Here one provably is — the step above asserted the
+# keyboard-up state and nothing has dismissed it — and this screen is the ROOT
+# route, so if the press ever did reach the app it would background it and the
+# assertion immediately below would fail loudly rather than the flow drifting
+# on. It is also the step's whole purpose: closing the keyboard is the event
+# whose effect on the draft is being measured.
+- hideKeyboard
+- assertVisible:
+    id: "composer-input"
+    text: "does the composer stay above the keyboard"
+- takeScreenshot: reports/51-keyboard-down
+
 # The clear control appears only with a draft, and must be reachable too.
 - assertVisible:
     id: "composer-clear"
 - tapOn:
     id: "composer-clear"
-- hideKeyboard
-
-# And the draft survives the keyboard closing rather than being dropped with it.
 - assertVisible:
     id: "composer-input"
-- takeScreenshot: reports/51-keyboard-down
+- takeScreenshot: reports/52-draft-cleared

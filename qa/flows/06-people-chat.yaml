@@ -69,6 +69,10 @@ tags:
         id: "chats-empty"
     commands:
       # ── The thread ──────────────────────────────────────────────────────
+      # lint: dbid-ok — ANY thread is the subject here. The rig cannot know
+      # the QA account's thread names, and `chat-row-<id>` is the only handle
+      # on the row; the assertions that follow are about the thread it opened,
+      # not about which one it was.
       - tapOn:
           id: "chat-row-.*"
       - extendedWaitUntil:
@@ -88,11 +92,20 @@ tags:
       # that leaves anonymous text in a thread is indistinguishable from a
       # person having sent it.
       - inputText: "[qa] automated test message"
-      - hideKeyboard
+      # NO `hideKeyboard`. Two reasons, both measured in this repo: after
+      # `inputText` the send button asserts visible and after `hideKeyboard` it
+      # does not (`01-ask`); and this is a PUSHED screen, so a Back that reaches
+      # the app pops the thread and the next step fails on the chat list. The
+      # people composer is `multiline`, so Enter would insert a newline rather
+      # than send. The screen is `avoidKeyboard`, so the button is on screen.
       - tapOn:
           id: "people-composer-send"
       # `msg-mine-*` — if the ConversationChannel copy were feeding this
       # screen, the message would render as `msg-theirs-*` and this fails.
+      # lint: dbid-ok — the PREFIX is the assertion. `msg-mine-` vs
+      # `msg-theirs-` is which side the message landed on, which is the whole
+      # point of this flow; the id after it is the message's and cannot be
+      # known in advance.
       - extendedWaitUntil:
           visible:
             id: "msg-mine-.*"
@@ -100,6 +113,7 @@ tags:
       - takeScreenshot: reports/08-thread-sent-right-side
 
       # ── React, and take it back ─────────────────────────────────────────
+      # lint: dbid-ok — same handle, same reason: the side is the assertion.
       - longPressOn:
           id: "msg-mine-.*"
       - assertVisible:
@@ -116,6 +130,7 @@ tags:
 
       # The toggle: the same emoji again removes it. One endpoint, no separate
       # remove — and if a DELETE ever appears in the client, this fails.
+      # lint: dbid-ok — same handle, same reason.
       - longPressOn:
           id: "msg-mine-.*"
       - tapOn:

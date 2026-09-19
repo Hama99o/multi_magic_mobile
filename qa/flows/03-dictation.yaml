@@ -1,14 +1,23 @@
-# The mic: present when the device can dictate, ABSENT when it cannot.
+# The mic: ABSENT when the device cannot dictate, PRESENT when it can — and
+# which of those is the truth depends on the BINARY, not on the app.
 #
-# Not "disabled" — absent. A disabled mic invites a tap that can never work and
-# gives no reason, and on a cheap Android with no recogniser installed that is a
-# real state rather than a hypothetical.
+# Expo Go carries no custom native modules, so `expo-speech-recognition` is
+# simply not there and `available` is false by the only path available. The
+# development build has it in the binary (146 matches for
+# ExpoSpeechRecognition in classes16.dex). So this flow branches on `APP_ID`,
+# which `qa.config.sh` already sets to one or the other, and each branch
+# asserts hard.
 #
-# UNDER EXPO GO THIS FLOW PROVES THE ABSENT HALF ONLY, and that is worth saying
-# out loud rather than dressing up: Expo Go carries no custom native modules, so
-# `expo-speech-recognition` is missing and `available` is false by the only path
-# available. The PRESENT half — and the permission dialog, which is the part no
-# unit test reaches — needs a development build.
+# **It used to assert ABSENT unconditionally.** That was true on 18 September
+# under Expo Go and became false the moment the rig started driving the dev
+# build — it would have failed on the first dev-build run and blamed the mic.
+#
+# ── IF NEITHER BRANCH RUNS, THE MIC WAS NOT MEASURED ─────────────────────
+# The branches are chosen by a JS comparison on the `-e APP_ID` the rig passes.
+# If a future Maestro stops exposing env params to the sandbox, both are
+# skipped and only the composer assertions below will have run. That is a NOT
+# MEASURED, not a pass, and the `.log` says which branches executed — the same
+# distinction `optional: true` would have buried.
 appId: ${APP_ID}
 tags:
   - dictation
@@ -16,14 +25,83 @@ tags:
 - runFlow: login.yaml
 - assertVisible:
     id: "composer-input"
-# The composer still works completely without a recogniser: this is the
-# degradation, and it has to be silent rather than broken.
+
+# ── True on every binary: the composer works, with or without a recogniser ──
+# This is the degradation, and it has to be silent rather than broken. No
+# `hideKeyboard` between typing and the send button: measured in `01-ask`, the
+# send button asserts VISIBLE after `inputText` and FAILS after `hideKeyboard`.
 - tapOn:
     id: "composer-input"
-- inputText: "typed, because there is no mic here"
-- hideKeyboard
+- inputText: "typed, whether or not this phone can listen"
 - assertVisible:
     id: "composer-send"
-- takeScreenshot: reports/20-composer-no-mic
-- assertNotVisible:
-    id: "composer-mic"
+- takeScreenshot: reports/20-composer-typed
+
+# ── Expo Go: no native module, so the mic is ABSENT ─────────────────────────
+# Absent, not disabled: a disabled mic invites a tap that can never work and
+# gives no reason, and on a cheap Android with no recogniser installed that is
+# a real state rather than a hypothetical.
+- runFlow:
+    when:
+      true: ${APP_ID == "host.exp.exponent"}
+    commands:
+      - assertNotVisible:
+          id: "composer-mic"
+      - takeScreenshot: reports/21-mic-absent-expo-go
+
+# ── The development build: the module is there, so the mic is PRESENT ───────
+- runFlow:
+    when:
+      true: ${APP_ID != "host.exp.exponent"}
+    commands:
+      - assertVisible:
+          id: "composer-mic"
+      - takeScreenshot: reports/22-mic-present-dev-build
+      - tapOn:
+          id: "composer-mic"
+      # Android asks once per install. It may already have been answered, so
+      # the dialog itself is not asserted — what is asserted is that one of the
+      # two real outcomes arrived, and each is hard.
+      # lint: optional-ok — the system dialog appears only on the first run
+      # after an install; the outcome below is asserted either way.
+      # lint: anchored-ok — ANDROID's own button, not our copy. The linter
+      # only knows this app's strings and matched it against an unrelated
+      # sentence of ours that happens to contain the word.
+      - tapOn: "Allow"
+        optional: true
+      - extendedWaitUntil:
+          visible:
+            id: "composer-(listening|mic-refused)"
+          timeout: 30000
+      - takeScreenshot: reports/23-mic-answered
+
+      # Granted: it is listening, and the cancel is right there.
+      - runFlow:
+          when:
+            visible:
+              id: "composer-listening"
+          commands:
+            - assertVisible:
+                id: "composer-dictation-cancel"
+            - takeScreenshot: reports/24-listening
+            - tapOn:
+                id: "composer-dictation-cancel"
+            - assertNotVisible:
+                id: "composer-listening"
+
+      # Refused: the button STAYS, and the line says what to do about it. That
+      # is the decision the design turns on — a refusal is fixable, so the mic
+      # remains for the person who might grant it in Settings.
+      - runFlow:
+          when:
+            visible:
+              id: "composer-mic-refused"
+          commands:
+            - assertVisible: "I can't listen without the microphone. You can still type, or allow it in Settings."
+            - assertVisible:
+                id: "composer-mic"
+            - takeScreenshot: reports/25-mic-refused-button-stays
+
+# The composer is still usable whatever happened above.
+- assertVisible:
+    id: "composer-send"

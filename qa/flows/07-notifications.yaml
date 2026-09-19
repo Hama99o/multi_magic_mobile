@@ -63,6 +63,9 @@ tags:
       - assertVisible: "Today"
 
       # ── THE TAP COMPOSES, AND DOES NOT SEND ─────────────────────────────
+      # lint: dbid-ok — ANY notification is the subject. What is asserted is
+      # what the tap DOES (a question composed and not sent), not which row it
+      # was; `notification-row-<id>` is the only handle the row carries.
       - tapOn:
           id: "notification-row-.*"
       - extendedWaitUntil:
@@ -90,12 +93,16 @@ tags:
       # ── Mark all as read ────────────────────────────────────────────────
       # Only when there is still an unread dot to clear; otherwise the button
       # is not rendered and tapping it would fail for the wrong reason.
+      # lint: dbid-ok — "is there still an unread dot anywhere" is the
+      # question, so matching any row is the assertion rather than a shortcut.
       - runFlow:
           when:
             visible:
               id: "notification-unread-.*"
           commands:
             - tapOn: "Mark all as read"
+            # lint: dbid-ok — and here it is the strongest form of the same
+            # thing: NO row may still carry a dot.
             - extendedWaitUntil:
                 notVisible:
                   id: "notification-unread-.*"

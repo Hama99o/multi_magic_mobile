@@ -88,6 +88,23 @@ whatever anybody else dropped in it since you last looked
 git diff --cached --name-only
 ```
 
+**And naming paths at `git add` time does not protect you at `git commit` time,
+because the index is shared too.** The three sessions share one checkout, so
+`git status` can show another session's work already staged — files you never
+touched, sitting in `M `/`A ` with your own. A plain `git commit` then takes
+them, however carefully you named your own paths a moment earlier. Commit by
+pathspec instead, which builds the commit from the named paths' working-tree
+content and leaves every other index entry exactly where it was:
+
+```sh
+git commit -F msg.txt -- CLAUDE.md docs/ACCESSIBILITY.md src/…    # yes
+git commit -F msg.txt                                             # takes whatever is staged
+```
+
+This is not hypothetical: it happened while writing this file. A sibling had
+staged a half-finished fix and a test that was **red at that moment**, and a
+plain commit would have put both on `main` under somebody else's message.
+
 The cost is not tidiness. One sweep put a personal email address into a public
 repo. Another hid a session's finished work from the session chasing it — the
 header icons existed for half an hour while being asked for twice, committed

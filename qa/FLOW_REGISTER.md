@@ -236,3 +236,38 @@ fixed here:
   name one. A stable per-row handle would need a slug, and no serializer sends
   one.
 - **`09-keyboard` has a row in this file**, above.
+
+---
+
+## The TalkBack probe — 2026-09-19, attach sheet, tree at `4359205`
+
+da asked whether the five sheet scrims group their contents: each dismisses
+through a full-screen `Pressable` with `accessibilityRole="button"` and
+`accessibilityLabel="Close"`, holding the sheet's rows as **children**. If a
+named accessibility element groups its children, a screen reader announces one
+"Close" button per modal and every row inside is unreachable — five screens a
+blind person could not operate, including attaching a file and reacting.
+
+**MEASURED ON THE DEVICE, AGAINST THE REPAIRED BUILD (`d2f9e7d` and later).**
+Read from the accessibility tree itself rather than from TalkBack's speech,
+because the tree is what TalkBack walks and it is quotable:
+
+| node | content-desc | focusable |
+|---|---|---|
+| the scrim | `Close` | **true** |
+| `attach-photo` | `Photo. From your library` | **true** |
+| `attach-camera` | `Camera. Take one now` | **true** |
+| `attach-document` | `Document. PDF or CSV` | **true** |
+
+**Four separate stops, each carrying its own hint.** Android does not group,
+so the rows are reachable and the change is **not harmful** on the platform we
+ship to first.
+
+It does NOT prove the fix was necessary. da's reading of
+`ReactAccessibilityDelegate.java:467` — `hasNonActionableSpeakingDescendants`
+skips any child that is itself focusable — predicted exactly this, and the
+result is consistent with Android never having been affected. **The defect it
+guards against is an iOS one, and iOS has no build, no simulator and no rig
+here, so it remains unverified on the platform where it is real.** That
+distinction is the finding; "it worked" and "it was needed" are two different
+statements and this run only supports the first.

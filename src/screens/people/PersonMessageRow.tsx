@@ -45,6 +45,7 @@
  * the sender included. See `docs/design/people-chat/SPEC.md` §0.2.
  */
 import { Pressable, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Check, CheckCheck, RefreshCw } from "lucide-react-native";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -79,6 +80,7 @@ export function PersonMessageRow({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const mine = message.sentByMe;
 
   /**
@@ -131,7 +133,7 @@ export function PersonMessageRow({
         delayLongPress={300}
         accessibilityRole="button"
         accessibilityLabel={message.body ?? ""}
-        accessibilityHint={onLongPress ? "Long press to react" : undefined}
+        accessibilityHint={onLongPress ? t("thread.reactHint") : undefined}
         // ── A STATIC STYLE OBJECT, NOT THE `({ pressed }) => …` FORM ────────
         // Measured on a device at 360 dp: with the function form the bubble's
         // `backgroundColor` never painted. The ground sampled `#F7F9F9` where

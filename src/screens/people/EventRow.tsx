@@ -64,8 +64,8 @@ export function EventRow({
       testID={`calendar-event-${occurrence.key}`}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${event.title}, ${timeLabel(occurrence)}`}
-      accessibilityHint="Opens the assistant with a question about this event"
+      accessibilityLabel={t("calendar.event", { title: event.title, when: timeLabel(occurrence) })}
+      accessibilityHint={t("calendar.eventHint")}
       android_ripple={{ color: colors.border }}
       style={{
         flexDirection: "row",

@@ -58,6 +58,31 @@ module.exports = {
         message:
           "require() needs a string LITERAL — Metro resolves requires statically and a variable makes the app unbundleable, while Node and Jest accept it. One try/catch per module with the name written out; see src/stores/readAloud.store.ts and docs/TESTING.md §1.",
       },
+      /**
+       * AN ACCESSIBILITY STRING IS A USER-FACING STRING.
+       *
+       * `docs/LANGUAGES.md` says this app is English and French. Two hint
+       * strings were written as English literals and shipped, so a French
+       * user's screen reader read them English — the only part of the
+       * interface that never got translated, in the one place nobody looks,
+       * for the users least able to work around it.
+       *
+       * No gate could have seen it. `src/i18n/__tests__/keys.test.ts` resolves
+       * every `t("…")` through the live instance, which proves the keys that
+       * ARE called exist; it cannot see a sentence that never asked for a key.
+       * Rendering tests read `testID`s and visible text, not the a11y tree.
+       *
+       * So this is the gate: a bare string with words in it, in either of the
+       * two spoken attributes. Data-derived values are untouched, because a
+       * `t()` argument sits under a CallExpression and a template of names has
+       * no literal at all.
+       */
+      {
+        selector:
+          "JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > ConditionalExpression > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > LogicalExpression > Literal[value=/[A-Za-z]{3,}/]",
+        message:
+          "A screen reader reads this out, so it is a user-facing string and must come from t(). A literal here ships English to a French user in the one place no test looks. See docs/LANGUAGES.md.",
+      },
     ],
   },
   ignorePatterns: [

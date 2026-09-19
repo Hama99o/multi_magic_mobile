@@ -406,6 +406,7 @@ export const en = {
     delete: "Delete",
     react: "React {{emoji}}",
     removeReaction: "Remove {{emoji}}",
+    reactHint: "Long press to react",
   },
 
   notifications: {
@@ -441,6 +442,7 @@ export const en = {
     minutes: "{{count}} min",
     hours: "{{count}} h",
     event: "{{title}}, {{when}}",
+    eventHint: "Opens the assistant with a question about this event",
   },
 };
 

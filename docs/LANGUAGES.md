@@ -35,6 +35,16 @@ French app and what the screen it opens is titled).
 | No French value is still the English one | same file — the failure that a type check cannot see, because a copied English string type-checks |
 | Every screen renders every handle **and reads French** at 360 dp | `src/screens/__tests__/screens.render.test.tsx`. Each row carries a distinctive French sentence, because a handle is on a container and the English text inside it survives a language switch untouched — proven by planting exactly that |
 | The choice survives a restart, reaches the server, and is not overridden by it | `src/stores/__tests__/language.store.test.ts` |
+| No `accessibilityLabel` or `accessibilityHint` is a bare English string | `no-restricted-syntax` in `.eslintrc.js`. Added after two of them shipped |
+
+**Two strings were English until 2026-09-19, and no gate above could have seen
+them.** `EventRow`'s hint and `PersonMessageRow`'s *"Long press to react"* were
+written as literals in JSX, so a French user's screen reader read them in
+English — the one part of the interface that never got translated, in the place
+nobody looks, for the users least able to route around it. `keys.test.ts`
+resolves every key the app *asks for*; it cannot see a sentence that never asks.
+The render tests read `testID`s and visible text, not the accessibility tree.
+The gate is now an eslint rule, and it failed on both of them before it passed.
 
 **Not checked: whether a French string FITS.** Jest has no layout, so nothing
 here measures pixels. The 1.9× length budget in `locales.test.ts` is a proxy
@@ -93,6 +103,7 @@ not been done.
 | `calendar.allDay` | All day | Toute la journée |
 | `calendar.composed` | Question ready in the chat — edit it before you ask. | Question prête dans la discussion — modifiez-la avant de demander. |
 | `calendar.event` | {{title}}, {{when}} | {{title}}, {{when}} |
+| `calendar.eventHint` | Opens the assistant with a question about this event | Ouvre l’assistant avec une question sur cet événement |
 | `calendar.footer` | The next {{days}} days. Ask the assistant about anything further out. | Les {{days}} prochains jours. Demandez à l’assistant pour ce qui va plus loin. |
 | `calendar.hours` | {{count}} h | {{count}} h |
 | `calendar.loadFailed` | Could not load your calendar. | Impossible de charger votre agenda. |
@@ -352,6 +363,7 @@ not been done.
 | `thread.noMessages` | No messages yet. | Pas encore de message. |
 | `thread.online` | Online | En ligne |
 | `thread.react` | React {{emoji}} | Réagir {{emoji}} |
+| `thread.reactHint` | Long press to react | Appui long pour réagir |
 | `thread.removeReaction` | Remove {{emoji}} | Retirer {{emoji}} |
 | `thread.someone` | Someone | Quelqu’un |
 | `thread.someoneTyping` | {{name}} is typing… | {{name}} écrit… |

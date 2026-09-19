@@ -434,6 +434,7 @@ export const fr: Translations = {
     delete: "Supprimer",
     react: "Réagir {{emoji}}",
     removeReaction: "Retirer {{emoji}}",
+    reactHint: "Appui long pour réagir",
   },
 
   notifications: {
@@ -470,5 +471,6 @@ export const fr: Translations = {
     minutes: "{{count}} min",
     hours: "{{count}} h",
     event: "{{title}}, {{when}}",
+    eventHint: "Ouvre l’assistant avec une question sur cet événement",
   },
 };

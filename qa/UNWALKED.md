@@ -10,10 +10,21 @@ list you can read, because a handle is written when somebody expected a test or
 a flow to need it. A handle nothing names is the receipt for a screen nobody
 walked.
 
-**176 handles are defined in `app/` and `src/`. 38 of them — 22% — were named by
-no flow and no test when this was written.** §1 and the two worst of §2 have
-since been closed and the count reads **24**. The list below is as found, with
-what closed each one.
+**176 handles were defined in `app/` and `src/` when this was written, and 38 of
+them — 22% — were named by no flow and no test. The count now reads 15.**
+
+The list below is as found. What made the rest tractable was e0 ranking them,
+and the ranking mattered more than the list: a flat 38 becomes wallpaper, and
+the distinction that does the work is **who can produce the state more
+cheaply.** A handle a flow already walks past is a flow's job; a handle whose
+state has to be manufactured — a send that fails, an uploaded file, a repeating
+event in his real calendar — belongs in a component test, and is not a backlog
+item at all once it has one.
+
+The corollary is e0's and it is now in `qa/FLOW_REGISTER.md`: **"unreachable by
+the rig" is a question — *where is this covered instead?* — and not an answer.**
+Collapsing those two turns a covered thing into a backlog item and an uncovered
+thing into an excuse, and from outside they look identical.
 
 A hit is a question, not a verdict. A control can be reached by its label or its
 text, and this repo *prefers* that: the register is explicit that a conversation
@@ -79,7 +90,7 @@ unit layer does not cover them either.**
 | ~~**"Search in" — conversation scoping**~~ | ~~`scope-*`, `scope-save`, `scope-all`, `scope-cancel`~~ | **CLOSED** — `ScopeDialog.test.tsx` |
 | ~~**Pending file chips**~~ | ~~`pending-files`, `pending-file-*`, `pending-file-remove-*`, `pending-files-more`~~ | **CLOSED** — `PendingFiles.test.tsx` |
 | **"How to answer" — per-conversation instructions** | `session-menu-instructions`, `instructions-input`, `instructions-save`, `instructions-cancel` | `InstructionsDialog`: yes, but nothing reaches these |
-| **The file preview sheet** | `file-preview-open`, `file-preview-close`, `file-preview-image` | `FilePreview`: mounted, these unreached |
+| ~~**The file preview sheet**~~ | ~~`file-preview-open`, `file-preview-close`, `file-preview-image`~~ | **CLOSED** — `FilePreview.test.tsx` |
 | **Read-aloud controls** | `answer-read-controls` | behind `READ_ALOUD_ENABLED`, renders nothing yet |
 
 `scope-*` and `pending-file-*` were the two where **no test mounted the
@@ -147,3 +158,39 @@ are new rather than neglected.
   `testID`. A screen with no handles at all is invisible to this walk, and so is
   anything reached by a variable — `testID={row.testID}` resolves to whatever
   the table holds.
+
+
+---
+
+## Closed since, and the one assertion each turned on
+
+- **`answer-undo`** — the endpoint is called ONCE with the right id, because a
+  double fire is a second DELETE against his records.
+- **`ScopeDialog`** — nothing selected means search everywhere, not search
+  nothing.
+- **`PendingFiles`** — a failed upload stays on screen as failed; a chip that
+  vanishes is indistinguishable from one that uploaded.
+- **`thinking-slow`** — the 45-second safeguard had never been rendered by
+  anything.
+- **`session-scoped-*` / `session-instructed-*`** — the orphan handle was the
+  receipt for an incomplete label: the row named neither badge, so a
+  conversation that rewrites every answer announced identically to one that
+  does not.
+- **`msg-retry`** — and next to it the assertion nobody asked for: **a failed
+  message shows no tick**, because the receipt and the failure are mutually
+  exclusive only by construction, and construction drifts silently.
+- **`file-preview-*`** — the screen makes one decision, image inline versus
+  handed to the device, using one regex against an **Active Storage signed
+  URL**. Anchoring that test at `$` would call every signed image a document
+  and degrade the preview for exactly the files it exists to show. The URL is
+  also opened untouched: the signature is the path's permission to exist.
+- **`answer-copied`** — nothing is copied when the answer has no text, because
+  writing `""` silently wipes whatever the person already had on the clipboard.
+
+**Three of these were found only by planting**, and two were tests of mine that
+could not fail for the reason they were named after — `docs/TESTING.md` §11.
+A third instance of the mock-ordering trap turned up in the last one: `jest.mock`
+creates one `jest.fn()` per module registry and `restoreAllMocks` restores a spy
+to exactly that function **with its call history intact**, so "nothing was
+copied" saw three calls from the three tests before it and passed alone. Restore
+undoes the replacement; it does not erase what was recorded.

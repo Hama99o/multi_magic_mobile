@@ -17,7 +17,8 @@
  * What is NOT here: a flow. Exercising this for real would delete something of
  * his, and `qa/RIG_CONTRACT.md` §3 is why that is not a test.
  */
-import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
+import { render, screen, fireEvent, waitFor, act } from "@testing-library/react-native";
+import * as Clipboard from "expo-clipboard";
 import { undoApi, type ChatMessage } from "@/api/ai";
 
 import { AnswerActions } from "../AnswerActions";
@@ -39,6 +40,22 @@ const answer = (over: Partial<ChatMessage> = {}): ChatMessage =>
     ...over,
   }) as ChatMessage;
 
+/**
+ * BOTH, AND THE ORDER MATTERS — the third time this class bit tonight.
+ *
+ * `jest.mock("expo-clipboard", …)` creates ONE `jest.fn()` per module registry,
+ * and `restoreAllMocks` restores a spy to exactly that function — **with its
+ * call history intact**. So a later test asserting "nothing was copied" saw
+ * three calls from the three tests before it and failed for a reason that had
+ * nothing to do with the code. It passed alone, which is the shape that reads
+ * as load-flake.
+ *
+ * `clearAllMocks` at the START is the only ordering that cannot be got wrong:
+ * `queryClient.ts` makes the same argument about `gcTime`, and
+ * `announce.test.tsx` hit the same thing an hour ago. Restore undoes the
+ * REPLACEMENT; it does not erase what was recorded.
+ */
+beforeEach(() => jest.clearAllMocks());
 afterEach(() => jest.restoreAllMocks());
 
 describe("taking back what an answer wrote", () => {
@@ -90,5 +107,62 @@ describe("taking back what an answer wrote", () => {
     );
     expect(screen.getByTestId("answer-undone")).toBeTruthy();
     expect(screen.queryByTestId("answer-undo")).toBeNull();
+  });
+});
+
+
+describe("copying an answer out", () => {
+  /**
+   * `answer-copied` was named by no flow and no test. The confirmation is the
+   * only thing that tells somebody the press worked — `setStringAsync` is
+   * silent, and an answer about somebody's money is the case where they will
+   * go and paste it somewhere that matters.
+   */
+  it("puts the answer on the clipboard, exactly as written", async () => {
+    const set = jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    render(<AnswerActions message={answer()} showUndo={false} onUndone={() => {}} />);
+
+    fireEvent.press(screen.getByLabelText("Copy answer"));
+
+    await waitFor(() => expect(set).toHaveBeenCalledWith("I added a note about the lease."));
+    expect(set).toHaveBeenCalledTimes(1);
+  });
+
+  it("says so, because setStringAsync is silent", async () => {
+    jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    render(<AnswerActions message={answer()} showUndo={false} onUndone={() => {}} />);
+    expect(screen.queryByTestId("answer-copied")).toBeNull();
+
+    fireEvent.press(screen.getByLabelText("Copy answer"));
+
+    await waitFor(() => expect(screen.getByTestId("answer-copied")).toBeTruthy());
+  });
+
+  it("takes the confirmation back down again", async () => {
+    jest.useFakeTimers();
+    jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    render(<AnswerActions message={answer()} showUndo={false} onUndone={() => {}} />);
+
+    fireEvent.press(screen.getByLabelText("Copy answer"));
+    await waitFor(() => expect(screen.getByTestId("answer-copied")).toBeTruthy());
+
+    act(() => {
+      jest.advanceTimersByTime(1500);
+    });
+
+    expect(screen.queryByTestId("answer-copied")).toBeNull();
+    jest.useRealTimers();
+  });
+
+  it("copies NOTHING when the answer has no text", async () => {
+    // A deleted or empty reply. Writing "" to the clipboard would silently wipe
+    // whatever the person had already put there.
+    const set = jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    render(<AnswerActions message={answer({ body: "" })} showUndo={false} onUndone={() => {}} />);
+
+    fireEvent.press(screen.getByLabelText("Copy answer"));
+
+    await waitFor(() => expect(screen.queryByTestId("answer-copied")).toBeNull());
+    expect(set).not.toHaveBeenCalled();
   });
 });

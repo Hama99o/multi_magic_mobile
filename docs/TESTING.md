@@ -680,6 +680,70 @@ else entirely.
 
 ---
 
+---
+
+## 14 · A check that can only report success, and a habit fixed in one place
+
+**2026-09-20. Two instances, hours apart, the second after the first was
+found, written up, and passed on to another session.**
+
+Every gate in this repo was being run by hand like this:
+
+```sh
+npm run lint 2>&1 | tail -1
+```
+
+**A pipeline's exit status is the last command's.** `tail` always succeeds, so
+the `&&` chain after it walked past a failing gate into a commit, twice:
+
+1. **`71bc742`** landed on `main` with eslint red. Found immediately, fixed in
+   `03ee80b`, written into that commit message, and passed to the session
+   holding the device so it could check the rig for the same shape.
+2. **The `sdk-57` branch had been red since the compiler audit**, and I had
+   reported it green twice in the interval. Two causes underneath — three
+   React Compiler rules flipped to `"error"` by a `sed` and never reverted,
+   and an unused `useRef` left by my own refactor — and **both were invisible
+   for exactly the reason I had already found and fixed on main.**
+
+> **The rule: correcting a habit in the place you found it leaves every other
+> place still doing it — and you will trust those places MORE afterwards, not
+> less, because you believe the habit is fixed.** The fix is not the fix. The
+> sweep is.
+
+### What the sweep found, which is the better half
+
+Every committed file was already clean:
+
+| Where | State |
+|---|---|
+| `qa/*.sh` — all six | **already `set -o pipefail`** |
+| `package.json` scripts | no pipelines |
+| `.github/workflows/ci.yml` | five bare `run:` steps |
+| `.githooks/pre-commit` | `set -e`, gates invoked bare or redirected — no gate pipeline |
+
+**So the defect was never in the repository. It was in the human in the
+loop**, and the repository was already more disciplined than the person
+typing into it — six scripts set `pipefail`, presumably because somebody met
+this before and fixed it *there*.
+
+`pipefail` is now on the hook too, for consistency rather than as a fix, and
+it says so in the file.
+
+### Why this one is different from the other thirteen
+
+Every earlier entry is a **test or a rule** that could not see a defect. This
+is the first where **the gate was right and the thing reading the gate was
+wrong** — and the reader was a person, so nothing in CI would ever have
+caught it. A check that can only report success is the shape this file has
+now met five times; this is the first time it was the harness around the
+check rather than the check.
+
+Read exit codes directly:
+
+```sh
+npm run lint >/dev/null 2>&1; echo "lint=$?"
+```
+
 ## What each gate is actually for
 
 | Gate | Proves | Cannot see |

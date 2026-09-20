@@ -12,6 +12,12 @@
 # only when the change can plausibly break it.
 
 set -e
+# `pipefail` too, and prophylactically rather than as a fix: nothing below
+# pipes a gate's result today, and every `qa/*.sh` already sets it. This hook
+# was the one script in the repo without it. `docs/TESTING.md` §14 is why that
+# matters — the defect it guards against was never in a committed file, it was
+# in how a person invoked these gates by hand.
+set -o pipefail
 
 say() { printf '\n\033[1m%s\033[0m\n' "$1"; }
 

@@ -39,13 +39,26 @@ tags:
 - tapOn:
     id: "sessions-close"
 
+# ── WHY `pressKey: Back` AND NOT `tapOn: "Back"` ─────────────────────────
+# The header's back control is `accessibilityLabel={t("common.back")}`, so its
+# NAME IS TRANSLATED — "Back" in English, "Retour" in French. This pass tapped
+# the English word, which meant it could never shoot a French set: it walked
+# three screens, reached the first header, and failed on a control that was
+# there under a different name. Found on the first French attempt, 2026-09-20.
+#
+# The chevrons carry no testID, and both screens are left with the platform
+# gesture anyway, so the system Back is the honest selector here rather than a
+# handle that does not exist. Safe on these screens because every one of them
+# is PUSHED; on the assistant, which is the root route, Back exits the app —
+# see `login.yaml`.
+#
 # 3 · People.
 - tapOn:
     id: "chat-open-chats"
 - assertVisible:
     id: "chats-list"
 - takeScreenshot: reports/${SHOT}-people-chat
-- tapOn: "Back"
+- pressKey: Back
 
 # 4 · Notifications.
 - tapOn:
@@ -53,7 +66,7 @@ tags:
 - assertVisible:
     id: "notifications-list"
 - takeScreenshot: reports/${SHOT}-notifications
-- tapOn: "Back"
+- pressKey: Back
 
 # 5 · Calendar.
 - tapOn:
@@ -61,7 +74,7 @@ tags:
 - assertVisible:
     id: "calendar-list"
 - takeScreenshot: reports/${SHOT}-calendar
-- tapOn: "Back"
+- pressKey: Back
 
 # 6 · Account, reached through the sheet.
 - tapOn:
@@ -73,7 +86,7 @@ tags:
 - takeScreenshot: reports/${SHOT}-account
 
 # 7 · Profile.
-- tapOn: "Back"
+- pressKey: Back
 - tapOn:
     id: "chat-open-sessions"
 - tapOn:
@@ -81,7 +94,7 @@ tags:
 - assertVisible:
     id: "profile-firstname"
 - takeScreenshot: reports/${SHOT}-profile
-- tapOn: "Back"
+- pressKey: Back
 
 # 8 · Upload — the attach sheet, which is the whole of that screen's design.
 - assertVisible:

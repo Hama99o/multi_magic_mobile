@@ -81,6 +81,32 @@ screen. Re-planting the same break fails.
 > test is measuring something else — find out what, because that is usually
 > more interesting than the test you meant to write.
 
+### The same assertion, twice in one day, in two languages
+
+**An assertion can match the wrong NODE and read as though it matched the
+right one.** Two instances, three hours apart, both mine:
+
+- `19-session-options.yaml` asserted `"QA options target.*"` after pressing
+  Enter in the rename dialog. That matched the text **inside the dialog's own
+  input field**, so the flow proved it had *typed* a title, not saved one, and
+  then hunted a row menu sitting behind a modal. Found by the session running
+  it.
+- `AiSessionBar.test.tsx` asserted `/Renovation/` after opening the delete
+  confirm. That is also the chat's title **in the bar behind the dialog**, so
+  it would have passed with no dialog at all. Found by it passing while I
+  read it.
+
+Both are §2 with a modal instead of a container, and the second was written
+after the first had been explained to me. The fix in both cases is to assert
+something only the right node can satisfy — the control you actually mean
+(`rename-save`), or the whole sentence rather than the word it shares with
+the screen underneath.
+
+> **When an assertion could be satisfied by two things on screen, it is
+> satisfied by the wrong one.** Not "might be": a passing test tells you
+> nothing about which, and the one you did not mean is usually the one that
+> was already there.
+
 ### The corollary, earned the hard way on 2026-09-19
 
 Four assertions written that evening could not have failed. Three were tests:

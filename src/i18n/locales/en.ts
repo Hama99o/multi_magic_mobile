@@ -450,6 +450,7 @@ export const en = {
     composed: "Question ready in the chat — edit it before you ask.",
     question: 'Tell me about "{{title}}" ({{when}}).',
     allDay: "All day",
+    timeUnknown: "Unknown",
     minutes: "{{count}} min",
     hours: "{{count}} h",
     event: "{{title}}, {{when}}",

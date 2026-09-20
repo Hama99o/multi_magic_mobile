@@ -477,6 +477,7 @@ export const fr: Translations = {
     composed: "Question prête dans la discussion — modifiez-la avant de demander.",
     question: "Parle-moi de « {{title}} » ({{when}}).",
     allDay: "Toute la journée",
+    timeUnknown: "Inconnue",
     minutes: "{{count}} min",
     hours: "{{count}} h",
     event: "{{title}}, {{when}}",

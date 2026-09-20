@@ -138,22 +138,54 @@ describe("what a screen reader is told", () => {
   });
 });
 
-// ── THE ONE I WOULD RATHER HAVE FOUND ON A DEVICE ──────────────────────────
+// ── A TIMESTAMP IT CANNOT READ ─────────────────────────────────────────────
 //
-// `timeLabel` returns `t("calendar.allDay")` for a date it cannot parse, so a
-// malformed `startsAt` renders as "All day" — a confident wrong answer rather
-// than a blank. It is asserted here as CURRENT behaviour, not as correct
-// behaviour, so that changing it is a decision somebody makes on purpose
-// rather than a test breaking mysteriously.
+// This block first asserted the OLD behaviour — "All day" — as *current
+// rather than correct*, on the reasoning that the server always sends either
+// a timestamp or `all_day: true`, so the branch was unreachable.
 //
-// I have not changed it: the server always sends either a timestamp or
-// `all_day: true`, so the branch is unreachable from the real backend, and
-// "unreachable today" is a poor reason to leave a lie in a row but a good
-// reason not to redesign one at this hour.
+// That reasoning was wrong and Hamma9901 named why: it is a claim about
+// today's DATA, not about this code. A calendar row renders whatever the
+// server sends, and the parser is the only thing between a malformed
+// timestamp and that row. It is also the worst failure available on this
+// screen — a confident wrong answer, in an app whose purpose is telling
+// somebody when things are, on a row they will act on. Somebody misses a
+// 09:00 dentist because the row said the day was free.
+//
+// So the parser fails instead of guessing, and these assert the honest
+// answer.
 describe("a timestamp it cannot read", () => {
-  it("currently reads as All day, which is a confident wrong answer", () => {
+  it("says it does not know, rather than calling it an all-day event", () => {
     render(<EventRow occurrence={occurrence({ startsAt: "not a date" })} onPress={jest.fn()} />);
 
+    expect(screen.getByText("Unknown")).toBeTruthy();
+    // The specific lie this replaces: a day that looks free.
+    expect(screen.queryByText("All day")).toBeNull();
+  });
+
+  it("tells a screen reader the same thing it tells the screen", () => {
+    render(<EventRow occurrence={occurrence({ startsAt: "not a date" })} onPress={jest.fn()} />);
+
+    // The label runs through the same `timeLabel`, so a fix that only
+    // corrected the visible column would leave the spoken one saying
+    // "Dentist, All day" — the original lie, to the person least able to
+    // check it against anything else on the row.
+    expect(
+      screen.getByTestId("calendar-event-5:2026-09-20").props.accessibilityLabel,
+    ).toBe("Dentist, Unknown");
+  });
+
+  // A real all-day event is still an all-day event — the fix must not have
+  // turned every one of them into "Unknown".
+  it("still says All day when the event really is one", () => {
+    render(
+      <EventRow
+        occurrence={occurrence({ allDay: true, startsAt: null, endsAt: null })}
+        onPress={jest.fn()}
+      />,
+    );
+
     expect(screen.getByText("All day")).toBeTruthy();
+    expect(screen.queryByText("Unknown")).toBeNull();
   });
 });

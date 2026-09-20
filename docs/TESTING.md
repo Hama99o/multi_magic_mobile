@@ -511,6 +511,19 @@ structure, and the idea lives in the structure.
 > it, and nobody could see that until somebody asked the question from the other
 > end.
 
+**And a fifth, about the other end of the same pipe: a check that resolves a
+handle against the SOURCE cannot see a handle the RENDERER duplicates.**
+`flow_lint.py` reads `testID="event-repeats"` in the file, once, and reports
+it resolved — but every lucide icon passes its `testID` to both its wrapper
+and the `Svg` inside it, so `getByTestId` on any icon in this app throws
+*"Found multiple elements"*. The source is not the tree. A grep over source
+answers a question about what was written; the defect lives in what was
+rendered, and nothing that reads files can reach it.
+
+Flagged by the session holding the device. The session that agreed with the
+warning in a reply walked into it within the hour, which is why it is now a
+comment at the call site (`EventRow.test.tsx`) rather than only in a message.
+
 **A relative, from the same evening, and the sharpest form of it.** A session
 chasing this very report ran `pkill -f 'while :; do :; done'` and killed its
 own shell — because the process running the pattern had the pattern on its

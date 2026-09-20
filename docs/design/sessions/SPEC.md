@@ -144,3 +144,69 @@ not a layout preference: a named accessibility element groups its children, so a
 as one "Close" button with every row inside it unreachable — on iOS, absolutely.
 `docs/ACCESSIBILITY.md` N1, and `src/__tests__/a11y.test.tsx` fails if any
 container with a name acquires a control inside it again.
+
+---
+
+### Divergence note — 2026-09-20: the list is crushed at 360 dp
+
+**A real defect, language-independent, found in the French picture pass and
+confirmed against the English shot at the same width.** Compare
+`ours/360-light-fr-sessions.png` with `ours/360-light-en-sessions.png`: the
+layout is identical, so it is not a French-length problem. It was filed as
+French, half-written, and the comparison is the only reason it was not.
+
+**And it has been in `ours/` as `DONE` evidence since the night before.** The
+screenshot existed, was committed, and nobody read it closely enough to see a
+conversation row sliced through the middle of its glyphs. *A screenshot that
+exists is not a screenshot that was read* — `DONE` is defined as those files
+existing, which is a definition about files rather than about looking.
+
+#### The arithmetic, from the source
+
+The sheet is `maxHeight: "85%"` with a flex column inside it. Its children are
+the header, the conversation `ScrollView`, and a pinned block. The ScrollView
+carries **no `flex`**, so it does not claim space — it takes whatever the
+pinned block leaves.
+
+The pinned block is not small: the primary button (48), a divider, `ThemeRow`,
+`LanguageRow`, an "Account" heading and three rows of about 44 each, with
+gaps — roughly **340 dp before the bottom inset**. On a 360 × 800 phone, 85 %
+is ~680; minus padding, a 48 dp header, two 16 dp gaps and that block, the
+list is left about 190 — three rows. **On a 360 × 640 phone it is under one**,
+which is what the photograph shows.
+
+So the one part of the sheet the sheet exists for absorbs every bit of the
+squeeze, and it does so silently: a `ScrollView` clips its last row rather
+than reporting that it had no room.
+
+#### Why this is not a one-line fix
+
+Both halves are in this file already, which is why it needs a decision rather
+than a patch:
+
+- Cleo's take-away (§Sources) is **New conversation as a pinned PRIMARY** —
+  the button, not a settings panel.
+- But Appearance, Language and the Account group living **under a divider at
+  the bottom** is *his instruction*, and "the sheet's last row is Sign out,
+  clearing the bottom inset" is a rule with a device screenshot behind it.
+
+So "move the block into the scroll" would satisfy the geometry and quietly
+undo two decisions that were made on purpose.
+
+#### What I would do, and it is not mine to do blind
+
+**One `ScrollView` holding the list AND the settings block, with only the
+primary button pinned.** That keeps the cited reference exactly — the primary
+is what Cleo pins — keeps Appearance/Language/Account at the bottom in reading
+order, keeps Sign out as the last row with the inset applied to the scroll's
+own bottom padding, and gives the list the room it is supposed to have.
+
+The alternative, if the block must stay visible without scrolling, is a
+`minHeight` on the list of three rows and a shorter settings block — which
+means dropping something from it, and that is a question for him.
+
+**Not changed here.** This is a layout fix on a screen marked `DONE` with
+device evidence, and the session that found it has the device while the
+session that would write it does not. Nothing about this can be verified by a
+test: Jest has no layout engine, so there is no assertion that fails today and
+passes afterwards. **The proof is the same two screenshots, re-shot.**

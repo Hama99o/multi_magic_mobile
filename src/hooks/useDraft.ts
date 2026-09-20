@@ -71,7 +71,10 @@ export function useDraft(conversationId: number | null) {
     return () => {
       cancelled = true;
     };
-  }, [conversationId]);
+    // `setDraft` is a `useCallback` over `conversationId`, so its identity
+    // changes exactly when this effect already re-runs. Listing it satisfies
+    // exhaustive-deps without widening what re-runs this.
+  }, [conversationId, setDraft]);
 
   useEffect(() => {
     if (conversationId == null || !loaded.current) return;

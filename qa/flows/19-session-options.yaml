@@ -1,0 +1,200 @@
+# THE TWO DIALOGS BEHIND THE ROW MENU — standing instructions, and scope.
+#
+# `flow_lint --untouched` found six handles reachable on the QA account and
+# touched by nothing: `instructions-input`, `instructions-save`,
+# `instructions-cancel`, `scope-all`, `scope-save`, `scope-cancel`. `15` opens
+# the menu and asserts all four entries exist, and says in its own comment that
+# asserting an entry is present is not exercising it. This is the flow that
+# exercises two of them.
+#
+# ── WRITTEN BUT NOT RUN ──────────────────────────────────────────────────
+# Authored by the session holding the CODE half; the device is held by another.
+# Until it has executed once it is worth exactly nothing — `docs/TESTING.md` §6
+# is about `09-keyboard`, which sat in the register as keyboard coverage while
+# having never run. **Do not record this as covered until a run says so**, and
+# when it runs, say which branch ran.
+#
+# ── NO SELECTOR HERE IS A DATABASE ID ────────────────────────────────────
+# Same rule as `15`: rows are named the way a person names them. This flow
+# makes its own conversation, renames it to a title nobody else uses, and
+# addresses it and its menu by that title.
+#
+# ── WHAT EACH DIALOG'S PROOF IS ──────────────────────────────────────────
+# Both are "type/choose, save, reopen and see it again". A dialog that accepts
+# input and drops it on save looks identical to one that works, until you come
+# back — and coming back is the only assertion that can tell them apart. The
+# CANCEL paths are proved the same way and in the harder direction: change
+# something, cancel, reopen, and see the change is NOT there.
+#
+# ── AND IT DELETES WHAT IT MADE ──────────────────────────────────────────
+# One conversation per run. Left behind, the QA account reaches the cap of 50
+# and every flow that presses "New conversation" starts failing on a full
+# account (`15`'s header). Deleted at the end through the real confirm.
+appId: ${APP_ID}
+tags:
+  - sessions
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-open-sessions"
+- assertVisible:
+    id: "sessions-sheet"
+
+# ── At the cap there is nothing to create: say so and stop ───────────────
+# NOT MEASURED past here, which is a different fact from passed.
+- runFlow:
+    when:
+      visible:
+        id: "sessions-at-limit"
+    commands:
+      - assertVisible: "You have 50 conversations, which is the most MultiMagic keeps.*"
+      - takeScreenshot: reports/93-session-options-at-limit-NOT-MEASURED
+
+- runFlow:
+    when:
+      notVisible:
+        id: "sessions-at-limit"
+    commands:
+      # ── A conversation of our own, named so we can address it ────────
+      - tapOn:
+          id: "sessions-new"
+      - extendedWaitUntil:
+          visible:
+            id: "chat-empty"
+          timeout: 30000
+      - tapOn:
+          id: "chat-open-sessions"
+      - tapOn: "Options for New chat"
+      - tapOn:
+          id: "session-menu-rename"
+      - tapOn:
+          id: "rename-input"
+      - eraseText: 60
+      - inputText: "QA options target"
+      # Enter is the save — the field is returnKeyType "done" with
+      # `onSubmitEditing` (see `15`).
+      - pressKey: Enter
+      - extendedWaitUntil:
+          visible: "QA options target.*"
+          timeout: 20000
+
+      # ══ STANDING INSTRUCTIONS ═════════════════════════════════════════
+      - tapOn: "Options for QA options target"
+      - tapOn:
+          id: "session-menu-instructions"
+      - assertVisible: "How to answer in this chat"
+      # The hint is the whole argument for the feature — written once, read
+      # every time — so it is asserted rather than stepped past. Anchored
+      # with `.*` because Maestro matches the WHOLE text node and this one
+      # carries typographic quotes.
+      - assertVisible: "Written once, read every time.*"
+      - assertVisible:
+          id: "instructions-cancel"
+
+      # ── CANCEL FIRST, and prove it discarded ─────────────────────────
+      - tapOn:
+          id: "instructions-input"
+      - inputText: "QA cancelled instruction"
+      - tapOn:
+          id: "instructions-cancel"
+      - tapOn: "Options for QA options target"
+      - tapOn:
+          id: "session-menu-instructions"
+      # THE ASSERTION: what cancel means. Not that the dialog closed — that
+      # the text is gone.
+      - assertNotVisible: "QA cancelled instruction"
+      - takeScreenshot: reports/94-instructions-cancel-discarded
+
+      # ── SAVE, and prove it persisted ─────────────────────────────────
+      - tapOn:
+          id: "instructions-input"
+      - inputText: "QA answer briefly"
+      - tapOn:
+          id: "instructions-save"
+      - extendedWaitUntil:
+          notVisible: "How to answer in this chat"
+          timeout: 20000
+      - tapOn: "Options for QA options target"
+      - tapOn:
+          id: "session-menu-instructions"
+      - extendedWaitUntil:
+          visible: "QA answer briefly"
+          timeout: 20000
+      - takeScreenshot: reports/95-instructions-saved
+      - tapOn:
+          id: "instructions-cancel"
+
+      # ══ SCOPE ═════════════════════════════════════════════════════════
+      - tapOn: "Options for QA options target"
+      - tapOn:
+          id: "session-menu-scope"
+      - assertVisible: "Search in"
+      # A new conversation searches everything, and the sentence says so.
+      - assertVisible: "All apps. Choose some to narrow this chat."
+      - assertVisible:
+          id: "scope-all"
+      - assertVisible:
+          id: "scope-cancel"
+      - takeScreenshot: reports/96-scope-all-by-default
+
+      # ── CANCEL FIRST, same direction ─────────────────────────────────
+      - tapOn:
+          id: "scope-notes"
+      - assertVisible: "Only 1 of 7 apps."
+      - tapOn:
+          id: "scope-cancel"
+      - tapOn: "Options for QA options target"
+      - tapOn:
+          id: "session-menu-scope"
+      # THE ASSERTION: cancel discarded the narrowing, so it is back to all.
+      - assertVisible: "All apps. Choose some to narrow this chat."
+
+      # ── NARROW, SAVE, and prove it persisted ─────────────────────────
+      - tapOn:
+          id: "scope-notes"
+      - tapOn:
+          id: "scope-calendar"
+      - assertVisible: "Only 2 of 7 apps."
+      - tapOn:
+          id: "scope-save"
+      - extendedWaitUntil:
+          notVisible: "Search in"
+          timeout: 20000
+      - tapOn: "Options for QA options target"
+      - tapOn:
+          id: "session-menu-scope"
+      - extendedWaitUntil:
+          visible: "Only 2 of 7 apps."
+          timeout: 20000
+      - takeScreenshot: reports/97-scope-narrowed-and-saved
+
+      # ── AND BACK TO ALL, which is its own control ────────────────────
+      # `scope-all` is the row that clears the selection. An empty list means
+      # ALL apps, not none — `ScopeDialog.test.tsx` asserts the same thing at
+      # the unit level and the SPEC says it in words.
+      - tapOn:
+          id: "scope-all"
+      - assertVisible: "All apps. Choose some to narrow this chat."
+      - tapOn:
+          id: "scope-save"
+      - extendedWaitUntil:
+          notVisible: "Search in"
+          timeout: 20000
+
+      # ── Clean up: delete what this flow made ─────────────────────────
+      - tapOn: "Options for QA options target"
+      - tapOn:
+          id: "session-menu-delete"
+      - assertVisible:
+          id: "delete-conversation-confirm"
+      - assertVisible: "Your notes, contacts, loans and money are not touched."
+      - tapOn:
+          id: "delete-conversation-yes"
+      - extendedWaitUntil:
+          notVisible: "QA options target.*"
+          timeout: 20000
+      - takeScreenshot: reports/98-session-options-cleaned-up
+      - tapOn:
+          id: "sessions-close"
+      - assertVisible:
+          id: "composer-input"

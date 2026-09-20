@@ -32,6 +32,8 @@ not 1 — a blocked preflight has found nothing, not a bug.
 | `16-ai-keys.yaml` | **PASS — 2026-09-19 17:42, dev build, tree `5e37367` + e7's uncommitted i18n. First run, no flow changes.** Reached from `profile-keys`; the heading, `ai-keys-(list|empty)`, and the whole intro paragraph asserted word for word — *"…the key is checked with the provider before it is saved, and it is never shown again afterwards."* — which is the promise the screen makes and the one worth pinning. **It took the `ai-keys-list` branch: the QA account HAS a key**, so **Replace** and **Remove** are present and asserted | **Nothing is added, replaced or removed.** A real key is a real provider credential and a real bill; the flow photographs the has-a-key state under a filename that says NOT MEASURED and stops. The empty branch never ran this time, so its copy is untested. **And this pass contradicts `01-ask`'s note**, which says the QA account has no provider key and every reply is therefore the missing-key message — that note is now stale, and whether `01`'s answers have been real all along or the key is inactive is unresolved and should be checked before `01`'s "does not cover" is trusted again |
 | `17-privacy.yaml` | **PASS — 2026-09-19 17:45, dev build, tree `5e37367` + e7's uncommitted i18n. First run, no flow changes.** Reached from `account-privacy`; the page renders through `Markdown.tsx`'s subset, the headings survive the parse on a real device, and it scrolls to *"What we do not do"* at the end — so the document is whole between the file and the screen, which is the thing the unit tests can only argue about. **The DRAFT BANNER IS ON** and photographed as `89-privacy-DRAFT-BANNER-ON-release-gate`: *"Draft — not yet approved"*, driven by the document's own title line. **That is a release gate, not a detail** — the policy is still awaiting Hamma9900's approval and the app says so honestly on the screen a store reviewer opens | **Not the sha agreement.** The phone bundles the text and the backend serves the same twelve characters at `GET /api/v1/legal/privacy`; this flow reads only the phone's copy, and the agreement between the two is proven in `src/content/__tests__/privacy.test.ts` rather than here. Not the French rendering of the policy. Not the not-a-draft branch, which is SKIPPED until he approves it and will need a run on the day he does |
 | `18-delete-account.yaml` | **PASS — 2026-09-19 17:48, dev build, tree `5e37367` + e7's uncommitted i18n. First run, no flow changes.** The warning arrives BEFORE the tap; the disclosure names all six things that go and the one thing that is **kept** with its reason, word for word — *"What the assistant cost — which provider ran, and how many tokens. Your name is removed from those rows, and they hold no part of any question or answer."* The **gate is OPEN** (`ACCOUNT_DELETION_AVAILABLE` true, endpoint landed at `multi_magic@56559c4`): the password field and **Keep my account** are both there, photographed as `92-delete-account-gate-OPEN`. And it is structurally NOT the conversation delete — `delete-conversation-question` is asserted absent, so the sessions dialog's wording is nowhere on this screen | **The password field is never filled and deletion is NEVER confirmed.** The only tap on that screen is the way out. `RIG_CONTRACT.md` §3 is explicit that no test calls account deletion against a real account; when that path is exercised it is against a throwaway user, by hand. So what is proven is the disclosure, the gate and the escape — not that the endpoint deletes anything. The gate-SHUT branch is SKIPPED and untested. Whether it *looks* different enough from the conversation delete is a judgement no assertion makes: `91` here and `04`'s `32-delete-confirm` are the pair a person compares |
+| `19-session-options.yaml` | **UNRUN — written 2026-09-20 by the session holding the code half, never executed.** Nothing here is coverage yet. It exists because `flow_lint --untouched` found six handles reachable on the QA account and touched by nothing — `instructions-input`, `instructions-save`, `instructions-cancel`, `scope-all`, `scope-save`, `scope-cancel` — and `15` says in its own comment that asserting a menu entry is present is not exercising it. What it intends to prove: both dialogs **persist across a reopen**, because a dialog that accepts input and drops it on save looks identical to one that works until you come back; and both **cancels discard**, proved in the harder direction by changing something, cancelling, reopening and asserting the change is gone. It makes its own conversation, names it `QA options target` so no selector is a database id, and deletes it through the real confirm so the account does not walk into the cap of 50 | **Everything, until it runs.** `docs/TESTING.md` §6 is about a flow that sat in this register as coverage while having never executed once — *a flow written and never run proves exactly as much as no flow, and is worse in one respect: it occupies the slot where somebody would notice the gap.* This row is that gap, left open on purpose. When it runs, **say which branch ran** — the at-limit branch is NOT MEASURED, not a pass. Also not covered even when green: whether standing instructions change the ANSWER, which needs a model call and a judgement no assertion makes; and the scope selection's effect on retrieval, same reason |
+| `20-refresh.yaml` | **UNRUN — written 2026-09-20 by the session holding the code half, never executed.** `calendar-refresh` and `notifications-refresh` were reachable and touched by nothing. What it asserts is not the tap: tapping a refresh button and seeing the screen survive proves almost nothing. It asserts the **design rule** — *the refresh state lives in the control, never a full-screen spinner* — by requiring the list to still be on screen while the refresh is in flight. A screen that blanks to a spinner on every refresh is the regression this is aimed at, and no unit test here can see it, because Jest has neither layout nor timing. Read-only on both screens: nothing created, nothing cleared, nothing touched | **Everything, until it runs** — `docs/TESTING.md` §6. And when it does: the QA account has no notifications and no events today, so **both empty branches are what will actually execute**, and an empty branch is NOT MEASURED rather than a pass. Say which ran. Also not covered: pull-to-refresh, which is the PRIMARY affordance on both screens and has no handle to address; the socket-driven refresh, which is the one that usually gets there first; and whether the 'updated' line's time is *correct* rather than merely present |
 
 ## Run 5 — where the harness actually stands
 
@@ -531,3 +533,58 @@ after the check passed. That is unexplained and is the next thread to pull.
 * The bundle gate passing at 13.66 MB, run first.
 * 36 pictures across four combinations, in both `qa/evidence/` and each
   screen's `ours/`, which is tracked now.
+
+---
+
+## 2026-09-20 — the French sets, and two handles that are unreachable for
+## reasons that are not the account's
+
+**The picture pass is closed: eight of eight combinations, 72 shots.** 360, 411
+and 800 in English; 360 in French; both modes throughout. French at 360 only,
+by Hamma9901's decision — the risk French carries is length, length fails at
+the narrowest width first, and 411 and 800 have more room rather than less.
+
+**No French string truncates or wraps a row** on the screens inspected, which
+were profile (the longest sentence in the app: *"Changer votre e-mail vous
+déconnecte des mises à jour en direct jusqu'à la prochaine connexion ; cela se
+fait donc sur le site pour l'instant."* — wraps to three lines, fits), account
+in dark, and the sessions sheet's own settings block. **Several screens, not
+all eighteen**, and this says which rather than implying the whole set was
+read.
+
+### The pass could never have shot French
+
+It navigated by `tapOn: "Back"`, and that control is
+`accessibilityLabel={t("common.back")}` — "Retour" in French. Every English run
+walked through the same five taps for a day. Now `pressKey: Back`, which is how
+those screens are left anyway.
+
+### `source-chips` / `source-sheet*` — the ANSWER does not cite sources
+
+Measured rather than assumed: `01-ask` was run end to end, a real question
+through `thinking` to a real `assistant-answer`, and the answer's handles are
+`answer-actions`, `answer-copy`, `answer-up`, `answer-down` and **nothing
+else**. No `source-chips`.
+
+So those four handles move out of the backlog and into **"the rig cannot
+produce this state"** — not because of a flow, but because this account's
+assistant returns answers that cite nothing. Writing flows for them would have
+been six flows against a screen that never appears.
+
+### `answer-read*` — the BINARY predates the feature
+
+`READ_ALOUD_ENABLED` is `true`, Google TTS **is** installed on the AVD
+(`com.google.android.tts`), and `answer-read` is still absent from every answer.
+That is the app behaving correctly rather than a defect:
+`ReadAloudButtons` returns null when `!supported`, and `supported` comes from
+`tryRequire("expo-audio")` / `tryRequire("expo-speech")` — **native** modules.
+
+The installed dev build is `app-debug.apk` from **2026-09-19 01:34**.
+Read-aloud landed in `e41be2a` at **09:15** the same day. The JS is current
+because Metro serves the working tree; the native side is an eight-hour-old
+binary that never contained those modules. *(Timeline evidence and inference
+from the render condition — not a dex inspection.)*
+
+**So `answer-read-device-voice` and `answer-read-notice` are unreachable until
+the APK is rebuilt**, and that rebuild is already sequenced behind the SDK 57
+merge. Nothing to fix and nothing to write until then.

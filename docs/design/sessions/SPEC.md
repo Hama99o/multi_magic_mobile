@@ -144,3 +144,122 @@ not a layout preference: a named accessibility element groups its children, so a
 as one "Close" button with every row inside it unreachable — on iOS, absolutely.
 `docs/ACCESSIBILITY.md` N1, and `src/__tests__/a11y.test.tsx` fails if any
 container with a name acquires a control inside it again.
+
+---
+
+### Divergence note — 2026-09-20: the list is crushed at 360 dp
+
+**A real defect, language-independent, found in the French picture pass and
+confirmed against the English shot at the same width.** Compare
+`ours/360-light-fr-sessions.png` with `ours/360-light-en-sessions.png`: the
+layout is identical, so it is not a French-length problem. It was filed as
+French, half-written, and the comparison is the only reason it was not.
+
+**And it has been in `ours/` as `DONE` evidence since the night before.** The
+screenshot existed, was committed, and nobody read it closely enough to see a
+conversation row sliced through the middle of its glyphs. *A screenshot that
+exists is not a screenshot that was read* — `DONE` is defined as those files
+existing, which is a definition about files rather than about looking.
+
+#### The arithmetic, from the source
+
+The sheet is `maxHeight: "85%"` with a flex column inside it. Its children are
+the header, the conversation `ScrollView`, and a pinned block. The ScrollView
+carries **no `flex`**, so it does not claim space — it takes whatever the
+pinned block leaves.
+
+The pinned block is not small: the primary button (48), a divider, `ThemeRow`,
+`LanguageRow`, an "Account" heading and three rows of about 44 each, with
+gaps — roughly **340 dp before the bottom inset**. On a 360 × 800 phone, 85 %
+is ~680; minus padding, a 48 dp header, two 16 dp gaps and that block, the
+list is left about 190 — three rows. **On a 360 × 640 phone it is under one**,
+which is what the photograph shows.
+
+So the one part of the sheet the sheet exists for absorbs every bit of the
+squeeze, and it does so silently: a `ScrollView` clips its last row rather
+than reporting that it had no room.
+
+#### Why this is not a one-line fix
+
+Both halves are in this file already, which is why it needs a decision rather
+than a patch:
+
+- Cleo's take-away (§Sources) is **New conversation as a pinned PRIMARY** —
+  the button, not a settings panel.
+- But Appearance, Language and the Account group living **under a divider at
+  the bottom** is *his instruction*, and "the sheet's last row is Sign out,
+  clearing the bottom inset" is a rule with a device screenshot behind it.
+
+So "move the block into the scroll" would satisfy the geometry and quietly
+undo two decisions that were made on purpose.
+
+#### What I would do, and it is not mine to do blind
+
+**One `ScrollView` holding the list AND the settings block, with only the
+primary button pinned.** That keeps the cited reference exactly — the primary
+is what Cleo pins — keeps Appearance/Language/Account at the bottom in reading
+order, keeps Sign out as the last row with the inset applied to the scroll's
+own bottom padding, and gives the list the room it is supposed to have.
+
+The alternative, if the block must stay visible without scrolling, is a
+`minHeight` on the list of three rows and a shorter settings block — which
+means dropping something from it, and that is a question for him.
+
+#### Fixed 2026-09-20, and what it cost
+
+Written after the session holding the device agreed to re-shoot the proof —
+which is the only reason it was safe to write at all.
+
+**One `ScrollView` now holds the list and the tail together**, with
+`flexShrink: 1` because React Native defaults it to 0 and without it the sheet
+would push past its own `maxHeight` instead of scrolling inside it. The bottom
+inset is untouched: it stays on the sheet `View`, where
+`sheets.insets.test.tsx` asserts it.
+
+**The cost, stated rather than absorbed: New conversation is no longer
+pinned.** When the list is long you scroll to reach it. Two written decisions
+could not both survive — Cleo's take-away is a *pinned* primary, and his
+instruction is that Sign out lives at the bottom of this sheet with
+Appearance and Account under a divider there. Pinning the primary below them
+would have made the button the last row and broken both of his.
+
+**Rule Zero decided it**: the reference is the check, not the authority. When
+a Mobbin take-away and his instruction cannot both hold, his wins — and the
+loss is written here rather than quietly taken.
+
+**No test proves this and none can.** Jest has no layout engine, so there is
+no assertion that failed before and passes now; the 53 tests over this sheet
+pass identically either way, which is exactly the point. **The proof is
+`360-*-sessions` re-shot in both languages and both modes.** Until those land,
+this is reasoned from the source and unverified.
+
+#### What the fix cost, measured rather than argued — 2026-09-20
+
+**Proved on glass**: `e14e504`, four shots at 360 in both languages and both
+modes, three whole conversation rows in each, none sliced. The arithmetic
+above matched the photograph, and the photograph now matches the fix.
+
+**And the cost was measured by accident, which makes it better evidence than
+anybody's opinion.** The picture pass broke twice on this change before it
+produced an image: `sessions-account`, `sessions-profile` and
+`sessions-sign-out` had moved into the scroll, so each needed a
+`scrollUntilVisible` before its tap. Three flows patched — `99-screens`
+twice, `signed-out` once. So: **reaching Account or signing out is a scroll
+now, not a glance.** The rig felt it in the only way a rig can.
+
+**The evidence has a limit and it is worth stating plainly.** The QA account
+holds **three** conversations; the cap is **fifty**. With three, "New
+conversation" is still on screen right after the list, so the photographs make
+the unpinning look free. With fifty it is far down the scroll — and nobody has
+seen that state, because producing it means filling his account, which the rig
+must not do. The four shots are evidence that the list is fixed. They are
+**not** evidence about the trade.
+
+**One consequence, named and then fixed:** the sheet's bottom edge clips the
+first settings row mid-glyph. Structurally that is a scroll boundary rather
+than a squeeze — a different thing from the bug, and identical to it in a
+still. The fix was not chrome: `showsVerticalScrollIndicator={false}` had been
+copied onto this ScrollView from the other lists in the app, where hiding it
+is right because those lists usually fit. Here the scroll is the point, and
+hiding the indicator left a half-clipped glyph as the only affordance saying
+there was more. The indicator is shown.

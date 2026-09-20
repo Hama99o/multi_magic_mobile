@@ -100,6 +100,15 @@ were written by somebody who had just written the rule above.
 > one check that would have told you. The moment it feels unnecessary is the
 > moment to do it.
 
+The same applies to a deferral. On 2026-09-20 three screens were left out of
+the width matrix because they "needed their own `expo-router` mocks" — a real
+change to that file rather than three lines. They needed nothing of the kind;
+the shared mock already had everything, and the whole job took under an hour.
+**An estimate made from the outside is a guess with a number on it**, and the
+cheapest way to check a deferral is to spend ten minutes trying it. The reason
+this belongs beside the plant is that it is the same instinct: reasoning about
+a thing instead of touching it, because the reasoning feels sufficient.
+
 ### And the worst shape of all: a rule that cannot fire
 
 The fourth was a `no-restricted-syntax` selector. It was added with the defect
@@ -501,6 +510,19 @@ structure, and the idea lives in the structure.
 > waiting to happen: `t(` was one such list and `translate(` was missing from
 > it, and nobody could see that until somebody asked the question from the other
 > end.
+
+**And a fifth, about the other end of the same pipe: a check that resolves a
+handle against the SOURCE cannot see a handle the RENDERER duplicates.**
+`flow_lint.py` reads `testID="event-repeats"` in the file, once, and reports
+it resolved — but every lucide icon passes its `testID` to both its wrapper
+and the `Svg` inside it, so `getByTestId` on any icon in this app throws
+*"Found multiple elements"*. The source is not the tree. A grep over source
+answers a question about what was written; the defect lives in what was
+rendered, and nothing that reads files can reach it.
+
+Flagged by the session holding the device. The session that agreed with the
+warning in a reply walked into it within the hour, which is why it is now a
+comment at the call site (`EventRow.test.tsx`) rather than only in a message.
 
 **A relative, from the same evening, and the sharpest form of it.** A session
 chasing this very report ran `pkill -f 'while :; do :; done'` and killed its

@@ -121,6 +121,7 @@ not been done.
 | `calendar.question` | — | Parle-moi de « {{title}} » ({{when}}). |
 | `calendar.refresh` | Refresh the calendar | Actualiser l\u2019agenda |
 | `calendar.title` | What's next | À venir |
+| `calendar.timeUnknown` | Unknown | Inconnue |
 | `calendar.today` | Today | Aujourd’hui |
 | `calendar.tomorrow` | Tomorrow | Demain |
 | `chat.answerFailed` | That question did not get an answer. | Cette question n’a pas obtenu de réponse. |

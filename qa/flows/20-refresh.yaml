@@ -1,0 +1,117 @@
+# THE REFRESH CONTROLS, AND THE RULE THEY WERE BUILT UNDER.
+#
+# `calendar-refresh` and `notifications-refresh` were reachable and touched by
+# nothing. They are the quietest of three affordances on each screen — the
+# socket first, then pull to refresh, then this glyph — and the glyph exists
+# for the case the socket is the thing that is wrong.
+#
+# ── WHAT IS WORTH ASSERTING IS NOT THE TAP ───────────────────────────────
+# Tapping a refresh button and seeing the screen survive proves almost
+# nothing. The DESIGN RULE is the assertion: *the refresh state lives in the
+# control, never a full-screen spinner* (`docs/design/calendar/SPEC.md`,
+# `docs/design/notifications/SPEC.md`). A screen that blanks to a spinner on
+# every refresh is the regression this is aimed at, and it is invisible to
+# every unit test here because Jest has no layout and no timing.
+#
+# So each half asserts the LIST IS STILL THERE while the refresh is in flight.
+# That is the rule, stated as something that can fail.
+#
+# ── WRITTEN BUT NOT RUN ──────────────────────────────────────────────────
+# Authored by the session holding the code half; the device is another's.
+# `docs/TESTING.md` §6 — until it executes it is worth nothing, and the
+# register row says UNRUN for that reason. When it runs, say which branch ran:
+# both screens have an empty state on the QA account and the empty branch is
+# NOT MEASURED, not a pass.
+#
+# ── IT WRITES NOTHING ────────────────────────────────────────────────────
+# Read-only on both screens. No conversation created, no notification cleared,
+# no event touched. `07` and `08` already reach these screens; this adds the
+# one control neither presses.
+appId: ${APP_ID}
+tags:
+  - smoke
+  - freshness
+---
+- runFlow: login.yaml
+
+# ══ NOTIFICATIONS ═════════════════════════════════════════════════════════
+- tapOn:
+    id: "chat-open-notifications"
+- extendedWaitUntil:
+    visible:
+      id: "notifications-list"
+    timeout: 30000
+- assertVisible:
+    id: "notifications-refresh"
+# The muted line that says when this was last true. It is not a control, so
+# `--untouched` files it elsewhere; it is asserted here because the refresh
+# glyph without it is a button that reports nothing.
+- assertVisible:
+    id: "notifications-updated"
+- takeScreenshot: reports/99-notifications-before-refresh
+
+- tapOn:
+    id: "notifications-refresh"
+# ── THE ASSERTION ────────────────────────────────────────────────────────
+# The list is STILL THERE while the refresh runs. If this screen ever swaps
+# itself for a full-screen spinner, this is the step that fails.
+- assertVisible:
+    id: "notifications-list"
+- extendedWaitUntil:
+    visible:
+      id: "notifications-updated"
+    timeout: 20000
+- takeScreenshot: reports/100-notifications-after-refresh
+
+# The empty state is a legitimate state, not a pass — reach it, photograph it,
+# do not assert into it. The QA account has no notifications, so this is the
+# branch that will actually run until somebody sends it one.
+- runFlow:
+    when:
+      visible:
+        id: "notifications-empty"
+    commands:
+      - takeScreenshot: reports/101-notifications-empty-NOT-MEASURED
+
+# The header's own back chevron has no testID; `07` leaves the same way, with
+# the platform gesture rather than a handle.
+- back
+
+# ══ CALENDAR ══════════════════════════════════════════════════════════════
+- tapOn:
+    id: "chat-open-calendar"
+- extendedWaitUntil:
+    visible:
+      id: "calendar-list"
+    timeout: 30000
+- assertVisible:
+    id: "calendar-refresh"
+- assertVisible:
+    id: "calendar-updated"
+- takeScreenshot: reports/102-calendar-before-refresh
+
+- tapOn:
+    id: "calendar-refresh"
+# Same assertion, same reason.
+- assertVisible:
+    id: "calendar-list"
+- extendedWaitUntil:
+    visible:
+      id: "calendar-updated"
+    timeout: 20000
+- takeScreenshot: reports/103-calendar-after-refresh
+
+# The calendar's empty state is `calendar-nothing-today`, not
+# `calendar-empty` — the screen says "Nothing today" rather than "no events",
+# because the list is a 30-day window and today being empty is not the window
+# being empty.
+- runFlow:
+    when:
+      visible:
+        id: "calendar-nothing-today"
+    commands:
+      - takeScreenshot: reports/104-calendar-nothing-today-NOT-MEASURED
+
+- back
+- assertVisible:
+    id: "composer-input"

@@ -414,6 +414,23 @@ export const sessionsApi = {
     return parseSession(obj(res.data, "session").session);
   },
 
+  /**
+   * WHICH CHAT OPENS NEXT TIME, ON EVERY OTHER DEVICE.
+   *
+   * `Ai::Sessions.remember` writes `user.data['ai_session_id']`, and
+   * `Ai::Sessions.current` — what `GET /ai/conversation` returns — reads it.
+   * Only two things write it: this, and `ai#show`. So without this call the
+   * server learns which chat somebody is in **only when they ask a question**,
+   * and a person who switches chats and puts the phone down leaves the laptop
+   * opening the one they left. See `docs/SESSION_PARITY.md`.
+   *
+   * Returns nothing the caller needs; the server echoes the session and we
+   * already have it.
+   */
+  activate: async (sessionId: number): Promise<void> => {
+    await http.post(`/api/v1/ai/sessions/${sessionId}/activate`);
+  },
+
   rename: async (sessionId: number, title: string): Promise<AiSession> => {
     const res = await http.patch(`/api/v1/ai/sessions/${sessionId}`, { title });
     return parseSession(obj(res.data, "session").session);

@@ -19,7 +19,31 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const PREFIX = "mm-draft:";
 
 export function useDraft(conversationId: number | null) {
-  const [draft, setDraft] = useState("");
+  /**
+   * The draft is TAGGED with the conversation it belongs to, and the reset on
+   * a switch is a DERIVATION rather than an effect.
+   *
+   * This used to be `useState("")` plus `setDraft("")` at the top of the load
+   * effect, which the React Compiler (SDK 57) rejects as a setState inside an
+   * effect — rightly: it is a render showing the previous conversation's
+   * draft, then a second render to correct it. Tagging removes the correcting
+   * render entirely, because a draft belonging to another conversation is
+   * simply not this conversation's draft.
+   *
+   * The behaviour is identical and `useDraft.test.ts` is what says so —
+   * eleven tests, four of which re-render with a different conversation,
+   * written before this change for exactly that reason.
+   */
+  const [held, setHeld] = useState<{ id: number | null; text: string }>({
+    id: conversationId,
+    text: "",
+  });
+  const draft = held.id === conversationId ? held.text : "";
+  const setDraft = useCallback(
+    (text: string) => setHeld({ id: conversationId, text }),
+    [conversationId],
+  );
+
   /**
    * Until the stored draft has been read, an empty `draft` means "not loaded
    * yet" rather than "the user cleared it" — writing during that window would
@@ -29,7 +53,6 @@ export function useDraft(conversationId: number | null) {
 
   useEffect(() => {
     loaded.current = false;
-    setDraft("");
     if (conversationId == null) return;
 
     let cancelled = false;
@@ -48,7 +71,10 @@ export function useDraft(conversationId: number | null) {
     return () => {
       cancelled = true;
     };
-  }, [conversationId]);
+    // `setDraft` is a `useCallback` over `conversationId`, so its identity
+    // changes exactly when this effect already re-runs. Listing it satisfies
+    // exhaustive-deps without widening what re-runs this.
+  }, [conversationId, setDraft]);
 
   useEffect(() => {
     if (conversationId == null || !loaded.current) return;
@@ -65,7 +91,7 @@ export function useDraft(conversationId: number | null) {
   }, [draft, conversationId]);
 
   /** Called once the question is safely posted. */
-  const clear = useCallback(() => setDraft(""), []);
+  const clear = useCallback(() => setDraft(""), [setDraft]);
 
   return { draft, setDraft, clear };
 }

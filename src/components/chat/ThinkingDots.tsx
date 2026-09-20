@@ -14,7 +14,7 @@
  * indistinguishable from a lost connection. The wait is real — RAG plus a
  * provider call is genuinely slow — so this does not fail, it says so.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { AccessibilityInfo, Animated, View } from "react-native";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";

@@ -30,7 +30,21 @@ import { t } from "@/i18n";
 function timeLabel(occurrence: Occurrence): string {
   if (occurrence.allDay || !occurrence.startsAt) return t("calendar.allDay");
   const at = new Date(occurrence.startsAt);
-  if (Number.isNaN(at.getTime())) return t("calendar.allDay");
+  // ── A TIMESTAMP WE CANNOT READ IS NOT AN ALL-DAY EVENT ──────────────────
+  // This used to return "All day" here, which is the worst answer available
+  // on this screen: a confident wrong one, in an app whose whole purpose is
+  // telling somebody when things are, on a row they will act on. Somebody
+  // misses a 09:00 dentist because the row said the day was free.
+  //
+  // It was defended as unreachable — the server sends either a timestamp or
+  // `all_day: true`. That is a claim about today's DATA, not about this
+  // code: a calendar row renders whatever the server sends, and this parser
+  // is the only thing between a malformed timestamp and that row.
+  //
+  // So it fails rather than guesses, and the row says it does not know.
+  // "Unknown" rather than a fuller sentence because the column is 62 dp and
+  // "Time unknown" wraps in it.
+  if (Number.isNaN(at.getTime())) return t("calendar.timeUnknown");
   return at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
 }
 

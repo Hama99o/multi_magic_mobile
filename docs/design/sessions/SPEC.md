@@ -205,8 +205,30 @@ The alternative, if the block must stay visible without scrolling, is a
 `minHeight` on the list of three rows and a shorter settings block — which
 means dropping something from it, and that is a question for him.
 
-**Not changed here.** This is a layout fix on a screen marked `DONE` with
-device evidence, and the session that found it has the device while the
-session that would write it does not. Nothing about this can be verified by a
-test: Jest has no layout engine, so there is no assertion that fails today and
-passes afterwards. **The proof is the same two screenshots, re-shot.**
+#### Fixed 2026-09-20, and what it cost
+
+Written after the session holding the device agreed to re-shoot the proof —
+which is the only reason it was safe to write at all.
+
+**One `ScrollView` now holds the list and the tail together**, with
+`flexShrink: 1` because React Native defaults it to 0 and without it the sheet
+would push past its own `maxHeight` instead of scrolling inside it. The bottom
+inset is untouched: it stays on the sheet `View`, where
+`sheets.insets.test.tsx` asserts it.
+
+**The cost, stated rather than absorbed: New conversation is no longer
+pinned.** When the list is long you scroll to reach it. Two written decisions
+could not both survive — Cleo's take-away is a *pinned* primary, and his
+instruction is that Sign out lives at the bottom of this sheet with
+Appearance and Account under a divider there. Pinning the primary below them
+would have made the button the last row and broken both of his.
+
+**Rule Zero decided it**: the reference is the check, not the authority. When
+a Mobbin take-away and his instruction cannot both hold, his wins — and the
+loss is written here rather than quietly taken.
+
+**No test proves this and none can.** Jest has no layout engine, so there is
+no assertion that failed before and passes now; the 53 tests over this sheet
+pass identically either way, which is exactly the point. **The proof is
+`360-*-sessions` re-shot in both languages and both modes.** Until those land,
+this is reasoned from the source and unverified.

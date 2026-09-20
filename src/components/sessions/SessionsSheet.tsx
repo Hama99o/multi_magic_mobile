@@ -206,16 +206,47 @@ export function SessionsSheet({
             </Text>
           ) : null}
 
-          {isLoading ? (
-            <ActivityIndicator color={colors.accent} />
-          ) : (
-            <ScrollView contentContainerStyle={{ gap: metrics.space.lg }}>
-              {groups.map((entry) => group(entry.label, entry.rows))}
-            </ScrollView>
-          )}
+          {/* ── ONE SCROLL, LIST AND TAIL TOGETHER ────────────────────────
+              The list used to be a ScrollView with NO `flex`, above a tail
+              that was pinned and about 340 dp tall — the primary, a divider,
+              Appearance, Language, an Account heading and three rows. A
+              child with no flex takes what is left, so at `maxHeight: "85%"`
+              the list got roughly three rows on a 360 x 800 phone and **under
+              one on a 360 x 640**, sliced through the middle of its glyphs.
+              The one part of the sheet the sheet exists for absorbed the
+              whole squeeze, silently, because a ScrollView clips its last row
+              rather than reporting it had no room.
 
-          {/* Cleo's pinned primary at the bottom. */}
-          <View style={{ gap: metrics.space.sm }}>
+              Photographed in `ours/360-light-fr-sessions.png` and confirmed
+              language-independent against the `-en-` shot at the same width —
+              and it had been sitting in `ours/` as DONE evidence for a day.
+
+              THE TRADE, because two written decisions could not both survive:
+              Cleo's take-away (§Sources) is New conversation as a **pinned**
+              primary, and it is no longer pinned — you reach it by scrolling
+              when the list is long. What it protects instead is HIS
+              instruction, twice: "Sign out lives at the bottom of this sheet"
+              and Appearance/Account "under a divider at the bottom". Rule
+              Zero — the reference is the check, not the authority — so when a
+              Mobbin take-away and his instruction cannot both hold, his wins
+              and the loss gets written down rather than absorbed.
+
+              `flexShrink: 1` because RN defaults it to 0: without it this
+              would push the sheet past its own `maxHeight` instead of
+              scrolling inside it. The bottom inset is untouched — it stays on
+              the sheet View, where `sheets.insets.test.tsx` asserts it. */}
+          <ScrollView
+            style={{ flexShrink: 1 }}
+            contentContainerStyle={{ gap: metrics.space.lg }}
+            showsVerticalScrollIndicator={false}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={colors.accent} />
+            ) : (
+              groups.map((entry) => group(entry.label, entry.rows))
+            )}
+
+            <View style={{ gap: metrics.space.sm }}>
             {atLimit ? (
               <Text variant="caption" tone="muted" testID="sessions-at-limit">
                 {t("sessions.atLimit", { max: LIMITS.maxSessions })}
@@ -294,7 +325,8 @@ export function SessionsSheet({
                 <Text tone="muted">{t("sessions.signOut")}</Text>
               </Pressable>
             </View>
-          </View>
+            </View>
+          </ScrollView>
         </View>
       </View>
 

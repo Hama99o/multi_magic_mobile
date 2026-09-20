@@ -744,6 +744,43 @@ Read exit codes directly:
 npm run lint >/dev/null 2>&1; echo "lint=$?"
 ```
 
+### And the hardening produced the mirror image, the same day, in my own hands
+
+`qa/verify_activate.sh` was written hours later with `set -euo pipefail` at
+the top — the discipline this entry argues for. It then read an optional
+value:
+
+```sh
+PGUSER_MM="$(grep -m1 '^POSTGRES_USER=' "$MM_DIR/.env" | …)"
+```
+
+A `grep` that finds nothing exits 1. Under `set -e` that **killed the script
+before it reached the `${VAR:-default}` fallback written on the next line** —
+exit 1, no output at all. A check whose entire job is to report something
+became a check that could only ever report nothing, and did so silently.
+
+> **`set -e` turns every command that is allowed to fail into a command that
+> must not.** The same flag that stops a pipeline hiding a failure will hide
+> an entire script, and the failure it produces is worse: a swallowed exit
+> code still runs the rest of the program, while `set -e` on a legitimate
+> non-zero stops it where nobody is looking. Mark the ones allowed to fail —
+> `|| true` — at the moment you add the flag, not after somebody finds the
+> corpse.
+
+**Two of the four instances in this entry are the same person on the same
+day, and the second was caused by fixing the first.** That is the strongest
+argument in this file for the rule above it: correcting a habit changes what
+you do next, and what you do next is where the next one lives.
+
+Found by the session running the script. Its fix was right and its
+explanation was not, which is the third finding: it read the failing grep as
+*"`.env` sets neither variable"*. `.env` sets **both, twice each**, as
+`export POSTGRES_USER=…` — and `^POSTGRES_USER=` cannot match a line starting
+`export `. The read had been dead all along and the default happened to be
+correct, which is why nothing ever complained. `qa/preflight.sh:162-163`
+carries the identical anchor and its migration guard — the one protecting his
+real database — has been running on that fallback ever since.
+
 ## What each gate is actually for
 
 | Gate | Proves | Cannot see |

@@ -46,17 +46,42 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 MM_DIR="${MM_DIR:-$HOME/Apps/Personal/multi_magic}"
 compose(){ docker compose -f "$MM_COMPOSE_FILE" "$@"; }
 
-# `|| true` BECAUSE FINDING NOTHING IS THE NORMAL CASE. multi_magic's .env sets
-# neither variable — database.yml defaults both to "multi_magic" — so grep
-# exits 1, and under `set -euo pipefail` that killed this script before it
-# reached the `${VAR:-default}` fallbacks written on the very next lines. It
-# died silently with exit 1 and no output, which is the least debuggable
-# possible failure for a check whose whole job is to report something.
-PGUSER_MM="$(grep -m1 '^POSTGRES_USER=' "$MM_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"'\''\r' || true)"
-PGDB_MM="$(grep -m1 '^POSTGRES_DB=' "$MM_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"'\''\r' || true)"
+# `|| true` because a grep that finds nothing is not an error here — without
+# it, `set -euo pipefail` killed this script before it reached the
+# `${VAR:-default}` fallbacks on the very next lines, with exit 1 and NO
+# OUTPUT. Silent death is the least debuggable failure available to a check
+# whose whole job is to report something. Found and fixed by the session
+# running it; `docs/TESTING.md` §14 has why I wrote it that way.
+#
+# ── AND THE REASON IT FOUND NOTHING WAS NOT WHAT IT LOOKED LIKE ──────────
+# It is not that `.env` lacks the variables. **It sets both, twice each** —
+# as `export POSTGRES_USER=…`. The anchor `^POSTGRES_USER=` cannot match a
+# line beginning `export `, so the read was dead and the default was doing
+# all the work. It happens to be the right default, which is exactly why
+# nobody noticed: `qa/preflight.sh:162-163` has the identical anchor and its
+# migration guard has been passing on the fallback for as long as it has
+# existed.
+#
+# That matters beyond tidiness. If the real user or database ever stopped
+# matching the default, `q()` would fail, `2>/dev/null` would hide it, `uid`
+# would come back empty, and this script would report **"no user matches
+# QA_EMAIL"** — blaming the QA account for a connection it never made.
+# `optional_env` matches both spellings, and the connection is checked
+# separately from the lookup below so the two failures cannot be confused.
+optional_env(){ grep -m1 -E "^(export )?$1=" "$MM_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"'\''\r' || true; }
+PGUSER_MM="$(optional_env POSTGRES_USER)"
+PGDB_MM="$(optional_env POSTGRES_DB)"
 
 q(){ compose exec -T postgres psql -U "${PGUSER_MM:-multi_magic}" \
        -d "${PGDB_MM:-multi_magic}_development" -tAc "$1" 2>/dev/null | tr -d '\r' | head -1; }
+
+# Can we talk to the database at all? Asked on its own, because every failure
+# below this line would otherwise arrive disguised as "no such user".
+if [ "$(q 'select 1')" != "1" ]; then
+  echo "NOT MEASURED — cannot read the database as '${PGUSER_MM:-multi_magic}' on"
+  echo "'${PGDB_MM:-multi_magic}_development'. That is a connection problem, not a finding."
+  exit 3
+fi
 
 if [ -z "${QA_EMAIL:-}" ]; then
   echo "NOT MEASURED — QA_EMAIL is not set. It lives in .env and nowhere else."

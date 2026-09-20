@@ -78,7 +78,23 @@ tags:
       # Enter and passes end to end, which it could not do if the dialog
       # stayed open there. Why it differs is unknown — timing, or focus. What
       # is certain is what was observed: after Enter the dialog is STILL
-      # OPEN — `rename-dialog`, `rename-input`, `rename-save` and
+      # OPEN
+      #
+      # A MECHANISM, offered as a hypothesis with a prediction (7b's, and the
+      # guard is verified in the source): `RenameDialog.tsx:84` is
+      # `onSubmitEditing={() => trimmed && onSave(trimmed)}`, and `trimmed`
+      # comes from React state. **If the state is empty when Enter lands the
+      # handler does nothing at all** — no save, no close, no error, which is
+      # exactly what was seen. So the candidate is a race: `eraseText` has
+      # emptied the field and `inputText` has not yet committed when Enter
+      # arrives. It predicts the failure is INTERMITTENT, which fits "saves in
+      # 15, not here" better than any difference between the flows — their
+      # rename sequences are identical line for line.
+      #
+      # The probe, if anybody wants to settle it: assert the typed text INSIDE
+      # the field before pressing Enter. Not worth a device slot on its own,
+      # because tapping the button is the better step either way — it asserts
+      # the control rather than a keystroke's side effect — `rename-dialog`, `rename-input`, `rename-save` and
       # `rename-cancel` all still in the tree — and the title assertion below
       # passed anyway, because it matched the text in the dialog's own FIELD
       # rather than a row in the list. The next step then failed looking for a

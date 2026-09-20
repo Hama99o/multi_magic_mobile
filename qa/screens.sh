@@ -167,7 +167,18 @@ echo "$COMBOS" | while read -r width mode lang; do
   run_flow 99-screens.yaml -e SHOT="$SHOT" 2>&1 | tail -4
   rc=${PIPESTATUS[0]}
   "$DIR/evidence.sh" >/dev/null 2>&1
-  shot_count=$(ls "$REPO_OURS"/*/ours/"$SHOT"-*.png 2>/dev/null | wc -l)
+  # COUNT WHAT THIS RUN PRODUCED, not what is on disk. Counting `ours/` counts
+  # pictures from PREVIOUS runs under the same name: a run that shot nothing
+  # reported "9 of 9" from files a day old, while rc was 1 and maestro had
+  # failed inside login.yaml. A count about the wrong subject reads exactly
+  # like a count about the right one.
+  latest_run="$(ls -1 "$HOME/.maestro/tests" 2>/dev/null | sort | tail -1)"
+  # ...and only THIS combination's nine. The run directory also holds
+  # `01-sign-in-filled` from login.yaml, which made a complete run report
+  # "10 of 9" — the third wrong count in a row, each about a subject one step
+  # off the one I meant: files on disk, then files from the run, now files
+  # from the run that belong to this combination.
+  shot_count=$(ls "$HOME/.maestro/tests/$latest_run"/*/takeScreenshot/reports/"$SHOT"-*.png 2>/dev/null | wc -l)
   mkdir -p "$DIR/reports"
   printf '{"shot":"%s","rc":%s,"screens":%s,"load_at_start":%s,"at":"%s"}\n' \
     "$SHOT" "$rc" "$shot_count" "$LOAD_AT_START" "$(date -Iseconds)" \

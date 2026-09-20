@@ -74,7 +74,10 @@ tags:
       # Enter is the save — the field is returnKeyType "done" with
       # ── TAP THE BUTTON, DO NOT PRESS ENTER ──────────────────────────
       # This said Enter saves, via `onSubmitEditing`, citing `15`. Measured on
-      # the device 2026-09-20: it does not. After Enter the dialog is STILL
+      # the device 2026-09-20: HERE it does not, and `15` renames twice with
+      # Enter and passes end to end, which it could not do if the dialog
+      # stayed open there. Why it differs is unknown — timing, or focus. What
+      # is certain is what was observed: after Enter the dialog is STILL
       # OPEN — `rename-dialog`, `rename-input`, `rename-save` and
       # `rename-cancel` all still in the tree — and the title assertion below
       # passed anyway, because it matched the text in the dialog's own FIELD

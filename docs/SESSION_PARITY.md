@@ -1,0 +1,172 @@
+# The conversation-session system: mobile against web
+
+Hamma9900, twice: *make sure the mobile app has the whole conversation-session
+system the web has, and that it is well tested.*
+
+Read both codebases rather than a feature list. Every row below says which of
+the three states it is in — **mobile has it**, **mobile deliberately differs**,
+or **mobile simply never got it** — because collapsing those three is how a
+gap becomes invisible.
+
+Evidence is a file and a line on both sides. Where I did not measure something
+I say so instead of implying it.
+
+---
+
+## The short version
+
+**One real gap, and it is one line.** Mobile never calls
+`POST /ai/sessions/:id/activate`, so **switching chats on the phone does not
+tell the server**, and the laptop keeps opening the old one until somebody
+asks a question. Everything else in the API surface is at parity.
+
+**One thing mobile does not do that the web does, which is a decision rather
+than a line**: the web confirms a save; mobile is silent.
+
+**One thing mobile does that the web does not**, and it should stay.
+
+---
+
+## The API surface
+
+| Operation | Backend | Web | Mobile | State |
+|---|---|---|---|---|
+| list | `sessions#index` | `aiSessionsApi.list` | `sessionsApi.list` | **has it** |
+| create | `sessions#create` | `.create` | `.create` | **has it** |
+| update — title, instructions, apps | `sessions#update` | `.update` | `.rename` + `.update` | **has it** |
+| clear | `sessions#clear` | `.clear` | `.clear` | **has it** |
+| destroy | `sessions#destroy` | `.remove` | `.destroy` | **has it** |
+| documents (nested) | `documents#…` | — | `documentsApi` | **has it** |
+| **activate** | `sessions#activate` → `Ai::Sessions.remember` | `AiChat.tsx:119` | **nothing** | **never got it** |
+
+---
+
+## The one that matters: which chat opens next
+
+This took three passes to get right, and two of my intermediate answers were
+wrong for the same reason — a `grep` scoped to the wrong directory. Both are
+recorded because the method matters more than the conclusion.
+
+**How the web does it** (`components/ai/AiChat.tsx`), and it is two halves:
+
+```
+selectSession(id):
+  localStorage.setItem(`mm:aiSession:v1:<userId>`, id)   // this browser, instantly
+  aiSessionsApi.activate(id)                             // every other device
+```
+
+Its own comment says exactly that: *"localStorage opens the right chat
+instantly in this browser; the server is what makes the same chat open on the
+phone."*
+
+**How mobile does it** (`app/chat.tsx` → `src/lib/rememberedSession.ts`):
+
+```
+chooseSession(id):
+  setChosenId(id)
+  rememberSession(userId, id)                            // this device
+  // …and nothing else
+```
+
+**Mobile copied the local half and not the server half**, and `mm:aiSession:v1:<userId>`
+is byte-identical on both sides, so the parity that was achieved is real. What
+is missing is the sentence after it.
+
+`rememberedSession.ts`'s header describes the web's local key accurately and
+**never mentions that the web also tells the server** — so the file reads as
+though parity was reached. It is the second half of that mechanism that was
+not copied, and the comment is why nobody noticed.
+
+### What it costs, concretely
+
+`Ai::Sessions.current(user)` is `remembered(user) || list(user).first ||
+create(user)`, and `remembered` reads `user.data['ai_session_id']`. Only two
+things write it: `activate`, and `ai#show` — **asking a question**.
+
+So today:
+
+- Switch chats on the phone, ask nothing, open the laptop → **the laptop
+  opens the chat you left**, not the one you moved to.
+- Ask a question on the phone → the server catches up, because `show`
+  remembers.
+- Switch on the laptop → the server is told immediately.
+
+The promise in the route's own comment — *"which chat to open next time, on
+any device"* — is kept by the web and half-kept by mobile.
+
+---
+
+## The web's five panels, and what mobile calls them
+
+Asked specifically, because two of them were only visible in the audit as
+*indicators* rather than as the panels behind them — which is exactly how a
+gap hides. `AiSessionBar` declares `sessions · menu · rename · instructions ·
+apps`. **Mobile has all five**, under different names and in a sheet rather
+than a bar:
+
+| Web panel | Mobile | State |
+|---|---|---|
+| `sessions` | `SessionsSheet`'s list | **has it** |
+| `menu` | the row menu — `session-menu-*` | **has it** |
+| `rename` | `RenameDialog` | **has it** |
+| `instructions` | `InstructionsDialog` | **has it** |
+| `apps` | **`ScopeDialog`** — the same family, a different word | **has it** |
+
+**Both "clear it" semantics match, and they are the part worth checking**,
+because a setting you can set and cannot unset is a worse bug than one you
+cannot set at all. The web's API comment is *"Send `instructions: ''` to clear
+them, `apps: []` to search everything."*
+
+- `InstructionsDialog` calls `onSave(text)` with **no guard on empty**, so an
+  empty field saves `""` and clears the standing prompt.
+- `ScopeDialog` saves `selected`, and `scope-all` empties the selection, so
+  saving with nothing chosen sends `[]` — all apps. `ScopeDialog.test.tsx`
+  asserts that explicitly: *"saves an EMPTY list when nothing is chosen — all
+  apps, not no apps."*
+
+So a chat on the phone can be steered exactly as far as the same chat on the
+web: a standing prompt that shapes every answer, set and cleared, and a scope
+that narrows which apps it reaches, narrowed and widened.
+
+**Tested**: `ScopeDialog.test.tsx` (11), `SessionOptionsDialogs` via
+`sheets.insets.test.tsx`, and `19-session-options.yaml` end to end — which is
+**UNRUN by me and was run by the device session**, and its run corrected one
+of my assertions: I had asserted `scope-all` visible in the default state, and
+it renders only once something is narrowed, because a control that would be a
+no-op is absent rather than inert.
+
+## Behaviour, not endpoints
+
+| What | Web | Mobile | State |
+|---|---|---|---|
+| Untitled chat's label | `current?.title ?? t('ai.newChat')` | server's `DEFAULT_TITLE` renders as the row title | **has it** |
+| Instructions set → an indicator on the bar | pencil, `ai.instructionsActive` | pen glyph on the row | **has it** |
+| Scope narrowed → an indicator | funnel, `ai.searchScoped` | funnel on the row | **has it** |
+| Clear — no heavy confirm | fires straight from the menu | same, and the SPEC argues why | **has it** |
+| Delete — confirm naming the chat | `ai.deleteChatConfirm` with the title | confirm **plus** *"Your notes, contacts, loans and money are not touched."* | **deliberately differs — mobile does more** |
+| **Save confirmed to the person** | toasts: instructions saved, scope saved, chat cleared | **nothing** — the dialog closes and that is all | **never got it** |
+| Failure shown | `toast.error(ai.sessionFailed)` | inline `sessions-error` in the sheet | **deliberately differs** |
+
+### On the missing confirmations
+
+The dialog closing is *some* feedback, and clearing a transcript is
+self-evident because the messages go. Saving standing instructions is the one
+where silence is genuinely ambiguous — nothing on screen changes, and the only
+way to know it took is to reopen the dialog, which is exactly what
+`19-session-options` had to do to test it.
+
+**It is not a one-line fix**: mobile has no toast system at all, so this is
+new infrastructure or a different pattern, and which one is a design question.
+Reported rather than built.
+
+---
+
+## What I did not measure
+
+- **The web's own tests.** I read its source, not its spec files, so "the web
+  does X" here means its code does X.
+- **Live cross-device behaviour.** Everything above is read from both
+  codebases. Nobody has switched a chat on a phone and watched a laptop, and
+  that is the only thing that would prove the gap rather than deduce it.
+- **The floating assistant window** (`AiAssistantWindow`) shares `AiChat`, so I
+  treated it as the same behaviour rather than checking it separately.

@@ -40,7 +40,7 @@ import { SessionsSheet } from "@/components/sessions/SessionsSheet";
 import { AttachSheet } from "@/components/chat/AttachSheet";
 import { PendingFiles } from "@/components/chat/PendingFiles";
 import { useAttachments } from "@/hooks/useAttachments";
-import { documentsApi } from "@/api/ai";
+import { documentsApi, sessionsApi } from "@/api/ai";
 import { notificationsApi } from "@/api/notifications";
 import { conversationsApi } from "@/api/conversations";
 
@@ -160,7 +160,21 @@ export default function Chat() {
   const chooseSession = useCallback(
     (id: number) => {
       setChosenId(id);
+      // Two halves, and mobile had only the first.
+      //
+      // `rememberSession` opens the right chat instantly on THIS device.
+      // `activate` is what makes the same chat open on his laptop — it writes
+      // the server's `ai_session_id`, which `GET /ai/conversation` reads.
+      // Without it the server learns where somebody is only when they ASK A
+      // QUESTION, so switching chats and putting the phone down left the
+      // laptop opening the chat they had left (`docs/SESSION_PARITY.md`).
+      //
+      // Not awaited, and failure swallowed, matching the web's own call: the
+      // local choice has already held, and interrupting somebody who just
+      // switched chats to report a background sync failure is worse than the
+      // stale default it prevents.
       if (user?.id) void rememberSession(user.id, id);
+      void sessionsApi.activate(id).catch(() => undefined);
     },
     [user?.id],
   );

@@ -23,7 +23,7 @@ asks a question. Everything else in the API surface is at parity.
 **One thing mobile does not do that the web does, which is a decision rather
 than a line**: the web confirms a save; mobile is silent.
 
-**One thing mobile does that the web does not**, and it should stay.
+**One thing mobile does that the web does not**, and the web should copy it.
 
 ---
 
@@ -144,6 +144,14 @@ no-op is absent rather than inert.
 | Scope narrowed → an indicator | funnel, `ai.searchScoped` | funnel on the row | **has it** |
 | Clear — no heavy confirm | fires straight from the menu | same, and the SPEC argues why | **has it** |
 | Delete — confirm naming the chat | `ai.deleteChatConfirm` with the title | confirm **plus** *"Your notes, contacts, loans and money are not touched."* | **deliberately differs — mobile does more** |
+
+**↑ The one row where the web has something to learn.** An audit that only
+asks "what is mobile missing" is a checklist; a comparison runs both ways.
+Mobile's delete confirm names what is **not** deleted, and that is the
+sentence that makes the action safe to read: *the* fear when deleting a
+conversation with an assistant that can see your loans and contacts is that
+the records go with it. The web says only which chat. **This should go the
+other way.**
 | **Save confirmed to the person** | toasts: instructions saved, scope saved, chat cleared | **nothing** — the dialog closes and that is all | **never got it** |
 | Failure shown | `toast.error(ai.sessionFailed)` | inline `sessions-error` in the sheet | **deliberately differs** |
 

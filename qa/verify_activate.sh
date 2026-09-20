@@ -46,8 +46,14 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 MM_DIR="${MM_DIR:-$HOME/Apps/Personal/multi_magic}"
 compose(){ docker compose -f "$MM_COMPOSE_FILE" "$@"; }
 
-PGUSER_MM="$(grep -m1 '^POSTGRES_USER=' "$MM_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"'\''\r')"
-PGDB_MM="$(grep -m1 '^POSTGRES_DB=' "$MM_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"'\''\r')"
+# `|| true` BECAUSE FINDING NOTHING IS THE NORMAL CASE. multi_magic's .env sets
+# neither variable — database.yml defaults both to "multi_magic" — so grep
+# exits 1, and under `set -euo pipefail` that killed this script before it
+# reached the `${VAR:-default}` fallbacks written on the very next lines. It
+# died silently with exit 1 and no output, which is the least debuggable
+# possible failure for a check whose whole job is to report something.
+PGUSER_MM="$(grep -m1 '^POSTGRES_USER=' "$MM_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"'\''\r' || true)"
+PGDB_MM="$(grep -m1 '^POSTGRES_DB=' "$MM_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"'\''\r' || true)"
 
 q(){ compose exec -T postgres psql -U "${PGUSER_MM:-multi_magic}" \
        -d "${PGDB_MM:-multi_magic}_development" -tAc "$1" 2>/dev/null | tr -d '\r' | head -1; }

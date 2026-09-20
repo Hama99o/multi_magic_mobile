@@ -67,8 +67,17 @@ tags:
       # lint: anchored-ok — ANDROID's own button, not our copy. The linter
       # only knows this app's strings and matched it against an unrelated
       # sentence of ours that happens to contain the word.
-      - tapOn: "Allow"
-        optional: true
+      # THE OBJECT FORM. `tapOn: "Allow"` is Maestro's shorthand and cannot
+      # take a sibling `optional:` — that is valid YAML and invalid Maestro,
+      # so `flow_lint` parsed it happily and the flow died at run time with
+      # "Invalid Command Format: tapOn at 03-dictation.yaml:71:17".
+      #
+      # It had never run. The row claimed both APP_ID branches while the file
+      # could not be executed at all, which is what the register's new VERDICT
+      # check exists to stop being invisible.
+      - tapOn:
+          text: "Allow"
+          optional: true
       - extendedWaitUntil:
           visible:
             id: "composer-(listening|mic-refused)"

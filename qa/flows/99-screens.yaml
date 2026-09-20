@@ -79,6 +79,16 @@ tags:
 # 6 · Account, reached through the sheet.
 - tapOn:
     id: "chat-open-sessions"
+# SCROLL FIRST — the sheet's tail is inside the scroll as of `138306d`.
+# `sessions-account` and `sessions-profile` used to sit in a pinned block and
+# were always on screen; now they are below the list and a long list puts them
+# below the fold. The pass failed here on the first run after the fix, which is
+# the same cost a PERSON pays: reaching Account is now a scroll, not a glance.
+- scrollUntilVisible:
+    element:
+      id: "sessions-account"
+    direction: DOWN
+    timeout: 20000
 - tapOn:
     id: "sessions-account"
 - assertVisible:
@@ -89,6 +99,12 @@ tags:
 - pressKey: Back
 - tapOn:
     id: "chat-open-sessions"
+# Same reason as `sessions-account` above.
+- scrollUntilVisible:
+    element:
+      id: "sessions-profile"
+    direction: DOWN
+    timeout: 20000
 - tapOn:
     id: "sessions-profile"
 - assertVisible:

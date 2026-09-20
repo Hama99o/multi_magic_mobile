@@ -14,6 +14,15 @@ appId: ${APP_ID}
     id: "chat-open-sessions"
 - assertVisible:
     id: "sessions-sheet"
+# SCROLL TO IT. Sign out is the LAST row of the sheet's tail, and since
+# `138306d` that tail scrolls with the list instead of being pinned — so on an
+# account with more than a few conversations it starts below the fold. This
+# helper failed here on the first run after that change.
+- scrollUntilVisible:
+    element:
+      id: "sessions-sign-out"
+    direction: DOWN
+    timeout: 20000
 - tapOn:
     id: "sessions-sign-out"
 - extendedWaitUntil:

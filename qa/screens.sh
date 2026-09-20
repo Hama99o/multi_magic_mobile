@@ -84,12 +84,24 @@ set_width() {
          adb -s "$SERIAL" shell wm density 420 >/dev/null 2>&1 ;;
     800) adb -s "$SERIAL" shell wm size 1600x2560 >/dev/null 2>&1
          adb -s "$SERIAL" shell wm density 320 >/dev/null 2>&1 ;;
+    # ── STORE: A LISTING SIZE, NOT A DESIGN SIZE ───────────────────────
+    # Google Play: "the maximum dimension of your screenshot can't be more
+    # than twice as long as the minimum dimension."
+    # This AVD is 1080x2400 natively — a ratio of 2.22 — so EVERY design
+    # screenshot in `ours/` is the wrong shape for a Play listing and would
+    # be rejected. 1080x1920 is 1.78, comfortably inside the rule and the
+    # conventional 9:16 phone listing size. Density stays 420, so the layout
+    # is the 411 dp one the design pictures already prove.
+    store) adb -s "$SERIAL" shell wm size 1080x1920 >/dev/null 2>&1
+           adb -s "$SERIAL" shell wm density 420 >/dev/null 2>&1 ;;
   esac
 }
 
 # width mode lang — the order is every mode of a width together, so a width is
 # either complete or plainly absent.
-COMBOS="360 light en
+COMBOS="store light en
+store dark en
+360 light en
 360 dark en
 360 light fr
 360 dark fr
@@ -146,6 +158,25 @@ echo "$COMBOS" | while read -r width mode lang; do
     800) want_px=1600 ;;
     *)   want_px=1080 ;;
   esac
+  # ── DISMISS A SYSTEM ANR, AND SAY THAT YOU DID ───────────────────────
+  # A `wm size` change reliably makes the Pixel Launcher or System UI stop
+  # responding on this AVD, and Android puts a dialog over everything. Maestro
+  # then fails on the first assertion with "not visible", which reads exactly
+  # like the app being broken — the same misattribution as the stale layout.
+  #
+  # This is environment hygiene rather than masking: the dialog belongs to the
+  # LAUNCHER, not to our app, and the app behind it is running. It is counted
+  # and printed so a run that needed three dismissals does not look like a run
+  # that needed none.
+  anrs=0
+  for _ in 1 2 3 4; do
+    adb -s "$SERIAL" shell uiautomator dump /sdcard/anr.xml >/dev/null 2>&1
+    adb -s "$SERIAL" shell cat /sdcard/anr.xml 2>/dev/null | grep -q "isn.t responding" || break
+    adb -s "$SERIAL" shell input keyevent KEYCODE_ENTER >/dev/null 2>&1
+    anrs=$((anrs + 1)); sleep 2
+  done
+  [ "$anrs" -gt 0 ] && echo "  dismissed $anrs system ANR dialog(s) after the display change"
+
   if ! wait_for_geometry "$want_px" "$APP_ID" "$DL"; then
     echo "  the window never reached ${want_px}px — NOT SHOT, and that is NOT MEASURED"
     # `continue`, not `return`: this is a while-loop body, not a function, and

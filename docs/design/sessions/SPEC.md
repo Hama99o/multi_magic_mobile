@@ -232,3 +232,34 @@ no assertion that failed before and passes now; the 53 tests over this sheet
 pass identically either way, which is exactly the point. **The proof is
 `360-*-sessions` re-shot in both languages and both modes.** Until those land,
 this is reasoned from the source and unverified.
+
+#### What the fix cost, measured rather than argued — 2026-09-20
+
+**Proved on glass**: `e14e504`, four shots at 360 in both languages and both
+modes, three whole conversation rows in each, none sliced. The arithmetic
+above matched the photograph, and the photograph now matches the fix.
+
+**And the cost was measured by accident, which makes it better evidence than
+anybody's opinion.** The picture pass broke twice on this change before it
+produced an image: `sessions-account`, `sessions-profile` and
+`sessions-sign-out` had moved into the scroll, so each needed a
+`scrollUntilVisible` before its tap. Three flows patched — `99-screens`
+twice, `signed-out` once. So: **reaching Account or signing out is a scroll
+now, not a glance.** The rig felt it in the only way a rig can.
+
+**The evidence has a limit and it is worth stating plainly.** The QA account
+holds **three** conversations; the cap is **fifty**. With three, "New
+conversation" is still on screen right after the list, so the photographs make
+the unpinning look free. With fifty it is far down the scroll — and nobody has
+seen that state, because producing it means filling his account, which the rig
+must not do. The four shots are evidence that the list is fixed. They are
+**not** evidence about the trade.
+
+**One consequence, named and then fixed:** the sheet's bottom edge clips the
+first settings row mid-glyph. Structurally that is a scroll boundary rather
+than a squeeze — a different thing from the bug, and identical to it in a
+still. The fix was not chrome: `showsVerticalScrollIndicator={false}` had been
+copied onto this ScrollView from the other lists in the app, where hiding it
+is right because those lists usually fit. Here the scroll is the point, and
+hiding the indicator left a half-clipped glyph as the only affordance saying
+there was more. The indicator is shown.

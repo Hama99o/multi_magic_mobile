@@ -235,11 +235,15 @@ export function SessionsSheet({
               would push the sheet past its own `maxHeight` instead of
               scrolling inside it. The bottom inset is untouched — it stays on
               the sheet View, where `sheets.insets.test.tsx` asserts it. */}
-          <ScrollView
-            style={{ flexShrink: 1 }}
-            contentContainerStyle={{ gap: metrics.space.lg }}
-            showsVerticalScrollIndicator={false}
-          >
+          {/* The indicator is SHOWN here, unlike every other list in this app.
+              Elsewhere hiding it is right — those lists usually fit, and a
+              bar that appears and fades on a list with nothing below it is
+              noise. Here the scroll is the whole point, and hiding it left a
+              half-clipped glyph at the bottom edge as the ONLY thing telling
+              anybody there was more. That is an accident doing an
+              affordance's job. Hiding it was copied from the other lists
+              without asking whether the reason came with it. */}
+          <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: metrics.space.lg }}>
             {isLoading ? (
               <ActivityIndicator color={colors.accent} />
             ) : (

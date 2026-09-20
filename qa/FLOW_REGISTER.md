@@ -533,3 +533,58 @@ after the check passed. That is unexplained and is the next thread to pull.
 * The bundle gate passing at 13.66 MB, run first.
 * 36 pictures across four combinations, in both `qa/evidence/` and each
   screen's `ours/`, which is tracked now.
+
+---
+
+## 2026-09-20 — the French sets, and two handles that are unreachable for
+## reasons that are not the account's
+
+**The picture pass is closed: eight of eight combinations, 72 shots.** 360, 411
+and 800 in English; 360 in French; both modes throughout. French at 360 only,
+by Hamma9901's decision — the risk French carries is length, length fails at
+the narrowest width first, and 411 and 800 have more room rather than less.
+
+**No French string truncates or wraps a row** on the screens inspected, which
+were profile (the longest sentence in the app: *"Changer votre e-mail vous
+déconnecte des mises à jour en direct jusqu'à la prochaine connexion ; cela se
+fait donc sur le site pour l'instant."* — wraps to three lines, fits), account
+in dark, and the sessions sheet's own settings block. **Several screens, not
+all eighteen**, and this says which rather than implying the whole set was
+read.
+
+### The pass could never have shot French
+
+It navigated by `tapOn: "Back"`, and that control is
+`accessibilityLabel={t("common.back")}` — "Retour" in French. Every English run
+walked through the same five taps for a day. Now `pressKey: Back`, which is how
+those screens are left anyway.
+
+### `source-chips` / `source-sheet*` — the ANSWER does not cite sources
+
+Measured rather than assumed: `01-ask` was run end to end, a real question
+through `thinking` to a real `assistant-answer`, and the answer's handles are
+`answer-actions`, `answer-copy`, `answer-up`, `answer-down` and **nothing
+else**. No `source-chips`.
+
+So those four handles move out of the backlog and into **"the rig cannot
+produce this state"** — not because of a flow, but because this account's
+assistant returns answers that cite nothing. Writing flows for them would have
+been six flows against a screen that never appears.
+
+### `answer-read*` — the BINARY predates the feature
+
+`READ_ALOUD_ENABLED` is `true`, Google TTS **is** installed on the AVD
+(`com.google.android.tts`), and `answer-read` is still absent from every answer.
+That is the app behaving correctly rather than a defect:
+`ReadAloudButtons` returns null when `!supported`, and `supported` comes from
+`tryRequire("expo-audio")` / `tryRequire("expo-speech")` — **native** modules.
+
+The installed dev build is `app-debug.apk` from **2026-09-19 01:34**.
+Read-aloud landed in `e41be2a` at **09:15** the same day. The JS is current
+because Metro serves the working tree; the native side is an eight-hour-old
+binary that never contained those modules. *(Timeline evidence and inference
+from the render condition — not a dex inspection.)*
+
+**So `answer-read-device-voice` and `answer-read-notice` are unreachable until
+the APK is rebuilt**, and that rebuild is already sequenced behind the SDK 57
+merge. Nothing to fix and nothing to write until then.

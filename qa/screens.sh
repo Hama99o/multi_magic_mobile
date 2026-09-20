@@ -128,7 +128,12 @@ store dark en
 800 light en
 800 dark en"
 
-echo "$COMBOS" | while read -r width mode lang; do
+# HERE-STRING, NOT A PIPE. `echo "$COMBOS" | while read` runs the loop body in
+# a SUBSHELL, so `LANG_TOUCHED=1` set inside it never reaches the EXIT trap in
+# the parent — the restore this file just gained would have been silently dead
+# on every run. Caught by reading the loop after writing the trap, not by a
+# failure, because the failure mode is "the account is quietly still French".
+while read -r width mode lang; do
   [ -z "$width" ] && continue
   SHOT="$width-$mode-$lang"
   [ -n "$ONLY" ] && [ "$ONLY" != "$SHOT" ] && [ "$ONLY" != "$width-$mode" ] && continue
@@ -246,7 +251,7 @@ echo "$COMBOS" | while read -r width mode lang; do
   if [ "$lang" = fr ]; then
     run_flow set-language.yaml -e LANG_ID="language-en" >/dev/null 2>&1 && LANG_TOUCHED=0
   fi
-done
+done <<< "$COMBOS"
 
 echo
 echo "resetting the device — an Override left behind is a device nobody can trust"

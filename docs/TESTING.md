@@ -772,6 +772,33 @@ day, and the second was caused by fixing the first.** That is the strongest
 argument in this file for the rule above it: correcting a habit changes what
 you do next, and what you do next is where the next one lives.
 
+### A third instance, and the reason the second one is always harder
+
+The session holding the device moved a language restore into an `EXIT` trap
+so it would survive a kill rather than only a clean return — the right
+correction, for the right reason, made *because* of the cleanup-only-on-the-
+happy-path finding earlier that evening. Then it read the loop the trap
+depends on: `echo "$COMBOS" | while read` runs its body in a **subshell**, so
+the flag the trap tests is set in a process that no longer exists by the time
+the trap fires.
+
+**The fix was dead on arrival and its failure mode was silence** — not an
+error, just the QA account quietly staying in French for whatever ran next,
+which is the exact thing the trap had been written to prevent. It was caught
+by *reading* the loop after writing the trap. Nothing would have failed.
+
+> **The second error is systematically harder to see than the first, because
+> the first one taught you what to look for and the second one is somewhere
+> you have just stopped looking.** You arrive at it carrying a fresh, correct,
+> specific idea of the danger — and that idea is a torch pointed away from
+> wherever you now are.
+
+Three instances, two of them fixes-of-fixes, three different people-shaped
+mistakes in one evening. **This entry's own history is its argument**, which
+is the least comfortable and most useful thing in this file.
+
+---
+
 Found by the session running the script. Its fix was right and its
 explanation was not, which is the third finding: it read the failing grep as
 *"`.env` sets neither variable"*. `.env` sets **both, twice each**, as

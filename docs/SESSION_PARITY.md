@@ -196,8 +196,15 @@ Reported rather than built.
   There was no suite to run and no failure to observe, which is worth knowing
   before anybody treats a line here as verified behaviour rather than as read
   code.
-- **Live cross-device behaviour.** Everything above is read from both
-  codebases. Nobody has switched a chat on a phone and watched a laptop, and
-  that is the only thing that would prove the gap rather than deduce it.
+- **Live cross-device behaviour — half measured, 2026-09-20.**
+  `qa/verify_activate.sh` was run on the device: `ai_session_id` went **269 →
+  263** after switching by title on the phone with no question asked, landing
+  on *that conversation's* id rather than merely changing. **Mobile's half is
+  proved** — the write happens, which is precisely what was missing.
+
+  The other half is not, and is not mobile's: whether a laptop then opens
+  that chat is the web's behaviour, and the web has no tests at all (below).
+  Nobody has switched on a phone and watched a browser. That would need two
+  clients on one account, and the account would be his.
 - **The floating assistant window** (`AiAssistantWindow`) shares `AiChat`, so I
   treated it as the same behaviour rather than checking it separately.

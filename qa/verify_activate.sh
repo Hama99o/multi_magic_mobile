@@ -32,11 +32,20 @@
 # Nothing is seeded, migrated or deleted, and the script refuses rather than
 # guesses if it cannot identify the QA user.
 #
-# ── STATUS: WRITTEN, NEVER RUN ───────────────────────────────────────────
-# Authored by the session holding the code half; the device is another's.
-# `docs/TESTING.md` §6 — until it executes it is worth nothing. Whoever runs
-# it should record the verdict, and **say which id it saw**, not just that it
-# changed.
+# ── STATUS: RUN, AND GREEN ───────────────────────────────────────────────
+# 2026-09-20, by the session holding the device, non-interactively because the
+# `read -p` below wants a human.
+#
+#   ai_session_id: 269 ("New chat") → 263 ("Do I owe anyone money?")
+#
+# after switching by title on the phone with **no question asked**. It moved
+# to *that conversation's* id rather than merely changing, which is the
+# difference between the write happening and something else having written it.
+# QA account only, one select, no write.
+#
+# So `3088fd2` is proved on a device: mobile now tells the server which chat.
+# What is still unproved is the other half — that a laptop then opens it — and
+# that is the web's behaviour, not mobile's. See the two paragraphs above.
 set -euo pipefail
 
 DIR="$(cd "$(dirname "$0")" && pwd)"

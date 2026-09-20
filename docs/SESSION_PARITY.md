@@ -171,8 +171,31 @@ Reported rather than built.
 
 ## What I did not measure
 
-- **The web's own tests.** I read its source, not its spec files, so "the web
-  does X" here means its code does X.
+- ~~**The web's own tests.**~~ **Measured 2026-09-20, and it changes what this
+  document is for.**
+
+  `find app/javascript -iname "*.test.*" -o -iname "*.spec.*"` → **zero
+  files.** The web's session client — `selectSession`, the localStorage key,
+  the `activate` call, all five panels — has **no automated test of any
+  kind**.
+
+  The backend does. `spec/services/ai/sessions_current_spec.rb` covers
+  `Ai::Sessions.current`, and its first example is named *"opens the chat the
+  user chose, not the one last talked in"* — **the exact promise mobile was
+  breaking**, written as an expectation a year before anybody looked at the
+  phone. The `activate` endpoint itself has no request spec
+  (`sessions_controller_spec.rb` never mentions it), so the service is
+  covered and the door to it is not.
+
+  **So "mobile should match the web" is a comparison against an untested
+  reference.** Mobile is the tested client — 709 tests against zero. Where
+  the two differ, mobile's version is the one with something behind it, and
+  the row below where the web should copy mobile is not a courtesy.
+
+  It also means this audit could only ever be a reading of the web's source.
+  There was no suite to run and no failure to observe, which is worth knowing
+  before anybody treats a line here as verified behaviour rather than as read
+  code.
 - **Live cross-device behaviour.** Everything above is read from both
   codebases. Nobody has switched a chat on a phone and watched a laptop, and
   that is the only thing that would prove the gap rather than deduce it.

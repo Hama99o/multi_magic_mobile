@@ -70,6 +70,7 @@ import io
 import itertools
 import os
 import re
+import subprocess
 import sys
 
 import yaml
@@ -466,6 +467,78 @@ def icon_testids():
                     out.add(head.rstrip("-"))
     return out
 
+
+# ── VERDICT — A ROW THAT DESCRIBES COVERAGE IS NOT A ROW THAT REPORTS A RUN ──
+# Five times in one file, found three separate times by three separate people:
+# `09-keyboard`, `05-upload`, `03-dictation`, `04-delete-conversation` and
+# `02-sign-in` all sat in FLOW_REGISTER.md reading as coverage while having
+# never executed — or, worse, while carrying a verdict written BEFORE the flow
+# was rewritten. A gap is visible; prose that reads like a result is not.
+#
+# The register's shape allowed it, so the fix is structural rather than
+# diligence. Every flow's row must carry one of PASS, FAIL, NOT MEASURED or
+# UNRUN, **and a verdict must not predate the flow's own last change** — a
+# verdict for content that no longer exists is the same lie one step subtler.
+VERDICT_WORD = re.compile(r"\b(PASS|FAIL|NOT MEASURED|UNRUN)\b")
+ROW_DATE = re.compile(r"\b(20\d\d)-(\d\d)-(\d\d)\b")
+
+
+def _last_changed(path):
+    """When the flow itself last changed, from git. None if git cannot say."""
+    try:
+        out = subprocess.run(
+            ["git", "log", "-1", "--format=%ad", "--date=format:%Y-%m-%d", "--", path],
+            cwd=ROOT, capture_output=True, text=True, timeout=10,
+        ).stdout.strip()
+        return out or None
+    except Exception:
+        return None
+
+
+def verdicts(paths, register):
+    """Rows that report nothing, and verdicts older than the flow they describe."""
+    try:
+        text = io.open(register, encoding="utf-8").read()
+    except OSError:
+        return
+    rows = {}
+    for line in text.splitlines():
+        m = re.match(r"\|\s*`([^`]+\.yaml)`\s*\|", line)
+        if m:
+            rows.setdefault(m.group(1), line)
+
+    helper_set = helpers(sorted(glob.glob(os.path.join(FLOWS, "*.yaml"))))
+    for path in paths:
+        name = os.path.basename(path)
+        if os.path.abspath(path) in helper_set:
+            continue                      # a helper reports no verdict of its own
+        row = rows.get(name)
+        if row is None:
+            continue                      # UNREGISTERED already covers this
+        # ONLY THE VERDICT COLUMN. The "does NOT cover" column legitimately
+        # says NOT MEASURED as prose — "stops as NOT MEASURED if the account is
+        # at the cap" — and reading the whole row let that count as a verdict.
+        # The first version of this check passed `03-dictation` and
+        # `04-delete-conversation` for exactly that reason, which is the same
+        # mistake in the instrument as in the thing it audits.
+        cells = [c.strip() for c in row.strip().strip("|").split("|")]
+        verdict_cell = cells[1] if len(cells) > 1 else ""
+        word = VERDICT_WORD.search(verdict_cell)
+        if not word:
+            yield (name, "VERDICT",
+                   "the row describes coverage and reports no run — say PASS, FAIL, "
+                   "NOT MEASURED or UNRUN in the same column, or it is prose")
+            continue
+        if word.group(1) == "UNRUN":
+            continue                      # honest, and says so
+        changed = _last_changed(path)
+        dates = ["-".join(d) for d in ROW_DATE.findall(verdict_cell)]
+        if changed and dates and max(dates) < changed:
+            yield (name, "VERDICT",
+                   f"the newest date in the row is {max(dates)} but the flow last "
+                   f"changed on {changed} — the verdict is for content that no "
+                   f"longer exists")
+
 # ── THE FOUR BUCKETS, BECAUSE A LIST OF SIXTY-ONE BECOMES WALLPAPER ─────────
 # Only the first is a backlog. The other three are answers, not debt, and
 # keeping them in the same list as the real gaps is how the real gaps stop
@@ -668,6 +741,10 @@ def main(argv):
                       f"`{sel}` sits on a lucide icon, which hands its testID to BOTH "
                       f"its wrapper and the Svg inside — TWO nodes, not one")
                 total += 1
+
+    for name, kind, why in verdicts(paths, REGISTER):
+        print(f"  {kind:<12} qa/flows/{name}  {why}")
+        total += 1
 
     for name, kind, why in unregistered(paths, REGISTER):
         # Helpers are decided against EVERY flow on disk, not only the targets.

@@ -38,6 +38,8 @@ import { SourceSheet, useOpenSource } from "@/components/chat/SourceSheet";
 import { FilePreview } from "@/components/chat/FilePreview";
 import type { AnswerLink } from "@/components/chat/AnswerMarkdown";
 import { SessionsSheet } from "@/components/sessions/SessionsSheet";
+import { ProfileSheet } from "@/components/settings/ProfileSheet";
+import { Avatar } from "@/screens/people/Avatar";
 import { AttachSheet } from "@/components/chat/AttachSheet";
 import { PendingFiles } from "@/components/chat/PendingFiles";
 import { useAttachments } from "@/hooks/useAttachments";
@@ -263,6 +265,7 @@ export default function Chat() {
   const reachable = useReachability((s) => s.reachable);
   const { openSource, openLink, closeSource } = useOpenSource();
   const [openFile, setOpenFile] = useState<AnswerLink | null>(null);
+  const [profileOpen, setProfileOpen] = useState(false);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const { awayFromBottom, settled, onScroll, onScrollBeginDrag, onContentSizeChange, onListLayout, toBottom } =
     useAwayFromBottom(listRef);
@@ -407,14 +410,41 @@ export default function Chat() {
               onPress={() => router.push("/calendar")}
               testID="chat-open-calendar"
             />
-            {/* This one stays last and is the assistant's own: an app with one
-                destination does not need a persistent drawer. */}
+            {/* The assistant's own: an app with one destination does not need
+                a persistent drawer. */}
             <HeaderIcon
               label={t("chat.conversations")}
               icon={MessageSquareText}
               onPress={() => setSessionsOpen(true)}
               testID="chat-open-sessions"
             />
+
+            {/* AND LAST, THE PHOTO — his: "move profile button as where we see
+                photo button". The four to its left are doors to places; this
+                one is you, so it is a face rather than a glyph, and it is
+                rightmost because that is where an account lives on every
+                screen anybody has used. `Avatar` draws initials when there is
+                no photo. */}
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={t("profileMenu.openLabel")}
+              hitSlop={6}
+              onPress={() => setProfileOpen(true)}
+              style={{
+                width: metrics.touch,
+                height: metrics.touch,
+                alignItems: "center",
+                justifyContent: "center",
+              }}
+              testID="chat-open-profile"
+            >
+              <Avatar
+                name={user?.fullName ?? user?.email ?? ""}
+                uri={user?.avatar ?? null}
+                userId={user?.id ?? 0}
+                size={28}
+              />
+            </Pressable>
           </View>
         </View>
 
@@ -592,8 +622,14 @@ export default function Chat() {
         activeId={conversationId}
         onClose={() => setSessionsOpen(false)}
         onOpenSession={chooseSession}
+      />
+
+      <ProfileSheet
+        visible={profileOpen}
+        userId={user?.id ?? null}
+        onClose={() => setProfileOpen(false)}
         onSignOut={() => {
-          setSessionsOpen(false);
+          setProfileOpen(false);
           void useAuthStore.getState().signOut().then(() => router.replace("/sign-in"));
         }}
       />

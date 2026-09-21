@@ -179,6 +179,18 @@ export const en = {
     backToSignIn: "Back to sign in",
   },
 
+  /**
+   * The profile menu behind the photo in the title bar. Its rows reuse the
+   * `sessions.*` wording they were moved from, so nothing a user reads
+   * changed when the panel did — only where it lives.
+   */
+  profileMenu: {
+    title: "Account",
+    openLabel: "Your account",
+    language: "Language",
+    appearance: "Appearance",
+  },
+
   sources: {
     chip: "Source: {{label}}",
     sheetLabel: "Where this came from",
@@ -241,7 +253,6 @@ export const en = {
     instructionsSet: "Set",
     instructionsNotSet: "Not set",
     delete: "Delete",
-    account: "Account",
     yourProfile: "Your profile",
     privacyAndAccount: "Privacy and account",
     signOut: "Sign out",

@@ -73,7 +73,7 @@ beforeEach(async () => {
   jest.clearAllMocks();
   await AsyncStorage.clear();
   useAuthStore.setState({
-    user: { id: 2, email: "qa@example.test", firstName: "Qa", lastName: "Mobile", fullName: "Qa Mobile" },
+    user: { id: 2, email: "qa@example.test", firstName: "Qa", lastName: "Mobile", fullName: "Qa Mobile", avatar: null },
     status: "signedIn",
     signedOutReason: null,
   });

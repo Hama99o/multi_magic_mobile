@@ -31,9 +31,15 @@ tags:
 
 # ── Baseline: System, photographed ───────────────────────────────────────
 - tapOn:
-    id: "chat-open-sessions"
+    id: "chat-open-profile"
 - assertVisible:
-    id: "sessions-sheet"
+    id: "profile-sheet"
+# ONE MORE TAP THAN BEFORE, and that is the point of the change: the appearance
+# choice used to sit in the CONVERSATIONS sheet, so opening a list of chats put
+# a radio group for the whole app's theme in front of you. It is now behind the
+# photo, under its own heading.
+- tapOn:
+    id: "profile-open-theme"
 - assertVisible:
     id: "theme-row"
 - assertVisible: "Appearance"
@@ -43,14 +49,16 @@ tags:
     id: "theme-system"
     selected: true
 - tapOn:
-    id: "sessions-close"
+    id: "profile-close"
 - assertVisible:
     id: "composer-input"
 - takeScreenshot: reports/66-assistant-system-theme
 
 # ── Dark ─────────────────────────────────────────────────────────────────
 - tapOn:
-    id: "chat-open-sessions"
+    id: "chat-open-profile"
+- tapOn:
+    id: "profile-open-theme"
 - tapOn:
     id: "theme-dark"
 - assertVisible:
@@ -58,7 +66,7 @@ tags:
     selected: true
 - takeScreenshot: reports/67-sheet-dark
 - tapOn:
-    id: "sessions-close"
+    id: "profile-close"
 - assertVisible:
     id: "composer-input"
 # THE ARTEFACT. Compare with 66: if these two look the same, dark is not
@@ -70,7 +78,9 @@ tags:
 # real relaunch and `hydrate()` is what put the value back.
 - runFlow: login.yaml
 - tapOn:
-    id: "chat-open-sessions"
+    id: "chat-open-profile"
+- tapOn:
+    id: "profile-open-theme"
 - assertVisible:
     id: "theme-dark"
     selected: true
@@ -88,8 +98,12 @@ tags:
 # own card, and the delete row at the bottom with its warning BEFORE the tap
 # (Wabi's caption). Nothing here is tapped past this screen — 17-privacy and
 # 18-delete-account go through the doors.
+# BACK TO THE MENU FIRST — the chooser replaced it, and a pane that could only
+# be left by dismissing the whole sheet would lose the place you came from.
 - tapOn:
-    id: "sessions-account"
+    id: "profile-back"
+- tapOn:
+    id: "profile-open-account"
 - extendedWaitUntil:
     visible:
       id: "account-privacy"
@@ -128,14 +142,16 @@ tags:
 # reads "English" and Français reads "Français" in both states — so neither
 # assertion below depends on the language the flow starts in.
 - tapOn:
-    id: "chat-open-sessions"
-- scrollUntilVisible:
-    element:
-      id: "language-row"
-    direction: DOWN
-    timeout: 20000
+    id: "chat-open-profile"
+- tapOn:
+    id: "profile-open-language"
+# NO `scrollUntilVisible` ANY MORE, and its absence is the measurement. The
+# language rows used to be the tail of the conversations list, so a long list
+# put them below the fold and reaching them was a scroll rather than a glance —
+# `99-screens` recorded that cost when it appeared. In their own pane they are
+# the only thing there.
 - assertVisible:
-    id: "theme-row"
+    id: "language-row"
 - assertVisible:
     id: "language-en"
 - assertVisible:
@@ -161,6 +177,6 @@ tags:
     id: "language-en"
     selected: true
 - tapOn:
-    id: "sessions-close"
+    id: "profile-close"
 - assertVisible:
     id: "composer-input"

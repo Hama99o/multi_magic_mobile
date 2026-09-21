@@ -33,9 +33,9 @@ tags:
 ---
 - runFlow: login.yaml
 - tapOn:
-    id: "chat-open-sessions"
+    id: "chat-open-profile"
 - tapOn:
-    id: "sessions-profile"
+    id: "profile-open-profile"
 # The screen fetches `connected_user` itself (SPEC §0.3); the form appears once
 # it lands.
 - extendedWaitUntil:
@@ -165,9 +165,9 @@ tags:
 - assertVisible:
     id: "composer-input"
 - tapOn:
-    id: "chat-open-sessions"
+    id: "chat-open-profile"
 - tapOn:
-    id: "sessions-profile"
+    id: "profile-open-profile"
 - extendedWaitUntil:
     visible:
       id: "profile-about"

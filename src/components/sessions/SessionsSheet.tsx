@@ -16,7 +16,6 @@
  */
 import { useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
-import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react-native";
@@ -27,13 +26,10 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { LIMITS, sessionsApi, type AiSession } from "@/api/ai";
 import { apiErrorMessage } from "@/api/http";
 import { isToday } from "@/lib/relativeTime";
-import { useAuthStore } from "@/stores/auth.store";
 import { SessionRow } from "./SessionRow";
 import { RenameDialog } from "./RenameDialog";
 import { DeleteConfirm } from "./DeleteConfirm";
 import { InstructionsDialog, ScopeDialog } from "./SessionOptionsDialogs";
-import { ThemeRow } from "./ThemeRow";
-import { LanguageRow } from "./LanguageRow";
 
 type Pending =
   | { kind: "rename" | "delete" | "menu" | "instructions" | "scope"; session: AiSession }
@@ -44,19 +40,16 @@ export function SessionsSheet({
   activeId,
   onClose,
   onOpenSession,
-  onSignOut,
 }: {
   visible: boolean;
   activeId: number | null;
   onClose: () => void;
   onOpenSession: (id: number) => void;
-  onSignOut: () => void;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-  const userId = useAuthStore((s) => s.user?.id ?? null);
   const { t } = useTranslation();
   const [pending, setPending] = useState<Pending>(null);
   const [error, setError] = useState<string | null>(null);
@@ -275,60 +268,6 @@ export function SessionsSheet({
                 so this one does not live inside the list of conversations; it
                 lives under a heading that names what it is about, and it opens
                 its own SCREEN rather than a dialog. */}
-            <View
-              style={{
-                borderTopWidth: 1,
-                borderTopColor: colors.border,
-                paddingTop: metrics.space.md,
-                gap: metrics.space.xs,
-              }}
-            >
-              <ThemeRow />
-
-              {/* Beside the theme, because he named them together and they are
-                  the same kind of choice. `userId` is what lets the choice
-                  reach the web too; it is absent for one launch after a cold
-                  start, and the language still applies locally. */}
-              <LanguageRow userId={userId} />
-
-              <Text variant="label" tone="muted" style={{ paddingHorizontal: metrics.space.sm, paddingTop: metrics.space.sm }}>
-                {t("sessions.account")}
-              </Text>
-
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  onClose();
-                  router.push("/profile");
-                }}
-                style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }}
-                testID="sessions-profile"
-              >
-                <Text>{t("sessions.yourProfile")}</Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                onPress={() => {
-                  onClose();
-                  router.push("/account");
-                }}
-                style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }}
-                testID="sessions-account"
-              >
-                <Text>{t("sessions.privacyAndAccount")}</Text>
-              </Pressable>
-
-              <Pressable
-                accessibilityRole="button"
-                onPress={onSignOut}
-                hitSlop={8}
-                style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }}
-                testID="sessions-sign-out"
-              >
-                <Text tone="muted">{t("sessions.signOut")}</Text>
-              </Pressable>
-            </View>
             </View>
           </ScrollView>
         </View>

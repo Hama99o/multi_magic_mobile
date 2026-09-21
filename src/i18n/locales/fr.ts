@@ -192,6 +192,13 @@ export const fr: Translations = {
     backToSignIn: "Retour à la connexion",
   },
 
+  profileMenu: {
+    title: "Compte",
+    openLabel: "Votre compte",
+    language: "Langue",
+    appearance: "Apparence",
+  },
+
   sources: {
     chip: "Source : {{label}}",
     sheetLabel: "D’où cela vient",
@@ -258,7 +265,6 @@ export const fr: Translations = {
     instructionsSet: "Définies",
     instructionsNotSet: "Non définies",
     delete: "Supprimer",
-    account: "Compte",
     yourProfile: "Votre profil",
     privacyAndAccount: "Confidentialité et compte",
     signOut: "Se déconnecter",

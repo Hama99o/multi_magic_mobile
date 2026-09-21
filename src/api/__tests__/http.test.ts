@@ -11,7 +11,7 @@ import * as SecureStore from "expo-secure-store";
 import {
   __resetTokenCache, http, isNetworkFailure, isRateLimited, isUnauthorized,
   loadSessionEmail, loadToken, retryAfterSeconds, sessionEndReason, setReachabilityHandler,
-  setSessionEmail, setToken, setUnauthorizedHandler,
+  setSessionEmail, setToken, setTrustToken, setUnauthorizedHandler,
 } from "../http";
 import { __resetFingerprintCache } from "@/lib/fingerprint";
 import { ApiShapeError } from "../parse";
@@ -67,6 +67,48 @@ describe("the request interceptor", () => {
     expect(mock.history.get[0].headers?.["X-Device-Fingerprint"]).toBe(
       "11111111-2222-3333-4444-555555555555",
     );
+  });
+
+  /**
+   * THE LINK THAT MAKES "TRUST THIS DEVICE" MEAN ANYTHING.
+   *
+   * The trust used to be storable and unusable: `trusted_devices#create`
+   * answered with a `Set-Cookie` and this client keeps no cookie jar, so the
+   * button reported success and the next sign-in asked for a code anyway. The
+   * token now comes back in the body and rides this header — and if it stopped
+   * doing so, nothing else in the app would look any different. That silence
+   * is why this is asserted here rather than left to the screen's tests.
+   */
+  it("sends the trusted-device token on the login request", async () => {
+    await setTrustToken("trust-abc");
+    mock.onPost("/users/login").reply(200, {});
+
+    await http.post("/users/login", {});
+
+    expect(mock.history.post[0].headers?.["X-Trusted-Device"]).toBe("trust-abc");
+  });
+
+  /**
+   * ONLY on login. It is the one request that reads it, and a device
+   * credential on every call is a device credential in every log and proxy
+   * between here and the server, for nothing.
+   */
+  it("sends it nowhere else", async () => {
+    await setTrustToken("trust-abc");
+    await setToken("Bearer t");
+    mock.onGet("/anything").reply(200, {});
+
+    await http.get("/anything");
+
+    expect(mock.history.get[0].headers?.["X-Trusted-Device"]).toBeUndefined();
+  });
+
+  it("sends no such header when this phone has never been trusted", async () => {
+    mock.onPost("/users/login").reply(200, {});
+
+    await http.post("/users/login", {});
+
+    expect(mock.history.post[0].headers?.["X-Trusted-Device"]).toBeUndefined();
   });
 
   it("sends the fingerprint even when signed out", async () => {

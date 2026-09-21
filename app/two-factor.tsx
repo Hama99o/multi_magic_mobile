@@ -16,16 +16,23 @@
  * notification rather than making somebody memorise six digits and switch
  * apps to read them twice.
  *
- * ── WHAT THE WEB HAS THAT THIS DELIBERATELY DOES NOT ─────────────────────
- * **"Trust this device."** `trusted_devices_controller.rb:18` answers by
- * writing a COOKIE, and the trust is then read back from that cookie
- * (`sessions_controller.rb:38-41`). This app authenticates with a Bearer token
- * and its client keeps no cookie jar (`src/api/http.ts`), so the button would
- * post, appear to succeed, and change nothing — the next sign-in would ask for
- * a code again with no explanation. That is a button that cannot work, and the
- * rule against those is the same one that keeps the attachment `+` out of a
- * thread with a person. It is a real gap and it belongs to the backend: the
- * fix is a trust token in the response body rather than in a `Set-Cookie`.
+ * ── "TRUST THIS DEVICE" — WHICH USED TO BE IMPOSSIBLE HERE ──────────────
+ * It was left out on purpose at first, and the note said why:
+ * `trusted_devices#create` answered by writing a COOKIE and the trust was read
+ * back from that cookie, so on a client with a Bearer token and no cookie jar
+ * the button would post, report success, and change nothing — the next sign-in
+ * would ask for a code again with no explanation. A button that cannot work is
+ * worse than no button.
+ *
+ * He said finish it, so the backend was finished instead: the token now comes
+ * back in the BODY and the login request carries it in `X-Trusted-Device`. The
+ * checks are untouched — the token is a digest at rest, bound to this device's
+ * fingerprint, owned by one user and expiring — so what widened is the
+ * transport and nothing else.
+ *
+ * It is offered AFTER verifying, never before: the choice belongs to somebody
+ * who has just proved they hold the account, and "remember me" beside a code
+ * field is a checkbox that weakens the step it sits next to.
  *
  * ── AND THE ATTEMPTS COUNTER IS THE SERVER'S SENTENCE, NOT OURS ──────────
  * `two_factor_controller.rb:63-66` sends `message` and `attempts_left`. Only
@@ -44,6 +51,7 @@ import { Input } from "@/components/reusables/input";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useAuthStore } from "@/stores/auth.store";
 import { apiErrorMessage, isNetworkFailure, isRateLimited } from "@/api/http";
+import { trustThisDevice } from "@/api/auth";
 
 /** The server mails six digits. Anything else is not worth a round trip. */
 const CODE_LENGTH = 6;
@@ -67,6 +75,9 @@ export default function TwoFactor() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  /** Verified, and now asking whether to remember this phone. */
+  const [verified, setVerified] = useState(false);
+  const [trusting, setTrusting] = useState(false);
 
   /**
    * Nothing pending means nothing to spend — the same guard the web screen
@@ -75,8 +86,11 @@ export default function TwoFactor() {
    * cannot be verified.
    */
   useEffect(() => {
-    if (!pending) router.replace("/sign-in");
-  }, [pending]);
+    // Not once verified: the token is spent by then, and bouncing somebody out
+    // of the screen that is about to offer them a choice is the bug this guard
+    // would otherwise introduce.
+    if (!pending && !verified) router.replace("/sign-in");
+  }, [pending, verified]);
 
   async function submit() {
     if (busy) return;
@@ -93,7 +107,7 @@ export default function TwoFactor() {
     setBusy(true);
     try {
       await verify(code);
-      router.replace("/chat");
+      setVerified(true);
     } catch (e) {
       setError(messageFor(e, t));
     } finally {
@@ -104,6 +118,65 @@ export default function TwoFactor() {
   function backToSignIn() {
     clearTwoFactor();
     router.replace("/sign-in");
+  }
+
+  /**
+   * Either answer ends on the assistant. Trusting can fail — the network, a
+   * fingerprint the server did not get — and it costs a code next time and
+   * nothing else, so it is never a reason to hold somebody on this screen.
+   */
+  async function remember(trust: boolean) {
+    if (trusting) return;
+    if (!trust) {
+      router.replace("/chat");
+      return;
+    }
+    setTrusting(true);
+    await trustThisDevice();
+    setTrusting(false);
+    router.replace("/chat");
+  }
+
+  if (verified) {
+    return (
+      <Screen measure scroll>
+        <View
+          style={{
+            flex: 1,
+            gap: metrics.space.xl,
+            paddingTop: metrics.space.xl * 2,
+            paddingBottom: metrics.space.xl,
+          }}
+          testID="two-factor-verified"
+        >
+          <View style={{ gap: metrics.space.sm }}>
+            <ShieldCheck size={28} color={colors.accent} />
+            <Text variant="title">{t("twoFactor.verified")}</Text>
+            <Text tone="muted">{t("twoFactor.trustDeviceDesc")}</Text>
+          </View>
+
+          <Button
+            label={t("twoFactor.trustDevice")}
+            busy={trusting}
+            onPress={() => void remember(true)}
+            testID="two-factor-trust"
+          />
+
+          <View style={{ alignItems: "center" }}>
+            <Text
+              variant="caption"
+              tone="accent"
+              onPress={() => void remember(false)}
+              accessibilityRole="button"
+              accessibilityLabel={t("twoFactor.notNow")}
+              testID="two-factor-not-now"
+            >
+              {t("twoFactor.notNow")}
+            </Text>
+          </View>
+        </View>
+      </Screen>
+    );
   }
 
   return (

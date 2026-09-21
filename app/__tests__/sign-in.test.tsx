@@ -9,13 +9,17 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 // No JSX and no `require` inside this factory: babel-plugin-jest-hoist fails to
 // hoist a destructured require and dies with "Property declarations[0] of
 // VariableDeclaration expected node to be of a type VariableDeclarator" —
 // an error that names neither jest.mock nor this file's real problem.
 // `Link asChild` renders its single child, so returning it is faithful.
 jest.mock("expo-router", () => ({
-  router: { replace: (...a: unknown[]) => mockReplace(...a) },
+  router: {
+    replace: (...a: unknown[]) => mockReplace(...a),
+    push: (...a: unknown[]) => mockPush(...a),
+  },
   Link: ({ children }: { children: unknown }) => children,
 }));
 
@@ -169,20 +173,30 @@ describe("the failure copy", () => {
     );
   });
 
-  // 202 is a SUCCESS status. Without the named error the screen would accept
-  // the password and do nothing, with no reason for the user to suspect
-  // anything went wrong.
-  it("says so plainly when the account needs a code this app cannot collect", async () => {
+  /**
+   * A CODE IS NOT A FAILURE. 202 is a success status: the password was right
+   * and the server has mailed six digits. This used to render "this app cannot
+   * do that yet" under a login that had just succeeded — his report, and with
+   * 2FA on his account it left him no way into it from this phone at all.
+   */
+  it("goes to the code screen instead of reporting an error", async () => {
     signIn.mockRejectedValue(new TwoFactorRequiredError("pre-auth"));
     render(<SignIn />);
     fill();
 
     fireEvent.press(screen.getByTestId("sign-in-submit"));
 
-    await waitFor(() =>
-      expect(screen.getByTestId("sign-in-error")).toHaveTextContent(
-        "This account needs an emailed code, which this app cannot do yet.",
-      ),
-    );
+    await waitFor(() => expect(mockPush).toHaveBeenCalledWith("/two-factor"));
+  });
+
+  it("shows no error line on that path, because nothing went wrong", async () => {
+    signIn.mockRejectedValue(new TwoFactorRequiredError("pre-auth"));
+    render(<SignIn />);
+    fill();
+
+    fireEvent.press(screen.getByTestId("sign-in-submit"));
+
+    await waitFor(() => expect(mockPush).toHaveBeenCalled());
+    expect(screen.queryByTestId("sign-in-error")).toBeNull();
   });
 });

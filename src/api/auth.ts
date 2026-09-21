@@ -116,6 +116,49 @@ export async function signIn(params: {
   return user;
 }
 
+/**
+ * THE EMAILED CODE — the second half of a 2FA sign-in.
+ *
+ * His words: *"it should work on mobile also — it sends code but there it did
+ * not have option in mobile."* The server has done its half all along:
+ * `sessions_controller.rb:26-36` answers **202** with
+ * `{ two_factor_required: true, pre_auth_token }`, mails the code and revokes
+ * the previous JWT. `signIn` above already reads that and raises
+ * `TwoFactorRequiredError` carrying the token. Nothing could spend it.
+ *
+ * `POST /api/v1/two_factor/verify` with the token and the six digits
+ * (`two_factor_controller.rb:10-18`), and on success the JWT arrives in the
+ * SAME header as on an ordinary login, so it is stored the same way.
+ *
+ * ── ONE DELIBERATE DIFFERENCE FROM THE WEB ───────────────────────────────
+ * `auth.service.ts:31` stores the token only `if (response.headers.authorization)`
+ * and otherwise returns the user with no session — the browser then looks
+ * signed in until the next request 401s. This throws instead, for the reason
+ * `signIn` does: a user object without a token is not a session, and pretending
+ * otherwise moves the failure somewhere it cannot be explained.
+ */
+export async function verifyTwoFactor(params: {
+  preAuthToken: string;
+  code: string;
+}): Promise<CurrentUser> {
+  const response = await http.post("/api/v1/two_factor/verify", {
+    pre_auth_token: params.preAuthToken,
+    otp_code: params.code.trim(),
+  });
+
+  // Both spellings, for the same reason as `signIn`.
+  const headers = response.headers as Record<string, unknown>;
+  const authorization = headers.authorization ?? headers.Authorization;
+  if (typeof authorization !== "string" || authorization.trim() === "") {
+    throw new MissingTokenError();
+  }
+
+  const user = parseUser(response.data);
+  await setToken(authorization);
+  await setSessionEmail(user.email);
+  return user;
+}
+
 export async function signOut(): Promise<void> {
   try {
     await http.delete("/users/logout");

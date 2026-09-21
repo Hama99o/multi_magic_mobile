@@ -377,3 +377,10 @@ not been done.
 | `thread.someone` | Someone | Quelqu’un |
 | `thread.someoneTyping` | {{name}} is typing… | {{name}} écrit… |
 | `thread.typing` | typing… | écrit… |
+| `twoFactor.backToSignIn` | Back to sign in | Retour à la connexion |
+| `twoFactor.codeInvalid` | Enter a valid 6-digit code | Entrez un code valide à 6 chiffres |
+| `twoFactor.codeLabel` | Verification code | Code de vérification |
+| `twoFactor.invalidCode` | Invalid or expired code. | Code invalide ou expiré. |
+| `twoFactor.submit` | Verify | Vérifier |
+| `twoFactor.subtitle` | Enter the 6-digit code we sent to your email. | Entrez le code à 6 chiffres envoyé à votre adresse e-mail. |
+| `twoFactor.title` | Two-step verification | Vérification en deux étapes |

@@ -254,6 +254,19 @@ removed so a missing variable fails loudly instead of handing
 minors, six new config plugins, the new architecture now unconditional, and
 `expo-speech-recognition` across a major.
 
+**It also carries the package rename, and that is not an extra cost.** As of
+2026-09-21 `android.package` is `com.multimagics.mobile` on `sdk-57`. A rename
+invalidates the rig's installed build exactly as surely as the SDK bump does —
+the old package is simply gone — so the two invalidations are the same
+invalidation, paid once. There is no version of this where the rename is
+cheaper later; there is only a version where it is impossible, once Play has
+accepted an upload under the old name.
+
+**After this step the installed app is `com.multimagics.mobile`.** `DEV_BUILD_ID`
+in `qa/qa.config.sh` moved with it. The old package should be uninstalled from
+the AVD rather than left beside the new one, or two builds sit there and
+neither the rig nor a person can tell which they are looking at.
+
 **Proof:** the app launches on the emulator and reaches sign-in.
 
 ---

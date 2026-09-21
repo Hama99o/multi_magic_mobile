@@ -19,7 +19,7 @@
       }
     },
     "android": {
-      "package": "co.byseven.multimagic",
+      "package": "com.multimagics.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-foreground-1024.png",
         "backgroundColor": "#102125"

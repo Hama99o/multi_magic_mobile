@@ -47,7 +47,12 @@ API_URL_LOCAL="${API_URL_LOCAL:-http://localhost:3001}"
 #
 # Build it with:  npx expo prebuild --platform android && (cd android && ./gradlew assembleDebug)
 DEV_BUILD_APK="${DEV_BUILD_APK:-android/app/build/outputs/apk/debug/app-debug.apk}"
-DEV_BUILD_ID="${DEV_BUILD_ID:-co.byseven.multimagic}"
+# RENAMED 2026-09-21 with `app.json`, and these two must move together.
+# If the manifest changes and this does not, the rig launches a package that
+# no longer exists and EVERY flow fails on "sign-in-email is not visible" —
+# an assertion pointing squarely at our screen. A package name living in two
+# places is the shape that ships.
+DEV_BUILD_ID="${DEV_BUILD_ID:-com.multimagics.mobile}"
 
 # `USE_DEV_BUILD=1` drives our own app; anything else falls back to Expo Go, so
 # the rig still runs on a machine where nobody has built one.

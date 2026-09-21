@@ -287,6 +287,12 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
         interimResults: true,
         continuous: true,
         addsPunctuation: true,
+        // NSSpeechRecognitionUsageDescription promises the user that speech
+        // becomes text "on this device". Without this flag iOS may send the
+        // audio to Apple, which made that sentence false -- the app knew the
+        // audio could leave and told the user the opposite in the one sentence
+        // they actually read (docs/STORE_READINESS.md section 4).
+        requiresOnDeviceRecognition: true,
       });
     } catch {
       setListening(false);

@@ -110,9 +110,15 @@ routes reachable without an account are `/login`, `/login/verify`, `/signup`,
 
 ### Product decisions made along the way
 
-- **Phone only.** `ios.supportsTablet: false`. Removes the iPad screenshot
-  requirement and the Split View risk in `STORE_READINESS.md` §1, where
-  `orientation: portrait` stops being honoured on a device nobody has tested.
+- **iPhone and iPad**, `ios.supportsTablet: true` — reversed from the phone-only
+  plan once iPad screenshots were shot and uploaded. `ios.requireFullScreen:
+  true` goes with it and is the load-bearing half: it keeps `orientation:
+  portrait` honoured by opting out of Split View and Slide Over, which is the
+  one case `STORE_READINESS.md` §1 names, where iPadOS hands the app an
+  arbitrary width and the portrait declaration stops applying. The app still
+  runs full-screen on iPad; only side-by-side multitasking is refused.
+  **The iPad layout has still never been seen on an iPad** — this closes the
+  reviewer's most likely route into it, not the underlying gap.
 - **On-device speech.** `requiresOnDeviceRecognition: true` at
   `useSpeechToText.ts`, so `NSSpeechRecognitionUsageDescription` becomes true
   rather than being reworded. `STORE_READINESS.md` §4.

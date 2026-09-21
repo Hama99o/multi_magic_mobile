@@ -1036,3 +1036,84 @@ Reading the chat spine for the same refactor turned up
 same value. **Code that reads as a decision and decides nothing**, which is the
 mirror of a test that reads as a check and checks nothing, and survives for the
 same reason: it looks considered.
+
+---
+
+## 15 · Two sessions remembered doing the same night's work
+
+Every entry above is a gate that was honest about the wrong question. This one
+is the same failure with a **session** in place of a gate, and it is the only
+one where the instrument that failed was a memory.
+
+**2026-09-21.** Two sessions were opened on this repo minutes apart. Both were
+asked what they remembered. Both answered, in first person and in detail, that
+they had done the previous night's device work: the twelve flows and their
+verdicts, the picture pass to eight of eight combinations, the store
+screenshots after finding this AVD is 2.22:1 where Play rejects past 2:1, the
+listing draft, and the `activate` proof — `ai_session_id` 269 → 263, *New chat*
+→ *Do I owe anyone money?*, QA user 494.
+
+**Those cannot both be first-hand accounts of one night.** At least one was
+reconstructed from having read the repo, and **neither session could tell which
+it was.**
+
+### Three measurements were tried. All three failed, and how they failed is the
+### useful part
+
+| what was measured | why it settled nothing |
+|---|---|
+| the session's own scratchpad | recreated today at 09:23 and **empty** — the battery death overnight wiped `/tmp`, so the absence of yesterday's files means nothing |
+| `ListAgents` process start times | the sibling's process started three minutes ago — but **a resumed session also starts a new process**, so it does not separate resumption from a fresh start |
+| the transcript on disk, 19.6 MB | a size consistent with a long session, and **equally consistent with reading one as with writing one** |
+
+**And git cannot answer either.** Every commit in this repo is authored
+`Hama99o`, because the sessions share one checkout and one identity. There is
+no field in a commit that says which session wrote it. Whether the trailer
+should carry a session identifier is a change to how this project commits, and
+therefore **his call, not a session's** — it has been put to him with the
+reason, which is that today it mattered and git could not answer.
+
+### The discriminator that the subject could read
+
+The supervisor proposed settling it by asking each session to name something
+"only the session that did the work could know" — specifically that a geometry
+check had failed by reading the **foreground window** rather than the display,
+which it believed had never been written down and had only reached it in a
+report.
+
+**It is in the repo, in two files:** `qa/qa.config.sh:155` and
+`qa/FLOW_REGISTER.md:511`, both in those words. Any session that had read them
+could produce it in first person, in detail, with feeling. **The test would
+have passed both and proved nothing** — and it would have allocated the work on
+that basis.
+
+**A discriminator the subject can read is not a discriminator.** That is §10's
+shape — a correct search for a true spelling, answering a narrower question
+than the one being asked — arriving one level up, in the method rather than in
+the code. It was built by choosing a detail from memory without checking
+whether it was on disk, which is the exact error it was designed to catch.
+
+### The rule
+
+**"I remember doing X" is not evidence anywhere in this project.**
+
+No session asserts anything from recall — not about the code, and not about its
+own past. **It checks on disk first.** That is already the house rule for
+everything else here; it turns out to apply to the authors as much as to the
+work.
+
+The smaller version of this had already happened twice the day before, both
+times caught with `git log -S` rather than by argument: one session claimed two
+documents it had only read, and another claimed a `TESTING.md` entry that was
+not its. Those were corrected in minutes. **This one could not be corrected at
+all**, which is the difference between reconstructing a fact and reconstructing
+a night.
+
+### How the work was actually split, since the memory could not settle it
+
+**By where the work is, not by who remembers doing it** — a criterion that
+needs nobody to be believed. The device half is nearly empty today: every flow
+carries a dated verdict, none red, and the one outstanding device task is a
+re-proof of something already proved. The code half is larger. Both sessions
+reached that description independently, which is worth noting and is *also* not
+evidence of anything.

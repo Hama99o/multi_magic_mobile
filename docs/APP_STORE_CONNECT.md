@@ -167,8 +167,47 @@ so from any Expo project it needs no arguments.
 | Adding a whole language | same call — **fr-FR is one block, not a second pass through every field** |
 | Version number | `push` → `appStoreVersions.versionString` |
 | Reviewer notes | `push` → `appStoreReviewDetails.notes` |
+| Primary category | `PATCH /appInfos/{id}` relationship `primaryCategory` → `{"type":"appCategories","id":"PRODUCTIVITY"}` |
+| Content rights | `PATCH /apps/{id}` → `contentRightsDeclaration: "DOES_NOT_USE_THIRD_PARTY_CONTENT"` |
+| Age rating | `PATCH /ageRatingDeclarations/{appInfoId}` — see below, it has sharp edges |
 | Screenshots | `scripts/shots.py` — reserve, chunk-PUT, commit with the file's md5 |
 | Uploading a build | `eas build -p ios --profile production`, then `eas submit` |
+
+### The age rating declaration is all-or-nothing
+
+Learned the hard way on 2026-09-21, and it is the one place where the
+per-attribute retry that saves `push` actively misleads you.
+
+**Every required attribute must be in the SAME request.** Sending one at a time
+returns `409 ENTITY_ERROR.ATTRIBUTE.REQUIRED: You must provide a value for the
+attribute '<other one>'` for every single field — twenty-one failures that look
+like twenty-one problems and are one. The id is the **appInfo id**, not a
+separate resource id.
+
+**Types are not uniform and the docs do not say which is which.** Thirteen
+content descriptors are enums taking `"NONE"`; the rest are booleans. The newer
+fields are the trap: `healthOrWellnessTopics` looks like a descriptor and is a
+**boolean**, and `ageAssurance` and `parentalControls` are required but appear
+in no older example. The working set, verified accepted:
+
+```
+"NONE"  violenceCartoonOrFantasy · violenceRealistic
+        violenceRealisticProlongedGraphicOrSadistic · profanityOrCrudeHumor
+        matureOrSuggestiveThemes · horrorOrFearThemes
+        medicalOrTreatmentInformation · alcoholTobaccoOrDrugUseOrReferences
+        gamblingSimulated · sexualContentOrNudity
+        sexualContentGraphicAndNudity · contests · gunsOrOtherWeapons
+false   healthOrWellnessTopics · gambling · unrestrictedWebAccess · lootBox
+        advertising · socialMedia · ageAssurance · parentalControls
+true    messagingAndChat · userGeneratedContent
+```
+
+`messagingAndChat` and `userGeneratedContent` are the two that describe this app
+and they raise the rating. That is correct and not worth arguing around: an app
+where people message each other is rated as one. `unrestrictedWebAccess` is
+false because there is no in-app browser — links go out through
+`Linking.openURL`. `socialMediaAgeRestricted` stays null; it only applies when
+`socialMedia` is true, and Apple accepts the declaration without it.
 
 **Where there is no equivalent, and this was checked against Apple rather than
 assumed** — all five return `404 PATH_ERROR`:
@@ -178,7 +217,10 @@ assumed** — all five return `404 PATH_ERROR`:
     /apps/{id}/appDataUsagesPublishState
 
 **The App Privacy questionnaire cannot be automated by any tool**, Apple's
-included. It is the table in §1, entered by hand, every release.
+included. It is the table in §1, entered by hand, every release. It is also the
+*only* remaining console-only step — age rating, category and content rights all
+have API paths and are listed above, so the pre-submission error list should
+come down to two entries: the build, and this.
 
 ### Three refusals that are normal
 

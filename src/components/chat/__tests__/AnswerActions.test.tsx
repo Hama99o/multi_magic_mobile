@@ -19,7 +19,7 @@
  */
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react-native";
 import * as Clipboard from "expo-clipboard";
-import { undoApi, type ChatMessage } from "@/api/ai";
+import { feedbackApi, undoApi, type ChatMessage } from "@/api/ai";
 
 import { AnswerActions } from "../AnswerActions";
 
@@ -164,5 +164,50 @@ describe("copying an answer out", () => {
 
     await waitFor(() => expect(screen.queryByTestId("answer-copied")).toBeNull());
     expect(set).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * THE RATING THAT REVERTS, WHICH IS INVISIBLE WHEN IT WORKS.
+ *
+ * Found by `multi-magic-mobile-41` walking every mutating call in `src/api/`
+ * backwards, asking of each one whether anything on this device would look
+ * different if the request never happened. `ai/feedbacks` looked exactly like
+ * the parity bug — `await`, response unread, no test, no flow — and is not:
+ * `rate()` sets the thumb optimistically and `setRating(null)` in the `catch`
+ * un-selects it in front of the person who pressed it. A decision, with a
+ * comment saying a failed rating is not worth interrupting anybody over.
+ *
+ * **But nothing held it.** Optimistic-then-revert has no symptom while it
+ * works, so a regression is silent: the thumb simply stays lit on a request
+ * that failed, and the person believes their rating was recorded. That is the
+ * same family as the parity bug — a wrong state with nothing on screen to
+ * contradict it — which is why it is worth a test even though the feature is
+ * small.
+ */
+describe("a rating that the server refuses", () => {
+  it("lights the thumb immediately, because waiting for a round trip to show a press is worse", async () => {
+    jest.spyOn(feedbackApi, "rate").mockResolvedValue(undefined as never);
+    render(<AnswerActions message={answer()} onUndone={jest.fn()} showUndo={false} />);
+
+    fireEvent.press(screen.getByTestId("answer-up"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("answer-up").props.accessibilityState.selected).toBe(true),
+    );
+  });
+
+  it("UN-LIGHTS it when the request fails, rather than leaving a rating nobody recorded", async () => {
+    // The assertion this file exists for. Without `setRating(null)` in the
+    // catch the thumb stays lit on a failed request — no error, no toast, and
+    // a person who believes they rated an answer that carries no rating.
+    jest.spyOn(feedbackApi, "rate").mockRejectedValue(new Error("network"));
+    render(<AnswerActions message={answer()} onUndone={jest.fn()} showUndo={false} />);
+
+    fireEvent.press(screen.getByTestId("answer-up"));
+
+    await waitFor(() =>
+      expect(screen.getByTestId("answer-up").props.accessibilityState.selected).toBe(false),
+    );
   });
 });

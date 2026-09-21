@@ -612,6 +612,30 @@ the column moved to **that conversation's id** — not merely changed, which is
 the weaker claim. QA account only (`users.id = 494`), one `select`, no write
 of any kind, `multi_magic_development` untouched.
 
+### Re-proved 2026-09-21, after an overnight restart, on a different conversation
+
+The box lost power overnight and the emulator was rebooted from cold. The
+column still held **263** from the previous proof — so the write is durable
+server-side and not a session artefact. Switching to a *different*
+conversation moved it again:
+
+| | `users.data->>'ai_session_id'` | conversation |
+|---|---|---|
+| before | `263` | *Do I owe anyone money?* |
+| after | `264` | *When did I last speak to Ahmad?* |
+
+**An independent proof rather than a repeat**, because the target differs from
+yesterday's. The device fingerprint is bound to every token and never cleared
+on sign-out, so a cold restart was a reasonable thing to suspect; it had no
+opinion.
+
+**Two System UI ANRs had to be dismissed first.** The app was loaded and
+foregrounded — Metro had served the bundle and i18next had logged — with the
+dialog on top, and `login.yaml` failed on *"sign-in-email is not visible"*,
+which reads exactly like the app being broken. That is the standing pattern on
+this AVD after a cold boot, and it is why `screens.sh` dismisses and **counts**
+them rather than only dismissing.
+
 `qa/verify_activate.sh` was written for this and **is interactive** — it stops
 at `read -r -p "Press Enter once you have switched…"`, so it cannot run
 unattended. It also died silently under `set -euo pipefail` because
@@ -624,3 +648,51 @@ failure-tolerant; the interactivity is left as its author's to decide.
 any rig script prints `QA_PASSWORD` in clear, because `qa.config.sh` sources
 `.env`. Do not trace a rig script that way. `set -x` and a secret are the same
 mistake as a screenshot and a hierarchy dump.
+
+---
+
+## Looking for a second `activate` — 29 writes audited, none found
+
+The parity bug had a shape worth hunting: **a write whose effect has no
+symptom on the device that performs it.** The phone set the local session key
+and never told the server, and nothing on the phone could ever show that,
+which is why every test and every flow missed it.
+
+So the client's mutating surface was walked backwards — 29 `post`/`put`/
+`patch`/`delete` calls in `src/api/` — asking of each one: *if this request
+never happened, would anything on this device look different?*
+
+**Result: no second instance.** Every other write either reads its response,
+or reverts visibly on failure, or is followed by a refetch that would restore
+the truth. `activate` appears to have been unique in this client, which is
+worth recording precisely because a negative result usually is not.
+
+**Two hypotheses were wrong on the way, and both were wrong in the app's
+favour:**
+
+`ai/feedbacks` looked like the shape — `await http.post(...)`, response
+unread, and **no test and no flow asserts it**. It is not: `AnswerActions`
+sets the rating optimistically and `setRating(null)` in the `catch`, so a
+failed rating un-selects the thumb in front of the person who pressed it. The
+comment above it says a failed rating is not worth interrupting somebody to
+report, which is a decision rather than an omission.
+
+`notifications/read_all` looked like dead code — `await http.post(...)` with
+nothing returned. It is not: `markAllRead` is called from
+`app/notifications.tsx:159` through a mutation and covered by
+`src/api/__tests__/notifications.test.ts`.
+
+**What the audit did leave behind, both small and both real:**
+
+1. **The feedback revert has nothing holding it.** Optimistic-then-revert is
+   considered behaviour with no test and no flow — and it is invisible when it
+   works, so a regression would be silent. That is the strongest remaining
+   candidate for a component test on the chat screen.
+2. **A docstring claims a return the code discards.** `notificationsApi.markAllRead`
+   is documented *"Returns the new unread count, which is zero"* and is typed
+   `Promise<void>`, discarding the response. Nobody is misled today because
+   nobody reads it — but `docs/TESTING.md` is emphatic that a comment is not a
+   source, and the next person to want that count will believe this one.
+
+Neither is mine to fix: both are `src/` and belong to whoever holds the code
+half. Reported rather than edited.

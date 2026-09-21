@@ -163,6 +163,22 @@ export const en = {
     cannotRead: "This answer can't be read aloud.",
   },
 
+  /**
+   * The emailed code. Wording carried from the web's `auth.twoFactor`
+   * (`app/javascript/i18n/locales/en.ts:44`) so the two clients say the same
+   * thing about the same step — somebody who has seen this on the laptop must
+   * recognise it on the phone.
+   */
+  twoFactor: {
+    title: "Two-step verification",
+    subtitle: "Enter the 6-digit code we sent to your email.",
+    codeLabel: "Verification code",
+    codeInvalid: "Enter a valid 6-digit code",
+    invalidCode: "Invalid or expired code.",
+    submit: "Verify",
+    backToSignIn: "Back to sign in",
+  },
+
   sources: {
     chip: "Source: {{label}}",
     sheetLabel: "Where this came from",

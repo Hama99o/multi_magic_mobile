@@ -99,3 +99,10 @@ qa/__pycache__/
 # the device claim: the numbers that had to survive (load 15.5 produced an ANR,
 # 7.5 ran twelve flows clean) are in FLOW_REGISTER and QA_HANDBOOK instead.
 qa/reports/screens.jsonl
+
+# Same reason as qa/__pycache__: bytecode, not the repo's business.
+scripts/__pycache__/
+
+# Holds the .p12 password and points at signing material. NEVER commit:
+# this repo is public and these credentials sign App Store binaries.
+credentials.json

@@ -12,7 +12,9 @@
     "preview": {
       "distribution": "internal",
       "node": "22.19.0",
-      "android": { "buildType": "apk" },
+      "android": {
+        "buildType": "apk"
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://www.multimagics.com"
       }
@@ -22,10 +24,16 @@
       "node": "22.19.0",
       "env": {
         "EXPO_PUBLIC_API_URL": "https://www.multimagics.com"
-      }
+      },
+      "credentialsSource": "local"
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6814432815",
+        "appleTeamId": "57DRRU3SP7"
+      }
+    }
   }
 }

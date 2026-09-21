@@ -278,7 +278,7 @@ export default function Chat() {
   const { openSource, openLink, closeSource } = useOpenSource();
   const [openFile, setOpenFile] = useState<AnswerLink | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
-  const { awayFromBottom, onScroll, onScrollBeginDrag, onContentSizeChange, onListLayout, toBottom } =
+  const { awayFromBottom, settled, onScroll, onScrollBeginDrag, onContentSizeChange, onListLayout, toBottom } =
     useAwayFromBottom(listRef);
 
   /**
@@ -466,7 +466,12 @@ export default function Chat() {
           // rather than a workaround for not having one.
           onContentSizeChange={onContentSizeChange}
           // Older history by cursor, pulled in as the reader reaches the top.
-          onStartReached={hasOlder ? () => void loadOlder() : undefined}
+          // NOT UNTIL THE FIRST LANDING IS DONE. A list opens at offset 0, which is
+          // the top, so this used to fire on mount and prepend an older page above
+          // somebody who had not gone looking for one — moving the bottom we were
+          // trying to reach. `settled` is the hook's word for "the opening scroll
+          // has finished".
+          onStartReached={hasOlder && settled ? () => void loadOlder() : undefined}
           onStartReachedThreshold={0.3}
           showsVerticalScrollIndicator={false}
           // §8: the conversation takes a measure and centres on a tablet. A

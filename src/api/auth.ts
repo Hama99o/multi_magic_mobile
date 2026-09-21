@@ -46,13 +46,26 @@ export interface CurrentUser {
 }
 
 /**
- * Thrown when the account needs an emailed code this version cannot collect.
- * Carries the pre-auth token so a future OTP screen needs no new plumbing.
+ * Thrown when the account needs the emailed code — a SECOND STEP, not a
+ * failure. Carries the pre-auth token, which `auth.store` keeps and
+ * `app/two-factor.tsx` spends.
+ *
+ * ── THE MESSAGE USED TO BE A CLAIM, AND IT WENT STALE ────────────────────
+ * It read "which this app cannot do yet", and the sign-in screen rendered it.
+ * That was true when written and false the moment the screen landed — he was
+ * still being told the app could not do the thing it now does. A sentence
+ * about what the app is CAPABLE of has a shelf life; one about what just
+ * happened does not, so this says what happened.
+ *
+ * It is not rendered anywhere today: `apiErrorMessage` reads axios response
+ * bodies only, so a plain `Error` like this one falls through to the screen's
+ * own copy. Kept honest anyway, because the last version of this comment also
+ * described a state of affairs that stopped being true without anyone noticing.
  */
 export class TwoFactorRequiredError extends Error {
   readonly preAuthToken: string;
   constructor(preAuthToken: string) {
-    super("This account needs an emailed code, which this app cannot do yet.");
+    super("This account needs the code we just emailed.");
     this.name = "TwoFactorRequiredError";
     this.preAuthToken = preAuthToken;
   }
@@ -112,6 +125,49 @@ export async function signIn(params: {
   // The cable looks the user up BY EMAIL, so a capitalised or space-padded
   // entry would build a socket URL that finds nobody while every HTTP request
   // kept working — a half-broken session that looks like a socket bug.
+  await setSessionEmail(user.email);
+  return user;
+}
+
+/**
+ * THE EMAILED CODE — the second half of a 2FA sign-in.
+ *
+ * His words: *"it should work on mobile also — it sends code but there it did
+ * not have option in mobile."* The server has done its half all along:
+ * `sessions_controller.rb:26-36` answers **202** with
+ * `{ two_factor_required: true, pre_auth_token }`, mails the code and revokes
+ * the previous JWT. `signIn` above already reads that and raises
+ * `TwoFactorRequiredError` carrying the token. Nothing could spend it.
+ *
+ * `POST /api/v1/two_factor/verify` with the token and the six digits
+ * (`two_factor_controller.rb:10-18`), and on success the JWT arrives in the
+ * SAME header as on an ordinary login, so it is stored the same way.
+ *
+ * ── ONE DELIBERATE DIFFERENCE FROM THE WEB ───────────────────────────────
+ * `auth.service.ts:31` stores the token only `if (response.headers.authorization)`
+ * and otherwise returns the user with no session — the browser then looks
+ * signed in until the next request 401s. This throws instead, for the reason
+ * `signIn` does: a user object without a token is not a session, and pretending
+ * otherwise moves the failure somewhere it cannot be explained.
+ */
+export async function verifyTwoFactor(params: {
+  preAuthToken: string;
+  code: string;
+}): Promise<CurrentUser> {
+  const response = await http.post("/api/v1/two_factor/verify", {
+    pre_auth_token: params.preAuthToken,
+    otp_code: params.code.trim(),
+  });
+
+  // Both spellings, for the same reason as `signIn`.
+  const headers = response.headers as Record<string, unknown>;
+  const authorization = headers.authorization ?? headers.Authorization;
+  if (typeof authorization !== "string" || authorization.trim() === "") {
+    throw new MissingTokenError();
+  }
+
+  const user = parseUser(response.data);
+  await setToken(authorization);
   await setSessionEmail(user.email);
   return user;
 }

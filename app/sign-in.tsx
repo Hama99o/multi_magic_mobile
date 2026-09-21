@@ -35,7 +35,6 @@ import { apiErrorMessage, isNetworkFailure, isRateLimited, isUnauthorized } from
  * restarted their routers.
  */
 function messageFor(error: unknown, t: (key: string) => string): string {
-  if (error instanceof TwoFactorRequiredError) return error.message;
   if (isRateLimited(error)) return t("signIn.tooManyAttempts");
   if (isUnauthorized(error)) return t("signIn.wrongCredentials");
   if (isNetworkFailure(error)) return t("failure.checkConnection");
@@ -68,6 +67,15 @@ export default function SignIn() {
       await signIn({ email, password });
       router.replace("/chat");
     } catch (e) {
+      // NOT AN ERROR — a second step. The password was right; the server has
+      // mailed a code and is waiting for it (`sessions_controller.rb:26-36`).
+      // This used to render "this app cannot do that yet" under a login that
+      // had just succeeded, which left his own account unreachable from this
+      // phone. The store is already holding the pre-auth token.
+      if (e instanceof TwoFactorRequiredError) {
+        router.push("/two-factor");
+        return;
+      }
       setError(messageFor(e, t));
     } finally {
       setBusy(false);

@@ -5,12 +5,33 @@
 ## What it is not
 
 Not phone-and-OTP (that is Karwan). Not social sign-in — MultiMagic has none.
-**Not a two-factor screen**: his account has `two_factor_enabled? == false`,
-verified against the database rather than assumed. But the server *can* answer
-**202** with a `pre_auth_token` if that ever changes, so the **API layer
-recognises that response and says so out loud** — *"this account needs a code,
-which this app cannot do yet"* — instead of hanging on a 202 it never expected.
-Ten lines, no screen.
+
+**It IS a two-factor screen now, and the reason this paragraph changed is worth
+keeping.** It used to read: *not a two-factor screen — his account has
+`two_factor_enabled? == false`, verified against the database rather than
+assumed.* That was measured, correct, and a fact about one row in a table.
+Ten lines recognised the **202** and said *"this account needs a code, which
+this app cannot do yet"*, which was the right call for a case nobody was in.
+
+He turned it on. The server then mails a code, **destroys the previous JWT**
+(`sessions_controller.rb:29`) and answers 202 — and the app told him, under a
+login that had just succeeded, that it could not do this. His own account was
+unreachable from the phone, and the sentence made it look intentional.
+2026-09-21: *"it should work on mobile also — it sends code but there it did
+not had option in mobile."*
+
+So: `app/two-factor.tsx`, modelled on the web's `TwoFactorVerify.tsx` at his
+instruction. Six digits, the server's own sentence on a bad code, back to
+sign-in, and a bounce to sign-in when nothing is pending. `sign-in.tsx` treats
+`TwoFactorRequiredError` as a STEP and pushes; the pre-auth token is held in
+`auth.store` because a screen that owns it loses it on a remount and the old
+JWT is already gone. **No "trust this device"**: the backend answers that with
+a `Set-Cookie` and this client keeps no cookie jar, so the button could only
+pretend — the gap is real and it is the backend's.
+
+The lesson for the next row like it: **a design decision resting on today's
+value of a user setting is a decision with an expiry date, and it should say
+so.**
 
 ## Sources
 

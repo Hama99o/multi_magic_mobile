@@ -39,10 +39,34 @@ const at = (offset: number, content: number) =>
 const laidOut = (height: number) =>
   ({ nativeEvent: { layout: { height } } }) as LayoutChangeEvent;
 
-/** A stand-in for the `FlatList`, so the chases are countable. */
+/**
+ * A stand-in for the `FlatList`, so the jumps are countable — and so it is
+ * visible WHICH WAY each one was made.
+ *
+ * Both routes are recorded in one ordered log because the hook chooses between
+ * them by what it has measured: `scrollToOffset` once a real content height and
+ * viewport are known, `scrollToEnd` only before that. A test that watched just
+ * one of them would go quiet exactly when the choice changed.
+ */
 const fakeList = () => {
-  const scrollToEnd = jest.fn();
-  return { ref: { current: { scrollToEnd } }, scrollToEnd };
+  const jumps: { animated: boolean; offset?: number }[] = [];
+  const scrollToEnd = jest.fn((o?: { animated?: boolean }) => {
+    jumps.push({ animated: !!o?.animated });
+  });
+  const scrollToOffset = jest.fn((p: { offset: number; animated?: boolean }) => {
+    jumps.push({ animated: !!p.animated, offset: p.offset });
+  });
+  return {
+    ref: { current: { scrollToEnd, scrollToOffset } },
+    scrollToEnd,
+    scrollToOffset,
+    jumps,
+    clear: () => {
+      jumps.length = 0;
+      scrollToEnd.mockClear();
+      scrollToOffset.mockClear();
+    },
+  };
 };
 
 describe("the button appears only when it means something", () => {
@@ -122,7 +146,7 @@ describe("opening a big conversation", () => {
 
     // First batch: 1000 tall, so the end is offset 600.
     act(() => result.current.onContentSizeChange(0, 1000));
-    expect(list.scrollToEnd).toHaveBeenCalledTimes(1);
+    expect(list.jumps).toHaveLength(1);
 
     // OUR OWN JUMP, measured late: the offset is the one we asked for and the
     // height has already grown to 3000, which reads as 2000px from the bottom.
@@ -131,8 +155,8 @@ describe("opening a big conversation", () => {
 
     // Second batch. The follow must still be on.
     act(() => result.current.onContentSizeChange(0, 3000));
-    expect(list.scrollToEnd).toHaveBeenCalledTimes(2);
-    expect(list.scrollToEnd).toHaveBeenLastCalledWith({ animated: false });
+    expect(list.jumps).toHaveLength(2);
+    expect(list.jumps.at(-1)?.animated).toBe(false);
   });
 
   it("does not offer the button for a jump of its own", () => {
@@ -171,9 +195,9 @@ describe("once the reader has taken over", () => {
     act(() => result.current.onScroll(at(1000, 3000)));
     expect(result.current.awayFromBottom).toBe(true);
 
-    list.scrollToEnd.mockClear();
+    list.clear();
     act(() => result.current.onContentSizeChange(0, 3400));
-    expect(list.scrollToEnd).not.toHaveBeenCalled();
+    expect(list.jumps).toHaveLength(0);
   });
 
   it("the keyboard does not drag them back either", () => {
@@ -183,9 +207,9 @@ describe("once the reader has taken over", () => {
     act(() => result.current.onScrollBeginDrag());
     act(() => result.current.onScroll(at(1000, 3000)));
 
-    list.scrollToEnd.mockClear();
+    list.clear();
     act(() => result.current.onListLayout(laidOut(250)));
-    expect(list.scrollToEnd).not.toHaveBeenCalled();
+    expect(list.jumps).toHaveLength(0);
   });
 
   it("scrolling back down resumes following, so they are not stranded", () => {
@@ -197,9 +221,9 @@ describe("once the reader has taken over", () => {
     act(() => result.current.onScroll(at(2600, 3000)));
     expect(result.current.awayFromBottom).toBe(false);
 
-    list.scrollToEnd.mockClear();
+    list.clear();
     act(() => result.current.onContentSizeChange(0, 3400));
-    expect(list.scrollToEnd).toHaveBeenCalledTimes(1);
+    expect(list.jumps).toHaveLength(1);
   });
 
   it("the button returns them, animated, and following resumes", () => {
@@ -210,12 +234,12 @@ describe("once the reader has taken over", () => {
     act(() => result.current.onScroll(at(1000, 3000)));
 
     act(() => result.current.toBottom());
-    expect(list.scrollToEnd).toHaveBeenLastCalledWith({ animated: true });
+    expect(list.jumps.at(-1)?.animated).toBe(true);
     expect(result.current.awayFromBottom).toBe(false);
 
-    list.scrollToEnd.mockClear();
+    list.clear();
     act(() => result.current.onContentSizeChange(0, 3400));
-    expect(list.scrollToEnd).toHaveBeenCalledTimes(1);
+    expect(list.jumps).toHaveLength(1);
   });
 });
 
@@ -230,5 +254,237 @@ it("re-scrolls when the keyboard shrinks the list", () => {
   const { result } = renderHook(() => useAwayFromBottom(list.ref));
 
   act(() => result.current.onListLayout(laidOut(250)));
-  expect(list.scrollToEnd).toHaveBeenCalledWith({ animated: false });
+  expect(list.jumps.at(-1)?.animated).toBe(false);
+});
+
+/**
+ * HIS SECOND REPORT: *"when the send message is very big and it takes all
+ * screen then it did not scroll to bottom, still have this problem but with
+ * big message."*
+ *
+ * One message taller than the viewport breaks the landing in a way a short one
+ * never could, because a scroll issued inside `onContentSizeChange` is handed
+ * to the list before the new height is committed — so it goes to the OLD
+ * bottom. One extra line short is invisible; one screen short is what he saw.
+ *
+ * The viewport is 400 here and the content 4000, which is the shape of the
+ * complaint: a single answer ten times the height of the screen.
+ */
+describe("a message taller than the screen", () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it("is chased again on the next frame, when the new height has landed", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onContentSizeChange(0, 4000));
+    // The one that may travel to the old bottom.
+    expect(list.jumps).toHaveLength(1);
+
+    act(() => jest.runOnlyPendingTimers());
+    // And the one that cannot, because the frame has passed.
+    expect(list.jumps).toHaveLength(2);
+  });
+
+  it("retries when it lands short, and stays pinned when it arrives", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onContentSizeChange(0, 4000));
+    // Still at the top: the jump went to a bottom that had moved.
+    act(() => result.current.onScroll(at(0, 4000)));
+    expect(result.current.awayFromBottom).toBe(false); // ours, not his
+
+    // The retry arrives.
+    act(() => result.current.onScroll(at(3600, 4000)));
+    expect(result.current.awayFromBottom).toBe(false);
+
+    // And following is still on afterwards.
+    list.clear();
+    act(() => result.current.onContentSizeChange(0, 4400));
+    expect(list.jumps.length).toBeGreaterThan(0);
+  });
+
+  /**
+   * THE HOLE IN THE FIRST FIX, and it produced both of his complaints at once:
+   * a chase that never arrived suppressed the button for ever, so the one case
+   * where somebody is stranded was the one case offering no way back.
+   */
+  it("gives up after three attempts and offers the button", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onContentSizeChange(0, 4000));
+    act(() => result.current.onScroll(at(0, 4000)));
+    expect(result.current.awayFromBottom).toBe(false);
+    act(() => result.current.onScroll(at(0, 4000)));
+    expect(result.current.awayFromBottom).toBe(false);
+
+    // Three attempts is enough to tell the difference between a frame behind
+    // and genuinely stuck.
+    act(() => result.current.onScroll(at(0, 4000)));
+    expect(result.current.awayFromBottom).toBe(true);
+  });
+
+  it("and the button still works from there", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onContentSizeChange(0, 4000));
+    act(() => result.current.onScroll(at(0, 4000)));
+    act(() => result.current.onScroll(at(0, 4000)));
+    act(() => result.current.onScroll(at(0, 4000)));
+    expect(result.current.awayFromBottom).toBe(true);
+
+    act(() => result.current.toBottom());
+    expect(list.jumps.at(-1)?.animated).toBe(true);
+    expect(result.current.awayFromBottom).toBe(false);
+  });
+});
+
+/**
+ * *"it did not go to bottom when i come to session."*
+ *
+ * Two things were fighting the opening scroll, and this is the second: a list
+ * opens at offset 0, which IS the top, so `onStartReached` fired on mount and
+ * an older page was prepended ABOVE while we were trying to land at the
+ * bottom. The target moved every time it arrived — and nobody had asked for
+ * that history; they had only not left the top yet.
+ *
+ * `settled` is what the screens hold that fetch on, so what matters is WHEN it
+ * turns true: not before the first landing resolves, and by every route that
+ * can resolve one.
+ */
+describe("holding the older page until the landing is done", () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it("is not settled on mount, so nothing is fetched above us", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+    expect(result.current.settled).toBe(false);
+
+    // Still not, while the opening chase is in flight.
+    act(() => result.current.onContentSizeChange(0, 4000));
+    expect(result.current.settled).toBe(false);
+  });
+
+  it("settles when the chase arrives", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onContentSizeChange(0, 4000));
+    act(() => result.current.onScroll(at(3600, 4000)));
+    expect(result.current.settled).toBe(true);
+  });
+
+  /**
+   * THE CASE HIS THIRD REPORT IS ABOUT. A jump that moves the list nowhere
+   * fires no scroll event, so nothing counted the chase out and the button
+   * stayed hidden until he dragged. The clock resolves it instead.
+   */
+  it("settles on the clock when the list never moves, and offers the button", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    // The opening sequence, in its real order: the list lays out, reports its
+    // height, and the jump we make achieves nothing — so NOT ONE scroll event
+    // follows. That is the whole bug: every attempt was counted in `onScroll`.
+    act(() => result.current.onListLayout(laidOut(VIEWPORT)));
+    act(() => result.current.onContentSizeChange(0, 4000));
+    expect(result.current.awayFromBottom).toBe(false);
+    expect(result.current.settled).toBe(false);
+
+    act(() => jest.advanceTimersByTime(400));
+    expect(result.current.settled).toBe(true);
+    // 3600px from the bottom, and now it says so.
+    expect(result.current.awayFromBottom).toBe(true);
+  });
+
+  it("settles when a finger takes over", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onContentSizeChange(0, 4000));
+    act(() => result.current.onScrollBeginDrag());
+    expect(result.current.settled).toBe(true);
+  });
+
+  /**
+   * A failed chase is not the reader choosing to be there. An answer this tall
+   * is very likely still laying out, so the next growth gets a fresh set of
+   * attempts rather than an app that has quietly stopped following.
+   */
+  it("keeps following after a chase that never arrived", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onContentSizeChange(0, 4000));
+    act(() => result.current.onScroll(at(0, 4000)));
+    act(() => result.current.onScroll(at(0, 4000)));
+    act(() => result.current.onScroll(at(0, 4000)));
+    expect(result.current.awayFromBottom).toBe(true);
+
+    list.clear();
+    act(() => result.current.onContentSizeChange(0, 6000));
+    expect(list.jumps.length).toBeGreaterThan(0);
+  });
+});
+
+/**
+ * *"when i click on arrow it go top and stop on big message each time, but for
+ * small message it works."*
+ *
+ * Landing on the TOP is not a near miss, and `VirtualizedList.js` says why in
+ * its own source:
+ *
+ *     const frame = this._listMetrics.getCellMetricsApprox(veryLast, …);
+ *     const offset = Math.max(0, frame.offset + frame.length
+ *                                + this._footerLength - visibleLength);
+ *
+ * **Approx.** An unrendered last cell has no measured height, so it is
+ * estimated from the average row — and when one message is ten screens tall
+ * while the rest are two lines, that is an order out, not a rounding. The
+ * `Math.max(0, …)` then turns the underestimate into offset 0: the top. Small
+ * messages estimate correctly, which is exactly the split he described.
+ *
+ * `contentSize.height` from the native scroll event is not an estimate, so the
+ * hook does the arithmetic itself. These pin that it does.
+ */
+describe("going to the bottom by measurement rather than by approximation", () => {
+  it("uses the measured content height once there is one", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onListLayout(laidOut(VIEWPORT)));
+    act(() => result.current.onContentSizeChange(0, 4000));
+
+    // 4000 of content in a 400 viewport: the bottom is 3600, and nothing about
+    // that number came from the list's opinion of its own rows.
+    expect(list.jumps.at(-1)?.offset).toBe(3600);
+  });
+
+  it("the button lands on the bottom, which is where it used to land on the top", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    // The reader is at the very top of a conversation with one huge message.
+    act(() => result.current.onScroll(at(0, 4000)));
+    expect(result.current.awayFromBottom).toBe(true);
+
+    act(() => result.current.toBottom());
+    expect(list.jumps.at(-1)).toEqual({ animated: true, offset: 3600 });
+  });
+
+  it("falls back to scrollToEnd only before anything has been measured", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    // No layout yet: we have a height but nothing to subtract from it, and
+    // guessing would be the very mistake above.
+    act(() => result.current.onContentSizeChange(0, 4000));
+    expect(list.scrollToEnd).toHaveBeenCalled();
+    expect(list.scrollToOffset).not.toHaveBeenCalled();
+  });
 });

@@ -1216,3 +1216,70 @@ where they differ; finding that class *is* the work, and it is the part
 form is `8a`'s, from reading it back. Neither of us had written it down, which
 is why it is here — §15 is about exactly how little a session's memory of a
 thing is worth.*
+
+---
+
+## 17 · A gate that reported the pipe's exit code, and a linter run on one file
+
+Two greens on 2026-09-21, both false, both from running a gate in a shape that
+looks like the gate and is not it. Neither is about a test. Both are about
+**how the answer was read**, which is why they belong here rather than in a
+tooling note nobody opens when it breaks.
+
+### The suite said exit 0 and had 24 failures
+
+The full backend suite was run in the background as
+
+    bundle exec rspec 2>&1 | tail -25
+
+and the harness reported **exit code 0**. It was `tail`'s. A shell pipeline's
+status is the status of its **last** command, and `tail` succeeds at tailing a
+failure exactly as well as it succeeds at tailing a pass. The output sitting
+directly above that `0` was rspec's "Failed examples:" list — twenty-four of
+them — and it was read as a pass anyway, because the exit code is the thing you
+look at and the exit code said what it said.
+
+*(Those twenty-four were `NameError: uninitialized constant Vips::Image`:
+libvips is not installed on this box and `.github/workflows/ci.yml` installs it,
+so they cannot pass here and pass in CI. The diagnosis was right. The green it
+was attached to was not.)*
+
+**What to do.** Do not pipe a gate into anything when the exit code is the
+answer you want. If the output must be trimmed, trim it afterwards, or read
+`${PIPESTATUS[0]}`, or write the full output to a file and tail the file. And
+when a long command reports success **instantly**, that is the tell: the thing
+that exited is not the thing you ran.
+
+### The linter said no offenses and the repo was red
+
+Rubocop was run on the one file that had just been edited:
+
+    bundle exec rubocop spec/requests/api/v1/legal_spec.rb
+    1 file inspected, no offenses detected
+
+CI runs `bundle exec rubocop` with **no argument**, across all 337 files, and it
+was failing — on `spec/requests/api/v1/ai/speech_spec.rb`, a file that had not
+been touched and that had been red since an earlier commit. The deploy job needs
+`[rubocop, brakeman, bundler_audit, rspec, frontend]`, so **nothing had deployed
+since**, silently, including a privacy-policy change that a store reviewer
+opens.
+
+A per-file run is a strictly weaker claim than the gate it resembles: it proves
+your file is clean, and says nothing about whether the gate passes. The two
+answers are the same words.
+
+**What to do.** Run the gate the way CI runs it, argument for argument. And when
+a gate has been green locally for a while, check the actual CI result rather
+than inferring it — a red that predates your change still blocks your change.
+
+### The sibling shape: an error that names the wrong cause
+
+Not a false green, but the same lesson from the other side, and it belongs
+beside these. `openssl pkcs12 -export` on OpenSSL 3 defaults to AES-256.
+node-forge — what EAS reads a `.p12` with — cannot open that, and reports it as
+**a password error on a password that is correct**. The fix is `-legacy`; the
+cost of not knowing is an evening spent re-typing a password that was never
+wrong. It is in `docs/APP_STORE_CONNECT.md` §2 beside the command that needs it.
+
+The common thread with the two above: **the message you get and the problem you
+have are different objects**, and the gap is where the time goes.

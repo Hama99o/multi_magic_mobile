@@ -182,6 +182,16 @@ export const fr: Translations = {
     cannotRead: "Cette réponse ne peut pas être lue à voix haute.",
   },
 
+  twoFactor: {
+    title: "Vérification en deux étapes",
+    subtitle: "Entrez le code à 6 chiffres envoyé à votre adresse e-mail.",
+    codeLabel: "Code de vérification",
+    codeInvalid: "Entrez un code valide à 6 chiffres",
+    invalidCode: "Code invalide ou expiré.",
+    submit: "Vérifier",
+    backToSignIn: "Retour à la connexion",
+  },
+
   sources: {
     chip: "Source : {{label}}",
     sheetLabel: "D’où cela vient",

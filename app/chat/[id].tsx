@@ -118,7 +118,7 @@ export default function PersonThread() {
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [typingName, setTypingName] = useState<string | null>(null);
   const listRef = useRef<FlatList<Row>>(null);
-  const { awayFromBottom, onScroll, onScrollBeginDrag, onContentSizeChange, onListLayout, toBottom } =
+  const { awayFromBottom, settled, onScroll, onScrollBeginDrag, onContentSizeChange, onListLayout, toBottom } =
     useAwayFromBottom(listRef);
 
   /**
@@ -482,7 +482,12 @@ export default function PersonThread() {
         // History by cursor as the reader reaches the top — an id cursor cannot
         // skip a message that arrived while they were scrolling, which is what
         // page numbers did (`messages_controller.rb:19-23`).
-        onStartReached={hasOlder ? () => void loadOlder() : undefined}
+        // NOT UNTIL THE FIRST LANDING IS DONE. A list opens at offset 0, which is
+        // the top, so this used to fire on mount and prepend an older page above
+        // somebody who had not gone looking for one — moving the bottom we were
+        // trying to reach. `settled` is the hook's word for "the opening scroll
+        // has finished".
+        onStartReached={hasOlder && settled ? () => void loadOlder() : undefined}
         onStartReachedThreshold={0.3}
         showsVerticalScrollIndicator={false}
         // IDENTITY.md §8: at 800 dp the conversation takes a measure and

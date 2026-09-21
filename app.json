@@ -9,6 +9,7 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "supportsTablet": true,
+      "requireFullScreen": true,
       "bundleIdentifier": "com.multimagics.mobile",
       "infoPlist": {
         "NSMicrophoneUsageDescription": "MultiMagic uses the microphone so you can dictate a question instead of typing it.",

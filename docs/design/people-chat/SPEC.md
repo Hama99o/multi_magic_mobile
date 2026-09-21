@@ -279,6 +279,7 @@ glance the screen is not done.
 | `src/screens/people/PersonMessageRow.tsx` | the bubble, both sides, + reaction chips |
 | `src/screens/people/ReactionSheet.tsx` | six emoji + the action menu |
 | `src/screens/people/DayDivider.tsx` | `Today` / `Yesterday` / a date, and the `UNREAD` marker |
+| scroll policy | **`useAwayFromBottom(listRef)`** from `src/components/chat/ScrollToBottom.tsx` — shared with the assistant's chat so the two threads cannot drift. `pinned` (intent) drives the follow, `awayFromBottom` (position) drives `scroll-to-bottom`, `chasing` stops a jump of ours being read as the reader scrolling off, which is what left a BIG conversation half way down. Wired via `onScroll` · `onScrollBeginDrag` · `onContentSizeChange` · `onLayout` |
 | transcript + resync | **`useConversation({ conversationId, channel: "MessageChannel" })`** — the sibling's hook, unchanged (§0.2) |
 | typing + read + `mark_read` | `subscribeToChannel("ConversationChannel", …, { conversation_id })` and `performOnChannel(…, "mark_read", …)` from `src/lib/cable.ts` |
 | parsing | `obj/arr/str/id/bool` from `src/api/parse.ts`; `messagesApi.parseOne` for anything message-shaped |

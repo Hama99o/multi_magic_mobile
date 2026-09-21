@@ -87,6 +87,7 @@ export const en = {
   },
 
   chat: {
+    scrollToBottom: "Scroll to the newest message",
     title: "Assistant",
     chats: "Chats",
     notifications: "Notifications",

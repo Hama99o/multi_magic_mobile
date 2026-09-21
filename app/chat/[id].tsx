@@ -54,6 +54,7 @@ import {
 import type { ChatMessage } from "@/api/ai";
 import { Avatar } from "@/screens/people/Avatar";
 import { PersonMessageRow } from "@/screens/people/PersonMessageRow";
+import { ScrollToBottom, useAwayFromBottom } from "@/components/chat/ScrollToBottom";
 import { PersonComposer } from "@/screens/people/PersonComposer";
 import { ReactionSheet } from "@/screens/people/ReactionSheet";
 import { DayDivider, UnreadDivider, dayLabel } from "@/screens/people/DayDivider";
@@ -117,6 +118,8 @@ export default function PersonThread() {
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [typingName, setTypingName] = useState<string | null>(null);
   const listRef = useRef<FlatList<Row>>(null);
+  const { awayFromBottom, onScroll, onScrollBeginDrag, onContentSizeChange, onListLayout, toBottom } =
+    useAwayFromBottom(listRef);
 
   /**
    * The unread count as it was BEFORE the thread was opened.
@@ -417,6 +420,9 @@ export default function PersonThread() {
         </View>
       </View>
 
+      {/* Wrapped so the button anchors to the list rather than the screen —
+          anchored to the screen it lands on the composer. */}
+      <View style={{ flex: 1 }}>
       <FlatList
         testID="thread-list"
         ref={listRef}
@@ -466,7 +472,13 @@ export default function PersonThread() {
             />
           );
         }}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+        onScroll={onScroll}
+        scrollEventThrottle={64}
+        // A finger here means the position is theirs — see `useAwayFromBottom`.
+        onScrollBeginDrag={onScrollBeginDrag}
+        // Chased only while still pinned to the newest — a message arriving
+        // must not yank somebody out of the history they scrolled up to read.
+        onContentSizeChange={onContentSizeChange}
         // History by cursor as the reader reaches the top — an id cursor cannot
         // skip a message that arrived while they were scrolling, which is what
         // page numbers did (`messages_controller.rb:19-23`).
@@ -482,8 +494,15 @@ export default function PersonThread() {
           maxWidth: metrics.maxMeasure,
           alignSelf: "center",
           flexGrow: 1,
-          paddingBottom: metrics.space.md,
+          // Was `space.md`, which left the newest message almost touching the
+          // composer. Same value as the assistant's chat so the two threads
+          // feel like one app.
+          paddingBottom: metrics.space.xl,
         }}
+        // Same reason as the assistant's chat: the keyboard changes this
+        // list's height without changing its offset, leaving the newest
+        // message behind the keyboard.
+        onLayout={onListLayout}
         ListEmptyComponent={
           status === "loading" ? null : status === "failed" ? (
             <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
@@ -499,6 +518,9 @@ export default function PersonThread() {
           )
         }
       />
+
+        <ScrollToBottom visible={awayFromBottom} onPress={toBottom} />
+      </View>
 
       {editing ? (
         <Pressable

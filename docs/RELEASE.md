@@ -20,7 +20,22 @@ in multi_magic's `.env.production`). A release build refuses to start without
 it (`src/config/env.ts`), so a profile without `env` produces an app that
 will not open. Keep it in the profile.
 
-## iOS, first time on a new bundle id — needs Hamma9900 at a terminal
+## iOS, first time on a new bundle id
+
+> ~~**needs Hamma9900 at a terminal**~~ — **struck 2026-09-21, not deleted.**
+> This heading said the first build on a new bundle id required him in person
+> for Apple's 2FA. That is true of the path `eas build` takes by default and
+> **not** true of the build as a whole: the first production build of
+> `com.multimagics.mobile` went out non-interactively, with no Apple ID and no
+> code from his phone. `docs/APP_STORE_CONNECT.md` §2 has how, in commands.
+>
+> The sentence stays struck rather than removed because somebody who read it
+> once will come back to it and find it unchanged. That exact shape cost a day
+> here already — a correction that lived in the register while the false line
+> stayed in the file people actually open.
+
+The interactive path below still works and is still the shortest route if you
+have the phone in your hand. It is no longer the only one.
 
 The bundle id is `com.multimagics.mobile`. Apple team `57DRRU3SP7`
 (Individual). One iPhone is already registered on the team (from Hatiwal's

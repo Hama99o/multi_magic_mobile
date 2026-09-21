@@ -344,8 +344,22 @@ the file that actually leaks the password.
 
 **What this does and does not remove.** It removes the 2FA sign-in from the
 build. It does not remove Apple sign-in from everything else — see §3, which is
-unchanged. And EAS uploads the **working tree**, not `HEAD`: uncommitted work in
-any file is in the binary.
+unchanged.
+
+**EAS uploads the working tree, not `HEAD`, so say what was in it.** A binary
+whose contents match no commit is one nobody can rebuild later, and naming it
+costs a line. For the first build, `buildNumber` 3, submitted 2026-09-21 15:49
+local:
+
+| | |
+|---|---|
+| HEAD at upload | `ae12150` *fix(chat): stop fetching older history over the landing* |
+| also in the tree | the `.gitignore` and `eas.json` edits that landed three minutes later as `da43362` |
+| uncommitted and irrelevant | `qa/flows/09-keyboard.yaml` — a Maestro flow, not imported by app code and not in the JS bundle |
+
+So **this binary's app code is `da43362`**: that commit is `ae12150` plus
+`.gitignore`, this document and `eas.json`, none of which reach the bundle. It
+is reproducible, which is the only claim worth making about a build.
 
 ---
 

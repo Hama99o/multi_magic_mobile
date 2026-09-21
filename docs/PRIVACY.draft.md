@@ -1,12 +1,18 @@
-# Privacy — DRAFT, needs Hamma9900's approval before it ships
+# Privacy
 
 **Every sentence below was checked against the code, and one was wrong when I
 first wrote it.** Nothing here is boilerplate; if a line cannot be traced to a
 file it does not belong in a privacy policy. Where a claim is about someone
 else's service, it says so.
 
-Approve, correct, or strike any line — then it becomes `PRIVACY.md` and the app
-renders it.
+Approved by Hamma9900 on 2026-09-21.
+
+**Do not rename this file.** The instruction that used to sit here said the
+document becomes `PRIVACY.md` once approved, and that would break both
+renderings: `Legal::Policy::SOURCE` and `scripts/build-privacy.mjs`'s `SOURCE`
+each hardcode `docs/PRIVACY.draft.md`. What actually turns the banner off is
+the word DRAFT leaving the title line above — both readers test
+`/^#\s.*\bDRAFT\b/` against it, and nothing else.
 
 ---
 

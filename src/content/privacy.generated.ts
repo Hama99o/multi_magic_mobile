@@ -7,7 +7,7 @@
  */
 
 /** True while the text still says DRAFT. Drives the banner on `app/privacy.tsx`. */
-export const PRIVACY_IS_DRAFT = true;
+export const PRIVACY_IS_DRAFT = false;
 
 /**
  * The same twelve characters `Legal::Policy.sha` computes on the backend, which

@@ -27,7 +27,7 @@ import {
   type NativeSyntheticEvent,
 } from "react-native";
 import { ChevronDown } from "lucide-react-native";
-import { useCallback, useRef, useState, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { useColors, useMetrics } from "@/hooks/useColors";
 
@@ -63,6 +63,26 @@ const AWAY = 160;
  * and the button appears. Being wrong quietly is the thing to avoid.
  */
 const CHASE_RETRIES = 3;
+
+/**
+ * How long after a jump to stop waiting for it and say where we actually are.
+ *
+ * His third report, and it describes the hole exactly: *"it scroll to this and
+ * it stop, and when i move then it show the arrow to down, and when i click
+ * then it goto down."*
+ *
+ * **A jump that moves the list nowhere fires no scroll event at all.** Every
+ * attempt above was counted in `onScroll`, so a chase that had already gone as
+ * far as the list would take it was never counted out: `chasesLeft` stayed
+ * positive, and while it is positive no measurement may raise the button. The
+ * list stopped, nothing more arrived, and the one thing that would have told
+ * the truth was his own finger — which is why the arrow needed a drag.
+ *
+ * So the chase is also resolved by the clock, which does not need the list to
+ * have moved. Long enough that an ordinary landing reports first and the
+ * button never blinks; short enough to be the same gesture.
+ */
+const SETTLE_MS = 300;
 
 /** Just enough of a `FlatList` to drive it, so a test can hand this a fake. */
 type Scrollable = { scrollToEnd: (options?: { animated?: boolean }) => void };
@@ -103,12 +123,29 @@ type Scrollable = { scrollToEnd: (options?: { animated?: boolean }) => void };
 export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
   const [awayFromBottom, setAway] = useState(false);
 
+  /**
+   * HAS THE FIRST LANDING FINISHED?
+   *
+   * *"it did not go to bottom when i come to session."* Opening a conversation
+   * puts the list at offset 0, which IS the top — so `onStartReached` fires on
+   * mount, an older page is fetched, and it is prepended ABOVE us while we are
+   * trying to land at the bottom. The target moves every time it arrives, and
+   * the fetch was never wanted: nobody has reached the top, they have only not
+   * left it yet.
+   *
+   * So the screens hold `onStartReached` until this is true. Loading older
+   * history is for a reader who has travelled up to ask for it.
+   */
+  const [settled, setSettled] = useState(false);
+
   /** The last geometry anybody measured, from whichever callback saw it. */
   const geometry = useRef({ offset: 0, content: 0, layout: 0 });
   /** Are we trying to sit at the newest message? True until they scroll off. */
   const pinned = useRef(true);
   /** How many attempts this chase has left. 0 means no jump is in flight. */
   const chasesLeft = useRef(0);
+  /** Resolves a chase the list never answered. Cleared on unmount. */
+  const settleTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fromBottom = () => {
     const { offset, content, layout } = geometry.current;
@@ -119,6 +156,33 @@ export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
     listRef.current?.scrollToEnd({ animated: false });
   }, [listRef]);
 
+  /** Stop waiting on a jump — it arrived, or a finger took over. */
+  const endChase = useCallback(() => {
+    setSettled(true);
+    chasesLeft.current = 0;
+    if (settleTimer.current) {
+      clearTimeout(settleTimer.current);
+      settleTimer.current = null;
+    }
+  }, []);
+
+  /**
+   * Resolve the chase on the clock as well as on scroll events, because a jump
+   * that moves nothing produces no scroll event to resolve it with.
+   */
+  const scheduleSettle = useCallback(() => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+    settleTimer.current = setTimeout(() => {
+      settleTimer.current = null;
+      chasesLeft.current = 0;
+      setSettled(true);
+      // Whatever the list did, this is where it ended up. The offset is the
+      // last one anybody measured, which is still true precisely BECAUSE
+      // nothing moved.
+      setAway(fromBottom() > AWAY);
+    }, SETTLE_MS);
+  }, []);
+
   /** Chase the bottom, but only while that is still what we are trying to do. */
   const follow = useCallback(() => {
     if (!pinned.current) return;
@@ -126,7 +190,8 @@ export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
     jump();
     // AND AGAIN NEXT FRAME, against the height that is committed by then.
     requestAnimationFrame(jump);
-  }, [jump]);
+    scheduleSettle();
+  }, [jump, scheduleSettle]);
 
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
@@ -142,7 +207,8 @@ export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
       // Ours, not theirs. A jump we asked for says nothing about what the
       // reader wants, so it may not move the pin.
       if (!away) {
-        chasesLeft.current = 0; // arrived
+        endChase(); // arrived
+        setAway(false);
         return;
       }
       chasesLeft.current -= 1;
@@ -151,13 +217,21 @@ export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
         requestAnimationFrame(jump);
         return;
       }
-      // Out of attempts. Fall through and say where we really are, so the
-      // button appears rather than a stranded reader having no way back.
+      // OUT OF ATTEMPTS — say where we really are, so there is a way back.
+      //
+      // But stay pinned. A failed chase is not the reader choosing to be here,
+      // and an answer this tall is very likely still laying out: the next
+      // growth deserves a fresh set of attempts rather than an app that has
+      // given up following. Only a finger, below, decides that.
+      chasesLeft.current = 0;
+      setSettled(true);
+      setAway(true);
+      return;
     }
 
     pinned.current = !away;
     setAway(away);
-  }, [jump]);
+  }, [jump, endChase]);
 
   /**
    * A finger on the list. Whatever we were chasing, the position is theirs
@@ -165,8 +239,8 @@ export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
    * arrives.
    */
   const onScrollBeginDrag = useCallback(() => {
-    chasesLeft.current = 0;
-  }, []);
+    endChase();
+  }, [endChase]);
 
   /** The list grew — another batch, or a new message. */
   const onContentSizeChange = useCallback(
@@ -190,15 +264,30 @@ export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
     [follow],
   );
 
+  // A timer outliving the screen is the "worker process failed to exit"
+  // class of bug in `docs/TESTING.md` §7. It costs one line not to have it.
+  useEffect(() => () => {
+    if (settleTimer.current) clearTimeout(settleTimer.current);
+  }, []);
+
   /** The button, and anywhere the app itself should return to the newest. */
   const toBottom = useCallback(() => {
     pinned.current = true;
     chasesLeft.current = CHASE_RETRIES;
+    scheduleSettle();
     setAway(false);
     listRef.current?.scrollToEnd({ animated: true });
-  }, [listRef]);
+  }, [listRef, scheduleSettle]);
 
-  return { awayFromBottom, onScroll, onScrollBeginDrag, onContentSizeChange, onListLayout, toBottom };
+  return {
+    awayFromBottom,
+    settled,
+    onScroll,
+    onScrollBeginDrag,
+    onContentSizeChange,
+    onListLayout,
+    toBottom,
+  };
 }
 
 export function ScrollToBottom({ visible, onPress }: { visible: boolean; onPress: () => void }) {

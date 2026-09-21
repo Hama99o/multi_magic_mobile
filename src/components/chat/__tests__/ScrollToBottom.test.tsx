@@ -318,3 +318,92 @@ describe("a message taller than the screen", () => {
     expect(result.current.awayFromBottom).toBe(false);
   });
 });
+
+/**
+ * *"it did not go to bottom when i come to session."*
+ *
+ * Two things were fighting the opening scroll, and this is the second: a list
+ * opens at offset 0, which IS the top, so `onStartReached` fired on mount and
+ * an older page was prepended ABOVE while we were trying to land at the
+ * bottom. The target moved every time it arrived — and nobody had asked for
+ * that history; they had only not left the top yet.
+ *
+ * `settled` is what the screens hold that fetch on, so what matters is WHEN it
+ * turns true: not before the first landing resolves, and by every route that
+ * can resolve one.
+ */
+describe("holding the older page until the landing is done", () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it("is not settled on mount, so nothing is fetched above us", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+    expect(result.current.settled).toBe(false);
+
+    // Still not, while the opening chase is in flight.
+    act(() => result.current.onContentSizeChange(0, 4000));
+    expect(result.current.settled).toBe(false);
+  });
+
+  it("settles when the chase arrives", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onContentSizeChange(0, 4000));
+    act(() => result.current.onScroll(at(3600, 4000)));
+    expect(result.current.settled).toBe(true);
+  });
+
+  /**
+   * THE CASE HIS THIRD REPORT IS ABOUT. A jump that moves the list nowhere
+   * fires no scroll event, so nothing counted the chase out and the button
+   * stayed hidden until he dragged. The clock resolves it instead.
+   */
+  it("settles on the clock when the list never moves, and offers the button", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    // The opening sequence, in its real order: the list lays out, reports its
+    // height, and the jump we make achieves nothing — so NOT ONE scroll event
+    // follows. That is the whole bug: every attempt was counted in `onScroll`.
+    act(() => result.current.onListLayout(laidOut(VIEWPORT)));
+    act(() => result.current.onContentSizeChange(0, 4000));
+    expect(result.current.awayFromBottom).toBe(false);
+    expect(result.current.settled).toBe(false);
+
+    act(() => jest.advanceTimersByTime(400));
+    expect(result.current.settled).toBe(true);
+    // 3600px from the bottom, and now it says so.
+    expect(result.current.awayFromBottom).toBe(true);
+  });
+
+  it("settles when a finger takes over", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onContentSizeChange(0, 4000));
+    act(() => result.current.onScrollBeginDrag());
+    expect(result.current.settled).toBe(true);
+  });
+
+  /**
+   * A failed chase is not the reader choosing to be there. An answer this tall
+   * is very likely still laying out, so the next growth gets a fresh set of
+   * attempts rather than an app that has quietly stopped following.
+   */
+  it("keeps following after a chase that never arrived", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onContentSizeChange(0, 4000));
+    act(() => result.current.onScroll(at(0, 4000)));
+    act(() => result.current.onScroll(at(0, 4000)));
+    act(() => result.current.onScroll(at(0, 4000)));
+    expect(result.current.awayFromBottom).toBe(true);
+
+    list.scrollToEnd.mockClear();
+    act(() => result.current.onContentSizeChange(0, 6000));
+    expect(list.scrollToEnd).toHaveBeenCalled();
+  });
+});

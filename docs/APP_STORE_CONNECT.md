@@ -291,6 +291,62 @@ Because of the first one, `push` retries a refused multi-field PATCH **one
 attribute at a time**, so nine accepted fields still land when one is refused,
 and it ends with a tally instead of a traceback.
 
+### The first iOS build does NOT need the 2FA sign-in
+
+`RELEASE.md` says the first build on a new bundle id needs Hamma9900 at a
+terminal for Apple's 2FA. That is true of the path EAS takes by default, and it
+is **not** true of the build as a whole. Proved on 2026-09-21: the first
+production build ran non-interactively, with no Apple ID and no code from his
+phone.
+
+`eas build --non-interactive` fails with:
+
+    Distribution Certificate is not validated for non-interactive builds.
+    Credentials are not set up. Run this command again in interactive mode.
+
+EAS refuses to *create* Apple credentials without a session. So do not ask it
+to — make them with the API key from §0 and hand EAS the finished article.
+
+```sh
+D=~/.appstoreconnect/multimagic && mkdir -p "$D" && chmod 700 "$D"
+openssl genrsa -out "$D/dist.key" 2048
+openssl req -new -key "$D/dist.key" -out "$D/dist.csr" -subj "/CN=<app> Distribution/O=<name>/C=FR"
+```
+
+The private key **never leaves the machine**; Apple only ever sees the CSR.
+
+1. `POST /certificates` with `certificateType: "IOS_DISTRIBUTION"` and the CSR
+   as `csrContent`. The response carries `certificateContent` — base64 DER,
+   written straight to `dist.cer`.
+2. `POST /profiles` with `profileType: "IOS_APP_STORE"`, related to the
+   `bundleIds` resource id (not the string) and to the certificate just made.
+   `profileContent` is base64; decode to `dist.mobileprovision`.
+3. Bundle key + certificate:
+
+```sh
+openssl x509 -inform DER -in "$D/dist.cer" -out "$D/dist.pem"
+openssl pkcs12 -export -legacy -inkey "$D/dist.key" -in "$D/dist.pem" \
+  -out "$D/dist.p12" -passout "pass:$P12PASS"
+```
+
+**`-legacy` is load-bearing.** OpenSSL 3 defaults to AES-256 for PKCS#12, and
+node-forge — what EAS reads a `.p12` with — cannot open that. The symptom is a
+password error on a password that is correct.
+
+4. `credentials.json` at the project root pointing at those two files, plus
+   `"credentialsSource": "local"` on the build profile in `eas.json`. Then
+   `eas build -p ios --profile production --non-interactive` runs clean.
+
+**`credentials.json` contains the .p12 password**, so it is in `.gitignore` and
+the signing material itself lives outside the tree. `.gitignore` already covered
+`*.p12` and `*.mobileprovision`; it did not cover `credentials.json`, which is
+the file that actually leaks the password.
+
+**What this does and does not remove.** It removes the 2FA sign-in from the
+build. It does not remove Apple sign-in from everything else — see §3, which is
+unchanged. And EAS uploads the **working tree**, not `HEAD`: uncommitted work in
+any file is in the binary.
+
 ---
 
 ## 3 · The boundary — what stays his, however good the tooling gets

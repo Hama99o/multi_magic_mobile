@@ -233,17 +233,21 @@ false   healthOrWellnessTopics · gambling · unrestrictedWebAccess · lootBox
 true    messagingAndChat · userGeneratedContent
 ```
 
-**The minimum age is 13+, and that is a decision rather than a computation.**
-`ageRatingOverrideV2: "THIRTEEN_PLUS"` — Hamma9900's call on 2026-09-21: the app
-is not for young children. An override can only push a rating **up**, never
-down, so it is a floor; if the content answers ever compute higher, the higher
-one still applies. Apple's accepted values, enumerated by its own error rather
-than guessed:
+**The minimum age is 9+, and that is a decision rather than a computation.**
+`ageRatingOverrideV2: "NINE_PLUS"` — Hamma9900's call on 2026-09-21.
+
+**An override is a FLOOR, not a ceiling.** It can only push a rating up, never
+down. This declaration sets `messagingAndChat` and `userGeneratedContent` to
+true, and unrestricted messaging usually computes above 9+ on its own — so the
+effective rating may be higher than the override asks for, and the console is
+where to read what actually ships. Apple accepts the value either way, which
+means a too-low override fails silently rather than erroring. Apple's accepted
+values, enumerated by its own error rather than guessed:
 
     NONE · NINE_PLUS · THIRTEEN_PLUS · SIXTEEN_PLUS · EIGHTEEN_PLUS · UNRATED
 
-There is no `TWELVE_PLUS`. The old 4+/9+/12+/17+ bands are gone, so "over 12"
-is `THIRTEEN_PLUS`. Setting the V2 field also sets the legacy
+There is no `TWELVE_PLUS`: the old 4+/9+/12+/17+ bands are gone, so "over 12"
+would be `THIRTEEN_PLUS`. Setting the V2 field also sets the legacy
 `ageRatingOverride`, and `kidsAgeBand` stays null — this is not a Kids app.
 
 `messagingAndChat` and `userGeneratedContent` are the two that describe this app

@@ -648,3 +648,51 @@ failure-tolerant; the interactivity is left as its author's to decide.
 any rig script prints `QA_PASSWORD` in clear, because `qa.config.sh` sources
 `.env`. Do not trace a rig script that way. `set -x` and a secret are the same
 mistake as a screenshot and a hierarchy dump.
+
+---
+
+## Looking for a second `activate` — 29 writes audited, none found
+
+The parity bug had a shape worth hunting: **a write whose effect has no
+symptom on the device that performs it.** The phone set the local session key
+and never told the server, and nothing on the phone could ever show that,
+which is why every test and every flow missed it.
+
+So the client's mutating surface was walked backwards — 29 `post`/`put`/
+`patch`/`delete` calls in `src/api/` — asking of each one: *if this request
+never happened, would anything on this device look different?*
+
+**Result: no second instance.** Every other write either reads its response,
+or reverts visibly on failure, or is followed by a refetch that would restore
+the truth. `activate` appears to have been unique in this client, which is
+worth recording precisely because a negative result usually is not.
+
+**Two hypotheses were wrong on the way, and both were wrong in the app's
+favour:**
+
+`ai/feedbacks` looked like the shape — `await http.post(...)`, response
+unread, and **no test and no flow asserts it**. It is not: `AnswerActions`
+sets the rating optimistically and `setRating(null)` in the `catch`, so a
+failed rating un-selects the thumb in front of the person who pressed it. The
+comment above it says a failed rating is not worth interrupting somebody to
+report, which is a decision rather than an omission.
+
+`notifications/read_all` looked like dead code — `await http.post(...)` with
+nothing returned. It is not: `markAllRead` is called from
+`app/notifications.tsx:159` through a mutation and covered by
+`src/api/__tests__/notifications.test.ts`.
+
+**What the audit did leave behind, both small and both real:**
+
+1. **The feedback revert has nothing holding it.** Optimistic-then-revert is
+   considered behaviour with no test and no flow — and it is invisible when it
+   works, so a regression would be silent. That is the strongest remaining
+   candidate for a component test on the chat screen.
+2. **A docstring claims a return the code discards.** `notificationsApi.markAllRead`
+   is documented *"Returns the new unread count, which is zero"* and is typed
+   `Promise<void>`, discarding the response. Nobody is misled today because
+   nobody reads it — but `docs/TESTING.md` is emphatic that a comment is not a
+   source, and the next person to want that count will believe this one.
+
+Neither is mine to fix: both are `src/` and belong to whoever holds the code
+half. Reported rather than edited.

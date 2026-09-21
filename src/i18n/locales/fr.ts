@@ -105,6 +105,7 @@ export const fr: Translations = {
   },
 
   chat: {
+    scrollToBottom: "Aller au message le plus récent",
     title: "Assistant",
     chats: "Discussions",
     notifications: "Notifications",

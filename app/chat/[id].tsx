@@ -54,6 +54,7 @@ import {
 import type { ChatMessage } from "@/api/ai";
 import { Avatar } from "@/screens/people/Avatar";
 import { PersonMessageRow } from "@/screens/people/PersonMessageRow";
+import { ScrollToBottom, useAwayFromBottom } from "@/components/chat/ScrollToBottom";
 import { PersonComposer } from "@/screens/people/PersonComposer";
 import { ReactionSheet } from "@/screens/people/ReactionSheet";
 import { DayDivider, UnreadDivider, dayLabel } from "@/screens/people/DayDivider";
@@ -117,6 +118,11 @@ export default function PersonThread() {
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [typingName, setTypingName] = useState<string | null>(null);
   const listRef = useRef<FlatList<Row>>(null);
+  const { awayFromBottom, onScroll, setAway } = useAwayFromBottom();
+  const toBottom = () => {
+    setAway(false);
+    listRef.current?.scrollToEnd({ animated: true });
+  };
 
   /**
    * The unread count as it was BEFORE the thread was opened.
@@ -417,6 +423,9 @@ export default function PersonThread() {
         </View>
       </View>
 
+      {/* Wrapped so the button anchors to the list rather than the screen —
+          anchored to the screen it lands on the composer. */}
+      <View style={{ flex: 1 }}>
       <FlatList
         testID="thread-list"
         ref={listRef}
@@ -466,7 +475,14 @@ export default function PersonThread() {
             />
           );
         }}
-        onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
+        onScroll={onScroll}
+        scrollEventThrottle={64}
+        // Only when already at the bottom — see the assistant's chat for why.
+        // A message arriving must not yank somebody out of the history they
+        // scrolled up to read.
+        onContentSizeChange={() => {
+          if (!awayFromBottom) listRef.current?.scrollToEnd({ animated: false });
+        }}
         // History by cursor as the reader reaches the top — an id cursor cannot
         // skip a message that arrived while they were scrolling, which is what
         // page numbers did (`messages_controller.rb:19-23`).
@@ -499,6 +515,9 @@ export default function PersonThread() {
           )
         }
       />
+
+        <ScrollToBottom visible={awayFromBottom} onPress={toBottom} />
+      </View>
 
       {editing ? (
         <Pressable

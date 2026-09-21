@@ -33,6 +33,7 @@ import { MessageRow } from "@/components/chat/MessageRow";
 import { ThinkingDots } from "@/components/chat/ThinkingDots";
 import { Composer } from "@/components/chat/Composer";
 import { EmptyState } from "@/components/chat/EmptyState";
+import { ScrollToBottom, useAwayFromBottom } from "@/components/chat/ScrollToBottom";
 import { SourceSheet } from "@/components/chat/SourceSheet";
 import { FilePreview } from "@/components/chat/FilePreview";
 import type { AnswerLink } from "@/components/chat/AnswerMarkdown";
@@ -263,6 +264,7 @@ export default function Chat() {
   const [openSource, setOpenSource] = useState<MessageLink | null>(null);
   const [openFile, setOpenFile] = useState<AnswerLink | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
+  const { awayFromBottom, onScroll, setAway } = useAwayFromBottom();
 
   /**
    * ONLY THE MOST RECENT undoable reply gets the button.
@@ -332,8 +334,9 @@ export default function Chat() {
   // Follow new messages. `onContentSizeChange` rather than an effect on
   // `messages`, because the list has not laid out when the array changes.
   const scrollToEnd = useCallback(() => {
+    setAway(false);
     listRef.current?.scrollToEnd({ animated: true });
-  }, []);
+  }, [setAway]);
 
   useEffect(() => {
     if (awaitingReply) scrollToEnd();
@@ -417,6 +420,10 @@ export default function Chat() {
           </View>
         </View>
 
+        {/* Wraps the list so `ScrollToBottom`'s absolute position anchors to
+            the list's box rather than the screen's — anchored to the screen it
+            lands ON the composer instead of above it. */}
+        <View style={{ flex: 1 }}>
         <FlatList
           ref={listRef}
           data={messages}
@@ -436,7 +443,16 @@ export default function Chat() {
               }
             />
           )}
-          onContentSizeChange={scrollToEnd}
+          onScroll={onScroll}
+          scrollEventThrottle={64}
+          // Only when they are already at the bottom. This used to scroll on
+          // EVERY content change, which yanks somebody out of the history they
+          // had scrolled up to read the moment a reply lands — and it is the
+          // reason a "back to newest" button is worth having rather than a
+          // workaround for not having one.
+          onContentSizeChange={() => {
+            if (!awayFromBottom) scrollToEnd();
+          }}
           // Older history by cursor, pulled in as the reader reaches the top.
           onStartReached={hasOlder ? () => void loadOlder() : undefined}
           onStartReachedThreshold={0.3}
@@ -511,6 +527,9 @@ export default function Chat() {
             </View>
           }
         />
+
+          <ScrollToBottom visible={awayFromBottom} onPress={scrollToEnd} />
+        </View>
 
         <View
           style={{

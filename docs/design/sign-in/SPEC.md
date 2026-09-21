@@ -1,6 +1,6 @@
 # Sign in — email and password, and nothing else
 
-**Status: `SPECIFIED`** · `POST /users/login` · references pulled 2026-09-18
+**Status: `DONE`** · `POST /users/login` · references pulled 2026-09-18
 
 ## What it is not
 
@@ -129,3 +129,12 @@ SPEC made several claims that could quietly have gone unbuilt:
   — their mocks differ from the table's (`expo-router` is mocked per-file for
   the auth screens), so it is a real change to that file rather than three
   lines, and it belongs to whoever next touches the table.
+
+
+---
+
+## Status — DONE, set 2026-09-21 from the evidence
+
+Was `SPECIFIED`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
+
+`02-sign-in`, `10-sign-up` and `11-forgot-password` all pass; `ours/` holds the three widths. Sign-up and forgot-password run only against the QA account named in `.env`.

@@ -1,6 +1,6 @@
 # Chat — the app
 
-**Status: `SPECIFIED`** · `app/chat.tsx` · references pulled 2026-09-18
+**Status: `DONE`** · `app/chat.tsx` · references pulled 2026-09-18
 
 ## The one fact that shapes everything
 
@@ -325,3 +325,12 @@ not a layout preference: a named accessibility element groups its children, so a
 as one "Close" button with every row inside it unreachable — on iOS, absolutely.
 `docs/ACCESSIBILITY.md` N1, and `src/__tests__/a11y.test.tsx` fails if any
 container with a name acquires a control inside it again.
+
+
+---
+
+## Status — DONE, set 2026-09-21 from the evidence
+
+Was `SPECIFIED`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
+
+`01-ask`, `03-dictation` and `09-keyboard` all carry dated passes; `ours/` holds 360, 411 and 800 in both modes plus French at 360. **Two coverage gaps are named rather than hidden:** this account's assistant cites no sources, so `source-chips` and the `source-sheet` handles are unreachable from any flow; and `answer-read*` cannot render until the rebuild, because the installed binary predates read-aloud and the modules are native.

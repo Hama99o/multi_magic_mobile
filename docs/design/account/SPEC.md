@@ -291,3 +291,12 @@ called key through the real i18next instance in both languages.
 **Not yet run on a device.** The step was written after the device passed to
 another session, so `12-account`'s PASS in `qa/FLOW_REGISTER.md` is the run
 *before* this step existed. It is UNRUN until the row is reached on glass.
+
+
+---
+
+## Status — IN PROGRESS, set 2026-09-21 from the evidence
+
+Was `IN PROGRESS`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
+
+`12-account`, `16-ai-keys`, `17-privacy` and `18-delete-account` all pass and `ours/` holds the three widths, so the screenshot and flow halves of `DONE` are met. **Two pieces are outstanding and neither is a flow's to close.** Board row 14 requires the deletion exercised **against a throwaway user, by hand** — `18` opens the screen, asserts the disclosure and both gate states, and never confirms, because `RIG_CONTRACT.md` §3 forbids it. And the privacy page still renders its **DRAFT banner**, which row 13 makes a release gate until Hamma9900 approves the text.

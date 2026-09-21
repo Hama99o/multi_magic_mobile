@@ -162,6 +162,45 @@ rules are capable of being broken.
 
 ---
 
+### The sharper form: plant an input from the class where the two differ
+
+2026-09-21, and it is `multi-magic-mobile-41`'s statement of it rather than
+mine. "Plant the break and watch it go red" is the practice; this is why it
+sometimes does not work.
+
+`AiChat.tsx` chooses which chat to open with
+
+    Number.isFinite(stored) && stored > 0 ? stored : aiConv.id
+
+A test was written for it, and the planted weakening was `stored || aiConv.id`.
+**The suite stayed green.** The test used `'not-a-number'`, and
+`Number('not-a-number')` is `NaN`, and `NaN` is falsy — so the weak form falls
+back correctly for exactly that input. The two implementations **agree on the
+entire class the test drew from**.
+
+They differ on one class only: a **negative** value, which `||` treats as
+truthy and would hand to the server as a conversation id. One test with `'-5'`
+separates them; no amount of testing `'not-a-number'` ever will.
+
+So:
+
+> **A test distinguishes two implementations only if its input is drawn from
+> the class where they differ — and finding that class is the work.**
+
+Planting is what reveals you have not found it. A plant that leaves the suite
+green does not mean the code is untestable; it means the input is from the
+wrong class, and the next question is *which inputs would these two disagree
+about?* — a question about the code rather than about the test.
+
+The same file produced the other half of the lesson twice over: an assertion on
+`.catch` behaviour that could not fail in two successive versions, because both
+watched things that were true with or without the `catch`. The third watched
+the only observable difference. **Two of five tests in that file asserted
+something their first draft could not distinguish**, and both were found by
+planting rather than by reading.
+
+---
+
 ## 3 · A constant evaluated before the thing it depends on exists
 
 **2026-09-19, found while wiring i18n.**

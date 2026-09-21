@@ -128,7 +128,19 @@ export const notificationsApi = {
     return parseNotification(obj(res.data, "notification").notification);
   },
 
-  /** Mesh's "Dismiss All Items". Returns the new unread count, which is zero. */
+  /**
+   * Mesh's "Dismiss All Items".
+   *
+   * **The endpoint returns the new unread count and this function throws it
+   * away** — the signature is `Promise<void>` and nothing reads the response.
+   * That is fine while every caller refetches, and it is written down because
+   * this comment used to say "Returns the new unread count, which is zero",
+   * which is true of the ENDPOINT and false of this function. Nobody was
+   * misled, because nobody read it — but the next person wanting that count
+   * would have believed it and gone looking for a bug that is not there.
+   * `docs/TESTING.md` is emphatic that a comment is not a source; a comment
+   * wrong about its own function is one step worse than a missing one.
+   */
   markAllRead: async (): Promise<void> => {
     await http.post("/api/v1/notifications/read_all");
   },

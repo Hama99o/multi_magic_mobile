@@ -40,6 +40,30 @@ import { useColors, useMetrics } from "@/hooks/useColors";
  */
 const AWAY = 160;
 
+/**
+ * How many times one growth may be chased before we believe the list rather
+ * than ourselves.
+ *
+ * His second report: *"when the send message is very big and it takes all
+ * screen then it did not scroll to bottom, still have this problem but with
+ * big message."* Two separate things go wrong when one message is taller than
+ * the viewport, and the first is native:
+ *
+ * **A scroll issued inside `onContentSizeChange` is handed to the list before
+ * the new height is committed**, so it travels to the OLD bottom. With one
+ * more line of text that undershoot is invisible. With an answer that fills
+ * the screen it is a whole screen short — which is why this only ever showed
+ * itself on a big message. So every chase is repeated on the next frame, when
+ * the height it needs has been committed.
+ *
+ * The second was mine. A chase that never arrived kept `chasing` true for
+ * ever, and while it is true no measurement may raise the button — so the one
+ * case where somebody is stranded was the one case offering no way back. After
+ * this many attempts the hook stops insisting, reports where it actually is,
+ * and the button appears. Being wrong quietly is the thing to avoid.
+ */
+const CHASE_RETRIES = 3;
+
 /** Just enough of a `FlatList` to drive it, so a test can hand this a fake. */
 type Scrollable = { scrollToEnd: (options?: { animated?: boolean }) => void };
 
@@ -83,20 +107,26 @@ export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
   const geometry = useRef({ offset: 0, content: 0, layout: 0 });
   /** Are we trying to sit at the newest message? True until they scroll off. */
   const pinned = useRef(true);
-  /** Is a jump of ours still in flight? */
-  const chasing = useRef(false);
+  /** How many attempts this chase has left. 0 means no jump is in flight. */
+  const chasesLeft = useRef(0);
 
   const fromBottom = () => {
     const { offset, content, layout } = geometry.current;
     return content - layout - offset;
   };
 
+  const jump = useCallback(() => {
+    listRef.current?.scrollToEnd({ animated: false });
+  }, [listRef]);
+
   /** Chase the bottom, but only while that is still what we are trying to do. */
   const follow = useCallback(() => {
     if (!pinned.current) return;
-    chasing.current = true;
-    listRef.current?.scrollToEnd({ animated: false });
-  }, [listRef]);
+    chasesLeft.current = CHASE_RETRIES;
+    jump();
+    // AND AGAIN NEXT FRAME, against the height that is committed by then.
+    requestAnimationFrame(jump);
+  }, [jump]);
 
   const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
@@ -108,17 +138,26 @@ export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
 
     const away = fromBottom() > AWAY;
 
-    if (chasing.current) {
-      // Ours, not theirs. Says nothing about what the reader wants, so it may
-      // move the button but never the pin — and it ends the chase only by
-      // arriving.
-      if (!away) chasing.current = false;
-      return;
+    if (chasesLeft.current > 0) {
+      // Ours, not theirs. A jump we asked for says nothing about what the
+      // reader wants, so it may not move the pin.
+      if (!away) {
+        chasesLeft.current = 0; // arrived
+        return;
+      }
+      chasesLeft.current -= 1;
+      if (chasesLeft.current > 0) {
+        // Short of the bottom, and the height may have moved again under us.
+        requestAnimationFrame(jump);
+        return;
+      }
+      // Out of attempts. Fall through and say where we really are, so the
+      // button appears rather than a stranded reader having no way back.
     }
 
     pinned.current = !away;
     setAway(away);
-  }, []);
+  }, [jump]);
 
   /**
    * A finger on the list. Whatever we were chasing, the position is theirs
@@ -126,7 +165,7 @@ export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
    * arrives.
    */
   const onScrollBeginDrag = useCallback(() => {
-    chasing.current = false;
+    chasesLeft.current = 0;
   }, []);
 
   /** The list grew — another batch, or a new message. */
@@ -154,7 +193,7 @@ export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
   /** The button, and anywhere the app itself should return to the newest. */
   const toBottom = useCallback(() => {
     pinned.current = true;
-    chasing.current = true;
+    chasesLeft.current = CHASE_RETRIES;
     setAway(false);
     listRef.current?.scrollToEnd({ animated: true });
   }, [listRef]);

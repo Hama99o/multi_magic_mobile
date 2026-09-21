@@ -232,3 +232,89 @@ it("re-scrolls when the keyboard shrinks the list", () => {
   act(() => result.current.onListLayout(laidOut(250)));
   expect(list.scrollToEnd).toHaveBeenCalledWith({ animated: false });
 });
+
+/**
+ * HIS SECOND REPORT: *"when the send message is very big and it takes all
+ * screen then it did not scroll to bottom, still have this problem but with
+ * big message."*
+ *
+ * One message taller than the viewport breaks the landing in a way a short one
+ * never could, because a scroll issued inside `onContentSizeChange` is handed
+ * to the list before the new height is committed — so it goes to the OLD
+ * bottom. One extra line short is invisible; one screen short is what he saw.
+ *
+ * The viewport is 400 here and the content 4000, which is the shape of the
+ * complaint: a single answer ten times the height of the screen.
+ */
+describe("a message taller than the screen", () => {
+  beforeEach(() => jest.useFakeTimers());
+  afterEach(() => jest.useRealTimers());
+
+  it("is chased again on the next frame, when the new height has landed", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onContentSizeChange(0, 4000));
+    // The one that may travel to the old bottom.
+    expect(list.scrollToEnd).toHaveBeenCalledTimes(1);
+
+    act(() => jest.runOnlyPendingTimers());
+    // And the one that cannot, because the frame has passed.
+    expect(list.scrollToEnd).toHaveBeenCalledTimes(2);
+  });
+
+  it("retries when it lands short, and stays pinned when it arrives", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onContentSizeChange(0, 4000));
+    // Still at the top: the jump went to a bottom that had moved.
+    act(() => result.current.onScroll(at(0, 4000)));
+    expect(result.current.awayFromBottom).toBe(false); // ours, not his
+
+    // The retry arrives.
+    act(() => result.current.onScroll(at(3600, 4000)));
+    expect(result.current.awayFromBottom).toBe(false);
+
+    // And following is still on afterwards.
+    list.scrollToEnd.mockClear();
+    act(() => result.current.onContentSizeChange(0, 4400));
+    expect(list.scrollToEnd).toHaveBeenCalled();
+  });
+
+  /**
+   * THE HOLE IN THE FIRST FIX, and it produced both of his complaints at once:
+   * a chase that never arrived suppressed the button for ever, so the one case
+   * where somebody is stranded was the one case offering no way back.
+   */
+  it("gives up after three attempts and offers the button", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onContentSizeChange(0, 4000));
+    act(() => result.current.onScroll(at(0, 4000)));
+    expect(result.current.awayFromBottom).toBe(false);
+    act(() => result.current.onScroll(at(0, 4000)));
+    expect(result.current.awayFromBottom).toBe(false);
+
+    // Three attempts is enough to tell the difference between a frame behind
+    // and genuinely stuck.
+    act(() => result.current.onScroll(at(0, 4000)));
+    expect(result.current.awayFromBottom).toBe(true);
+  });
+
+  it("and the button still works from there", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+
+    act(() => result.current.onContentSizeChange(0, 4000));
+    act(() => result.current.onScroll(at(0, 4000)));
+    act(() => result.current.onScroll(at(0, 4000)));
+    act(() => result.current.onScroll(at(0, 4000)));
+    expect(result.current.awayFromBottom).toBe(true);
+
+    act(() => result.current.toBottom());
+    expect(list.scrollToEnd).toHaveBeenLastCalledWith({ animated: true });
+    expect(result.current.awayFromBottom).toBe(false);
+  });
+});

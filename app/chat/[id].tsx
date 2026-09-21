@@ -118,11 +118,8 @@ export default function PersonThread() {
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [typingName, setTypingName] = useState<string | null>(null);
   const listRef = useRef<FlatList<Row>>(null);
-  const { awayFromBottom, onScroll, setAway } = useAwayFromBottom();
-  const toBottom = () => {
-    setAway(false);
-    listRef.current?.scrollToEnd({ animated: true });
-  };
+  const { awayFromBottom, onScroll, onScrollBeginDrag, onContentSizeChange, onListLayout, toBottom } =
+    useAwayFromBottom(listRef);
 
   /**
    * The unread count as it was BEFORE the thread was opened.
@@ -477,12 +474,11 @@ export default function PersonThread() {
         }}
         onScroll={onScroll}
         scrollEventThrottle={64}
-        // Only when already at the bottom — see the assistant's chat for why.
-        // A message arriving must not yank somebody out of the history they
-        // scrolled up to read.
-        onContentSizeChange={() => {
-          if (!awayFromBottom) listRef.current?.scrollToEnd({ animated: false });
-        }}
+        // A finger here means the position is theirs — see `useAwayFromBottom`.
+        onScrollBeginDrag={onScrollBeginDrag}
+        // Chased only while still pinned to the newest — a message arriving
+        // must not yank somebody out of the history they scrolled up to read.
+        onContentSizeChange={onContentSizeChange}
         // History by cursor as the reader reaches the top — an id cursor cannot
         // skip a message that arrived while they were scrolling, which is what
         // page numbers did (`messages_controller.rb:19-23`).
@@ -506,9 +502,7 @@ export default function PersonThread() {
         // Same reason as the assistant's chat: the keyboard changes this
         // list's height without changing its offset, leaving the newest
         // message behind the keyboard.
-        onLayout={() => {
-          if (!awayFromBottom) listRef.current?.scrollToEnd({ animated: false });
-        }}
+        onLayout={onListLayout}
         ListEmptyComponent={
           status === "loading" ? null : status === "failed" ? (
             <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>

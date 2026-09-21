@@ -264,7 +264,8 @@ export default function Chat() {
   const { openSource, openLink, closeSource } = useOpenSource();
   const [openFile, setOpenFile] = useState<AnswerLink | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
-  const { awayFromBottom, onScroll, setAway } = useAwayFromBottom();
+  const { awayFromBottom, onScroll, onScrollBeginDrag, onContentSizeChange, onListLayout, toBottom } =
+    useAwayFromBottom(listRef);
 
   /**
    * ONLY THE MOST RECENT undoable reply gets the button.
@@ -331,16 +332,13 @@ export default function Chat() {
     [conversationId, posting, clear, addPending, setDraft, user, t],
   );
 
-  // Follow new messages. `onContentSizeChange` rather than an effect on
-  // `messages`, because the list has not laid out when the array changes.
-  const scrollToEnd = useCallback(() => {
-    setAway(false);
-    listRef.current?.scrollToEnd({ animated: true });
-  }, [setAway]);
-
+  // A question of theirs is a request to be at the bottom, whatever they were
+  // reading a moment ago. Following NEW CONTENT is `useAwayFromBottom`'s job
+  // and happens on content size rather than on `messages`, because the list has
+  // not laid out when the array changes.
   useEffect(() => {
-    if (awaitingReply) scrollToEnd();
-  }, [awaitingReply, scrollToEnd]);
+    if (awaitingReply) toBottom();
+  }, [awaitingReply, toBottom]);
 
   /**
    * THE ANSWER ARRIVING IS THE PRODUCT, AND NOTHING SAID IT.
@@ -445,14 +443,14 @@ export default function Chat() {
           )}
           onScroll={onScroll}
           scrollEventThrottle={64}
-          // Only when they are already at the bottom. This used to scroll on
-          // EVERY content change, which yanks somebody out of the history they
-          // had scrolled up to read the moment a reply lands — and it is the
-          // reason a "back to newest" button is worth having rather than a
-          // workaround for not having one.
-          onContentSizeChange={() => {
-            if (!awayFromBottom) scrollToEnd();
-          }}
+          // A finger here means the position is theirs — see `useAwayFromBottom`.
+          onScrollBeginDrag={onScrollBeginDrag}
+          // The list grew: another virtualisation batch, or a reply. Chased
+          // only while we are still pinned to the newest, so a message arriving
+          // never yanks somebody out of the history they scrolled up to read —
+          // which is the reason a "back to newest" button is worth having
+          // rather than a workaround for not having one.
+          onContentSizeChange={onContentSizeChange}
           // Older history by cursor, pulled in as the reader reaches the top.
           onStartReached={hasOlder ? () => void loadOlder() : undefined}
           onStartReachedThreshold={0.3}
@@ -469,14 +467,9 @@ export default function Chat() {
             paddingBottom: metrics.space.xl,
           }}
           // THE KEYBOARD SHRINKS THIS LIST, AND NOTHING USED TO RE-SCROLL.
-          // `avoidKeyboard` pads the screen up, so the list's height changes
-          // while its scroll offset does not — and the newest message, which
-          // was at the bottom a moment ago, ends up below the fold behind the
-          // keyboard. His words: "it should move latest message up so it did
-          // not hide by keyboard and input where i write the text."
-          onLayout={() => {
-            if (!awayFromBottom) listRef.current?.scrollToEnd({ animated: false });
-          }}
+          // His words: "it should move latest message up so it did not hide by
+          // keyboard and input where i write the text." `useAwayFromBottom`.
+          onLayout={onListLayout}
           ListEmptyComponent={
             status === "loading" ? null : status === "failed" ? (
               <View style={{ gap: metrics.space.md, paddingVertical: metrics.space.xl }}>
@@ -540,7 +533,7 @@ export default function Chat() {
           }
         />
 
-          <ScrollToBottom visible={awayFromBottom} onPress={scrollToEnd} />
+          <ScrollToBottom visible={awayFromBottom} onPress={toBottom} />
         </View>
 
         <View

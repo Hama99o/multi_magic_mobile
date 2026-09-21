@@ -40,10 +40,28 @@ ONLY="${1:-}"
 REPO_OURS="$(cd "$DIR/.." && pwd)/docs/design"
 DL="multimagic://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A${METRO_PORT}"
 
+# ── THE TRAP RESTORES THE LANGUAGE TOO ──────────────────────────────────
+# The pass used to put English back as its last step, which runs after a
+# FAILED run but not after a KILLED one. A run killed mid-French left the QA
+# account in French, and the next flow then failed on "Options for New chat" —
+# that label is `t()`-translated while the row's title is the server's
+# untranslated DEFAULT_TITLE, so it fails on something with no visible
+# connection to the language. It cost a diagnosis.
+#
+# Same shape as a flow whose cleanup is its last step: tidying that only
+# happens on the happy path is not tidying. So the restore moves into the EXIT
+# trap, which fires on a kill as well as on a return.
+LANG_TOUCHED=0
 reset_device() {
   adb -s "$SERIAL" shell wm size reset >/dev/null 2>&1
   adb -s "$SERIAL" shell wm density reset >/dev/null 2>&1
   adb -s "$SERIAL" shell cmd uimode night no >/dev/null 2>&1
+  if [ "$LANG_TOUCHED" = 1 ]; then
+    echo "  putting the account back into English (the trap, not the happy path)"
+    run_flow set-language.yaml -e LANG_ID="language-en" >/dev/null 2>&1 || \
+      echo "  COULD NOT RESTORE ENGLISH — the QA account is still French, fix by hand"
+    LANG_TOUCHED=0
+  fi
 }
 trap reset_device EXIT
 
@@ -110,7 +128,12 @@ store dark en
 800 light en
 800 dark en"
 
-echo "$COMBOS" | while read -r width mode lang; do
+# HERE-STRING, NOT A PIPE. `echo "$COMBOS" | while read` runs the loop body in
+# a SUBSHELL, so `LANG_TOUCHED=1` set inside it never reaches the EXIT trap in
+# the parent — the restore this file just gained would have been silently dead
+# on every run. Caught by reading the loop after writing the trap, not by a
+# failure, because the failure mode is "the account is quietly still French".
+while read -r width mode lang; do
   [ -z "$width" ] && continue
   SHOT="$width-$mode-$lang"
   [ -n "$ONLY" ] && [ "$ONLY" != "$SHOT" ] && [ "$ONLY" != "$width-$mode" ] && continue
@@ -188,8 +211,11 @@ echo "$COMBOS" | while read -r width mode lang; do
 
   # Language is app state, not device state, so it is set through the app.
   if [ "$lang" = fr ]; then
-    run_flow set-language.yaml -e LANG_ID="language-fr" >/dev/null 2>&1 \
-      || { echo "  could not switch to French — combination SKIPPED, not shot"; continue; }
+    if run_flow set-language.yaml -e LANG_ID="language-fr" >/dev/null 2>&1; then
+      LANG_TOUCHED=1
+    else
+      echo "  could not switch to French — combination SKIPPED, not shot"; continue
+    fi
   fi
 
   # PIPESTATUS, not $?. After a pipe `$?` is `tail`'s status, which is always 0
@@ -220,10 +246,12 @@ echo "$COMBOS" | while read -r width mode lang; do
 
   # Back to English immediately, so a failure here never leaves the account
   # French for whatever runs next.
+  # The trap does this too, on a kill. Clearing the flag on success keeps the
+  # normal path from paying for it twice.
   if [ "$lang" = fr ]; then
-    run_flow set-language.yaml -e LANG_ID="language-en" >/dev/null 2>&1 || true
+    run_flow set-language.yaml -e LANG_ID="language-en" >/dev/null 2>&1 && LANG_TOUCHED=0
   fi
-done
+done <<< "$COMBOS"
 
 echo
 echo "resetting the device — an Override left behind is a device nobody can trust"

@@ -293,3 +293,35 @@ that read `en.ts` line by line, a literal check comparing two disjoint
 languages, a picture pass that photographed a layout it had disturbed itself,
 and a backward handle walk that had never been run at all. Three of the four
 produced output the whole time.)*
+
+## Cleanup that only runs on the happy path is not cleanup
+
+Two instances in one session, one layer apart, and the shape generalises past
+this repo.
+
+**A flow that tidies after itself still fills the account when it fails
+early.** `19-session-options` creates a conversation named `QA options target`
+and deletes it through the real confirm as its **last** step. That is correct,
+and it changed nothing: the flow failed five times on steps in the middle, and
+each failure left one behind. **Nine had accumulated before anybody noticed**,
+on an account whose cap is fifty. This is `04`'s hazard — the one the register
+already warns about — arriving through a flow that does everything right.
+
+**A pass that restores state as its last step leaves it wrong when it is
+killed.** `qa/screens.sh` switched the app to French, shot, and switched back.
+A run killed mid-French left the QA account in French, and the next flow then
+failed looking for *"Options for New chat"* — because that label is
+`t()`-translated while the row's title is the server's untranslated
+`DEFAULT_TITLE`. A language problem surfacing as a missing menu, with nothing
+in the failure pointing at the cause. It cost a diagnosis.
+
+**The remedy is the same both times and it is structural, not diligence.**
+Restoration belongs in a trap, or in the *next* run's setup, or in a cleanup
+that is idempotent and cheap enough to run unconditionally — anywhere except
+the end of the happy path. `screens.sh` now restores in its `EXIT` trap, which
+fires on a kill as well as on a return, and says so when it cannot.
+
+The general form: **if the only thing that undoes your side effect is the last
+line of the thing that caused it, the side effect is permanent for every run
+that does not reach that line** — and the runs that do not reach it are
+exactly the ones that went wrong, which is when a dirty account hurts most.

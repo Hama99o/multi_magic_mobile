@@ -159,8 +159,23 @@ else
     # Every migration FILE must already be in `schema_migrations`. Not
     # max(version): a migration numbered below the newest applied one is
     # exactly the case a high-water mark misses.
-    PGUSER_MM="$(grep -m1 '^POSTGRES_USER=' "$MM_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"'"'"'\r')"
-    PGDB_MM="$(grep -m1 '^POSTGRES_DB=' "$MM_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"'"'"'\r')"
+    # `export ` IS OPTIONAL IN THE ANCHOR, AND IT WAS NOT. multi_magic's .env
+    # writes `export POSTGRES_USER=…` — twice — and `^POSTGRES_USER=` matches
+    # none of it. **This read has never worked.** The guard has been running on
+    # the `${VAR:-multi_magic}` fallback, which is right because it is also
+    # `database.yml`'s default, so nothing ever complained.
+    #
+    # It fails SAFE, which is the only reason this is a correction rather than
+    # an incident: a wrong user makes psql fail, `applied` comes back empty,
+    # and the branch below refuses to start `web` and says it could not read
+    # `schema_migrations`. Loud, and on the safe side of the thing it guards.
+    #
+    # 7b found it in its own copy of this line. I had "verified" the same file
+    # earlier with `grep -E '^POSTGRES_(USER|DB)='`, got nothing, and wrote
+    # "not set in .env — defaults apply" into qa.config.sh as fact. The check
+    # and the conclusion drawn from it shared one blind spot.
+    PGUSER_MM="$(grep -m1 -E '^(export[[:space:]]+)?POSTGRES_USER=' "$MM_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"'"'"'\r')"
+    PGDB_MM="$(grep -m1 -E '^(export[[:space:]]+)?POSTGRES_DB=' "$MM_DIR/.env" 2>/dev/null | cut -d= -f2- | tr -d '"'"'"'\r')"
     applied=$(compose exec -T postgres psql -U "${PGUSER_MM:-multi_magic}" \
               -d "${PGDB_MM:-multi_magic}_development" -tAc 'select version from schema_migrations' 2>/dev/null)
     pending=""

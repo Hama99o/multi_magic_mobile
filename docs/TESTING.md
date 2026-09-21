@@ -81,6 +81,32 @@ screen. Re-planting the same break fails.
 > test is measuring something else — find out what, because that is usually
 > more interesting than the test you meant to write.
 
+### The same assertion, twice in one day, in two languages
+
+**An assertion can match the wrong NODE and read as though it matched the
+right one.** Two instances, three hours apart, both mine:
+
+- `19-session-options.yaml` asserted `"QA options target.*"` after pressing
+  Enter in the rename dialog. That matched the text **inside the dialog's own
+  input field**, so the flow proved it had *typed* a title, not saved one, and
+  then hunted a row menu sitting behind a modal. Found by the session running
+  it.
+- `AiSessionBar.test.tsx` asserted `/Renovation/` after opening the delete
+  confirm. That is also the chat's title **in the bar behind the dialog**, so
+  it would have passed with no dialog at all. Found by it passing while I
+  read it.
+
+Both are §2 with a modal instead of a container, and the second was written
+after the first had been explained to me. The fix in both cases is to assert
+something only the right node can satisfy — the control you actually mean
+(`rename-save`), or the whole sentence rather than the word it shares with
+the screen underneath.
+
+> **When an assertion could be satisfied by two things on screen, it is
+> satisfied by the wrong one.** Not "might be": a passing test tells you
+> nothing about which, and the one you did not mean is usually the one that
+> was already there.
+
 ### The corollary, earned the hard way on 2026-09-19
 
 Four assertions written that evening could not have failed. Three were tests:
@@ -680,6 +706,134 @@ else entirely.
 
 ---
 
+---
+
+## 14 · A check that can only report success, and a habit fixed in one place
+
+**2026-09-20. Two instances, hours apart, the second after the first was
+found, written up, and passed on to another session.**
+
+Every gate in this repo was being run by hand like this:
+
+```sh
+npm run lint 2>&1 | tail -1
+```
+
+**A pipeline's exit status is the last command's.** `tail` always succeeds, so
+the `&&` chain after it walked past a failing gate into a commit, twice:
+
+1. **`71bc742`** landed on `main` with eslint red. Found immediately, fixed in
+   `03ee80b`, written into that commit message, and passed to the session
+   holding the device so it could check the rig for the same shape.
+2. **The `sdk-57` branch had been red since the compiler audit**, and I had
+   reported it green twice in the interval. Two causes underneath — three
+   React Compiler rules flipped to `"error"` by a `sed` and never reverted,
+   and an unused `useRef` left by my own refactor — and **both were invisible
+   for exactly the reason I had already found and fixed on main.**
+
+> **The rule: correcting a habit in the place you found it leaves every other
+> place still doing it — and you will trust those places MORE afterwards, not
+> less, because you believe the habit is fixed.** The fix is not the fix. The
+> sweep is.
+
+### What the sweep found, which is the better half
+
+Every committed file was already clean:
+
+| Where | State |
+|---|---|
+| `qa/*.sh` — all six | **already `set -o pipefail`** |
+| `package.json` scripts | no pipelines |
+| `.github/workflows/ci.yml` | five bare `run:` steps |
+| `.githooks/pre-commit` | `set -e`, gates invoked bare or redirected — no gate pipeline |
+
+**So the defect was never in the repository. It was in the human in the
+loop**, and the repository was already more disciplined than the person
+typing into it — six scripts set `pipefail`, presumably because somebody met
+this before and fixed it *there*.
+
+`pipefail` is now on the hook too, for consistency rather than as a fix, and
+it says so in the file.
+
+### Why this one is different from the other thirteen
+
+Every earlier entry is a **test or a rule** that could not see a defect. This
+is the first where **the gate was right and the thing reading the gate was
+wrong** — and the reader was a person, so nothing in CI would ever have
+caught it. A check that can only report success is the shape this file has
+now met five times; this is the first time it was the harness around the
+check rather than the check.
+
+Read exit codes directly:
+
+```sh
+npm run lint >/dev/null 2>&1; echo "lint=$?"
+```
+
+### And the hardening produced the mirror image, the same day, in my own hands
+
+`qa/verify_activate.sh` was written hours later with `set -euo pipefail` at
+the top — the discipline this entry argues for. It then read an optional
+value:
+
+```sh
+PGUSER_MM="$(grep -m1 '^POSTGRES_USER=' "$MM_DIR/.env" | …)"
+```
+
+A `grep` that finds nothing exits 1. Under `set -e` that **killed the script
+before it reached the `${VAR:-default}` fallback written on the next line** —
+exit 1, no output at all. A check whose entire job is to report something
+became a check that could only ever report nothing, and did so silently.
+
+> **`set -e` turns every command that is allowed to fail into a command that
+> must not.** The same flag that stops a pipeline hiding a failure will hide
+> an entire script, and the failure it produces is worse: a swallowed exit
+> code still runs the rest of the program, while `set -e` on a legitimate
+> non-zero stops it where nobody is looking. Mark the ones allowed to fail —
+> `|| true` — at the moment you add the flag, not after somebody finds the
+> corpse.
+
+**Two of the four instances in this entry are the same person on the same
+day, and the second was caused by fixing the first.** That is the strongest
+argument in this file for the rule above it: correcting a habit changes what
+you do next, and what you do next is where the next one lives.
+
+### A third instance, and the reason the second one is always harder
+
+The session holding the device moved a language restore into an `EXIT` trap
+so it would survive a kill rather than only a clean return — the right
+correction, for the right reason, made *because* of the cleanup-only-on-the-
+happy-path finding earlier that evening. Then it read the loop the trap
+depends on: `echo "$COMBOS" | while read` runs its body in a **subshell**, so
+the flag the trap tests is set in a process that no longer exists by the time
+the trap fires.
+
+**The fix was dead on arrival and its failure mode was silence** — not an
+error, just the QA account quietly staying in French for whatever ran next,
+which is the exact thing the trap had been written to prevent. It was caught
+by *reading* the loop after writing the trap. Nothing would have failed.
+
+> **The second error is systematically harder to see than the first, because
+> the first one taught you what to look for and the second one is somewhere
+> you have just stopped looking.** You arrive at it carrying a fresh, correct,
+> specific idea of the danger — and that idea is a torch pointed away from
+> wherever you now are.
+
+Three instances, two of them fixes-of-fixes, three different people-shaped
+mistakes in one evening. **This entry's own history is its argument**, which
+is the least comfortable and most useful thing in this file.
+
+---
+
+Found by the session running the script. Its fix was right and its
+explanation was not, which is the third finding: it read the failing grep as
+*"`.env` sets neither variable"*. `.env` sets **both, twice each**, as
+`export POSTGRES_USER=…` — and `^POSTGRES_USER=` cannot match a line starting
+`export `. The read had been dead all along and the default happened to be
+correct, which is why nothing ever complained. `qa/preflight.sh:162-163`
+carries the identical anchor and its migration guard — the one protecting his
+real database — has been running on that fallback ever since.
+
 ## What each gate is actually for
 
 | Gate | Proves | Cannot see |
@@ -882,3 +1036,84 @@ Reading the chat spine for the same refactor turned up
 same value. **Code that reads as a decision and decides nothing**, which is the
 mirror of a test that reads as a check and checks nothing, and survives for the
 same reason: it looks considered.
+
+---
+
+## 15 · Two sessions remembered doing the same night's work
+
+Every entry above is a gate that was honest about the wrong question. This one
+is the same failure with a **session** in place of a gate, and it is the only
+one where the instrument that failed was a memory.
+
+**2026-09-21.** Two sessions were opened on this repo minutes apart. Both were
+asked what they remembered. Both answered, in first person and in detail, that
+they had done the previous night's device work: the twelve flows and their
+verdicts, the picture pass to eight of eight combinations, the store
+screenshots after finding this AVD is 2.22:1 where Play rejects past 2:1, the
+listing draft, and the `activate` proof — `ai_session_id` 269 → 263, *New chat*
+→ *Do I owe anyone money?*, QA user 494.
+
+**Those cannot both be first-hand accounts of one night.** At least one was
+reconstructed from having read the repo, and **neither session could tell which
+it was.**
+
+### Three measurements were tried. All three failed, and how they failed is the
+### useful part
+
+| what was measured | why it settled nothing |
+|---|---|
+| the session's own scratchpad | recreated today at 09:23 and **empty** — the battery death overnight wiped `/tmp`, so the absence of yesterday's files means nothing |
+| `ListAgents` process start times | the sibling's process started three minutes ago — but **a resumed session also starts a new process**, so it does not separate resumption from a fresh start |
+| the transcript on disk, 19.6 MB | a size consistent with a long session, and **equally consistent with reading one as with writing one** |
+
+**And git cannot answer either.** Every commit in this repo is authored
+`Hama99o`, because the sessions share one checkout and one identity. There is
+no field in a commit that says which session wrote it. Whether the trailer
+should carry a session identifier is a change to how this project commits, and
+therefore **his call, not a session's** — it has been put to him with the
+reason, which is that today it mattered and git could not answer.
+
+### The discriminator that the subject could read
+
+The supervisor proposed settling it by asking each session to name something
+"only the session that did the work could know" — specifically that a geometry
+check had failed by reading the **foreground window** rather than the display,
+which it believed had never been written down and had only reached it in a
+report.
+
+**It is in the repo, in two files:** `qa/qa.config.sh:155` and
+`qa/FLOW_REGISTER.md:511`, both in those words. Any session that had read them
+could produce it in first person, in detail, with feeling. **The test would
+have passed both and proved nothing** — and it would have allocated the work on
+that basis.
+
+**A discriminator the subject can read is not a discriminator.** That is §10's
+shape — a correct search for a true spelling, answering a narrower question
+than the one being asked — arriving one level up, in the method rather than in
+the code. It was built by choosing a detail from memory without checking
+whether it was on disk, which is the exact error it was designed to catch.
+
+### The rule
+
+**"I remember doing X" is not evidence anywhere in this project.**
+
+No session asserts anything from recall — not about the code, and not about its
+own past. **It checks on disk first.** That is already the house rule for
+everything else here; it turns out to apply to the authors as much as to the
+work.
+
+The smaller version of this had already happened twice the day before, both
+times caught with `git log -S` rather than by argument: one session claimed two
+documents it had only read, and another claimed a `TESTING.md` entry that was
+not its. Those were corrected in minutes. **This one could not be corrected at
+all**, which is the difference between reconstructing a fact and reconstructing
+a night.
+
+### How the work was actually split, since the memory could not settle it
+
+**By where the work is, not by who remembers doing it** — a criterion that
+needs nobody to be believed. The device half is nearly empty today: every flow
+carries a dated verdict, none red, and the one outstanding device task is a
+re-proof of something already proved. The code half is larger. Both sessions
+reached that description independently, which is worth noting and is *also* not
+evidence of anything.

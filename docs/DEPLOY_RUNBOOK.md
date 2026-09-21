@@ -69,6 +69,119 @@ feature.
 
 ---
 
+## 3a · Can steps 3–6 be done in one sitting on THIS box? — e0's judgement
+
+**Yes, and only in one ordering.** Asked for on 2026-09-21 by the session that
+has watched this emulator fail in every way it fails. Everything below is a
+measured number or a failure that actually happened; where it is a prediction
+it says so.
+
+### Build the APK BEFORE the merge, not after
+
+This is the whole answer and the rest is detail.
+
+Step 3 breaks the rig **immediately and on purpose** — an SDK 54 binary refuses
+an SDK 57 bundle. Step 5 fixes it. **Between them there is no working device**,
+and `adb install -r` overwrites the only known-good binary on the way past. So
+if the build fails, or produces an APK that will not launch, there is no
+fallback: the device cannot run a flow, cannot shoot a picture, and cannot tell
+you whether the app works — and getting back means a full SDK 54 rebuild.
+
+Two ways to close that, and either is enough:
+
+1. **Build from the `sdk-57` worktree first**, install it, watch it reach
+   sign-in, and only then merge. Main never has a dead-device window.
+2. **Or keep the current APK.** `cp android/app/build/outputs/apk/debug/app-debug.apk
+   ~/app-debug-sdk54.apk` before anything. 209 MB, and it turns a rollback from
+   a rebuild into an `adb install -r`.
+
+**Do one of them.** The runbook's "If it goes wrong" currently says step 6 stops
+the run, which is right, and then there is nothing to stop *to*.
+
+### Shut the emulator down for the build
+
+Not an optimisation. This box **hard-rebooted from memory exhaustion on
+2026-09-15** (`CLAUDE.md`), and a gradle build with parallel workers, plus a
+2 GB AVD, plus Metro, plus another session's Jest is exactly that shape. The
+emulator is useless during the build anyway.
+
+Measured now, for the next person to compare against: **31 GB total, 15 GB
+available, and `pswpout` is 1 since boot** — this box has essentially not
+swapped. That is the number to re-read before starting, not free RAM: swapping
+is what preceded the reboot.
+
+### Disk is the constraint that will actually bite
+
+**24 GB free at 95%.** The `android/` tree is 3.0 GB and `~/.gradle` is 5.3 GB
+— 8.3 GB already spent on the SDK 54 build, and `QA_HANDBOOK.md` records ~8 GB
+for a build. An SDK bump invalidates much of that cache rather than reusing it,
+so budget a second 8 GB, not a delta.
+
+**Delete `android/` before the prebuild.** It is generated, gitignored build
+output, `expo prebuild` regenerates it, and it reclaims 3 GB — and it removes
+the risk of SDK 54 artifacts confusing an SDK 57 prebuild, which is a
+reasonable worry rather than an observed one. **Do not clear `~/.gradle`**
+wholesale; that is a long rebuild of things the bump does not invalidate.
+
+If free space drops under ~10 GB mid-build, stop rather than continue. A
+build that fills the disk leaves both trees broken.
+
+### Wait for a quiet box
+
+`qa/screens.sh` refuses above load 12, on two measurements: at **15.5** the
+Pixel Launcher itself ANR'd and a flow died on a dialog indistinguishable from
+a failed assertion; at **7.5** twelve flows ran clean. A gradle build under
+another session's full suite is slow and is where an OOM would come from.
+`uptime` first, and ask the other sessions to hold.
+
+### `nvm use` first, as its own command
+
+The box default is **v18.18.0**; `.nvmrc` pins **22.19.0**. Expo's metro-config
+calls `Array.prototype.toReversed`, so on the default node the bundle gate dies
+with `configs.toReversed is not a function` — an error naming neither Node nor
+a version. And `nvm use` inside a pipeline is a no-op: the subshell takes the
+PATH with it.
+
+### What actually proves it worked
+
+"The build succeeded" proves the build succeeded. In order, cheapest first —
+this is `docs/TESTING.md` §12 applied to a rebuild:
+
+1. `npm run bundle` on the merged tree. One minute, and it is the only gate
+   that runs the real bundler.
+2. The APK installs and the app reaches sign-in. **Two minutes, and if this
+   fails nothing after it means anything.**
+3. `01-ask` — the socket and a real answer end to end.
+4. `09-keyboard` — edge-to-edge is unconditional in SDK 57, so this is the
+   flow most likely to move, and it is the one that had never been run until
+   somebody checked.
+5. Then the rest of step 6.
+
+### Two costs to name rather than discover
+
+**The 72 design screenshots become evidence for a binary that no longer
+exists.** If SDK 57 moves any layout, `ours/` is stale and `DONE` is stale with
+it. Re-shooting is about forty minutes with `qa/screens.sh`, and it is not
+optional if anything moved — but nothing can tell you whether anything moved
+except looking.
+
+**And expect two system ANRs per display change.** Normal on this AVD, dismissed
+and counted by `screens.sh`, and they read exactly like the app failing.
+
+### Time, honestly
+
+Off-device: prebuild 2–4 min, gradle **15–25 min** on a cold SDK 57 cache (the
+only duration recorded on this box is `BUILD SUCCESSFUL in 3m 21s`, and that
+was warm). On-device: install 2–3 min, smoke 3–4 min. **Under 10 minutes of
+device time; the rest is waiting.** Step 6 in full is 45–60 minutes, and a
+re-shoot another 40.
+
+So: one sitting, yes — roughly two hours with the re-shoot, and the only part
+that cannot be interrupted safely is between the merge and a working installed
+binary. Close that window first and everything else can stop and resume.
+
+---
+
 ## 3 · Merge SDK 57 — e7, with e0 told first
 
 Branch `sdk-57`, worktree `../mm-sdk57`, currently green on all four gates and

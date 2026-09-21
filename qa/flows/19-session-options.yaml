@@ -72,8 +72,42 @@ tags:
       - eraseText: 60
       - inputText: "QA options target"
       # Enter is the save — the field is returnKeyType "done" with
-      # `onSubmitEditing` (see `15`).
-      - pressKey: Enter
+      # ── TAP THE BUTTON, DO NOT PRESS ENTER ──────────────────────────
+      # This said Enter saves, via `onSubmitEditing`, citing `15`. Measured on
+      # the device 2026-09-20: HERE it does not, and `15` renames twice with
+      # Enter and passes end to end, which it could not do if the dialog
+      # stayed open there. Why it differs is unknown — timing, or focus. What
+      # is certain is what was observed: after Enter the dialog is STILL
+      # OPEN
+      #
+      # A MECHANISM, offered as a hypothesis with a prediction (7b's, and the
+      # guard is verified in the source): `RenameDialog.tsx:84` is
+      # `onSubmitEditing={() => trimmed && onSave(trimmed)}`, and `trimmed`
+      # comes from React state. **If the state is empty when Enter lands the
+      # handler does nothing at all** — no save, no close, no error, which is
+      # exactly what was seen. So the candidate is a race: `eraseText` has
+      # emptied the field and `inputText` has not yet committed when Enter
+      # arrives. It predicts the failure is INTERMITTENT, which fits "saves in
+      # 15, not here" better than any difference between the flows — their
+      # rename sequences are identical line for line.
+      #
+      # The probe, if anybody wants to settle it: assert the typed text INSIDE
+      # the field before pressing Enter. Not worth a device slot on its own,
+      # because tapping the button is the better step either way — it asserts
+      # the control rather than a keystroke's side effect — `rename-dialog`, `rename-input`, `rename-save` and
+      # `rename-cancel` all still in the tree — and the title assertion below
+      # passed anyway, because it matched the text in the dialog's own FIELD
+      # rather than a row in the list. The next step then failed looking for a
+      # row menu that was behind a modal.
+      #
+      # Tapping `rename-save` is also what this flow is for: it is one of the
+      # handles `15` could only assert was present.
+      - tapOn:
+          id: "rename-save"
+      - extendedWaitUntil:
+          notVisible:
+            id: "rename-dialog"
+          timeout: 20000
       - extendedWaitUntil:
           visible: "QA options target.*"
           timeout: 20000
@@ -132,15 +166,30 @@ tags:
       # A new conversation searches everything, and the sentence says so.
       - assertVisible: "All apps. Choose some to narrow this chat."
       - assertVisible:
-          id: "scope-all"
-      - assertVisible:
           id: "scope-cancel"
+      # ── `scope-all` DOES NOT EXIST YET, AND THAT IS CORRECT ──────────
+      # Measured on the device 2026-09-20: this step asserted `scope-all`
+      # from the DEFAULT state and could never have passed.
+      # `SessionOptionsDialogs.tsx:244` renders it only when
+      # `selected.length > 0` — it is the "search everything again" escape,
+      # and with nothing narrowed there is nothing to escape from. A control
+      # that would be a no-op is absent rather than inert, which is the same
+      # rule as the mic and the read-aloud button.
+      - assertNotVisible:
+          id: "scope-all"
       - takeScreenshot: reports/96-scope-all-by-default
 
       # ── CANCEL FIRST, same direction ─────────────────────────────────
       - tapOn:
           id: "scope-notes"
       - assertVisible: "Only 1 of 7 apps."
+      # AND NOW THE ESCAPE EXISTS. This is the stronger assertion the
+      # original was reaching for: not that the control is there, but that it
+      # appears exactly when it becomes meaningful — one tap ago there was
+      # nothing to search-all back to.
+      - assertVisible:
+          id: "scope-all"
+      - takeScreenshot: reports/96b-scope-all-appears-when-narrowed
       - tapOn:
           id: "scope-cancel"
       - tapOn: "Options for QA options target"

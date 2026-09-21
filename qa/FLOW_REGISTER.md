@@ -35,6 +35,56 @@ not 1 — a blocked preflight has found nothing, not a bug.
 | `19-session-options.yaml` | **PASS — 2026-09-20, dev build, tree at `df1a2f9`. Five runs, and four of the failures were real findings rather than flakes.** Exercises the two dialogs behind the row menu that `15` could only assert were present: **Instructions** typed, saved, reopened and still there, then changed, cancelled, reopened and the change gone; **Scope** narrowed, saved, reopened and still narrowed, and cancelled in the same harder direction. Both cancels proved by REOPENING, because a cancel that merely closes the dialog passes a weaker test that reads the same | **Three corrections the device forced, all recorded in the flow.** (1) `scope-all` was asserted from the DEFAULT state and could never have passed — `SessionOptionsDialogs.tsx:244` renders it only when `selected.length > 0`, because it is the *search everything again* escape and with nothing narrowed there is nothing to escape from. It now asserts it is **absent** first and **appears** once Notes is picked, which is the stronger claim. (2) The rename was saved with `pressKey: Enter`, citing `15`. **In this flow it did not save** — after Enter the dialog was still open, and the title assertion passed anyway by matching the text in the dialog's own FIELD rather than a row, so the next step hunted a row menu behind a modal. **But `15` renames twice with Enter and passes end to end, which it could not do if the dialog stayed open there.** So Enter saves in one flow and not in the other and I cannot say why — a timing difference, or a focus one. Recorded as unexplained rather than resolved; what is certain is that the assertion could not tell the two apart, which is the part worth fixing. It taps `rename-save` now, which is also a handle `15` could only assert existed. (3) Every failed run left a `QA options target` behind; nine had accumulated before I noticed, which is `04`'s hazard arriving through a flow that cleans up correctly and simply never reached its cleanup |
 | `20-refresh.yaml` | **PASS — 2026-09-20, dev build. THIN, and the thinness is the whole verdict.** `calendar-refresh` and `notifications-refresh` are present, tap, and — the actual assertion — the **list stays on screen while the refresh is in flight**. That is the design rule: the refresh state lives in the control, never a full-screen spinner, and no unit test here can see it because Jest has neither layout nor timing | **Both screens took their EMPTY branch**, as the flow's author predicted: the QA account has no notifications and no events today, so `calendar-nothing-today` fired and its screenshot is filed **NOT MEASURED**. What passed is that the control exists, responds, and does not replace the list. What did not run is the same refresh over a list with rows in it, which is the case the rule is actually about |
 
+## SWEEP ATTEMPTED 2026-09-21 — NOT MEASURED, 0 of 24 executed
+
+His instruction was to re-run everything against the current tree, because the
+app has moved a long way since Saturday and a verdict against code that has
+changed underneath it is what `docs/TESTING.md` exists to warn about. **Every
+dated verdict below therefore still predates** the two-step code screen,
+trust-this-phone, the account menu behind the photo, settings leaving the
+conversations sheet, dictation in the people composer, four scroll and keyboard
+fixes, the signup fix and the avatar-host fix. They are stale rather than
+wrong, and nothing in this attempt made them less stale.
+
+**The rig could not reach the app, and the fault is the rig's.** `qa_phone2`
+wedges on an `Application Not Responding: com.android.systemui` within minutes
+of booting, every time. Four boots: windowed at `-memory 2048` and headless at
+`-memory 3072`; host load average 9.5 on the first and 4.6 on the last; free
+RAM 2.4 GB at worst and 15 GB at best; `pswpin` flat throughout. It ANR'd in
+all four. Preflight itself passed twice — the display, the API alias, the adb
+reverse, the backend and Expo Go's version were all `ok` — and the device then
+wedged before a flow could assert anything.
+
+Ruled out along the way, so the next session does not re-spend it:
+
+- **Host CPU.** It ANR'd at load 4.6 as readily as at 9.5.
+- **Host RAM.** 14.5 GB available at the last attempt, swap-in zero.
+- **Orphaned Metro instances.** Two only: his phone's on 8081 from
+  `mm-sdk57`, and this sweep's on 3029. Neither was touched.
+- **GPU/window cost.** `-no-window` made no difference.
+- **Disk**, probably. 97 % full with 17 G free is a standing risk and worth
+  saying out loud, but 17 G is enough for a 3.6 G image to write into.
+
+**What the rig did tell us**, and both are instrument findings rather than app
+findings:
+
+1. `qa/preflight.sh:82` probes Metro with `curl --max-time 3`. During an AVD
+   boot Metro's first `/status` took **3.32 s** and preflight reported "Metro
+   not answering" about a Metro that was answering. It passes once settled, so
+   the check is not wrong, it is too tight to be trusted while anything else is
+   starting.
+2. Running a flow by hand needs the deep link that `run.sh:36` issues **with
+   the package named** before maestro starts. Maestro's own `openLink` does not
+   name a package, so on a cold Expo Go it lands on Expo Go's HomeActivity and
+   every flow then fails asserting our sign-in screen — a failure that reads
+   exactly like the app being broken.
+
+**What would unblock it:** the AVD looks damaged rather than busy. A
+`-wipe-data` would be the obvious next move and is deliberately NOT taken here:
+it destroys the installed Expo Go and the rig's state, which is shared, and
+that is somebody's decision rather than a session's. Ask before wiping.
+
+
 ## Run 5 — where the harness actually stands
 
 **The product is proven; the harness for `01-ask` is not green.** Those are

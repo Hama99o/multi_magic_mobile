@@ -339,7 +339,13 @@ const SCREENS: {
   { name: "ai-keys", element: () => <AiKeys />, handles: ["ai-keys-list", "ai-key-gemini", "ai-key-active-gemini", "ai-key-replace-gemini", "ai-key-remove-gemini"], french: "Votre clé IA" },
   { name: "account", element: () => <AccountScreen />, handles: ["account-privacy", "account-delete"], french: "Confidentialité" },
   { name: "delete-account", element: () => <DeleteAccount />, handles: ["delete-what-goes", "delete-password", "delete-account-confirm"], french: "Ce qui est supprimé" },
-  { name: "privacy", element: () => <Privacy />, handles: ["privacy-title", "privacy-body", "privacy-draft-banner"], french: "Brouillon — pas encore approuvé" },
+  // `privacy-draft-banner` and its French sentence left this row on 2026-09-21.
+  // Hamma9900 approved the text, DRAFT left the title line of
+  // `docs/PRIVACY.draft.md`, and `app/privacy.tsx:63` renders the banner only
+  // while `PRIVACY_IS_DRAFT`. The policy body is English in both languages --
+  // it is one document, not a translated one -- so the screen's only French is
+  // its title, and that is what this row now reads.
+  { name: "privacy", element: () => <Privacy />, handles: ["privacy-title", "privacy-body"], french: "Confidentialité" },
   { name: "sign-in", element: () => <SignIn />, handles: ["sign-in-email", "sign-in-password", "sign-in-submit", "sign-in-forgot", "sign-in-create-account"], french: "Se connecter avec un e-mail" },
   { name: "sign-up", element: () => <SignUp />, handles: ["sign-up-firstname", "sign-up-lastname", "sign-up-email", "sign-up-password", "sign-up-submit", "sign-up-to-sign-in"], french: "Créer le compte" },
   { name: "forgot-password", element: () => <ForgotPassword />, handles: ["forgot-password-email", "forgot-password-submit"] /* -back and -sent belong to the sent state, not this one */, french: "Envoyer le lien" },

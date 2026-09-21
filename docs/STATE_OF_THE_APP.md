@@ -61,8 +61,20 @@ frame. Every layout claim comes from a screenshot somebody looked at.
   `sdk-57` says `com.multimagics.mobile`. It is permanent from the first Play
   upload, and the docs already name `sdk-57` as the branch a build comes from.
 - **The signing key**, which only your account can create.
-- **The backend deploy.** Nine commits sit unpushed, including account
-  deletion, which both stores require.
+- **The backend deploy — and this is the one that blocks a store.** Account
+  deletion is written AND pushed (`56559c4`, 19 September, on `origin/master`),
+  but pushing is not deploying: until the deploy runs, the live API still
+  cannot pass a store review however finished the phone is. Separately and much
+  smaller, three commits are unpushed on `master` — the signup fix, a RuboCop
+  rename, and trust-this-phone. `docs/DEPLOY_READINESS.md` in the backend has
+  the ordered list; its first step is `bin/kamal/migrate db:migrate:status`,
+  which only reads `schema_migrations` and changes nothing.
+
+  *(This bullet said "nine commits sit unpushed, including account deletion".
+  Both halves were wrong: the count came from a deploy document describing
+  SEVEN commits as of 20 September, which have since been pushed, and account
+  deletion was never among them. Corrected 2026-09-22 after measuring
+  `git log origin/master..master` and `git branch -r --contains 56559c4`.)*
 - **One tap on the mic**, which closes the last open question above.
 
 ## Is it ready?

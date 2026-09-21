@@ -9,7 +9,32 @@
 # AVD means one app installs over the other and neither can tell whose state it
 # is looking at. His instruction: "karwan and mm should not disturb each other,
 # both should launch its own."
-AVD="${AVD:-qa_phone2}"
+# ── WHY THIS IS qa_phone4 AND NOT qa_phone2 — 2026-09-21 ────────────────────
+# `qa_phone2` wedges on `Application Not Responding: com.android.systemui`
+# within minutes of booting, every time. Four boots that evening: windowed at
+# `-memory 2048` and headless at `-memory 3072`, host load average 9.5 on the
+# first and 4.6 on the last, free RAM 2.4 GB at worst and 15 GB at best,
+# `pswpin` flat throughout. It ANR'd in all four, and preflight PASSED twice in
+# between — so the device was reachable and then stopped being, before any flow
+# could assert anything. A whole sweep went 0 PASS, 0 FAIL, 24 NOT MEASURED.
+#
+# Ruled out first, and recorded so nobody re-spends it: host CPU, host RAM,
+# orphaned Metro instances (there were two, both accounted for) and GPU cost
+# (`-no-window` changed nothing). Disk was 97 % full with 17 G free, which is a
+# standing risk and probably not this.
+#
+# **His decision was a different device rather than a wipe**, so `qa_phone2`
+# keeps its state and stays available to whoever wants to diagnose it.
+# `qa_phone4` is 2.1 GB, idle since 2 September, and its quick-boot snapshot
+# was cleared. `qa_phone3` exists at 32 MB and is the fallback — a fuller image
+# is likelier to have a working system partition than one that has never
+# started.
+#
+# IF qa_phone4 WEDGES THE SAME WAY, do not reach for a third. Two devices
+# failing identically means the fault is shared — the system image, the
+# emulator binary, KVM, or this host — and that is a different investigation
+# from one damaged AVD.
+AVD="${AVD:-qa_phone4}"
 AVD_TABLET="${AVD_TABLET:-qa_tablet2}"
 EMULATOR_PORT="${EMULATOR_PORT:-5556}"
 SERIAL="${SERIAL:-emulator-$EMULATOR_PORT}"

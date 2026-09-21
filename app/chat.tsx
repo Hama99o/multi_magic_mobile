@@ -34,6 +34,7 @@ import { ThinkingDots } from "@/components/chat/ThinkingDots";
 import { Composer } from "@/components/chat/Composer";
 import { EmptyState } from "@/components/chat/EmptyState";
 import { ScrollToBottom, useAwayFromBottom } from "@/components/chat/ScrollToBottom";
+import { Arriving } from "@/components/chat/Arriving";
 import { SourceSheet, useOpenSource } from "@/components/chat/SourceSheet";
 import { FilePreview } from "@/components/chat/FilePreview";
 import type { AnswerLink } from "@/components/chat/AnswerMarkdown";
@@ -470,7 +471,11 @@ export default function Chat() {
           ref={listRef}
           data={messages}
           keyExtractor={(m) => String(m.id)}
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
+            // Only the newest row fades — see `Arriving`. A FlatList mounts
+            // rows as they scroll into view, so animating every mount would
+            // flicker the history under a finger.
+            <Arriving arriving={index === messages.length - 1}>
             <MessageRow
               message={item}
               onOpenSource={openLink}
@@ -484,6 +489,7 @@ export default function Chat() {
                 mergeMessage(updated)
               }
             />
+            </Arriving>
           )}
           onScroll={onScroll}
           scrollEventThrottle={64}

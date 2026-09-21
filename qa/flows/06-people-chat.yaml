@@ -116,8 +116,16 @@ tags:
       # lint: dbid-ok — same handle, same reason: the side is the assertion.
       - longPressOn:
           id: "msg-mine-.*"
-      - assertVisible:
-          id: "reaction-sheet"
+      # WAIT, DO NOT ASSERT INSTANTLY. `ReactionSheet` is a `Modal` with
+      # `animationType="fade"`, so an assertion fired the instant the long
+      # press returns can land mid-fade and fail on a sheet that is opening.
+      # Measured 2026-09-21: this step failed here and the sheet was fine —
+      # the third flow tonight to fail on a sheet's animation rather than on
+      # the app. `signed-out.yaml` had the same fault against the account menu.
+      - extendedWaitUntil:
+          visible:
+            id: "reaction-sheet"
+          timeout: 10000
       - takeScreenshot: reports/09-reaction-sheet
       - tapOn:
           id: "reaction-thumbs-up"

@@ -221,11 +221,16 @@ Checked by the verifier session against `main` at `971f951`.
   `multi_magic@56559c4` adds `DELETE /api/v1/users/me` with `destroy`, and
   `ACCOUNT_DELETION_AVAILABLE` is `true` since `f761470`
   (`src/api/account.ts:41`). The entry point exists: `sessions-account` in
-  `src/components/sessions/SessionsSheet.tsx:263`, under its own "Account"
-  heading below a divider, as §3.1 asked. Only his approval of the privacy text
-  is still open — `PRIVACY_IS_DRAFT` is `true` and the banner renders. The board
-  in `docs/design/README.md` still says `BLOCKED` on row 14 for the same stale
-  reason.
+  the account menu behind the photo in the title bar
+  (`src/components/settings/ProfileSheet.tsx`) — **moved there on 2026-09-21**;
+  it used to be a block at the bottom of `SessionsSheet`, which put the controls
+  for the whole account inside the sheet whose subject is conversations.
+
+  **His approval of the privacy text is no longer open.** `PRIVACY_IS_DRAFT` is
+  `false` as of `362279c`, 2026-09-21 14:40 — "the text is approved, so the
+  draft banner comes off the screen" — and `17-privacy` confirmed on a device
+  that no banner renders. This paragraph said the opposite until that was
+  checked, which is the third stale claim found in these documents tonight.
 - **§5 holds**, with one identifier changed today: the confirm button is
   `delete-account-confirm`, not `delete-confirm`. The sessions dialog used the
   same handle for its container, and the two deletes this SPEC exists to keep

@@ -48,7 +48,7 @@ each:**
 
 | | Karwan | **multimagic-mobile** |
 |---|---|---|
-| phone AVD | `qa_phone` | **`qa_phone2`** |
+| phone AVD | `qa_phone` | **`qa_phone4`** (was `qa_phone2` — see below) |
 | tablet AVD | `qa_tablet` | `qa_phone3`, resized — only when a wide reading is needed |
 | Metro port | 3028 | **3029** |
 | API port | 3017 (karwan-api) | **3001** (multi_magic) |
@@ -58,12 +58,94 @@ each:**
 **The AVD line is the one that has already gone wrong once.** On 18 September
 this session booted **`qa_phone`** — Karwan's — and then reported it as
 *"Karwan's tablet"*. Two sessions on one AVD means one installs over the other,
-and neither can tell whose state it is looking at. **`qa_phone2` exists on this
+and neither can tell whose state it is looking at. **An AVD of our own exists on this
 box already; use it.**
+
+### The phone AVD moved to `qa_phone4` — 2026-09-21
+
+`qa_phone2` wedges on `Application Not Responding: com.android.systemui` within
+minutes of booting, every time. Four boots in one evening: windowed at
+`-memory 2048` and headless at `-memory 3072`, host load average 9.5 on the
+first and 4.6 on the last, free RAM 2.4 GB at worst and 15 GB at best, `pswpin`
+flat throughout. It ANR'd in all four, and preflight PASSED twice in between —
+reachable, then not, before a flow could assert anything. A full sweep went
+**0 PASS, 0 FAIL, 24 NOT MEASURED**.
+
+Host CPU, host RAM, orphaned Metro instances and GPU cost were ruled out first
+(`-no-window` changed nothing; it ANR'd at load 4.6 as readily as at 9.5).
+
+**He chose a different device rather than a wipe**, so `qa_phone2` keeps its
+state and stays available to anybody who wants to diagnose it. It is NOT ours
+any more and should not be booted as though it were. `qa_phone3` (32 MB, never
+started) is the fallback if `qa_phone4` fails the same way — but see the next
+paragraph before reaching for it.
+
+**`qa_phone4` wedged identically, so the fault is shared.** Booted clean, Expo
+Go 54.0.8 installed from `~/.expo/android-apk-cache/`, **preflight PASSED** —
+and SystemUI ANR'd within minutes of the first flow, exactly as `qa_phone2`
+does. A third AVD was NOT tried, because two failing the same way answers a
+different question than a third would.
+
+**What they share**, and it is the whole finding:
+
+| | |
+|---|---|
+| system image | `system-images/android-35/google_apis/x86_64/` — **identical on both** |
+| and on | `qa_phone` (Karwan's) and `qa_edu_phone` too |
+| emulator | 36.6.11.0 (build 15507667) |
+| KVM | present, `/dev/kvm` readable, 32 CPU virt flags |
+
+Ruled out by measurement rather than by argument: host CPU (ANR at load 4.6 as
+readily as at 9.5), host RAM (14.5 GB available at the last attempt, `pswpin`
+zero), GPU window cost (`-no-window` identical), and the memory setting (2048
+and 3072 identical).
+
+### It was the GPU flag, and the trace said so — 2026-09-21
+
+I wrote above that the system image was "the one variable nobody has moved".
+**That was wrong, and the hole was pointed out before any disk was spent on
+it:** `qa_phone` ran on 19 September and `qa_edu_phone` through early September
+on the same byte-identical image without this. Same image, no ANR — so the
+image could not be the discriminator. No new AVD was built.
+
+What settled it was reading the ANR instead of reasoning about it. Both traces
+in `/data/anr/` are identical:
+
+```
+Subject: …836:com.android.systemui… failed to complete startup
+outgoing transaction … from 836:836 to 451:472 … elapsed 14114ms
+  at SurfaceControl.getGPUContextPriority(SurfaceControl.java:2655)
+  at com.android.systemui.SystemUIApplication.onCreate
+```
+
+pid 451 is **surfaceflinger**. SystemUI blocks in `onCreate` on a synchronous
+binder call into the graphics stack and never returns. It is a **startup**
+stall, before any flow runs — which is what rules out `wm size`/`wm density`
+(`QA_HANDBOOK.md:97`), the best candidate anyone had: no flow in any run
+touched geometry, and preflight confirmed no inherited override.
+
+**`qa/qa.sh` hardcoded `-gpu swiftshader_indirect`.** Karwan's rig is the
+control and had the answer written down the whole time
+(`Karwan/karwan-mobile/qa/lib/emulator.sh:62-63`): default to swiftshader, use
+`host` when `/dev/dri/renderD128` exists. It exists on this box. That one line
+is the entire difference between their `qa_phone` running and our devices
+wedging, on the same image, on the same host.
+
+Ours now detects the same way. Verified: `qa_phone4` with `-gpu host` reaches
+the launcher, preflight PASSES, and `login.yaml` signs in — no new ANR trace.
+
+**So neither AVD was ever damaged.** `qa_phone2` is fine and can come back into
+service; it was being booted with software rendering on a box that has a GPU.
 
 **Name the AVD in every report.** `pgrep -af qemu-system` prints `-avd <name>`,
 and it settles in one line whose device is up. *"An emulator is running"* is not
 an observation.
+
+**Each session takes its own emulator — 2026-09-21, his instruction**, rather
+than queuing on a shared one. That relaxes "one at a time"; it does NOT relax
+the ceiling, which is his own measurement rather than a guess: **two on this box
+is safe, three is fatal.** A third is not available for any reason, however
+good, and the answer to "I only need it for a minute" is still no.
 
 **And the memory envelope is still one device each, two at most, never three** —
 his own measurement, and this box hard-rebooted from exhaustion on 15 September.

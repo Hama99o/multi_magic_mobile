@@ -43,6 +43,24 @@ appId: ${APP_ID}
     commands:
       - tapOn: "Continue"
 
+# AND THE DEV CLIENT'S MENU, which is a different menu with different words.
+#
+# The guard above is Expo Go's. A development build shows its own overlay —
+# "Element inspector", "Fast Refresh", "Go home", "Connected to: <url>" — and
+# nothing in it says "This is the developer menu", so that guard never fires.
+# Measured 2026-09-21: every dev-build run of this flow failed asserting
+# `sign-in-email` while the app was loaded and running underneath the overlay,
+# which reads exactly like the app failing to start.
+#
+# Back dismisses it. Safe here for the same reason the Back below is safe: it
+# only runs when the overlay is provably up, and the guards after it re-check
+# the real state either way.
+- runFlow:
+    when:
+      visible: "Element inspector"
+    commands:
+      - pressKey: Back
+
 # Signed in but on another screen: ONE Back, and only one.
 #
 # Two wrong answers were tried and both are worth recording, because each

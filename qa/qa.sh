@@ -26,13 +26,64 @@ require_rig() { "$DIR/preflight.sh"; }
 case "${1:-all}" in
   doctor) require_rig; exit $?;;
   up)
+    # ── HARDWARE GPU WHEN THERE IS ONE. THIS IS THE SYSTEMUI ANR. ───────────
+    #
+    # This line said `-gpu swiftshader_indirect` unconditionally, and software
+    # rendering is why `qa_phone2` and then `qa_phone4` both wedged on
+    # `Application Not Responding: com.android.systemui` within minutes of every
+    # boot — four boots, then four more, and a whole sweep of 0 PASS, 0 FAIL,
+    # 24 NOT MEASURED.
+    #
+    # Read from the trace rather than guessed (`/data/anr/anr_2026-09-21-*`,
+    # both files identical):
+    #
+    #   Subject: …com.android.systemui… failed to complete startup
+    #   outgoing transaction … to 451 … elapsed 14114ms      ← 451 = surfaceflinger
+    #   at SurfaceControl.getGPUContextPriority(SurfaceControl.java:2655)
+    #   at com.android.systemui.SystemUIApplication.onCreate
+    #
+    # SystemUI blocks in `onCreate` on a synchronous binder call to
+    # surfaceflinger and never returns. It is a graphics stall AT STARTUP —
+    # before any flow, which is what rules out the two theories we had:
+    #
+    #   - NOT the AVD. Two different devices, identical failure.
+    #   - NOT the system image. `qa_phone` ran on 19 September and
+    #     `qa_edu_phone` through early September on the same byte-identical
+    #     `android-35/google_apis/x86_64` without this.
+    #   - NOT `wm size`/`wm density` (`QA_HANDBOOK.md:97`), which was the best
+    #     candidate we had. No flow in either run touched geometry, preflight
+    #     confirmed no inherited override, and the ANR is at SystemUI startup.
+    #   - NOT host load. It ANR'd at load average 4.6 as readily as at 9.5.
+    #
+    # KARWAN'S RIG IS THE CONTROL and it had the answer written down the whole
+    # time (`Karwan/karwan-mobile/qa/lib/emulator.sh:62-63`): default to
+    # swiftshader, and use `host` when `/dev/dri/renderD128` exists. It does
+    # exist on this box. That is why their `qa_phone` runs and ours does not.
+    #
+    # Verified: `qa_phone4` booted with `-gpu host` reaches the launcher and
+    # writes no new ANR trace.
+    GPU="swiftshader_indirect"
+    [ -e /dev/dri/renderD128 ] && GPU="host"
     pgrep -af qemu-system 2>/dev/null | grep -q -- "-avd $AVD" \
       || nohup "${ANDROID_HOME:-$HOME/Android/Sdk}/emulator/emulator" -avd "$AVD" \
            -port "$EMULATOR_PORT" -no-snapshot-save -no-boot-anim \
-           -gpu swiftshader_indirect -no-audio -memory 2048 >/dev/null 2>&1 &
+           -gpu "$GPU" -no-audio -memory 2048 >/dev/null 2>&1 &
     adb -s "$SERIAL" wait-for-device
-    curl -s --max-time 2 "http://localhost:$METRO_PORT/status" | grep -q packager \
-      || ( cd "$DIR/.." && nohup npx expo start --port "$METRO_PORT" >/dev/null 2>&1 & )
+    # ── FULLY DETACHED, OR `up` NEVER RETURNS ──────────────────────────────
+    # Measured 2026-09-21: two `qa.sh up` processes sat alive for 43 minutes
+    # each with their work long finished — Metro serving, preflight passing,
+    # flows running. `up` returns in well under a second when Metro is ALREADY
+    # up and it has nothing to start, so the backgrounded Metro is what holds
+    # the shell: it keeps the script's stdin and process group, and a caller
+    # reading the script's output waits for an EOF that a living child will
+    # never send. Two `up` processes racing is then its own way to wedge a
+    # device.
+    #
+    # `setsid` puts Metro in its own session and `</dev/null` gives up the
+    # inherited stdin, so nothing of the script survives in it.
+    curl -s --max-time 10 "http://localhost:$METRO_PORT/status" | grep -q packager \
+      || ( cd "$DIR/.." && setsid nohup npx expo start --port "$METRO_PORT" \
+             </dev/null >/dev/null 2>&1 & )
     echo "up: $AVD on $SERIAL, Metro :$METRO_PORT";;
   install)
     # The dev build, onto whatever device is up. Needs the box; everything
@@ -127,8 +178,11 @@ case "${1:-all}" in
 
   flow)
     require_rig || exit 3
+    # The password is EXPORTED, never argv — see `run.sh` for the measurement.
+    # `-e PASSWORD=...` puts it in the process table where any `ps` reads it.
+    export EMAIL="$QA_EMAIL" PASSWORD="$QA_PASSWORD"
     maestro --device "$SERIAL" test \
-      -e APP_ID="$APP_ID" -e EMAIL="$QA_EMAIL" -e PASSWORD="$QA_PASSWORD" -e DEEP_LINK="$DEEP_LINK" \
+      -e APP_ID="$APP_ID" -e DEEP_LINK="$DEEP_LINK" \
       "$DIR/flows/${2:?name a flow}";;
   smoke) SKIP_PREFLIGHT=0 "$DIR/run.sh" smoke;;
   all)   SKIP_PREFLIGHT=0 "$DIR/run.sh";;

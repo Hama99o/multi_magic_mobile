@@ -28,6 +28,50 @@ tags:
 ---
 - runFlow: login.yaml
 
+- tapOn:
+    id: "composer-input"
+- inputText: "does the composer stay above the keyboard"
+
+# All three still visible WITH the keyboard up. If the composer had been pushed
+# under it, these are the assertions that would fail.
+- assertVisible:
+    id: "composer-input"
+- assertVisible:
+    id: "composer-send"
+- assertVisible:
+    id: "composer-attach"
+- takeScreenshot: reports/50-keyboard-up
+
+# ── THE DRAFT SURVIVES THE KEYBOARD CLOSING ────────────────────────────────
+# `hideKeyboard` on Android is a BACK press, which is only safe while an IME is
+# up to consume it. Here one provably is — the step above asserted the
+# keyboard-up state and nothing has dismissed it — and this screen is the ROOT
+# route, so if the press ever did reach the app it would background it and the
+# assertion immediately below would fail loudly rather than the flow drifting
+# on. It is also the step's whole purpose: closing the keyboard is the event
+# whose effect on the draft is being measured.
+- hideKeyboard
+- assertVisible:
+    id: "composer-input"
+    text: "does the composer stay above the keyboard"
+- takeScreenshot: reports/51-keyboard-down
+
+# The clear control appears only with a draft, and must be reachable too.
+- assertVisible:
+    id: "composer-clear"
+- tapOn:
+    id: "composer-clear"
+- assertVisible:
+    id: "composer-input"
+- takeScreenshot: reports/52-draft-cleared
+
+# ── LAST, NOT FIRST — and the reason is a measurement ─────────────────────
+# This block ran BEFORE the composer assertions and cost them. On the QA
+# account the assistant conversation is two answers and fits on one screen, so
+# there is no bottom to be away from, the button correctly never appears, and
+# the premise step failed loudly exactly as designed — taking the composer
+# half, which passes, down with it. Evidence that exists should not be
+# forfeited to prove a second thing.
 # ── AND THE CONVERSATION MUST STAY AT THE BOTTOM WHEN IT ARRIVES ──────────
 #
 # His report: *"when i go to bottom of session and i open keyboard it hide what
@@ -63,9 +107,6 @@ tags:
     timeout: 8000
 - takeScreenshot: reports/49-at-bottom-keyboard-down
 
-- tapOn:
-    id: "composer-input"
-
 # Give the button every chance to appear before denying it. Without this the
 # assertion below could pass in the gap between the keyboard opening and the
 # list re-measuring — a pass that means "not yet" rather than "not at all".
@@ -82,38 +123,3 @@ tags:
 - assertNotVisible:
     id: "scroll-to-bottom"
 - takeScreenshot: reports/49b-at-bottom-keyboard-up
-
-- inputText: "does the composer stay above the keyboard"
-
-# All three still visible WITH the keyboard up. If the composer had been pushed
-# under it, these are the assertions that would fail.
-- assertVisible:
-    id: "composer-input"
-- assertVisible:
-    id: "composer-send"
-- assertVisible:
-    id: "composer-attach"
-- takeScreenshot: reports/50-keyboard-up
-
-# ── THE DRAFT SURVIVES THE KEYBOARD CLOSING ────────────────────────────────
-# `hideKeyboard` on Android is a BACK press, which is only safe while an IME is
-# up to consume it. Here one provably is — the step above asserted the
-# keyboard-up state and nothing has dismissed it — and this screen is the ROOT
-# route, so if the press ever did reach the app it would background it and the
-# assertion immediately below would fail loudly rather than the flow drifting
-# on. It is also the step's whole purpose: closing the keyboard is the event
-# whose effect on the draft is being measured.
-- hideKeyboard
-- assertVisible:
-    id: "composer-input"
-    text: "does the composer stay above the keyboard"
-- takeScreenshot: reports/51-keyboard-down
-
-# The clear control appears only with a draft, and must be reachable too.
-- assertVisible:
-    id: "composer-clear"
-- tapOn:
-    id: "composer-clear"
-- assertVisible:
-    id: "composer-input"
-- takeScreenshot: reports/52-draft-cleared

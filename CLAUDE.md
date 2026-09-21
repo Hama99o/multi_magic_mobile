@@ -348,17 +348,42 @@ field error is a live region.
 
 **Three things its green does not mean**, all of them live rather than
 hypothetical: it does not mean a gesture can be performed (`06-people-chat`
-fails on a long press whose hint and handler are both correct — Android's
-text-selection ActionMode takes it first, and only the OS knows that); it does
+still cannot long-press — **but read the next paragraph before acting on it**);
+it does
 not mean a control is reachable (a `Pressable` is an accessibility element
 unless told otherwise, `Pressable.js:245`, and on iOS such an element groups its
 children — RNTL does not emulate that); and it measures no pixel, so touch
 targets are read from source and settled on a device.
 
+**And that long-press example has changed cause twice — 2026-09-21.** It used
+to read "Android's text-selection ActionMode takes it first", which was true
+and is not any more: `PersonMessageRow` dropped `selectable`, and Copy already
+lives in the reaction sheet (`ReactionSheet.tsx`), so nothing was lost — the
+file argues it out and `PersonMessageRow.test.tsx` fails if the prop comes
+back. **What fails now is the instrument.** Driving the long press by hand —
+`adb input swipe`, same point, 800 ms — opens `reaction-sheet` with all its
+emoji; only maestro's `longPressOn` does not land.
+
+That sentence cost two sessions and a supervisor about an hour between them,
+because each of us read a documented cause as a current one and built on it: a
+defect was reported against the app, a design decision about copy-versus-
+reactions was drafted for Hamma9900, and neither existed. **A cause written in
+this file outlives the bug unless somebody dates it.** If you fix something
+described here, change the description in the same commit.
+
 **An accessibility string is a user-facing string, and a `<Text>` child is one
 too.** The eslint rule guards `accessibilityLabel` and `accessibilityHint`
-only — three untranslated English literals sit in visible `<Text>` children in
-people-chat, one of which is a control's entire accessible name.
+only, so a bare literal in a visible `<Text>` is caught by nothing.
+
+This paragraph used to end "three untranslated English literals sit in visible
+`<Text>` children in people-chat, one of which is a control's entire accessible
+name." **Checked 2026-09-21: there are none.** A scan of every `.tsx` in
+`src/screens/people/` finds zero literal JSX text children, and the control it
+described — `msg-retry` — now carries an explicit
+`accessibilityLabel={t("thread.notSent")}` with the reasoning written beside
+it. The rule stands; the three instances are gone. Found while chasing the
+long-press sentence above, which is the second stale claim in this section on
+the same evening.
 
 ---
 

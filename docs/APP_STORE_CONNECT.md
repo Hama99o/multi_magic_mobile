@@ -170,8 +170,39 @@ so from any Expo project it needs no arguments.
 | Primary category | `PATCH /appInfos/{id}` relationship `primaryCategory` → `{"type":"appCategories","id":"PRODUCTIVITY"}` |
 | Content rights | `PATCH /apps/{id}` → `contentRightsDeclaration: "DOES_NOT_USE_THIRD_PARTY_CONTENT"` |
 | Age rating | `PATCH /ageRatingDeclarations/{appInfoId}` — see below, it has sharp edges |
+| Pricing | `POST /appPriceSchedules` — see below |
 | Screenshots | `scripts/shots.py` — reserve, chunk-PUT, commit with the file's md5 |
 | Uploading a build | `eas build -p ios --profile production`, then `eas submit` |
+
+### Pricing, and the one endpoint shaped differently
+
+`Tarification` does not appear in the pre-submission error list until the items
+above it are cleared, so it looks like a new problem when it is just the next
+one. There is no price schedule on a new app — `GET /apps/{id}/appPriceSchedule`
+returns 404, not an empty object.
+
+**`POST /appPriceSchedules` is the only call here that needs `included`.** The
+new `appPrice` is declared inline under a placeholder id that `manualPrices`
+then references:
+
+```json
+{"data": {"type": "appPriceSchedules",
+          "relationships": {
+            "app":           {"data": {"type": "apps", "id": "<appId>"}},
+            "baseTerritory": {"data": {"type": "territories", "id": "USA"}},
+            "manualPrices":  {"data": [{"type": "appPrices", "id": "${price1}"}]}}},
+ "included": [{"type": "appPrices", "id": "${price1}",
+               "relationships": {"appPricePoint": {
+                 "data": {"type": "appPricePoints", "id": "<free point>"}}}}]}
+```
+
+The free price point is the one with `customerPrice: "0.0"` from
+`GET /apps/{id}/appPricePoints?filter[territory]=USA`. Its id is a base64 blob
+and is **per app**, so it cannot be copied from another listing.
+
+MultiMagic ships **free, base territory USA**. Free needs only the free
+agreement; charging would need Paid Applications, plus tax and banking, which
+are his and are in §3.
 
 ### The age rating declaration is all-or-nothing
 

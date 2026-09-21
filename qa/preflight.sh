@@ -79,7 +79,13 @@ else
 fi
 
 # 6. Metro, on OUR port
-if curl -s --max-time 3 "http://localhost:$METRO_PORT/status" 2>/dev/null | grep -qi packager; then
+# TEN SECONDS, NOT THREE. Measured 2026-09-21: during an AVD boot Metro's first
+# `/status` took **3.32 s** and this check reported "Metro not answering" about
+# a Metro that was answering — and that answered in 2 ms a minute later. A gate
+# that reports ABSENCE when it means PATIENCE sends the next session to restart
+# something that was already running. Ten is still short enough that a Metro
+# which is genuinely down fails the check promptly.
+if curl -s --max-time 10 "http://localhost:$METRO_PORT/status" 2>/dev/null | grep -qi packager; then
   ok "Metro running on :$METRO_PORT"
 else
   bad "Metro not answering on :$METRO_PORT — npx expo start --port $METRO_PORT"

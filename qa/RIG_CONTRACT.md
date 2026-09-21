@@ -48,7 +48,7 @@ each:**
 
 | | Karwan | **multimagic-mobile** |
 |---|---|---|
-| phone AVD | `qa_phone` | **`qa_phone2`** |
+| phone AVD | `qa_phone` | **`qa_phone4`** (was `qa_phone2` — see below) |
 | tablet AVD | `qa_tablet` | `qa_phone3`, resized — only when a wide reading is needed |
 | Metro port | 3028 | **3029** |
 | API port | 3017 (karwan-api) | **3001** (multi_magic) |
@@ -58,12 +58,66 @@ each:**
 **The AVD line is the one that has already gone wrong once.** On 18 September
 this session booted **`qa_phone`** — Karwan's — and then reported it as
 *"Karwan's tablet"*. Two sessions on one AVD means one installs over the other,
-and neither can tell whose state it is looking at. **`qa_phone2` exists on this
+and neither can tell whose state it is looking at. **An AVD of our own exists on this
 box already; use it.**
+
+### The phone AVD moved to `qa_phone4` — 2026-09-21
+
+`qa_phone2` wedges on `Application Not Responding: com.android.systemui` within
+minutes of booting, every time. Four boots in one evening: windowed at
+`-memory 2048` and headless at `-memory 3072`, host load average 9.5 on the
+first and 4.6 on the last, free RAM 2.4 GB at worst and 15 GB at best, `pswpin`
+flat throughout. It ANR'd in all four, and preflight PASSED twice in between —
+reachable, then not, before a flow could assert anything. A full sweep went
+**0 PASS, 0 FAIL, 24 NOT MEASURED**.
+
+Host CPU, host RAM, orphaned Metro instances and GPU cost were ruled out first
+(`-no-window` changed nothing; it ANR'd at load 4.6 as readily as at 9.5).
+
+**He chose a different device rather than a wipe**, so `qa_phone2` keeps its
+state and stays available to anybody who wants to diagnose it. It is NOT ours
+any more and should not be booted as though it were. `qa_phone3` (32 MB, never
+started) is the fallback if `qa_phone4` fails the same way — but see the next
+paragraph before reaching for it.
+
+**`qa_phone4` wedged identically, so the fault is shared.** Booted clean, Expo
+Go 54.0.8 installed from `~/.expo/android-apk-cache/`, **preflight PASSED** —
+and SystemUI ANR'd within minutes of the first flow, exactly as `qa_phone2`
+does. A third AVD was NOT tried, because two failing the same way answers a
+different question than a third would.
+
+**What they share**, and it is the whole finding:
+
+| | |
+|---|---|
+| system image | `system-images/android-35/google_apis/x86_64/` — **identical on both** |
+| and on | `qa_phone` (Karwan's) and `qa_edu_phone` too |
+| emulator | 36.6.11.0 (build 15507667) |
+| KVM | present, `/dev/kvm` readable, 32 CPU virt flags |
+
+Ruled out by measurement rather than by argument: host CPU (ANR at load 4.6 as
+readily as at 9.5), host RAM (14.5 GB available at the last attempt, `pswpin`
+zero), GPU window cost (`-no-window` identical), and the memory setting (2048
+and 3072 identical).
+
+**The one thing not yet varied is the system image**, and an alternative is
+already installed: `android-35/google_apis_playstore/x86_64`, which
+`hatiwal_play` uses. That is the next experiment — a new AVD on the *playstore*
+image — and it is a different move from "try another AVD on the same image",
+which is what has now failed twice.
+
+Worth telling Karwan's side: their `qa_phone` runs the same image, so if their
+rig starts wedging, this is why and it is not their app.
 
 **Name the AVD in every report.** `pgrep -af qemu-system` prints `-avd <name>`,
 and it settles in one line whose device is up. *"An emulator is running"* is not
 an observation.
+
+**Each session takes its own emulator — 2026-09-21, his instruction**, rather
+than queuing on a shared one. That relaxes "one at a time"; it does NOT relax
+the ceiling, which is his own measurement rather than a guess: **two on this box
+is safe, three is fatal.** A third is not available for any reason, however
+good, and the answer to "I only need it for a minute" is still no.
 
 **And the memory envelope is still one device each, two at most, never three** —
 his own measurement, and this box hard-rebooted from exhaustion on 15 September.

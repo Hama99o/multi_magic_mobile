@@ -22,7 +22,7 @@ import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useAuthStore } from "@/stores/auth.store";
-import { LIMITS, aiApi, type ChatMessage, type MessageLink } from "@/api/ai";
+import { LIMITS, aiApi, type ChatMessage } from "@/api/ai";
 import { isRateLimited, isNetworkFailure, apiErrorMessage, retryAfterSeconds } from "@/api/http";
 import { useReachability } from "@/stores/reachability.store";
 import { useConversation } from "@/hooks/useConversation";
@@ -34,7 +34,7 @@ import { ThinkingDots } from "@/components/chat/ThinkingDots";
 import { Composer } from "@/components/chat/Composer";
 import { EmptyState } from "@/components/chat/EmptyState";
 import { ScrollToBottom, useAwayFromBottom } from "@/components/chat/ScrollToBottom";
-import { SourceSheet } from "@/components/chat/SourceSheet";
+import { SourceSheet, useOpenSource } from "@/components/chat/SourceSheet";
 import { FilePreview } from "@/components/chat/FilePreview";
 import type { AnswerLink } from "@/components/chat/AnswerMarkdown";
 import { SessionsSheet } from "@/components/sessions/SessionsSheet";
@@ -261,7 +261,7 @@ export default function Chat() {
 
   /** MultiMagic did not answer the last request. See `reachability.store`. */
   const reachable = useReachability((s) => s.reachable);
-  const [openSource, setOpenSource] = useState<MessageLink | null>(null);
+  const { openSource, openLink, closeSource } = useOpenSource();
   const [openFile, setOpenFile] = useState<AnswerLink | null>(null);
   const listRef = useRef<FlatList<ChatMessage>>(null);
   const { awayFromBottom, onScroll, setAway } = useAwayFromBottom();
@@ -431,7 +431,7 @@ export default function Chat() {
           renderItem={({ item }) => (
             <MessageRow
               message={item}
-              onOpenSource={setOpenSource}
+              onOpenSource={openLink}
               onOpenLink={setOpenFile}
               showUndo={item.id === newestUndoableId}
               onUndone={(updated) =>
@@ -576,7 +576,7 @@ export default function Chat() {
         </View>
       </View>
 
-      <SourceSheet source={openSource} onClose={() => setOpenSource(null)} />
+      <SourceSheet source={openSource} onClose={closeSource} />
 
       <FilePreview link={openFile} onClose={() => setOpenFile(null)} />
 

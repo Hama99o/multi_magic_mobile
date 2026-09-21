@@ -12,7 +12,9 @@
  * action for anyone who wants the real record, and the primary experience stays
  * in the app.
  */
+import { useCallback, useState } from "react";
 import { Linking, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
@@ -20,7 +22,43 @@ import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { API_URL } from "@/config/env";
+import { inAppRoute } from "@/lib/inAppRoute";
 import type { MessageLink } from "@/api/ai";
+
+/**
+ * What a chip does when it is pressed — the decision the sheet above used to
+ * make by existing.
+ *
+ * His: *"when there is no ai model token it should not redirect to web but
+ * mobile page."* The missing-key reply attaches `links: [ai_keys]`
+ * (`rag_chat_job.rb:91`), and both chip rows call this
+ * (`MessageRow.tsx:114-115`). Every one of them used to open the sheet, whose
+ * whole argument is that this app has no screen for the record — true for a
+ * note or a loan, false for the four in `inAppRoute`. So the AI-keys pointer
+ * walked somebody out to a browser to do something `app/ai-keys.tsx` does.
+ *
+ * A link we can open, we OPEN. The sheet stays for the rest, where a preview
+ * and "Open in MultiMagic" are the honest answer.
+ *
+ * It lives here rather than in the screen so that the choice is testable
+ * without mounting the whole conversation.
+ */
+export function useOpenSource() {
+  const [openSource, setOpenSource] = useState<MessageLink | null>(null);
+
+  const openLink = useCallback((source: MessageLink) => {
+    const screen = inAppRoute(source.key);
+    if (screen) {
+      router.push(screen);
+      return;
+    }
+    setOpenSource(source);
+  }, []);
+
+  const closeSource = useCallback(() => setOpenSource(null), []);
+
+  return { openSource, openLink, closeSource };
+}
 
 export function SourceSheet({
   source,

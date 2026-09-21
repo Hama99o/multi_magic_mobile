@@ -190,6 +190,10 @@ export const fr: Translations = {
     invalidCode: "Code invalide ou expiré.",
     submit: "Vérifier",
     backToSignIn: "Retour à la connexion",
+    verified: "Vérifié",
+    trustDeviceDesc: "Ne plus demander le code sur ce téléphone. Vous pourrez revenir en arrière depuis votre compte.",
+    trustDevice: "Faire confiance à ce téléphone",
+    notNow: "Pas maintenant",
   },
 
   profileMenu: {

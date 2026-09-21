@@ -177,6 +177,10 @@ export const en = {
     invalidCode: "Invalid or expired code.",
     submit: "Verify",
     backToSignIn: "Back to sign in",
+    verified: "Verified",
+    trustDeviceDesc: "Skip the code on this phone next time. You can undo this from your account.",
+    trustDevice: "Trust this phone",
+    notNow: "Not now",
   },
 
   /**

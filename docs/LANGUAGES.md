@@ -387,3 +387,7 @@ not been done.
 | `twoFactor.submit` | Verify | Vérifier |
 | `twoFactor.subtitle` | Enter the 6-digit code we sent to your email. | Entrez le code à 6 chiffres envoyé à votre adresse e-mail. |
 | `twoFactor.title` | Two-step verification | Vérification en deux étapes |
+| `twoFactor.notNow` | Not now | Pas maintenant |
+| `twoFactor.trustDevice` | Trust this phone | Faire confiance à ce téléphone |
+| `twoFactor.trustDeviceDesc` | Skip the code on this phone next time. You can undo this from your account. | Ne plus demander le code sur ce téléphone. Vous pourrez revenir en arrière depuis votre compte. |
+| `twoFactor.verified` | Verified | Vérifié |

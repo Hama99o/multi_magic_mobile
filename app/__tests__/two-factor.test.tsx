@@ -9,7 +9,7 @@
  * symptom: arriving with nothing pending, and a verify that returns a user but
  * no token.
  */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 const mockReplace = jest.fn();
 // No JSX and no `require` in this factory — see `sign-in.test.tsx` for the
@@ -17,6 +17,9 @@ const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({
   router: { replace: (...a: unknown[]) => mockReplace(...a) },
 }));
+
+const mockTrust = jest.fn().mockResolvedValue(true);
+jest.mock("@/api/auth", () => ({ trustThisDevice: (...a: unknown[]) => mockTrust(...a) }));
 
 /* eslint-disable import/first */
 import TwoFactor from "../two-factor";
@@ -45,13 +48,17 @@ beforeEach(() => {
 const enter = (code: string) => fireEvent.changeText(screen.getByTestId("two-factor-code"), code);
 
 describe("spending the code", () => {
-  it("verifies and lands on the assistant", async () => {
+  it("verifies, then asks whether to remember this phone", async () => {
     render(<TwoFactor />);
     enter("513674");
     fireEvent.press(screen.getByTestId("two-factor-submit"));
 
     await waitFor(() => expect(verifyTwoFactor).toHaveBeenCalledWith("513674"));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/chat"));
+    // NOT straight to the assistant: the offer to trust belongs to somebody
+    // who has just proved they hold the account, which is why it is here and
+    // not a checkbox beside the code field.
+    await waitFor(() => expect(screen.getByTestId("two-factor-verified")).toBeTruthy());
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 
   /**
@@ -163,5 +170,65 @@ describe("the way out", () => {
 
     expect(clearTwoFactor).toHaveBeenCalled();
     expect(mockReplace).toHaveBeenCalledWith("/sign-in");
+  });
+});
+
+/**
+ * TRUSTING THE PHONE — the half that used to be impossible.
+ *
+ * `trusted_devices#create` answered with a `Set-Cookie` and this client keeps
+ * no cookie jar, so the button would have posted, reported success, and
+ * changed nothing: a code again on the very next sign-in, with no explanation.
+ * The server now returns the token in the body and `X-Trusted-Device` carries
+ * it back.
+ */
+describe("after the code is accepted", () => {
+  const verify = async () => {
+    render(<TwoFactor />);
+    enter("513674");
+    fireEvent.press(screen.getByTestId("two-factor-submit"));
+    await waitFor(() => expect(screen.getByTestId("two-factor-verified")).toBeTruthy());
+  };
+
+  it("trusts the phone and goes on", async () => {
+    await verify();
+    fireEvent.press(screen.getByTestId("two-factor-trust"));
+
+    await waitFor(() => expect(mockTrust).toHaveBeenCalled());
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/chat"));
+  });
+
+  it("takes no for an answer without asking the server anything", async () => {
+    await verify();
+    fireEvent.press(screen.getByTestId("two-factor-not-now"));
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/chat"));
+    expect(mockTrust).not.toHaveBeenCalled();
+  });
+
+  /**
+   * The session is already established by the time this is offered, so a
+   * failed trust costs one emailed code next time and nothing else. Holding
+   * somebody on this screen over it would turn a convenience into a blocker.
+   */
+  it("goes on anyway when trusting fails", async () => {
+    mockTrust.mockResolvedValueOnce(false);
+    await verify();
+    fireEvent.press(screen.getByTestId("two-factor-trust"));
+
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/chat"));
+  });
+
+  /**
+   * The pre-auth token is spent by now, so the "nothing pending" guard would
+   * fire and bounce somebody off the screen that is about to offer them a
+   * choice — a guard introducing the bug it exists to prevent.
+   */
+  it("does not bounce back to sign-in once the token is spent", async () => {
+    await verify();
+    act(() => useAuthStore.setState({ pendingTwoFactor: null }));
+
+    expect(screen.getByTestId("two-factor-verified")).toBeTruthy();
+    expect(mockReplace).not.toHaveBeenCalled();
   });
 });

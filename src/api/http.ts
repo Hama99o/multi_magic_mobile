@@ -40,6 +40,18 @@ const TOKEN_KEY = "mm-auth-token";
  * address is rejected even with a perfectly good JWT.
  */
 const EMAIL_KEY = "mm-auth-email";
+/**
+ * The trusted-device token, so a 2FA account is not emailed a code on every
+ * single sign-in. `trusted_devices#create` returns it and the login path reads
+ * it back from `X-Trusted-Device`.
+ *
+ * IN THE KEYSTORE, beside the JWT, because that is what it is: a credential
+ * that skips a security step. It is bound to this install's fingerprint
+ * server-side, so it is worth nothing on another device — but it is worth
+ * exactly one skipped code on THIS one, which is the bar for the keystore
+ * rather than AsyncStorage.
+ */
+const TRUSTED_DEVICE_KEY = "mm-trusted-device";
 
 /**
  * `undefined` = not yet read from the keystore. `null` = known to be signed
@@ -76,6 +88,29 @@ export async function setToken(token: string | null): Promise<void> {
   } catch {
     // The in-memory cache still carries this launch, so a failed write costs a
     // re-login after a restart and nothing more.
+  }
+}
+
+let cachedTrustToken: string | null | undefined;
+
+export async function loadTrustToken(): Promise<string | null> {
+  if (cachedTrustToken !== undefined) return cachedTrustToken;
+  try {
+    cachedTrustToken = await SecureStore.getItemAsync(TRUSTED_DEVICE_KEY);
+  } catch {
+    cachedTrustToken = null;
+  }
+  return cachedTrustToken;
+}
+
+export async function setTrustToken(token: string | null): Promise<void> {
+  cachedTrustToken = token;
+  try {
+    if (token) await SecureStore.setItemAsync(TRUSTED_DEVICE_KEY, token);
+    else await SecureStore.deleteItemAsync(TRUSTED_DEVICE_KEY);
+  } catch {
+    // Same trade as the token above: this launch is covered by the cache, and
+    // the cost of a failed write is one more emailed code.
   }
 }
 
@@ -187,6 +222,16 @@ http.interceptors.request.use(async (config) => {
   // Bind every request to this install's fingerprint, or the server treats the
   // token as stolen.
   config.headers["X-Device-Fingerprint"] = await getDeviceFingerprint();
+
+  // ONLY ON THE LOGIN REQUEST. This is what lets a 2FA account skip the
+  // emailed code on a device it has already vouched for
+  // (`sessions_controller#trusted_device_for?`), and it is the ONE request
+  // that reads it — sending a device credential on every call would put it in
+  // far more logs and proxies than it needs to be in for no gain.
+  if (config.url?.includes("/users/login")) {
+    const trust = await loadTrustToken();
+    if (trust) config.headers["X-Trusted-Device"] = trust;
+  }
   return config;
 });
 
@@ -404,4 +449,5 @@ http.interceptors.response.use(
 export function __resetTokenCache(): void {
   cachedToken = undefined;
   cachedEmail = undefined;
+  cachedTrustToken = undefined;
 }

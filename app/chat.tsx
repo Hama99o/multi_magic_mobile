@@ -464,6 +464,18 @@ export default function Chat() {
             maxWidth: metrics.maxMeasure,
             alignSelf: "center",
             flexGrow: 1,
+            // BREATHING ROOM UNDER THE NEWEST REPLY. There was none, so the
+            // last line sat flush against the composer and read as cut off.
+            paddingBottom: metrics.space.xl,
+          }}
+          // THE KEYBOARD SHRINKS THIS LIST, AND NOTHING USED TO RE-SCROLL.
+          // `avoidKeyboard` pads the screen up, so the list's height changes
+          // while its scroll offset does not — and the newest message, which
+          // was at the bottom a moment ago, ends up below the fold behind the
+          // keyboard. His words: "it should move latest message up so it did
+          // not hide by keyboard and input where i write the text."
+          onLayout={() => {
+            if (!awayFromBottom) listRef.current?.scrollToEnd({ animated: false });
           }}
           ListEmptyComponent={
             status === "loading" ? null : status === "failed" ? (

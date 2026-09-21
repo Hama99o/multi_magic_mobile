@@ -498,7 +498,16 @@ export default function PersonThread() {
           maxWidth: metrics.maxMeasure,
           alignSelf: "center",
           flexGrow: 1,
-          paddingBottom: metrics.space.md,
+          // Was `space.md`, which left the newest message almost touching the
+          // composer. Same value as the assistant's chat so the two threads
+          // feel like one app.
+          paddingBottom: metrics.space.xl,
+        }}
+        // Same reason as the assistant's chat: the keyboard changes this
+        // list's height without changing its offset, leaving the newest
+        // message behind the keyboard.
+        onLayout={() => {
+          if (!awayFromBottom) listRef.current?.scrollToEnd({ animated: false });
         }}
         ListEmptyComponent={
           status === "loading" ? null : status === "failed" ? (

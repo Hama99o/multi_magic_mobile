@@ -1,6 +1,6 @@
 # People chat — and it is the SAME mechanism as the assistant
 
-**Status: `SPECIFIED`** — eleven references pulled and read, 2026-09-18. The
+**Status: `DONE`** — eleven references pulled and read, 2026-09-18. The
 architecture below is checked against the backend line by line, and **four
 things the earlier draft of this file asserted turned out to be wrong**; they
 are corrected in §0 rather than quietly rewritten.
@@ -382,3 +382,12 @@ not a layout preference: a named accessibility element groups its children, so a
 as one "Close" button with every row inside it unreachable — on iOS, absolutely.
 `docs/ACCESSIBILITY.md` N1, and `src/__tests__/a11y.test.tsx` fails if any
 container with a name acquires a control inside it again.
+
+
+---
+
+## Status — DONE, set 2026-09-21 from the evidence
+
+Was `SPECIFIED`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
+
+`06-people-chat` passes end to end after two real defects it found — the composer under the keyboard, and Android's text selection taking the long press so reacting was impossible on every build up to `67f698b`. **Not covered:** a message from another person rendering left, the double tick, and the unread divider all need a second signed-in account.

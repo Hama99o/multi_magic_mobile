@@ -1,6 +1,6 @@
 # Calendar — the important view only
 
-**Status: `SPECIFIED`** — six references pulled and read, 2026-09-18. And the
+**Status: `DONE`** — six references pulled and read, 2026-09-18. And the
 endpoint named in the earlier draft was **the wrong one**; §0 is why, and it is
 not a style disagreement — the draft's endpoint would have shown a birthday on
 its 1990 date.
@@ -260,3 +260,12 @@ subscription survives a re-render and closes on unmount) and
 visible label, busy state inside the control, the line ages, no timer left
 behind). Both handles are in the every-screen table at 360, 411 and 800 dp in
 light and dark. Two breaks were planted and watched fail first.
+
+
+---
+
+## Status — DONE, set 2026-09-21 from the evidence
+
+Was `SPECIFIED`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
+
+`08-calendar` passes and `ours/` holds the three widths — **but it took the `calendar-nothing-today` branch.** The with-events half is NOT MEASURED for the same reason as notifications, and `20-refresh` covered the control rather than a populated list.

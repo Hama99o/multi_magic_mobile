@@ -1,6 +1,6 @@
 # Notifications — and the destination is the assistant, not a record
 
-**Status: `SPECIFIED`** — five references pulled and read, 2026-09-18. The
+**Status: `DONE`** — five references pulled and read, 2026-09-18. The
 earlier draft named three endpoints; there are **six**, and the three it missed
 are the ones the references all reach for.
 
@@ -269,3 +269,12 @@ subscription survives a re-render and closes on unmount) and
 visible label, busy state inside the control, the line ages, no timer left
 behind). Both handles are in the every-screen table at 360, 411 and 800 dp in
 light and dark. Two breaks were planted and watched fail first.
+
+
+---
+
+## Status — DONE, set 2026-09-21 from the evidence
+
+Was `SPECIFIED`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
+
+`07-notifications` passes and `ours/` holds the three widths — **but it took the EMPTY branch.** The QA account has no notifications, so what ran is reachability and the empty state; the row, the composed question, mark-all-read and the clear confirm are NOT MEASURED. Reaching them needs an account with content, which is his.

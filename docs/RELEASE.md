@@ -55,6 +55,105 @@ Android package is still `co.byseven.multimagic`; align it with the iOS id
 the next time `android/` is regenerated (`npx expo prebuild --clean`), not
 before — the QA rig's dev build is installed under the old name.
 
+## Can a release Android build actually be produced today? — read, not run
+
+Asked 2026-09-21. **No build was run**: 15–25 minutes, about 8 GB, and the box
+is at 95 % disk on a battery that died the night before. Everything below is
+read from `app.json`, `eas.json`, `package.json` and the branch, and anything
+that cannot be read from here says so.
+
+**The only Android artefact anybody here has ever produced is the debug dev
+build the rig installs.** Neither the `preview` nor the `production` profile
+has ever run.
+
+### What is already in place
+
+- **The EAS project is linked** — `owner: hama990`,
+  `extra.eas.projectId 6aae9901-e7f6-462f-96c1-da7d5ebe3e88`.
+- **Both profiles exist and are coherent** — `preview` produces an APK,
+  `production` an AAB, both pinned to node 22.19.0, both with
+  `EXPO_PUBLIC_API_URL=https://www.multimagics.com`.
+- **Versioning is EAS-owned** — `appVersionSource: remote` with
+  `autoIncrement` on production, so `versionCode` is not this repo's problem.
+- **That production URL is HTTPS**, which answers a question left open in
+  `docs/store/LISTING.md` §7: the Play data-safety "encrypted in transit"
+  answer is **yes**.
+
+### Two decisions that are permanent, and one of them is wrong today
+
+**1. The Android package name and the iOS bundle id disagree.**
+
+    android.package        co.byseven.multimagic
+    ios.bundleIdentifier   com.multimagics.mobile
+
+`RELEASE.md` above says to align them "the next time `android/` is
+regenerated, not before", which was right while the only consumer was the
+rig's dev build. **It stops being right at the first release build**, because
+**an Android package name is permanent once Play has accepted an upload**.
+Changing it afterwards is a new listing, a new install base, and no upgrade
+path for anybody who installed the first one.
+
+So this is a decision for **before** the first production build, not after,
+and it is his: ship as `co.byseven.multimagic`, or realign to
+`com.multimagics.mobile` and prebuild clean. **Whichever he picks, the rig's
+installed dev build breaks** — which is already true of the rebuild, so the
+cheapest moment is the same moment.
+
+**2. Signing.** The repo has `android/app/debug.keystore` and nothing else. A
+debug key cannot sign a Play upload. EAS can generate and hold the release
+keystore, and that is the normal path — but **it needs his Expo account, and
+once Play has accepted a key every future update must be signed by the same
+one.** Nobody here can create that on his behalf, and nobody should.
+
+### What a release build needs that this repo does not have
+
+| Needed | State | Whose |
+|---|---|---|
+| Release keystore | does not exist; only a debug key | **his** — EAS generates on first build, under his account |
+| Expo account session | not present in this environment | **his** |
+| Package-name decision | two names disagree, permanent after publish | **his**, before the first build |
+| `edgeToEdgeEnabled` removed | still in `main`'s `app.json`; **already removed on `sdk-57`** | done on the branch |
+| `extra.apiUrl` / `extra.wsUrl` | both `{}` — a missing variable hands `[object Object]` to a URL (`STORE_READINESS` §8) | held for step 4 |
+| `RECORD_AUDIO` declared once | still twice, in two spellings, on **both** `main` and `sdk-57` (`STORE_READINESS` §5) | held for step 4 |
+
+### Build from `sdk-57`, not from `main`
+
+`main`'s `app.json` still carries `android.edgeToEdgeEnabled`, which SDK 57
+removed from the schema. The branch has already dropped it. So a release build
+attempted from `main` after the bump is building a config the schema no longer
+accepts — **the two disagree about whether the file is even valid**, and the
+branch is the correct side.
+
+### What cannot be read from here
+
+**The permissions the manifest will actually declare.** `expo-image-picker` is
+not in the `plugins` array, so on Android its camera and media-read permissions
+arrive from the library's own manifest at merge time. `STORE_READINESS` §9 says
+this and it is still true: **only a built manifest shows it.** Whoever runs the
+first build should read the merged `AndroidManifest.xml` and check that nothing
+asks for a permission the app no longer uses — particularly since
+`expo-speech-recognition` moves **3.1.3 → 57.1.0** across the bump, which is
+not a minor and may well change what it declares.
+
+**And whether `expo-dev-client` reaches a release binary.** It sits in
+`dependencies` rather than `devDependencies`. That is the conventional Expo
+arrangement and the dev launcher is normally excluded from release builds by
+its own plugin — but *normally* is not *verified*, and the first release APK is
+where to check it rather than assume it.
+
+### Cost
+
+**EAS cloud build** (the documented path): no local disk, no local CPU, roughly
+10–20 minutes including queue. This is the one to use while the box is at 95 %.
+
+**Local `gradlew assembleRelease`**: 15–25 minutes on a cold SDK 57 cache,
+about 8 GB, and it needs the keystore to exist locally. Against 24 GB free,
+that fits once. It is the wrong choice today.
+
+**Neither was run.**
+
+---
+
 ## Things that look like errors and are not
 
 - `ITSAppUsesNonExemptEncryption` is set `false` in `app.json`: the app uses

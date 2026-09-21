@@ -1,6 +1,6 @@
 # Sessions — several conversations, and a delete that says what is safe
 
-**Status: `SPECIFIED`** · `api/v1/ai/sessions` · references pulled 2026-09-18
+**Status: `DONE`** · `api/v1/ai/sessions` · references pulled 2026-09-18
 
 His words: *"we should be able to open multiple sessions and can delete, but
 deleting session did not delete data of apps like loan, contact etc."*
@@ -263,3 +263,12 @@ copied onto this ScrollView from the other lists in the app, where hiding it
 is right because those lists usually fit. Here the scroll is the point, and
 hiding the indicator left a half-clipped glyph as the only affordance saying
 there was more. The indicator is shown.
+
+
+---
+
+## Status — DONE, set 2026-09-21 from the evidence
+
+Was `SPECIFIED`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
+
+`04-delete-conversation`, `15-sessions-switch` and `19-session-options` all pass, and the sheet's list defect found in the 360 dp photographs was fixed at `138306d` and **re-photographed** — the four shots are the only proof, because no test here has a layout engine.

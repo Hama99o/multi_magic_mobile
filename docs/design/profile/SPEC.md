@@ -1,6 +1,6 @@
 # Profile — who you are, your password, and your own AI key
 
-**Status: `IN PROGRESS`** — nine references pulled and read, 2026-09-18.
+**Status: `DONE`** — nine references pulled and read, 2026-09-18.
 
 His instruction, 18 Sept: *"you should have a well user edit — you can change
 the password, you can change the information about user, you can change the
@@ -250,3 +250,12 @@ not a layout preference: a named accessibility element groups its children, so a
 as one "Close" button with every row inside it unreachable — on iOS, absolutely.
 `docs/ACCESSIBILITY.md` N1, and `src/__tests__/a11y.test.tsx` fails if any
 container with a name acquires a control inside it again.
+
+
+---
+
+## Status — DONE, set 2026-09-21 from the evidence
+
+Was `IN PROGRESS`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
+
+`13-profile` and `14-change-password` both pass. `14` holds the assertion it exists for: a wrong current password returns 422 against the field and **does not sign you out**.

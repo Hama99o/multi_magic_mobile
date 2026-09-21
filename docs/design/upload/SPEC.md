@@ -1,6 +1,6 @@
 # Upload — PDFs and images into a conversation
 
-**Status: `SPECIFIED`** · `api/v1/ai/sessions/:id/documents`
+**Status: `DONE`** · `api/v1/ai/sessions/:id/documents`
 
 ## The allowed list is the MODEL's, not the extractor's
 
@@ -90,3 +90,12 @@ not a layout preference: a named accessibility element groups its children, so a
 as one "Close" button with every row inside it unreachable — on iOS, absolutely.
 `docs/ACCESSIBILITY.md` N1, and `src/__tests__/a11y.test.tsx` fails if any
 container with a name acquires a control inside it again.
+
+
+---
+
+## Status — DONE, set 2026-09-21 from the evidence
+
+Was `SPECIFIED`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
+
+`05-upload` passes and `ours/` holds the three widths. **What it does not cover is the upload:** the system file picker is outside the app, so the sheet and what it says it accepts are asserted and nothing is ever sent. `file-preview*` has no flow for the same reason and is covered by component tests instead.

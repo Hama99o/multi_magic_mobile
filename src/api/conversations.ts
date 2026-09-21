@@ -110,14 +110,43 @@ export const REACTION_EMOJI = [
 ] as const;
 
 /**
+ * A host that only means something on the machine that said it.
+ *
+ * `DEFAULT_HOST=http://localhost:3001`, and `config/application.rb:72` feeds
+ * that to `routes.default_url_options`, so `url_for(photo)` hands every client
+ * `http://localhost:3001/rails/active_storage/...`. In a browser ON that
+ * laptop it resolves. On a phone, `localhost` is THE PHONE, so `<Image>` gets
+ * a URL to a server that is not there and draws nothing — silently, because
+ * that is what `<Image>` does with a load failure.
+ *
+ * His report is both halves of exactly that: *"when i change profile photo it
+ * did not show, it show nothing, but on web i can see its changed."*
+ *
+ * ── AND IT IS FIXED HERE RATHER THAN IN `DEFAULT_HOST` ───────────────────
+ * There is no one value that is right for everybody: the browser needs
+ * `localhost`, an emulator needs `10.0.2.2` (`qa/RIG_CONTRACT.md` §1), and his
+ * iPhone needs whatever address this laptop has on the WiFi today. Whichever
+ * of the three that variable names, it is wrong for the other two. The CLIENT
+ * is the only party that knows how it reached the server — it is holding that
+ * address — so the client is where a loopback URL gets rewritten onto it.
+ *
+ * Production is untouched: `www.multimagics.com` is a real host from anywhere.
+ */
+const LOOPBACK_ORIGIN = /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\])(?::\d+)?/i;
+
+/**
  * An avatar arrives as a URL from `get_photo_url`, but a notification's actor
  * arrives as a RELATIVE path. Both go through here so a leading slash is never
  * handed to `<Image>`, which renders nothing for one and says why for neither.
  */
 export function absoluteUrl(path: string | null): string | null {
   if (!path) return null;
+  const base = (http.defaults.baseURL ?? "").replace(/\/$/, "");
+  // A loopback address is the server talking about itself. Keep the path, take
+  // the host we actually used to get here.
+  if (LOOPBACK_ORIGIN.test(path)) return path.replace(LOOPBACK_ORIGIN, base);
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
-  return `${http.defaults.baseURL ?? ""}${path.startsWith("/") ? "" : "/"}${path}`;
+  return `${base}${path.startsWith("/") ? "" : "/"}${path}`;
 }
 
 function parseParticipant(payload: unknown): Participant {

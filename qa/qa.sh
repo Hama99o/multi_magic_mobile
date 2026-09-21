@@ -69,8 +69,21 @@ case "${1:-all}" in
            -port "$EMULATOR_PORT" -no-snapshot-save -no-boot-anim \
            -gpu "$GPU" -no-audio -memory 2048 >/dev/null 2>&1 &
     adb -s "$SERIAL" wait-for-device
-    curl -s --max-time 2 "http://localhost:$METRO_PORT/status" | grep -q packager \
-      || ( cd "$DIR/.." && nohup npx expo start --port "$METRO_PORT" >/dev/null 2>&1 & )
+    # ── FULLY DETACHED, OR `up` NEVER RETURNS ──────────────────────────────
+    # Measured 2026-09-21: two `qa.sh up` processes sat alive for 43 minutes
+    # each with their work long finished — Metro serving, preflight passing,
+    # flows running. `up` returns in well under a second when Metro is ALREADY
+    # up and it has nothing to start, so the backgrounded Metro is what holds
+    # the shell: it keeps the script's stdin and process group, and a caller
+    # reading the script's output waits for an EOF that a living child will
+    # never send. Two `up` processes racing is then its own way to wedge a
+    # device.
+    #
+    # `setsid` puts Metro in its own session and `</dev/null` gives up the
+    # inherited stdin, so nothing of the script survives in it.
+    curl -s --max-time 10 "http://localhost:$METRO_PORT/status" | grep -q packager \
+      || ( cd "$DIR/.." && setsid nohup npx expo start --port "$METRO_PORT" \
+             </dev/null >/dev/null 2>&1 & )
     echo "up: $AVD on $SERIAL, Metro :$METRO_PORT";;
   install)
     # The dev build, onto whatever device is up. Needs the box; everything
@@ -165,8 +178,11 @@ case "${1:-all}" in
 
   flow)
     require_rig || exit 3
+    # The password is EXPORTED, never argv — see `run.sh` for the measurement.
+    # `-e PASSWORD=...` puts it in the process table where any `ps` reads it.
+    export EMAIL="$QA_EMAIL" PASSWORD="$QA_PASSWORD"
     maestro --device "$SERIAL" test \
-      -e APP_ID="$APP_ID" -e EMAIL="$QA_EMAIL" -e PASSWORD="$QA_PASSWORD" -e DEEP_LINK="$DEEP_LINK" \
+      -e APP_ID="$APP_ID" -e DEEP_LINK="$DEEP_LINK" \
       "$DIR/flows/${2:?name a flow}";;
   smoke) SKIP_PREFLIGHT=0 "$DIR/run.sh" smoke;;
   all)   SKIP_PREFLIGHT=0 "$DIR/run.sh";;

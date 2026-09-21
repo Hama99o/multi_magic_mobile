@@ -612,6 +612,30 @@ the column moved to **that conversation's id** — not merely changed, which is
 the weaker claim. QA account only (`users.id = 494`), one `select`, no write
 of any kind, `multi_magic_development` untouched.
 
+### Re-proved 2026-09-21, after an overnight restart, on a different conversation
+
+The box lost power overnight and the emulator was rebooted from cold. The
+column still held **263** from the previous proof — so the write is durable
+server-side and not a session artefact. Switching to a *different*
+conversation moved it again:
+
+| | `users.data->>'ai_session_id'` | conversation |
+|---|---|---|
+| before | `263` | *Do I owe anyone money?* |
+| after | `264` | *When did I last speak to Ahmad?* |
+
+**An independent proof rather than a repeat**, because the target differs from
+yesterday's. The device fingerprint is bound to every token and never cleared
+on sign-out, so a cold restart was a reasonable thing to suspect; it had no
+opinion.
+
+**Two System UI ANRs had to be dismissed first.** The app was loaded and
+foregrounded — Metro had served the bundle and i18next had logged — with the
+dialog on top, and `login.yaml` failed on *"sign-in-email is not visible"*,
+which reads exactly like the app being broken. That is the standing pattern on
+this AVD after a cold boot, and it is why `screens.sh` dismisses and **counts**
+them rather than only dismissing.
+
 `qa/verify_activate.sh` was written for this and **is interactive** — it stops
 at `read -r -p "Press Enter once you have switched…"`, so it cannot run
 unattended. It also died silently under `set -euo pipefail` because

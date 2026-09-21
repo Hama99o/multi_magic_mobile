@@ -1117,3 +1117,63 @@ carries a dated verdict, none red, and the one outstanding device task is a
 re-proof of something already proved. The code half is larger. Both sessions
 reached that description independently, which is worth noting and is *also* not
 evidence of anything.
+
+---
+
+## 16 · Empty output defends itself. Plausible output does not.
+
+§10 asks which **direction** a gate's error runs. This asks something else:
+**how convincing the wrong answer looks**, and therefore whether anybody goes
+and checks.
+
+**The rule.** A check that returns *nothing* announces itself — nobody reads a
+blank result as an answer. A check that returns *something plausible* ends the
+investigation, because a number that could be right looks exactly like a number
+that is right. **The dangerous failure is not the silent one; it is the
+articulate one.**
+
+### Four instances from one week, all of them real
+
+**The picture count, twice, in the same direction.** `screens.sh` reported
+`9 of 9` for a run that shot **nothing** — it was counting files in `ours/`
+from the previous day. Later it reported `10 of 9` for a complete run, because
+it had started counting the run directory and caught `login.yaml`'s own
+screenshot. Both numbers came from the wrong set. **The `10 of 9` was fixed
+within a minute and the `9 of 9` survived a full run and was committed**,
+because nine of nine is what a correct run looks like.
+
+**The geometry check.** Its first version read the root node of a
+`uiautomator dump` and reported `window reports nothing px` — investigated
+immediately, because "nothing" is obviously not an answer. Its *underlying*
+bug was worse and went unexamined for longer: the dump describes the
+**foreground window**, so with an ANR dialog on screen it returned a real,
+correct number about a window that was not the app's.
+
+**The `ICON` detector**, built to find handles that resolve to two nodes. Its
+first version found **one of three** — a flat `\{[^}]*\}` stopped at the `}`
+inside `${session.id}` — and printed a clean, non-empty list. *A zero would
+have made me look. A one made me believe it.*
+
+**A guard test on the web client.** `stored || aiConv.id` and
+`Number.isFinite(stored) && stored > 0` agree on every input **except a
+negative**, because `Number('not-a-number')` is `NaN` and `NaN` is falsy. The
+test fed it a non-numeric value — the class where the two forms agree — so it
+passed against both and could not have separated them.
+
+### What to do about it
+
+**When a check reports a count, work out what the count should be before
+reading what it is.** For the `ICON` case the answer was knowable from the
+source in about ten seconds, and asking first would have turned a believable
+`1` into an obvious `1 of 3`.
+
+**And when a check reports a value rather than a count, ask which inputs would
+make two candidate implementations disagree, then use one of those.** A test
+distinguishes two implementations only if its input is drawn from the class
+where they differ; finding that class *is* the work, and it is the part
+"plant the break" does not tell you how to do.
+
+*The count instance was found while building the picture pass; the general
+form is `8a`'s, from reading it back. Neither of us had written it down, which
+is why it is here — §15 is about exactly how little a session's memory of a
+thing is worth.*

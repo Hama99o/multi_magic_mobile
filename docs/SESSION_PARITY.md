@@ -37,7 +37,7 @@ than a line**: the web confirms a save; mobile is silent.
 | clear | `sessions#clear` | `.clear` | `.clear` | **has it** |
 | destroy | `sessions#destroy` | `.remove` | `.destroy` | **has it** |
 | documents (nested) | `documents#…` | — | `documentsApi` | **has it** |
-| **activate** | `sessions#activate` → `Ai::Sessions.remember` | `AiChat.tsx:119` | **nothing** | **never got it** |
+| **activate** | `sessions#activate` → `Ai::Sessions.remember` | `AiChat.tsx:119` | `sessionsApi.activate` (`ai.ts:430`), called from `chooseSession` (`chat.tsx:180`) | **has it** — since `3088fd2`, 2026-09-20 15:45 |
 
 ---
 

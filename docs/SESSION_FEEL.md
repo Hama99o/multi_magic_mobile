@@ -13,25 +13,46 @@ recommendation can be overruled in a second and a diff cannot be acted on.
 
 ---
 
-## 1 · Which conversation opens when you open the app
+## 1 · Which conversation opens when you open the app — THIS WORKS
 
-**What happens.** The one you last opened **on this phone**. It is remembered
-locally (`src/lib/rememberedSession.ts`, AsyncStorage key
-`mm:aiSession:v1:<userId>` — byte-identical to the web's localStorage key). If
-there is nothing remembered, the server decides.
+**What happens.** The one you last opened. It is remembered locally
+(`src/lib/rememberedSession.ts`, AsyncStorage key `mm:aiSession:v1:<userId>` —
+byte-identical to the web's localStorage key) **and the server is told**, so the
+same chat opens on the laptop.
 
-**Where it differs.** The web does two things when you pick a chat: remembers
-it locally AND tells the server (`aiSessionsApi.activate`). Mobile only does the
-first. `Ai::Sessions.current` reads `user.data['ai_session_id']`, and only
-`activate` and *asking a question* ever write it.
+`app/chat.tsx:180`, inside `chooseSession`:
 
-**So:** switch chats on your phone, ask nothing, open the laptop → **the laptop
-opens the chat you left**, not the one you moved to. Ask something and it
-catches up.
+```ts
+if (user?.id) void rememberSession(user.id, id);
+void sessionsApi.activate(id).catch(() => undefined);
+```
 
-**My recommendation: fix this.** It is one call in `chooseSession`, the endpoint
-exists, and "the same chat opens on every device" is the promise the route's own
-comment makes. This is the most likely candidate for what he is describing.
+`sessionsApi.activate` is `src/api/ai.ts:430` → `POST /api/v1/ai/sessions/:id/activate`.
+Both halves, the same two the web does.
+
+### The first version of this section said the opposite, and that is the lesson
+
+It said mobile copied the local half only, that the phone and the laptop
+disagree until you ask a question, and that fixing it was "one call in
+`chooseSession`". Every word of that was wrong, and I wrote it **from
+`docs/SESSION_PARITY.md` instead of from the function**. That file's table still
+carries
+
+```
+| **activate** | sessions#activate | AiChat.tsx:119 | **nothing** | **never got it** |
+```
+
+and the call landed in `3088fd2` on 2026-09-20 15:45, three hours before that
+file was last edited. So the row was already false when somebody touched the
+file and left it alone.
+
+Had that recommendation been acted on, the fix would have been a SECOND
+`activate` beside the existing one, and nothing in any gate would have said so.
+`docs/TESTING.md` is a book about this exact failure and I still made it, in the
+section I said to read first.
+
+**The real defect here is the register, not the app.** SESSION_PARITY.md's row
+is corrected in the same commit as this paragraph.
 
 ## 2 · Starting a new one — two taps, and one may already be waiting
 
@@ -106,7 +127,10 @@ newest message. Four commits, `bd97118` last.
 
 ## The short answer, if only one thing gets changed
 
-**§1.** Mobile remembers your chat on the phone and never tells the server, so
-the phone and the laptop disagree about which conversation you are in until you
-ask a question. Everything else here is a preference; that one is a promise the
-product already makes and does not keep.
+**§2** — the empty conversation. A "New chat · 0 messages" row sits at the top
+of the real list because a session is created before it is used and nothing
+reuses or cleans one up. It is the first thing he sees when he opens the list,
+and it is the only item here that is a defect rather than a preference.
+
+(§1 was the answer to this question in the first draft of this file. It was
+wrong, and §1 says how.)

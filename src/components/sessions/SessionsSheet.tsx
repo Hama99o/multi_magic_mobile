@@ -63,7 +63,28 @@ export function SessionsSheet({
   const refresh = () => queryClient.invalidateQueries({ queryKey: ["ai", "sessions"] });
 
   const create = useMutation({
-    mutationFn: () => sessionsApi.create(),
+    /**
+     * REUSE AN EMPTY CONVERSATION RATHER THAN MAKING A SECOND ONE.
+     *
+     * Watched on the rig 2026-09-21: the top of the real list was
+     * **"New chat · 0 messages · Yesterday"** — a conversation created on some
+     * earlier visit, never asked anything, and still the first row. Nothing
+     * cleans one up and pressing New chat again simply added another, so the
+     * list fills with identical empties and the one he wants is pushed down.
+     *
+     * An empty conversation is indistinguishable from a new one — same title,
+     * same emptiness, nothing said in it — so opening the one that exists is
+     * the same act from the user's side, with one fewer row afterwards.
+     *
+     * NOT the bigger change, which is deliberately left alone: creating the
+     * session only when the first question is sent. That alters WHEN a
+     * conversation exists, which is his decision and is written up in
+     * `docs/SESSION_FEEL.md` §2 as a question rather than taken here.
+     */
+    mutationFn: async () => {
+      const empty = sessions.find((s) => s.messageCount === 0 && s.documentCount === 0);
+      return empty ?? (await sessionsApi.create());
+    },
     onSuccess: (session) => {
       void refresh();
       onOpenSession(session.id);

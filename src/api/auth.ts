@@ -46,13 +46,26 @@ export interface CurrentUser {
 }
 
 /**
- * Thrown when the account needs an emailed code this version cannot collect.
- * Carries the pre-auth token so a future OTP screen needs no new plumbing.
+ * Thrown when the account needs the emailed code — a SECOND STEP, not a
+ * failure. Carries the pre-auth token, which `auth.store` keeps and
+ * `app/two-factor.tsx` spends.
+ *
+ * ── THE MESSAGE USED TO BE A CLAIM, AND IT WENT STALE ────────────────────
+ * It read "which this app cannot do yet", and the sign-in screen rendered it.
+ * That was true when written and false the moment the screen landed — he was
+ * still being told the app could not do the thing it now does. A sentence
+ * about what the app is CAPABLE of has a shelf life; one about what just
+ * happened does not, so this says what happened.
+ *
+ * It is not rendered anywhere today: `apiErrorMessage` reads axios response
+ * bodies only, so a plain `Error` like this one falls through to the screen's
+ * own copy. Kept honest anyway, because the last version of this comment also
+ * described a state of affairs that stopped being true without anyone noticing.
  */
 export class TwoFactorRequiredError extends Error {
   readonly preAuthToken: string;
   constructor(preAuthToken: string) {
-    super("This account needs an emailed code, which this app cannot do yet.");
+    super("This account needs the code we just emailed.");
     this.name = "TwoFactorRequiredError";
     this.preAuthToken = preAuthToken;
   }

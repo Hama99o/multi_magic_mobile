@@ -25,7 +25,7 @@
  * wrong. So the branch exists and throws something the UI can name. Ten lines
  * instead of a screen, and if 2FA is ever switched on the app SAYS SO.
  */
-import { http, setSessionEmail, setToken } from "./http";
+import { http, setSessionEmail, setToken, setTrustToken } from "./http";
 import { id, obj, optStr, str } from "./parse";
 import { absoluteUrl } from "./conversations";
 
@@ -182,6 +182,34 @@ export async function verifyTwoFactor(params: {
   return user;
 }
 
+/**
+ * TRUST THIS DEVICE, so a 2FA account is not emailed a code every single time.
+ *
+ * The web offers this immediately after verifying and so does the phone. It
+ * used to be impossible here: `trusted_devices#create` answered with a
+ * `Set-Cookie` and this client keeps no cookie jar, so the button would have
+ * posted, reported success, and changed nothing. The server now returns the
+ * token in the body as well (`multi_magic@…`), and the login request carries
+ * it back in `X-Trusted-Device`.
+ *
+ * ── A FAILURE HERE IS NOT A FAILURE OF ANYTHING ──────────────────────────
+ * The session is already established by the time this is offered. If trusting
+ * does not work, the only consequence is being asked for a code next time —
+ * so this resolves either way and the caller carries on. The web makes the
+ * same choice ("non-critical — proceed to home even if trust fails").
+ */
+export async function trustThisDevice(): Promise<boolean> {
+  try {
+    const response = await http.post("/api/v1/trusted_devices");
+    const body = response.data as { token?: unknown };
+    if (typeof body?.token !== "string" || body.token === "") return false;
+    await setTrustToken(body.token);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export async function signOut(): Promise<void> {
   try {
     await http.delete("/users/logout");
@@ -194,6 +222,12 @@ export async function signOut(): Promise<void> {
     await setSessionEmail(null);
     // NOTE: the device fingerprint is deliberately NOT cleared here. See
     // `lib/fingerprint.ts` — clearing it causes a re-authentication cycle.
+    //
+    // NEITHER IS THE TRUST TOKEN, and for the same kind of reason. It says
+    // "this PHONE is known", not "this session is open" — the server binds it
+    // to the fingerprint and checks the owner on every use, so it cannot let
+    // anybody else in. Clearing it would mean an emailed code after every
+    // deliberate sign-out, which is the exact friction it exists to remove.
   }
 }
 
@@ -205,9 +239,30 @@ export async function signOut(): Promise<void> {
  * `bin/rails routes`. Params are nested under `user` and use the same
  * one-word spelling as the serializer: `firstname`, `lastname`.
  *
- * Devise signs the new user in, so the JWT arrives in the same header as on
- * login and is stored the same way. If it does not, this throws rather than
- * returning a user with no session — the same reasoning as `signIn`.
+ * ── THE ACCOUNT IS CREATED AND THERE IS NO TOKEN, AND THAT IS NORMAL ─────
+ * His report: *"in create account it says could not create account, and when I
+ * try again they say email already exists."* Both sentences were true. The
+ * account WAS created; only the app thought otherwise.
+ *
+ * This comment used to read "Devise signs the new user in, so the JWT arrives
+ * in the same header as on login". It does not, and no amount of reading this
+ * file would have shown it: `devise.rb:320` lists the paths that get a token
+ *
+ *     jwt.dispatch_requests = [
+ *       ['POST', %r{^/users/login$}],
+ *       ['POST', %r{^/api/v1/two_factor/verify$}]
+ *     ]
+ *
+ * and `/users/signup` is not among them. So registration answers 200 with the
+ * user and NO `Authorization` header, this threw `MissingTokenError`, and the
+ * screen rendered "Could not create that account" over an account that now
+ * existed — which is why his second attempt was told the address was taken.
+ *
+ * So a missing token here is not a failure, it is the documented shape of this
+ * endpoint: sign in with the credentials we already hold. Two round trips
+ * instead of one, no server change, and it works against the backend that is
+ * deployed right now rather than one that would have to be. The header path is
+ * kept for the day signup joins that list.
  */
 export async function signUp(params: {
   firstname: string;
@@ -229,7 +284,10 @@ export async function signUp(params: {
   const headers = response.headers as Record<string, unknown>;
   const authorization = headers.authorization ?? headers.Authorization;
   if (typeof authorization !== "string" || authorization.trim() === "") {
-    throw new MissingTokenError();
+    // See the header. The account exists; finish the job rather than report a
+    // failure over it. A brand-new account cannot have two-factor enabled, so
+    // this cannot land on the code screen.
+    return signIn({ email: params.email, password: params.password });
   }
 
   const user = parseUser(response.data);

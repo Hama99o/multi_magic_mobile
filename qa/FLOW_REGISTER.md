@@ -35,6 +35,33 @@ not 1 — a blocked preflight has found nothing, not a bug.
 | `19-session-options.yaml` | **PASS — 2026-09-20, dev build, tree at `df1a2f9`. Five runs, and four of the failures were real findings rather than flakes.** Exercises the two dialogs behind the row menu that `15` could only assert were present: **Instructions** typed, saved, reopened and still there, then changed, cancelled, reopened and the change gone; **Scope** narrowed, saved, reopened and still narrowed, and cancelled in the same harder direction. Both cancels proved by REOPENING, because a cancel that merely closes the dialog passes a weaker test that reads the same | **Three corrections the device forced, all recorded in the flow.** (1) `scope-all` was asserted from the DEFAULT state and could never have passed — `SessionOptionsDialogs.tsx:244` renders it only when `selected.length > 0`, because it is the *search everything again* escape and with nothing narrowed there is nothing to escape from. It now asserts it is **absent** first and **appears** once Notes is picked, which is the stronger claim. (2) The rename was saved with `pressKey: Enter`, citing `15`. **In this flow it did not save** — after Enter the dialog was still open, and the title assertion passed anyway by matching the text in the dialog's own FIELD rather than a row, so the next step hunted a row menu behind a modal. **But `15` renames twice with Enter and passes end to end, which it could not do if the dialog stayed open there.** So Enter saves in one flow and not in the other and I cannot say why — a timing difference, or a focus one. Recorded as unexplained rather than resolved; what is certain is that the assertion could not tell the two apart, which is the part worth fixing. It taps `rename-save` now, which is also a handle `15` could only assert existed. (3) Every failed run left a `QA options target` behind; nine had accumulated before I noticed, which is `04`'s hazard arriving through a flow that cleans up correctly and simply never reached its cleanup |
 | `20-refresh.yaml` | **PASS — 2026-09-20, dev build. THIN, and the thinness is the whole verdict.** `calendar-refresh` and `notifications-refresh` are present, tap, and — the actual assertion — the **list stays on screen while the refresh is in flight**. That is the design rule: the refresh state lives in the control, never a full-screen spinner, and no unit test here can see it because Jest has neither layout nor timing | **Both screens took their EMPTY branch**, as the flow's author predicted: the QA account has no notifications and no events today, so `calendar-nothing-today` fired and its screenshot is filed **NOT MEASURED**. What passed is that the control exists, responds, and does not replace the list. What did not run is the same refresh over a list with rows in it, which is the case the rule is actually about |
 
+## Are any of run-8's passes hollow? — checked 2026-09-21
+
+After `06-people-chat` turned out to be maestro failing rather than the app, the
+fair question is how many PASSes rest on an interaction that never landed. A tap
+that silently does nothing, followed by an assertion that happens to be true
+anyway, is what `flow_lint`'s TOOTHLESS check exists to catch.
+
+**Checked mechanically, and none of them.** Every passing flow asserts at least
+one `testID` that cannot exist on the screen it starts from, so no flow could
+have reached its assertions with its interactions as no-ops. The three thinnest
+still turn on one screen-specific element each: `login` on `sign-in-email`,
+`set-language` on `language-row`, and `01-ask` on `thinking`, which only exists
+between a question being sent and an answer arriving.
+
+**And the instrument's failure is narrower than it looked.** `longPressOn` is
+used by exactly one flow — `06`, already NOT MEASURED. Header taps work, and
+`19-session-options` proves it: it taps `chat-open-sessions` and then asserts
+`sessions-sheet`, which does not exist until that tap lands. I had told the
+relay that header taps "report COMPLETED and navigate nowhere", and that was
+wrong — I had already disproved it with a probe that tapped the bell and
+asserted the word "Notifications" successfully.
+
+**What this check cannot say:** it reads whether each flow's ASSERTIONS are
+screen-specific, not whether every intermediate step landed. A flow could no-op
+a middle tap and still arrive by another route. Each of these asserts something
+specific at each stage, which makes that unlikely rather than impossible.
+
 ## RUN 8 — 2026-09-21, dev build, `qa_phone4`, first verdicts since 19 September
 
 `qa/reports/run-8/results.jsonl`, written one row at a time as each landed.

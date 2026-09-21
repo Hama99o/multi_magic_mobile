@@ -237,3 +237,50 @@ describe("new chat", () => {
     await waitFor(() => expect(create).toHaveBeenCalled());
   });
 });
+
+/**
+ * A RENAMED CONVERSATION IS NOT AN EMPTY ONE — found on a device, not here.
+ *
+ * The first version of the reuse above took any conversation with no messages
+ * and no files. The QA account holds one called "QA switch target", renamed by
+ * a flow on an earlier run and never used since, and pressing New chat handed
+ * that back: a conversation with a name somebody else chose, instead of the
+ * new one being asked for. `15-sessions-switch` and `19-session-options` both
+ * failed on it, which is how it surfaced at all.
+ *
+ * A title somebody set is a decision and emptiness does not cancel it.
+ */
+describe("new chat, and what counts as unnamed", () => {
+  it("does not hand back an empty conversation somebody renamed", async () => {
+    (sessionsApi.list as jest.Mock).mockResolvedValue([
+      session({ id: 21, title: "QA switch target", messageCount: 0, documentCount: 0 }),
+    ]);
+    const create = jest
+      .spyOn(sessionsApi, "create")
+      .mockResolvedValue(session({ id: 22, title: "New chat", messageCount: 0, documentCount: 0 }));
+    const onOpenSession = jest.fn();
+
+    renderSheet({ onOpenSession });
+    await waitFor(() => expect(screen.getByTestId("session-row-21")).toBeTruthy());
+    fireEvent.press(screen.getByTestId("sessions-new"));
+
+    await waitFor(() => expect(create).toHaveBeenCalled());
+    expect(onOpenSession).toHaveBeenCalledWith(22);
+  });
+
+  // `ai/sessions.rb:15` keeps both of these as "never named".
+  it("treats the server's other default title as unnamed too", async () => {
+    (sessionsApi.list as jest.Mock).mockResolvedValue([
+      session({ id: 31, title: "AI Assistant", messageCount: 0, documentCount: 0 }),
+    ]);
+    const create = jest.spyOn(sessionsApi, "create");
+    const onOpenSession = jest.fn();
+
+    renderSheet({ onOpenSession });
+    await waitFor(() => expect(screen.getByTestId("session-row-31")).toBeTruthy());
+    fireEvent.press(screen.getByTestId("sessions-new"));
+
+    await waitFor(() => expect(onOpenSession).toHaveBeenCalledWith(31));
+    expect(create).not.toHaveBeenCalled();
+  });
+});

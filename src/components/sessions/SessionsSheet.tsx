@@ -35,6 +35,12 @@ type Pending =
   | { kind: "rename" | "delete" | "menu" | "instructions" | "scope"; session: AiSession }
   | null;
 
+/**
+ * Titles that mean "nobody has named this" — `ai/sessions.rb:15`'s own list.
+ * A conversation carrying one of these has a default, not a name.
+ */
+const UNTITLED = new Set(["New chat", "AI Assistant"]);
+
 export function SessionsSheet({
   visible,
   activeId,
@@ -76,13 +82,28 @@ export function SessionsSheet({
      * same emptiness, nothing said in it — so opening the one that exists is
      * the same act from the user's side, with one fewer row afterwards.
      *
+     * ── AND A RENAMED CONVERSATION IS NOT AN EMPTY ONE ────────────────────
+     * The first version of this reused ANY conversation with no messages and
+     * no files, and the device found what that misses within the hour: the QA
+     * account holds one called "QA switch target", renamed by a flow on an
+     * earlier run and never used. Pressing New chat handed somebody that —
+     * a conversation with a name they did not choose, in place of the new one
+     * they asked for. Two registered flows failed on it, which is how it
+     * surfaced.
+     *
+     * A title somebody set is a decision, and emptiness does not cancel it.
+     * `UNTITLED` mirrors `ai/sessions.rb:15`, which already keeps exactly this
+     * set for exactly this reason.
+     *
      * NOT the bigger change, which is deliberately left alone: creating the
      * session only when the first question is sent. That alters WHEN a
      * conversation exists, which is his decision and is written up in
      * `docs/SESSION_FEEL.md` §2 as a question rather than taken here.
      */
     mutationFn: async () => {
-      const empty = sessions.find((s) => s.messageCount === 0 && s.documentCount === 0);
+      const empty = sessions.find(
+        (s) => s.messageCount === 0 && s.documentCount === 0 && UNTITLED.has(s.title),
+      );
       return empty ?? (await sessionsApi.create());
     },
     onSuccess: (session) => {

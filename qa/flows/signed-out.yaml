@@ -12,8 +12,15 @@ appId: ${APP_ID}
 - runFlow: login.yaml
 - tapOn:
     id: "chat-open-profile"
-- assertVisible:
-    id: "profile-sheet"
+# WAIT FOR IT RATHER THAN ASSERT IT. The account menu is a `Modal` with
+# `animationType="slide"`, so an instant `assertVisible` after the tap can fire
+# while it is still sliding in and fail on a sheet that opens perfectly.
+# Measured 2026-09-21: this step failed here while the sheet was demonstrably
+# opening, which reads exactly like a broken control.
+- extendedWaitUntil:
+    visible:
+      id: "profile-sheet"
+    timeout: 10000
 # NO SCROLL NEEDED NOW. Sign out used to be the last row of the conversations
 # sheet's tail, below however many conversations the account had — this helper
 # failed here on the first run after that tail started scrolling. It is the

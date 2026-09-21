@@ -100,14 +100,42 @@ readily as at 9.5), host RAM (14.5 GB available at the last attempt, `pswpin`
 zero), GPU window cost (`-no-window` identical), and the memory setting (2048
 and 3072 identical).
 
-**The one thing not yet varied is the system image**, and an alternative is
-already installed: `android-35/google_apis_playstore/x86_64`, which
-`hatiwal_play` uses. That is the next experiment — a new AVD on the *playstore*
-image — and it is a different move from "try another AVD on the same image",
-which is what has now failed twice.
+### It was the GPU flag, and the trace said so — 2026-09-21
 
-Worth telling Karwan's side: their `qa_phone` runs the same image, so if their
-rig starts wedging, this is why and it is not their app.
+I wrote above that the system image was "the one variable nobody has moved".
+**That was wrong, and the hole was pointed out before any disk was spent on
+it:** `qa_phone` ran on 19 September and `qa_edu_phone` through early September
+on the same byte-identical image without this. Same image, no ANR — so the
+image could not be the discriminator. No new AVD was built.
+
+What settled it was reading the ANR instead of reasoning about it. Both traces
+in `/data/anr/` are identical:
+
+```
+Subject: …836:com.android.systemui… failed to complete startup
+outgoing transaction … from 836:836 to 451:472 … elapsed 14114ms
+  at SurfaceControl.getGPUContextPriority(SurfaceControl.java:2655)
+  at com.android.systemui.SystemUIApplication.onCreate
+```
+
+pid 451 is **surfaceflinger**. SystemUI blocks in `onCreate` on a synchronous
+binder call into the graphics stack and never returns. It is a **startup**
+stall, before any flow runs — which is what rules out `wm size`/`wm density`
+(`QA_HANDBOOK.md:97`), the best candidate anyone had: no flow in any run
+touched geometry, and preflight confirmed no inherited override.
+
+**`qa/qa.sh` hardcoded `-gpu swiftshader_indirect`.** Karwan's rig is the
+control and had the answer written down the whole time
+(`Karwan/karwan-mobile/qa/lib/emulator.sh:62-63`): default to swiftshader, use
+`host` when `/dev/dri/renderD128` exists. It exists on this box. That one line
+is the entire difference between their `qa_phone` running and our devices
+wedging, on the same image, on the same host.
+
+Ours now detects the same way. Verified: `qa_phone4` with `-gpu host` reaches
+the launcher, preflight PASSES, and `login.yaml` signs in — no new ANR trace.
+
+**So neither AVD was ever damaged.** `qa_phone2` is fine and can come back into
+service; it was being booted with software rendering on a box that has a GPU.
 
 **Name the AVD in every report.** `pgrep -af qemu-system` prints `-avd <name>`,
 and it settles in one line whose device is up. *"An emulator is running"* is not

@@ -78,19 +78,13 @@ tags:
 
 # 6 · Account, reached through the sheet.
 - tapOn:
-    id: "chat-open-sessions"
-# SCROLL FIRST — the sheet's tail is inside the scroll as of `138306d`.
-# `sessions-account` and `sessions-profile` used to sit in a pinned block and
-# were always on screen; now they are below the list and a long list puts them
-# below the fold. The pass failed here on the first run after the fix, which is
-# the same cost a PERSON pays: reaching Account is now a scroll, not a glance.
-- scrollUntilVisible:
-    element:
-      id: "sessions-account"
-    direction: DOWN
-    timeout: 20000
+    id: "chat-open-profile"
+# THE SCROLL IS GONE, and that is a finding rather than a tidy-up. This step
+# used to read: "reaching Account is now a scroll, not a glance" — the rows sat
+# at the tail of the conversations list and a long list pushed them under the
+# fold. They are five rows behind the photo now, so the glance is back.
 - tapOn:
-    id: "sessions-account"
+    id: "profile-open-account"
 - assertVisible:
     id: "account-delete"
 - takeScreenshot: reports/${SHOT}-account
@@ -98,15 +92,10 @@ tags:
 # 7 · Profile.
 - pressKey: Back
 - tapOn:
-    id: "chat-open-sessions"
-# Same reason as `sessions-account` above.
-- scrollUntilVisible:
-    element:
-      id: "sessions-profile"
-    direction: DOWN
-    timeout: 20000
+    id: "chat-open-profile"
+# Same reason as Account above.
 - tapOn:
-    id: "sessions-profile"
+    id: "profile-open-profile"
 - assertVisible:
     id: "profile-firstname"
 - takeScreenshot: reports/${SHOT}-profile

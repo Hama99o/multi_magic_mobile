@@ -13,16 +13,17 @@ appId: ${APP_ID}
 ---
 - runFlow: login.yaml
 - tapOn:
-    id: "chat-open-sessions"
-- scrollUntilVisible:
-    element:
-      id: "language-row"
-    direction: DOWN
-    timeout: 20000
+    id: "chat-open-profile"
+- tapOn:
+    id: "profile-open-language"
+# The scroll this replaced existed because the language rows were the tail of
+# the conversations list. In their own pane they are the only thing in it.
+- assertVisible:
+    id: "language-row"
 - tapOn:
     id: ${LANG_ID}
 - assertVisible:
     id: ${LANG_ID}
     selected: true
 - tapOn:
-    id: "sessions-close"
+    id: "profile-close"

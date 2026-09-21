@@ -27,6 +27,7 @@
  */
 import { http, setSessionEmail, setToken } from "./http";
 import { id, obj, optStr, str } from "./parse";
+import { absoluteUrl } from "./conversations";
 
 export interface CurrentUser {
   id: number;
@@ -43,6 +44,14 @@ export interface CurrentUser {
   firstName: string | null;
   lastName: string | null;
   fullName: string | null;
+  /**
+   * His photo, absolute. The serializer's `:private` view sends it
+   * (`user_serializer.rb:82`) and this client dropped it — which is why the
+   * header could only ever have drawn initials. Relative like every other
+   * upload, so it goes through `absoluteUrl` for the same reason a source
+   * link does.
+   */
+  avatar: string | null;
 }
 
 /**
@@ -87,6 +96,7 @@ export function parseUser(payload: unknown): CurrentUser {
     firstName: optStr(record.firstname),
     lastName: optStr(record.lastname),
     fullName: optStr(record.fullname),
+    avatar: absoluteUrl(optStr(record.avatar)),
   };
 }
 

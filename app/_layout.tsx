@@ -98,6 +98,10 @@ export default function RootLayout() {
             firstName: profile.firstName,
             lastName: profile.lastName,
             fullName: profile.fullName,
+            // `profileApi.me()` has always carried it; the auth store did not
+            // have a field to put it in. This is what makes the header show a
+            // face after a cold start rather than initials.
+            avatar: profile.avatar,
           },
         });
         // Only if this phone has no choice of its own — see the store.

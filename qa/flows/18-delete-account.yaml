@@ -33,9 +33,9 @@ tags:
 ---
 - runFlow: login.yaml
 - tapOn:
-    id: "chat-open-sessions"
+    id: "chat-open-profile"
 - tapOn:
-    id: "sessions-account"
+    id: "profile-open-account"
 - extendedWaitUntil:
     visible:
       id: "account-delete"

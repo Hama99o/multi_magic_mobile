@@ -271,6 +271,10 @@ not been done.
 | `password.submit` | Change password | Changer le mot de passe |
 | `password.title` | Change password | Changer le mot de passe |
 | `password.wrongCurrent` | That password is not right. | Ce mot de passe n’est pas le bon. |
+| `profileMenu.appearance` | Appearance | Apparence |
+| `profileMenu.language` | Language | Langue |
+| `profileMenu.openLabel` | Your account | Votre compte |
+| `profileMenu.title` | Account | Compte |
 | `privacy.draftBody` | Every sentence here was checked against the code, but this text is still waiting on approval and must not ship in this state. | Chaque phrase a été vérifiée contre le code, mais ce texte attend encore une approbation et ne doit pas être publié en l’état. |
 | `privacy.draftTitle` | Draft — not yet approved | Brouillon — pas encore approuvé |
 | `privacy.title` | Privacy | Confidentialité |
@@ -299,7 +303,6 @@ not been done.
 | `scope.title` | Search in | Chercher dans |
 | `session.expired` | Your session expired. Sign in again to carry on. | Votre session a expiré. Reconnectez-vous pour continuer. |
 | `session.revoked` | MultiMagic no longer recognises this phone's session — it was ended from another device, or the device check did not match. Sign in again to carry on. | MultiMagic ne reconnaît plus la session de ce téléphone — elle a été fermée depuis un autre appareil, ou la vérification de l’appareil a échoué. Reconnectez-vous pour continuer. |
-| `sessions.account` | Account | Compte |
 | `sessions.allApps` | All apps | Toutes les applications |
 | `sessions.atLimit` | You have {{max}} conversations, which is the most MultiMagic keeps. Delete one to start another. | Vous avez {{max}} discussions, soit le maximum que MultiMagic conserve. Supprimez-en une pour en commencer une autre. |
 | `sessions.clear` | Clear messages | Vider cette discussion |

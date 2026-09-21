@@ -73,7 +73,7 @@ const SHEETS: { name: string; testID: string; element: () => ReactElement }[] = 
   {
     name: "sessions",
     testID: "sessions-sheet",
-    element: () => <SessionsSheet visible activeId={null} onClose={noop} onOpenSession={noop} onSignOut={noop} />,
+    element: () => <SessionsSheet visible activeId={null} onClose={noop} onOpenSession={noop} />,
   },
   {
     name: "source",

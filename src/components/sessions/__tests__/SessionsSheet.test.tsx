@@ -28,7 +28,7 @@ function renderSheet(props: Partial<React.ComponentProps<typeof SessionsSheet>> 
         activeId={4}
         onClose={jest.fn()}
         onOpenSession={jest.fn()}
-        onSignOut={jest.fn()}
+       
         {...props}
       />
     </QueryClientProvider>,

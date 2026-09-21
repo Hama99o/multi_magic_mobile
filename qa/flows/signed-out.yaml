@@ -11,20 +11,16 @@ appId: ${APP_ID}
 ---
 - runFlow: login.yaml
 - tapOn:
-    id: "chat-open-sessions"
+    id: "chat-open-profile"
 - assertVisible:
-    id: "sessions-sheet"
-# SCROLL TO IT. Sign out is the LAST row of the sheet's tail, and since
-# `138306d` that tail scrolls with the list instead of being pinned — so on an
-# account with more than a few conversations it starts below the fold. This
-# helper failed here on the first run after that change.
-- scrollUntilVisible:
-    element:
-      id: "sessions-sign-out"
-    direction: DOWN
-    timeout: 20000
+    id: "profile-sheet"
+# NO SCROLL NEEDED NOW. Sign out used to be the last row of the conversations
+# sheet's tail, below however many conversations the account had — this helper
+# failed here on the first run after that tail started scrolling. It is the
+# last of five rows behind the photo now, and the list of chats is somewhere
+# else entirely.
 - tapOn:
-    id: "sessions-sign-out"
+    id: "profile-sign-out"
 - extendedWaitUntil:
     visible:
       id: "sign-in-email"

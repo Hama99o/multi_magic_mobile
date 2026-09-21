@@ -245,4 +245,50 @@ describe("avatar paths", () => {
     expect(absoluteUrl("https://cdn.example.com/p.jpg")).toBe("https://cdn.example.com/p.jpg");
     expect(absoluteUrl(null)).toBeNull();
   });
+
+  /**
+   * A HOST THAT ONLY MEANS SOMETHING ON THE MACHINE THAT SAID IT.
+   *
+   * His report: *"when i change profile photo it did not show, it show
+   * nothing, but on web i can see its changed."* Both halves of one cause.
+   * `DEFAULT_HOST=http://localhost:3001` reaches `routes.default_url_options`,
+   * so `url_for(photo)` hands every client
+   * `http://localhost:3001/rails/active_storage/...`. In a browser on that
+   * laptop it resolves. On a phone `localhost` is THE PHONE — `<Image>` gets a
+   * URL to a server that is not there and draws nothing, silently, because
+   * that is what it does with a load failure.
+   *
+   * No single `DEFAULT_HOST` can be right: the browser needs `localhost`, an
+   * emulator needs `10.0.2.2`, his iPhone needs today's WiFi address. Only the
+   * client knows which one IT used.
+   */
+  it("rewrites a loopback host onto the address we actually reached", () => {
+    // The base here is 127.0.0.1:3001, so the swap is visible.
+    expect(absoluteUrl("http://localhost:3001/rails/active_storage/blobs/abc/p.jpg")).toBe(
+      `${http.defaults.baseURL}/rails/active_storage/blobs/abc/p.jpg`,
+    );
+  });
+
+  it("rewrites it whatever port the server named, and keeps the query", () => {
+    expect(absoluteUrl("http://localhost:9999/rails/blobs/a.jpg?disposition=inline")).toBe(
+      `${http.defaults.baseURL}/rails/blobs/a.jpg?disposition=inline`,
+    );
+    expect(absoluteUrl("http://127.0.0.1:3000/x.png")).toBe(`${http.defaults.baseURL}/x.png`);
+  });
+
+  /**
+   * A REAL HOST IS LEFT ALONE. Production hands out `www.multimagics.com`,
+   * which works from anywhere, and a CDN or S3 URL must survive untouched —
+   * rewriting those would break the photos that currently work in order to fix
+   * the ones that do not.
+   */
+  it("does not touch a host that means the same thing everywhere", () => {
+    expect(absoluteUrl("https://www.multimagics.com/rails/blobs/a.jpg")).toBe(
+      "https://www.multimagics.com/rails/blobs/a.jpg",
+    );
+    // `localhost` inside a path or a name is not a loopback ORIGIN.
+    expect(absoluteUrl("https://cdn.example.com/localhost/p.jpg")).toBe(
+      "https://cdn.example.com/localhost/p.jpg",
+    );
+  });
 });

@@ -35,6 +35,47 @@ not 1 — a blocked preflight has found nothing, not a bug.
 | `19-session-options.yaml` | **PASS — 2026-09-20, dev build, tree at `df1a2f9`. Five runs, and four of the failures were real findings rather than flakes.** Exercises the two dialogs behind the row menu that `15` could only assert were present: **Instructions** typed, saved, reopened and still there, then changed, cancelled, reopened and the change gone; **Scope** narrowed, saved, reopened and still narrowed, and cancelled in the same harder direction. Both cancels proved by REOPENING, because a cancel that merely closes the dialog passes a weaker test that reads the same | **Three corrections the device forced, all recorded in the flow.** (1) `scope-all` was asserted from the DEFAULT state and could never have passed — `SessionOptionsDialogs.tsx:244` renders it only when `selected.length > 0`, because it is the *search everything again* escape and with nothing narrowed there is nothing to escape from. It now asserts it is **absent** first and **appears** once Notes is picked, which is the stronger claim. (2) The rename was saved with `pressKey: Enter`, citing `15`. **In this flow it did not save** — after Enter the dialog was still open, and the title assertion passed anyway by matching the text in the dialog's own FIELD rather than a row, so the next step hunted a row menu behind a modal. **But `15` renames twice with Enter and passes end to end, which it could not do if the dialog stayed open there.** So Enter saves in one flow and not in the other and I cannot say why — a timing difference, or a focus one. Recorded as unexplained rather than resolved; what is certain is that the assertion could not tell the two apart, which is the part worth fixing. It taps `rename-save` now, which is also a handle `15` could only assert existed. (3) Every failed run left a `QA options target` behind; nine had accumulated before I noticed, which is `04`'s hazard arriving through a flow that cleans up correctly and simply never reached its cleanup |
 | `20-refresh.yaml` | **PASS — 2026-09-20, dev build. THIN, and the thinness is the whole verdict.** `calendar-refresh` and `notifications-refresh` are present, tap, and — the actual assertion — the **list stays on screen while the refresh is in flight**. That is the design rule: the refresh state lives in the control, never a full-screen spinner, and no unit test here can see it because Jest has neither layout nor timing | **Both screens took their EMPTY branch**, as the flow's author predicted: the QA account has no notifications and no events today, so `calendar-nothing-today` fired and its screenshot is filed **NOT MEASURED**. What passed is that the control exists, responds, and does not replace the list. What did not run is the same refresh over a list with rows in it, which is the case the rule is actually about |
 
+## RUN 8 — 2026-09-21, dev build, `qa_phone4`, first verdicts since 19 September
+
+`qa/reports/run-8/results.jsonl`, written one row at a time as each landed.
+**5 PASS · 1 PARTIAL · 0 FAIL so far**, and the run is not finished.
+
+| flow | verdict | what it actually proves |
+|---|---|---|
+| `login` | PASS | fills the form, submits, lands on the composer |
+| `01-ask` | PASS | a real question → `thinking` → `assistant-answer` over the socket. **The register's "NOT MEASURED until the send button is found" no longer applies on the dev build** |
+| `07-notifications` | PASS | empty-state branch — the screen, the refresh control, the freshness line. NOT a populated list |
+| `08-calendar` | PASS | empty-state branch, `calendar-nothing-today` photographed |
+| `20-refresh` | PASS | both refreshes, both empty branches. **FAILED on Expo Go in the same session** — harness, not app |
+| `09-keyboard` | PARTIAL | composer half PASS with 50/51/52 photographed; bottom half NOT MEASURED |
+
+**Three instrument faults fixed to get here, all of which read as app failures:**
+
+1. **The dev client's menu is not Expo Go's menu.** `login.yaml` guarded only
+   *"This is the developer menu"*. A development build shows its own overlay —
+   *Element inspector*, *Fast Refresh*, *Connected to: …* — so the guard never
+   fired and every dev-build run failed asserting `sign-in-email` **while the
+   app was loaded and running underneath it**. A second guard presses Back.
+2. **Expo Go is not a substitute.** `20-refresh` fails on Expo Go and passes on
+   the dev build, in the same session, on the same device. `QA_HANDBOOK.md`
+   already says this and I had to rediscover it.
+3. **`09-keyboard` asserted its own premise first and cost the rest.** The new
+   block needs a conversation taller than the screen; the QA account's is two
+   answers on one screen, so it failed by design and took the composer half —
+   which passes — down with it. Reordered: evidence that exists is no longer
+   forfeited to prove a second thing.
+
+**And `flow_lint` now runs in `npm test`** as `pretest`. It was in no npm
+script and no CI job, so it only ever caught what somebody remembered to run it
+against. Planted a flow selecting a testID that does not exist: `npm test` stops
+before jest starts.
+
+**What run 8 cannot tell anybody yet**, and it is most of what changed this
+week: read-aloud and dictation (native, and this dev build's native side is from
+19 September — a two-day-old binary cannot prove a feature built after it),
+two-factor and trust-this-phone, sign-up, the profile photo, the tablet, French,
+and animations, which do not exist.
+
 ## SWEEP ATTEMPTED 2026-09-21 — NOT MEASURED, 0 of 24 executed
 
 His instruction was to re-run everything against the current tree, because the

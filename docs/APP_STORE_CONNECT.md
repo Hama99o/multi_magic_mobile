@@ -1,0 +1,232 @@
+# The App Store, from a terminal instead of a browser
+
+Written 2026-09-21, the evening the iOS listing was configured by hand, by the
+session that watched it happen. **The point is that the next release is a
+command rather than an afternoon of clicking**, so this records what was
+entered, what replaces each click, and — the part that decides whether any of
+it works — the one credential that has to exist first.
+
+Read it at the START of a release. It is short on purpose.
+
+**Nothing personal is in this file.** The repo is public: no phone number, no
+email, no password, no key id, no issuer id. Where a value is personal this
+says where it lives instead.
+
+---
+
+## 0 · The credential that turns next time into a command
+
+An **App Store Connect API key**. Without it everything below is a browser.
+
+**Issued by Hamma9900 and nobody else**, once:
+App Store Connect → **Users and Access** → **Integrations** → **App Store
+Connect API** → *Team Keys* → **+**.
+
+- First time on an account the page says *"You need permission to access the
+  App Store Connect API"* with a **Request Access** button. The Account Holder
+  grants it to themselves; it took effect immediately here.
+- **Access: App Manager.** Enough for metadata, versions and screenshots; not
+  enough to touch users or finance. Apple states on that page that a key's
+  access **cannot be widened after creation**, so choosing narrow means
+  regenerating if the scope ever needs to grow.
+- The **`.p8` downloads exactly once.** Lose it and the only path is revoke and
+  reissue.
+
+**Where it must live:** outside this repo. Not in `eas.json`, not in a commit,
+not in `.env`. `.gitignore` covers `*.p8`, and relying on that for a credential
+in a PUBLIC repo is the wrong shape of safety — keep the file out of the tree
+entirely:
+
+    ~/.appstoreconnect/AuthKey_<KEYID>.p8     chmod 600, dir chmod 700
+
+    export ASC_KEY_ID=...        # shown in the Team Keys table
+    export ASC_ISSUER_ID=...     # at the top of that page, account-wide
+    export ASC_P8=~/.appstoreconnect/AuthKey_<KEYID>.p8
+
+**Do not revoke the key named `[Expo] EAS Submit`.** EAS created it for
+submitting builds and holds its private half on Expo's servers; it is not
+usable from this machine and revoking it breaks `eas submit`. Make a second key
+for local use.
+
+---
+
+## 1 · What was entered, field by field
+
+Values, so the next run can diff rather than guess.
+
+### Apple Developer portal — the App ID
+
+| | |
+|---|---|
+| Bundle ID | `com.multimagics.mobile`, **Explicit** |
+| Team | Individual |
+| Capabilities | **none enabled** |
+
+Zero capabilities is a decision with evidence behind it, not an oversight: no
+`expo-notifications` anywhere in `src/` or `app/`, so no Push; auth is email +
+password via `POST /users/login` (`src/api/auth.ts`), so Sign in with Apple is
+not required; no `applinks`, so no Associated Domains; `expo-secure-store` uses
+no access group, so no Keychain Sharing. Capabilities can be added later — the
+bundle id cannot be changed.
+
+### App Store Connect — the app record
+
+| | |
+|---|---|
+| Platform | iOS only |
+| Name | `MultiMagic` |
+| Primary language | English (U.S.) |
+| SKU | internal, never public, permanent |
+| User access | Full |
+| App ID (Apple's) | `6814432815` |
+
+### Version and listing
+
+| | |
+|---|---|
+| Version | **`1.0.0`** |
+| Category | Productivity |
+| Content rights | contains no third-party content |
+| Support URL | `https://www.multimagics.com/about` |
+| Privacy policy URL | `https://www.multimagics.com/privacy` |
+| Marketing URL | empty |
+| Localizations | **en-US and fr-FR** |
+
+Copy for both locales is `docs/store/LISTING.md` §§1-3 and 8 — that file is the
+source, and the push below extracts from it rather than retyping it.
+
+**The version string is not cosmetic.** App Store Connect creates version `1.0`
+by default; `app.json` declares `1.0.0`; Apple matches an uploaded build to a
+version record by that exact string. Left mismatched the build uploads fine and
+then simply does not appear in the build picker, with no error saying why.
+
+**Two URLs that need an eye, not a status code.** `multimagics.com` is a SPA:
+every path returns the same 8 KB shell, including nonsense ones, so `curl`
+returning 200 proves nothing. `AppRoutes.tsx` is the real answer — the only
+routes reachable without an account are `/login`, `/login/verify`, `/signup`,
+`/privacy`, `/forgot-password`, `/reset-password`, `/logout`, and `/about`
+(inside `MainLayout`, which does not gate). **There is no `/support` route**;
+`/about` is used because it carries a contact section.
+
+### Product decisions made along the way
+
+- **Phone only.** `ios.supportsTablet: false`. Removes the iPad screenshot
+  requirement and the Split View risk in `STORE_READINESS.md` §1, where
+  `orientation: portrait` stops being honoured on a device nobody has tested.
+- **On-device speech.** `requiresOnDeviceRecognition: true` at
+  `useSpeechToText.ts`, so `NSSpeechRecognitionUsageDescription` becomes true
+  rather than being reworded. `STORE_READINESS.md` §4.
+- **The app icon must be square and opaque.** `assets/icon-1024.png` is the SVG
+  rendered *with* its `rx="58"` corners, so 4.49 % is transparent — and
+  `@expo/prebuild-config`'s `withIosIcons.js` composites onto `#ffffff`
+  (`removeTransparency: true`, `backgroundColor: '#ffffff'`). Shipped as-is the
+  binary carries four white wedges. The fix is a full-bleed square whose corners
+  continue `icon.svg`'s gradient (`#102125` → `#2d5363`), not a flatten.
+
+### App Privacy answers
+
+Every type is **linked to the user**, **not used for tracking**, purpose **App
+Functionality** only.
+
+| Category | Collected |
+|---|---|
+| Contact info | Name, Email, **Phone** (`profile.ts` reads/writes `phone_number`) |
+| Financial info | Other financial info — expenses, incomes, loans, budgets |
+| Contacts | yes |
+| User content | messages, photos/videos, other content. **Audio: NO** — dictation is on-device and never reaches the server |
+| Identifiers | User ID, Device ID |
+| Health, location, browsing/search history, usage, diagnostics, purchases | none |
+
+**Open question, and it is bigger than a checkbox.** `app/services/ai/records.rb`
+selects `type.app.nil? || type.app == 'safezone' || ...` — **SafeZone is always
+in the assistant's scope**, even when a conversation is narrowed to other apps.
+SafeZone holds passwords, payment cards and identities, and the privacy policy
+says the question plus retrieved passages go to Google's Gemini API. Either
+that is declared as Payment Info, or SafeZone is excluded from the retrieval
+corpus. Decide it before launch; declaring is the safer of the two if it ships
+unchanged.
+
+---
+
+## 2 · What replaces each click
+
+`scripts/asc.py` drives Apple's own API — no fastlane, no `eas metadata`. It
+resolves which app to act on from `--bundle`, then `bundleId` in the metadata
+file, then `ASC_BUNDLE_ID`, then `expo.ios.bundleIdentifier` in `./app.json`,
+so from any Expo project it needs no arguments.
+
+    python3 scripts/asc.py apps                     # every app the key can see
+    python3 scripts/asc.py show                     # read the listing back
+    python3 scripts/asc.py push metadata.json       # DRY RUN, sends nothing
+    python3 scripts/asc.py push metadata.json --write
+
+| Click | Replacement |
+|---|---|
+| Name, subtitle, privacy URL | `push` → `appInfoLocalizations` |
+| Description, keywords, promo text, support/marketing URL | `push` → `appStoreVersionLocalizations` |
+| Adding a whole language | same call — **fr-FR is one block, not a second pass through every field** |
+| Version number | `push` → `appStoreVersions.versionString` |
+| Reviewer notes | `push` → `appStoreReviewDetails.notes` |
+| Screenshots | `scripts/shots.py` — reserve, chunk-PUT, commit with the file's md5 |
+| Uploading a build | `eas build -p ios --profile production`, then `eas submit` |
+
+**Where there is no equivalent, and this was checked against Apple rather than
+assumed** — all five return `404 PATH_ERROR`:
+
+    /appDataUsageCategories · /appDataUsagePurposes
+    /appDataUsageDataProtections · /apps/{id}/dataUsages
+    /apps/{id}/appDataUsagesPublishState
+
+**The App Privacy questionnaire cannot be automated by any tool**, Apple's
+included. It is the table in §1, entered by hand, every release.
+
+### Three refusals that are normal
+
+- **`whatsNew` on a first release** → `409 STATE_ERROR: Attribute 'whatsNew'
+  cannot be edited at this time`. There is nothing to be new against. Restore it
+  for 1.0.1.
+- **10 screenshots per set, hard cap** → `409 SCREENSHOT_TOO_MANY`. Uploading
+  on top of existing ones does not replace them; delete first.
+- **Only the first three screenshots** appear on install cards. Order is set by
+  `PATCH /appScreenshotSets/{id}/relationships/appScreenshots`, and it is worth
+  doing deliberately rather than accepting upload order.
+
+Because of the first one, `push` retries a refused multi-field PATCH **one
+attribute at a time**, so nine accepted fields still land when one is refused,
+and it ends with a tally instead of a traceback.
+
+---
+
+## 3 · The boundary — what stays his, however good the tooling gets
+
+No document and no script moves these:
+
+- **Apple sign-in and 2FA.** `eas build -p ios` asks for the Apple ID, the
+  password and a code from his phone. `RELEASE.md` has the prompt order.
+- **Agreements, tax and banking.** Paid or free, the agreements gate the
+  listing and only the Account Holder can accept them.
+- **Creating the API key**, §0. The one that unlocks the rest.
+- **"Submit for Review".** The final click is his name on the submission.
+- **Approving the privacy text.** It is a legal statement about his users'
+  data. `PRIVACY.draft.md`'s title line carries it; dropping the word DRAFT is
+  what turns the banner off on the app and the web together, and **the file
+  must not be renamed** — `Legal::Policy::SOURCE` and `build-privacy.mjs` both
+  hardcode `docs/PRIVACY.draft.md`.
+
+---
+
+## 4 · Two false greens this evening, both generic
+
+Kept here because both would repeat, and `docs/TESTING.md` exists for exactly
+this shape.
+
+**A backgrounded `cmd | tail` reports the pipe's exit code, not the command's.**
+`bundle exec rspec 2>&1 | tail -25` came back exit 0 with 24 failures in the
+output. (Those 24 were `NameError: uninitialized constant Vips::Image` —
+libvips is absent here and `ci.yml` installs it, so they cannot pass locally.)
+
+**Running a linter on one file is not the gate.** `bundle exec rubocop <file>`
+said "no offenses detected" while CI, which runs it across the repo, was red on
+a file that had not been touched — and that red had been silently blocking
+every deploy, because the deploy job needs `[rubocop, brakeman, bundler_audit,
+rspec, frontend]`. Run the gate the way CI runs it, with no argument.

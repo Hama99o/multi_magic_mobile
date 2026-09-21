@@ -98,6 +98,44 @@ Two ways to close that, and either is enough:
 **Do one of them.** The runbook's "If it goes wrong" currently says step 6 stops
 the run, which is right, and then there is nothing to stop *to*.
 
+### The rebuild is not only an SDK requirement — it is what makes read-aloud
+### testable at all
+
+41's addition, and it changes what step 5 has to achieve rather than how it is
+done.
+
+The known-good binary was built at **01:34 on 2026-09-19**. Read-aloud landed
+at **09:15** the same day. `expo-audio` and `expo-speech` are **native**, so
+they are not in that APK — and `ReadAloudButtons` returns null on `!supported`,
+where `supported` comes from `tryRequire` of exactly those two modules.
+
+So `answer-read` renders **nowhere** on the current rig, while
+`READ_ALOUD_ENABLED` is `true` and Google TTS is installed on the AVD. Both
+halves of the obvious explanation are false; the cause is a binary eight hours
+older than the feature, serving current JS from Metro onto a native side that
+never had the modules.
+
+**Consequence for step 6:** `answer-read-device-voice` and `answer-read-notice`
+are parked behind this rebuild and not behind anybody writing a flow. After the
+rebuild they become reachable for the first time, so step 6 is not purely a
+regression check — **it is the first opportunity to test read-aloud on a
+device at all**, and it should be treated as new coverage rather than as
+re-running what passed.
+
+*(Timeline plus the render condition, not a dex inspection. Labelled because
+the difference matters.)*
+
+### The known-good APK is kept, and where
+
+Done rather than recommended, by 41 on 2026-09-21:
+
+    ~/qa-apk-keep/app-debug-sdk54-known-good.apk
+
+Outside the build tree on purpose — it is gitignored build output, so
+`git clean -x` would have taken it, and `adb install -r` would have overwritten
+it in place. That is the single point of failure above closed **before** the
+merge rather than during it.
+
 ### Shut the emulator down for the build
 
 Not an optimisation. This box **hard-rebooted from memory exhaustion on

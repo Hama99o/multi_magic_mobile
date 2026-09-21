@@ -85,7 +85,10 @@ const CHASE_RETRIES = 3;
 const SETTLE_MS = 300;
 
 /** Just enough of a `FlatList` to drive it, so a test can hand this a fake. */
-type Scrollable = { scrollToEnd: (options?: { animated?: boolean }) => void };
+type Scrollable = {
+  scrollToEnd: (options?: { animated?: boolean }) => void;
+  scrollToOffset: (params: { offset: number; animated?: boolean }) => void;
+};
 
 /**
  * WHO IS IN CHARGE OF THE SCROLL POSITION — the reader, or the conversation.
@@ -152,9 +155,45 @@ export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
     return content - layout - offset;
   };
 
-  const jump = useCallback(() => {
-    listRef.current?.scrollToEnd({ animated: false });
-  }, [listRef]);
+  /**
+   * GO TO THE BOTTOM — BY MEASUREMENT, NOT BY `scrollToEnd`.
+   *
+   * His report: *"when i click on arrow it go top and stop on big message each
+   * time, but for small message it works."* Going to the TOP is not a near
+   * miss, and `VirtualizedList.js` says why in its own source:
+   *
+   *     const frame = this._listMetrics.getCellMetricsApprox(veryLast, …);
+   *     const offset = Math.max(0, frame.offset + frame.length
+   *                                + this._footerLength - visibleLength);
+   *
+   * **Approx.** A cell that is not currently rendered has no measured height,
+   * so the last one is estimated from the average row — and when one message
+   * is ten screens tall while the rest are two lines, that estimate is not
+   * slightly wrong, it is an order out. The `Math.max(0, …)` then turns an
+   * underestimate into **offset 0**, which is the top of the conversation.
+   * Small messages estimate correctly, which is exactly the split he saw.
+   *
+   * We are not guessing, though. `contentSize.height` on a scroll event and
+   * the height in `onContentSizeChange` are both reported by the native view
+   * and are the real thing, so `scrollToOffset` with our own arithmetic beats
+   * the list's approximation. `scrollToEnd` stays only for the first moments,
+   * before anything has been measured at all.
+   */
+  const jumpTo = useCallback(
+    (animated: boolean) => {
+      const list = listRef.current;
+      if (!list) return;
+      const { content, layout } = geometry.current;
+      if (content > 0 && layout > 0) {
+        list.scrollToOffset({ offset: Math.max(0, content - layout), animated });
+        return;
+      }
+      list.scrollToEnd({ animated });
+    },
+    [listRef],
+  );
+
+  const jump = useCallback(() => jumpTo(false), [jumpTo]);
 
   /** Stop waiting on a jump — it arrived, or a finger took over. */
   const endChase = useCallback(() => {
@@ -276,8 +315,8 @@ export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
     chasesLeft.current = CHASE_RETRIES;
     scheduleSettle();
     setAway(false);
-    listRef.current?.scrollToEnd({ animated: true });
-  }, [listRef, scheduleSettle]);
+    jumpTo(true);
+  }, [jumpTo, scheduleSettle]);
 
   return {
     awayFromBottom,

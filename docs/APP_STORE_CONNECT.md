@@ -233,6 +233,19 @@ false   healthOrWellnessTopics · gambling · unrestrictedWebAccess · lootBox
 true    messagingAndChat · userGeneratedContent
 ```
 
+**The minimum age is 13+, and that is a decision rather than a computation.**
+`ageRatingOverrideV2: "THIRTEEN_PLUS"` — Hamma9900's call on 2026-09-21: the app
+is not for young children. An override can only push a rating **up**, never
+down, so it is a floor; if the content answers ever compute higher, the higher
+one still applies. Apple's accepted values, enumerated by its own error rather
+than guessed:
+
+    NONE · NINE_PLUS · THIRTEEN_PLUS · SIXTEEN_PLUS · EIGHTEEN_PLUS · UNRATED
+
+There is no `TWELVE_PLUS`. The old 4+/9+/12+/17+ bands are gone, so "over 12"
+is `THIRTEEN_PLUS`. Setting the V2 field also sets the legacy
+`ageRatingOverride`, and `kidsAgeBand` stays null — this is not a Kids app.
+
 `messagingAndChat` and `userGeneratedContent` are the two that describe this app
 and they raise the rating. That is correct and not worth arguing around: an app
 where people message each other is rated as one. `unrestrictedWebAccess` is

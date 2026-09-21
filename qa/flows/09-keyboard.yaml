@@ -28,8 +28,61 @@ tags:
 ---
 - runFlow: login.yaml
 
+# ── AND THE CONVERSATION MUST STAY AT THE BOTTOM WHEN IT ARRIVES ──────────
+#
+# His report: *"when i go to bottom of session and i open keyboard it hide what
+# it showed — it should push the session conversation up to see the latest
+# thing."* The composer surviving is not enough; the keyboard shrinks the list,
+# and if nothing re-scrolls, the newest message goes behind the composer while
+# the composer itself looks perfect. That is what he photographed.
+#
+# `scroll-to-bottom` is the instrument. It renders only while the reader is
+# away from the newest message, so "we are still at the bottom" and "the button
+# is not offered" are the same fact, and the second one is a selector.
+#
+# FIRST, PROVE THIS CONVERSATION HAS A BOTTOM TO BE AWAY FROM. If the QA
+# account's thread fits on one screen the button can never appear, and every
+# assertion below would pass by being unreachable rather than by being true —
+# `FLOW_REGISTER.md`'s empty-state rule. This step fails loudly in that case
+# instead, and the failure is the finding.
+- swipe:
+    direction: DOWN
+    duration: 400
+- extendedWaitUntil:
+    visible:
+      id: "scroll-to-bottom"
+    timeout: 8000
+- takeScreenshot: reports/48-scrolled-up-button-offered
+
+# Back to the newest. The button going away is the app agreeing we arrived.
+- tapOn:
+    id: "scroll-to-bottom"
+- extendedWaitUntil:
+    notVisible:
+      id: "scroll-to-bottom"
+    timeout: 8000
+- takeScreenshot: reports/49-at-bottom-keyboard-down
+
 - tapOn:
     id: "composer-input"
+
+# Give the button every chance to appear before denying it. Without this the
+# assertion below could pass in the gap between the keyboard opening and the
+# list re-measuring — a pass that means "not yet" rather than "not at all".
+# lint: optional-ok — this is a DELAY, not the assertion. The claim is the
+# `assertNotVisible` immediately after it, which cannot be optional and is not.
+- extendedWaitUntil:
+    visible:
+      id: "scroll-to-bottom"
+    timeout: 3000
+    optional: true
+
+# THE ASSERTION HIS REPORT IS ABOUT. Away from the bottom with the keyboard up
+# means the newest message is behind the composer.
+- assertNotVisible:
+    id: "scroll-to-bottom"
+- takeScreenshot: reports/49b-at-bottom-keyboard-up
+
 - inputText: "does the composer stay above the keyboard"
 
 # All three still visible WITH the keyboard up. If the composer had been pushed

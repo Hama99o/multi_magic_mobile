@@ -582,3 +582,46 @@ finding one you already know exists.
 
 Both traps are the same object as the section above: a command that answers
 confidently without being able to answer.
+
+## PARKED, NOT FIXED — the backend check asserts a status, not an identity
+
+Not done. Written down on 2026-09-23 so it is not lost, and left for whoever
+picks it up with time to do it properly.
+
+`qa/preflight.sh`'s `backend_up()` reports **"backend reachable"** on a 200 from
+`$API_URL_LOCAL/up`. Nothing in it asserts *which application answered*, and it
+is the odd one out in this rig: `qa.sh`'s Metro check greps the response body
+for `packager`, which is an identity, and is already the right shape.
+
+**Measured here, and it is worse than the body being ignored:**
+
+```sh
+backend_up(){ … curl -s -o /dev/null -w '%{http_code}' … "$API_URL_LOCAL/up" … = "200" }
+```
+
+- `-o /dev/null` **throws the body away**, so there is nothing to identify with.
+- And keeping it would not help. `/up` is `rails/health#show`
+  (`config/routes.rb:5`), the Rails **default** health route that every Rails
+  7.1+ app has, and its entire body is
+  `<html><body style="background-color: green"></body></html>`. **It carries
+  nothing identifying at all.** Any Rails app on any port answers it the same.
+
+**Why it matters, from Karwan's rig the same night** — reported, not measured
+here: their preflight asked `localhost:3000`, got a healthy 200, and then 404ed
+on every real route, because 3000 is a different Rails app. What exposed it was
+a version string in the 404, and only because the failure came first. **A run
+that happened to succeed would have gone green against a stranger's app and
+been believed.**
+
+**Read `karwan-api/bin/preflight` step 4 BEFORE writing anything.** It already
+does this: it fetches a real endpoint and branches three ways — ours, nothing
+answered, and **something else answered**. That third branch is the point;
+collapsing it into "not reachable" throws away the whole finding. The session
+over there nearly built a second mechanism beside the one that already existed,
+so the first move here is to go and read theirs, not to design ours.
+
+Their general lesson, in their words: **a guard only guards the path it is on.**
+Theirs was correct, enforced, and walked around by hand.
+
+This sits with "Ask what the report would look like if the step had done
+nothing" above. A 200 from a stranger and a 200 from us are the same report.

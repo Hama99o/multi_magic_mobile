@@ -535,6 +535,26 @@ only means something once you have established there was somewhere for the thing
 to be. `15` now asserts `sessions-sheet` and `sessions-new` before asserting the
 two titles are gone.
 
+**And knowing this entry does not protect you from it.** The `assertNotVisible`
+example above was written into a cleanup **eleven minutes after** the session
+writing it committed this section's first half. A supervising session made the
+same move at wider spacing the same night: corrected on a memory gauge at six
+o'clock, wrote the correction down, and handed out a tripwire built on the wrong
+number at ten. Knowing a rule and holding it under time pressure are different
+skills, and the gap between them does not close by stating the rule more
+clearly.
+
+What closed both was not care. It was **an artifact and a second pair of eyes**
+— a hierarchy dump from the failing step, and somebody who measured
+independently instead of taking the report. So the operational form of this
+entry is not "be careful", which is not a rule:
+
+> **Look at what the run produced, not at what you meant it to do.**
+
+The dump, the log, the screenshot. Every wrong cause recorded this week
+survived because somebody reasoned about the run instead of opening its
+artifacts, and every one of them died within minutes of somebody opening them.
+
 And the general one: **a negative control is not optional rigour, it is what
 converts a pass into information.** When `${output.…}` was checked against a
 selector, the four passes meant nothing until a fifth run asserted a string that

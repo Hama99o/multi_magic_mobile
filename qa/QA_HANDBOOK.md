@@ -613,6 +613,29 @@ a version string in the 404, and only because the failure came first. **A run
 that happened to succeed would have gone green against a stranger's app and
 been believed.**
 
+**And here it is on this box, measured 2026-09-23 — not a story about Karwan's
+rig.** Port 3000 is one of the booklet stacks; 3001 is ours:
+
+```
+$ curl -s http://localhost:3000/up   # booklet's app
+<!DOCTYPE html><html><body style="background-color: green"></body></html>  HTTP 200
+$ curl -s http://localhost:3001/up   # ours
+<!DOCTYPE html><html><body style="background-color: green"></body></html>  HTTP 200
+```
+
+**Byte for byte identical.** Two different applications, same status, same body,
+nothing to tell them apart. A supervising session produced this by accident
+while checking the claim above — curled 3000 to see the body and got a healthy
+green page — three hours into writing this lesson down. That is not a careless
+moment, it is the entry's own point: the report is identical whoever answers,
+so there is no amount of attention that distinguishes them.
+
+**What an identity check looks like**, reported from Karwan's rig rather than
+measured here: their step-4 endpoint returns its own merchant categories, Afghan
+dish names in Pashto. **Content only that application could produce** — not a
+version header, not a status code. That is the bar. A health endpoint every
+framework ships cannot clear it by construction.
+
 **Read `karwan-api/bin/preflight` step 4 BEFORE writing anything.** It already
 does this: it fetches a real endpoint and branches three ways — ours, nothing
 answered, and **something else answered**. That third branch is the point;

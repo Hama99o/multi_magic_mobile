@@ -444,3 +444,50 @@ that suspect is now excluded by reading rather than by another run. What
 remains untested is whether `${output.…}` interpolation reaches a *selector*
 the same way it reaches an `inputText`, which is the next thing to probe and
 needs a device.
+
+## A recorded cause is a hypothesis until something re-measures it
+
+`FLOW_REGISTER.md` is rigorous about verdicts. `PASS`, `NOT MEASURED` and the
+"does NOT cover" column exist precisely so nobody reads more into a green than
+it earned. **The causes written beside those verdicts get none of that
+discipline**, and the cause is what the next session actually acts on — a
+verdict tells you where to look, a cause tells you what to do.
+
+**Five recorded causes were found wrong in a single night, 2026-09-21 into 22.**
+Three of them in this repo, measured here:
+
+1. *"Maestro's `longPressOn` does not land."* It lands. An isolated probe opens
+   the reaction sheet. The flow's selector was ambiguous — six identical labels.
+2. *"Deleting a conversation closes the sheet."* It does not. `onClose` is
+   called at four sites and none is the delete path, and a run on 19 September
+   deleted two conversations back to back and passed.
+3. *"A cleanup that opens its own sheet finds no `chat-open-sessions`."* Not a
+   bug at all: a `Modal` covering a header, behaving exactly as it should.
+
+Two more were reported over the relay the same night from the other repos — a
+swallowed 422 said to make later calls fail when four endpoints returned 200,
+and a nullable session expiry pinned in a spec as a deliberate admin feature
+that exists nowhere. **Those two are recorded here as reported, not as
+measured**, which is the whole of this section applied to itself.
+
+**They are all one object.** A plausible explanation, written down at the moment
+of a failure, never re-measured, then read as a fact by whoever came next. Each
+cost more than the defect it described: #1 and #2 together cost four reverted
+attempts and put a non-defect in front of him as the app's only known bug.
+
+**The rule.** Every cause recorded next to a verdict carries one word:
+
+- **measured** — somebody drove it and watched the outcome, or read the code
+  that decides it. Say what was driven or which file and line.
+- **inferred** — it is the best explanation of a failure nobody has re-tested.
+
+An unmarked cause reads as **inferred**. That is the safe default and it is the
+honest one, because most of them are. The marker costs a word; #1 and #2 above
+would each have been caught by somebody reading "inferred" and spending ten
+minutes rather than four attempts.
+
+And the sharper half, which is the one that actually bites: **a cause is not
+made measured by being confidently written, by being repeated, or by being
+quoted back to you.** Two of the five were repeated to a peer as established
+fact before anybody drove them. Being told your own guess is the same as being
+told nothing.

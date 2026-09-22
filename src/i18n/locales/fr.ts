@@ -154,6 +154,9 @@ export const fr: Translations = {
     audioCapture: "Le microphone est occupé ou indisponible. Vous pouvez toujours écrire.",
     languageNotSupported:
       "Votre téléphone ne sait pas encore dicter en {{language}}. Vous pouvez toujours écrire.",
+    title: "Langue de la dictée",
+    someUnavailable:
+      "Une langue grisée n’est pas installée sur ce téléphone. Android les ajoute dans Paramètres › Système › Langues.",
   },
 
   answer: {

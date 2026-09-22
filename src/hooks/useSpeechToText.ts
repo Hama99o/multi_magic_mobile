@@ -70,6 +70,10 @@ interface SpeechModule {
     abort: () => void;
     requestPermissionsAsync: () => Promise<{ granted: boolean }>;
     getSpeechRecognitionServices: () => string[];
+    /** Optional: older builds of the module do not have it. */
+    getSupportedLocales?: (options: {
+      androidRecognitionServicePackage?: string;
+    }) => Promise<{ locales: string[]; installedLocales: string[] }>;
     /**
      * `SFSpeechRecognizer.isAvailable` on iOS; `SpeechRecognizer.isRecognitionAvailable`
      * on Android. Optional in the type because older builds of the module did
@@ -108,7 +112,107 @@ export const DEFAULT_LANG = "fr-FR";
 export const LANGUAGES = [
   { code: "fr-FR", label: "Français" },
   { code: "en-US", label: "English" },
+  /**
+   * His request: *"if there is pashto possible add that also."* It is his own
+   * language and `Ai::RagChat` already answers in it — "Someone writing
+   * Pashto… wants it back the same way" — so the assistant can hold the
+   * conversation; only the microphone could not.
+   *
+   * **Whether a phone can hear it is the phone's answer, not ours.** Android
+   * ships whichever locales its recogniser has, and `ps-AF` is not among the
+   * common ones — so this is offered and then CHECKED against
+   * `getSupportedLocales()` rather than promised. `useDictationLocales` below
+   * is how the chooser knows to say so instead of failing silently when the
+   * mic is pressed.
+   */
+  { code: "ps-AF", label: "پښتو" },
 ] as const;
+
+/**
+ * Just the stored preference, for a settings screen.
+ *
+ * `useSpeechToText` takes a callback and wires up a recogniser, which is far
+ * more than a chooser needs — and mounting it in a sheet would subscribe to
+ * speech events nobody is listening for. Same key, so the choice made here is
+ * the one the mic uses and the one the device voice reads back
+ * (`readAloud.store.ts`).
+ */
+export function useDictationLang(): { lang: string; setLang: (code: string) => void } {
+  const [lang, setLangState] = useState<string>(DEFAULT_LANG);
+
+  useEffect(() => {
+    let alive = true;
+    void AsyncStorage.getItem(LANG_KEY)
+      .then((stored) => {
+        if (alive && stored) setLangState(stored);
+      })
+      .catch(() => {});
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  const setLang = useCallback((next: string) => {
+    setLangState(next);
+    void AsyncStorage.setItem(LANG_KEY, next).catch(() => {});
+  }, []);
+
+  return { lang, setLang };
+}
+
+/**
+ * WHICH OF THESE CAN THIS PHONE ACTUALLY HEAR?
+ *
+ * `null` means **we could not find out**, and that distinction is the whole
+ * point of this hook. `getSupportedLocales` returns an empty array on Android
+ * 12 and below rather than an error, and it throws `package_not_found` when
+ * there is no recogniser service to ask. Reading either as "this phone
+ * supports no languages" would grey out every option on a phone where
+ * dictation works perfectly.
+ *
+ * So: a list means the device answered and the chooser can mark what is
+ * missing. `null` means nobody knows, and the chooser offers everything rather
+ * than guessing — a language that then fails says so through the existing
+ * `problem` line, which is the honest order of events.
+ */
+export function useDictationLocales(): { locales: string[] | null } {
+  const [locales, setLocales] = useState<string[] | null>(null);
+
+  useEffect(() => {
+    let alive = true;
+    const ask = ExpoSpeechRecognitionModule?.getSupportedLocales;
+    if (!ask) return;
+    void ask({})
+      .then((result) => {
+        if (!alive) return;
+        // An EMPTY list is not an answer — see the header. Android 12 and
+        // below return exactly that, and so does a service that has nothing
+        // to say about itself.
+        setLocales(result.locales.length > 0 ? result.locales : null);
+      })
+      .catch(() => {
+        // `package_not_found`, or a recogniser that refused the question.
+        if (alive) setLocales(null);
+      });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
+  return { locales };
+}
+
+/**
+ * Is a language one this phone offers? Compared on the LANGUAGE SUBTAG rather
+ * than the whole code: a device that lists `fr_CA` can hear `fr-FR` spoken at
+ * it, and Android reports locales with an underscore while we store a hyphen.
+ * Unknown support means yes — see `useDictationLocales`.
+ */
+export function isLocaleSupported(code: string, locales: string[] | null): boolean {
+  if (locales === null) return true;
+  const want = code.toLowerCase().split(/[-_]/)[0];
+  return locales.some((l) => l.toLowerCase().split(/[-_]/)[0] === want);
+}
 
 export type SttStatus = "idle" | "listening" | "unavailable";
 

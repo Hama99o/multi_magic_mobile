@@ -630,11 +630,23 @@ green page — three hours into writing this lesson down. That is not a careless
 moment, it is the entry's own point: the report is identical whoever answers,
 so there is no amount of attention that distinguishes them.
 
-**What an identity check looks like**, reported from Karwan's rig rather than
-measured here: their step-4 endpoint returns its own merchant categories, Afghan
-dish names in Pashto. **Content only that application could produce** — not a
-version header, not a status code. That is the bar. A health endpoint every
-framework ships cannot clear it by construction.
+**And what an identity check looks like — also measured here, same night,
+same box.** Karwan's step-4 endpoint, on their port:
+
+```
+$ curl -s http://localhost:3017/api/v1/public/merchant_categories
+{"merchant_categories":[{"id":1,"slug":"kabab","name":"کباب"},
+ {"id":2,"slug":"qabuli","name":"قابلی پلو"},{"id":3,"slug":"mantu","name":"منتو"},…
+```
+
+**Content only that application could produce** — not a version header, not a
+status code. Nothing else on this machine answers with those. That is the bar,
+and a health endpoint every framework ships cannot clear it by construction,
+which is why the fix here is a different endpoint rather than a better read of
+`/up`. (Their public catalogue, read-only, one GET; nothing of theirs touched.)
+
+Put the two side by side and the whole finding is three commands: 3000 and 3001
+indistinguishable, 3017 unmistakable.
 
 **Read `karwan-api/bin/preflight` step 4 BEFORE writing anything.** It already
 does this: it fetches a real endpoint and branches three ways — ours, nothing

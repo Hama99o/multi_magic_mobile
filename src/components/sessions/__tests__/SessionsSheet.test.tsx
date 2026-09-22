@@ -192,6 +192,47 @@ describe("deleting", () => {
     expect(screen.getByTestId("sessions-sheet")).toBeTruthy();
     expect(screen.getByTestId("session-menu-5")).toBeTruthy();
   });
+
+  /**
+   * A FAILURE HAS TO BE LEGIBLE ON THE SURFACE THAT CAUSED IT.
+   *
+   * Found on a device, not here. The server answers
+   * `DELETE /api/v1/ai/sessions/281` with a 500 — a foreign key on
+   * `ai_usage_events` that `Ai::Sessions.destroy` does not clear, so a
+   * conversation that has ever produced a usage event cannot be deleted at
+   * all. The mutation's `onError` fired correctly and set the message. It
+   * rendered as `sessions-error`, in the sheet's body, which is BEHIND this
+   * dialog's own `Modal`.
+   *
+   * So the button did nothing, forever, and the explanation sat on a surface
+   * the user could not see while the thing it explained was on screen. Tapping
+   * it again by hand changed nothing; only logcat said why.
+   */
+  it("shows WHY inside the confirm when the server refuses, and stays open", async () => {
+    jest.spyOn(sessionsApi, "destroy").mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 500, data: { error: "Could not delete this conversation." } },
+    });
+    renderSheet();
+
+    await waitFor(() => expect(screen.getByTestId("session-menu-4")).toBeTruthy());
+    fireEvent.press(screen.getByTestId("session-menu-4"));
+    await waitFor(() => expect(screen.getByTestId("session-menu-delete")).toBeTruthy());
+    fireEvent.press(screen.getByTestId("session-menu-delete"));
+    await waitFor(() => expect(screen.getByTestId("delete-conversation-yes")).toBeTruthy());
+
+    fireEvent.press(screen.getByTestId("delete-conversation-yes"));
+
+    // Inside the dialog, not behind it.
+    await waitFor(() =>
+      expect(screen.getByTestId("delete-conversation-error")).toHaveTextContent(
+        "Could not delete this conversation.",
+      ),
+    );
+    // And the dialog is still there to read it on, and to cancel from.
+    expect(screen.getByTestId("delete-conversation-confirm")).toBeTruthy();
+    expect(screen.getByTestId("delete-conversation-cancel")).toBeTruthy();
+  });
 });
 
 describe("failures", () => {

@@ -440,8 +440,20 @@ export function SessionsSheet({
         visible={pending?.kind === "delete"}
         fileCount={pending?.session.documentCount ?? 0}
         busy={destroy.isPending}
-        onCancel={() => setPending(null)}
-        onConfirm={() => pending && destroy.mutate(pending.session.id)}
+        // Only while THIS dialog is up: `error` is shared with the sheet's own
+        // failures (create, clear, rename), and showing one of those inside a
+        // delete confirm would explain the wrong thing.
+        error={pending?.kind === "delete" ? error : null}
+        onCancel={() => {
+          setError(null);
+          setPending(null);
+        }}
+        onConfirm={() => {
+          // A retry starts clean, so a stale message cannot be read as the
+          // result of the press that just happened.
+          setError(null);
+          if (pending) destroy.mutate(pending.session.id);
+        }}
       />
     </Modal>
   );

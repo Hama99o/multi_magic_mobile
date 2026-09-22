@@ -44,8 +44,10 @@ import { Avatar } from "@/screens/people/Avatar";
 import { useAuthStore } from "@/stores/auth.store";
 import { ThemeRow } from "./ThemeRow";
 import { LanguageRow } from "./LanguageRow";
+import { DictationRow } from "./DictationRow";
+import { useDictationLang } from "@/hooks/useSpeechToText";
 
-type Pane = "root" | "language" | "theme";
+type Pane = "root" | "language" | "theme" | "dictation";
 
 /** A row that goes somewhere. The chevron says so without a word. */
 function Row({
@@ -103,6 +105,7 @@ export function ProfileSheet({
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
   const [pane, setPane] = useState<Pane>("root");
+  const dictation = useDictationLang();
 
   if (!visible) return null;
 
@@ -118,7 +121,9 @@ export function ProfileSheet({
       ? t("profileMenu.language")
       : pane === "theme"
         ? t("profileMenu.appearance")
-        : (user?.fullName ?? t("profileMenu.title"));
+        : pane === "dictation"
+          ? t("dictation.title")
+          : (user?.fullName ?? t("profileMenu.title"));
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={close}>
@@ -235,6 +240,15 @@ export function ProfileSheet({
                   testID="profile-open-theme"
                   chevron
                 />
+                {/* His: "we should be able to choose french or english" for
+                    dictation. The only way to change it used to be a long
+                    press on the mic, which nothing announced. */}
+                <Row
+                  label={t("dictation.title")}
+                  onPress={() => setPane("dictation")}
+                  testID="profile-open-dictation"
+                  chevron
+                />
 
                 <View
                   style={{
@@ -258,6 +272,10 @@ export function ProfileSheet({
             ) : pane === "language" ? (
               <View testID="profile-language-pane">
                 <LanguageRow userId={userId} />
+              </View>
+            ) : pane === "dictation" ? (
+              <View testID="profile-dictation-pane">
+                <DictationRow lang={dictation.lang} onChange={dictation.setLang} />
               </View>
             ) : (
               <View testID="profile-theme-pane">

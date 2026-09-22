@@ -195,6 +195,8 @@ not been done.
 | `deleteConversation.questionWithFiles_one` | Delete this conversation and the {{count}} file in it? | Supprimer cette discussion et le {{count}} fichier qu’elle contient ? |
 | `deleteConversation.questionWithFiles_other` | Delete this conversation and the {{count}} files in it? | Supprimer cette discussion et les {{count}} fichiers qu’elle contient ? |
 | `deleteConversation.safe` | Your notes, contacts, loans and money are not touched. | Vos notes, vos contacts, vos prêts et votre argent ne sont pas touchés. |
+| `dictation.someUnavailable` | A greyed-out language is not installed on this phone. Android adds them under Settings › System › Languages. | Une langue grisée n’est pas installée sur ce téléphone. Android les ajoute dans Paramètres › Système › Langues. |
+| `dictation.title` | Dictation language | Langue de la dictée |
 | `dictation.audioCapture` | The microphone is busy or unavailable. You can still type. | Le microphone est occupé ou indisponible. Vous pouvez toujours écrire. |
 | `dictation.languageNotSupported` | Your phone cannot dictate in {{language}} yet. You can still type. | Votre téléphone ne sait pas encore dicter en {{language}}. Vous pouvez toujours écrire. |
 | `dictation.network` | Dictation needs a connection right now. You can still type. | La dictée a besoin d’une connexion pour l’instant. Vous pouvez toujours écrire. |

@@ -135,6 +135,8 @@ export const en = {
     network: "Dictation needs a connection right now. You can still type.",
     audioCapture: "The microphone is busy or unavailable. You can still type.",
     languageNotSupported: "Your phone cannot dictate in {{language}} yet. You can still type.",
+    title: "Dictation language",
+    someUnavailable: "A greyed-out language is not installed on this phone. Android adds them under Settings › System › Languages.",
   },
 
   answer: {

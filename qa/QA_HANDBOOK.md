@@ -497,3 +497,68 @@ made measured by being confidently written, by being repeated, or by being
 quoted back to you.** Two of the five were repeated to a peer as established
 fact before anybody drove them. Being told your own guess is the same as being
 told nothing.
+
+## Ask what the report would look like if the step had done nothing
+
+The costliest failures in this rig are not steps that fail. They are steps that
+**report success for a reason unrelated to the thing being asked**. A green that
+could not have been red is not weak evidence, it is no evidence, and it reads
+exactly like the real thing.
+
+One question catches all of them, before the run rather than after:
+
+> **If this step had done nothing at all, what would its report look like?**
+> If the answer is "the same", the step is not evidence.
+
+Two worked examples from one night, two different masks on the same object:
+
+**The tool reported success for an action that never reached the app.**
+`longPressOn: id: msg-mine-.*` prints `COMPLETED` when the gesture is
+dispatched, not when anything receives it. With the keyboard up it reached
+nothing, and `COMPLETED` was printed just the same. That single misreading
+produced two wrong recorded causes over two nights — first "the gesture is not
+drivable", then "the selector is ambiguous" — and cost a defect report against
+an app that did not have the defect. What finally settled it was three runs
+changing **one** variable, with a case that was known to pass as the control.
+
+**The assertion was incapable of failing for the right reason.**
+`15-sessions-switch`'s first cleanup ended with `assertNotVisible` on two
+conversation titles. It passed — against a sheet completely covered by a delete
+confirm that had never closed. `assertNotVisible` cannot tell *"the row is
+gone"* from *"nothing is visible at all"*, so a covered screen satisfies it
+perfectly. Green assertion, real dialog, invisible cause, and a failure four
+steps later pointing at `sessions-new`, which was innocent.
+
+**The remedy for a negative assertion is a positive one in front of it.** Assert
+the surface is present and usable, *then* assert what is absent from it. Absence
+only means something once you have established there was somewhere for the thing
+to be. `15` now asserts `sessions-sheet` and `sessions-new` before asserting the
+two titles are gone.
+
+And the general one: **a negative control is not optional rigour, it is what
+converts a pass into information.** When `${output.…}` was checked against a
+selector, the four passes meant nothing until a fifth run asserted a string that
+was deliberately absent and failed — printing the resolved value, which proved
+the interpolation had happened at all. Three suspects were excluded that night
+by negative controls and all three had been believed.
+
+## `pgrep -f <pattern>` matches the process doing the looking — including you
+
+There is already a note above about `until ! pgrep -f maestro` waiting for
+itself forever. It has a second face, and it caught a session on 2026-09-22
+checking the emulator count for a teardown report:
+
+```sh
+pgrep -af qemu-system | wc -l     # 3   ← two of them were the shell running this
+ps -eo comm= | grep -c '^qemu-system'   # 1   ← the truth
+```
+
+`pgrep -f` matches the full command line, and the command line of the thing
+asking the question contains the pattern by definition. Reporting "three
+emulators are running" on a box whose whole contract is *one device at a time*
+would have been an emergency invented out of a grep. **Match on `comm` — the
+executable name — whenever you are counting processes**, and keep `-f` for
+finding one you already know exists.
+
+Both traps are the same object as the section above: a command that answers
+confidently without being able to answer.

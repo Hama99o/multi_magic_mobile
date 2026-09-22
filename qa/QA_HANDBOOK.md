@@ -325,3 +325,122 @@ The general form: **if the only thing that undoes your side effect is the last
 line of the thing that caused it, the side effect is permanent for every run
 that does not reach that line** — and the runs that do not reach it are
 exactly the ones that went wrong, which is when a dirty account hurts most.
+
+## A flow that writes and never cleans up has a verdict that depends on its own history
+
+The section above is about cleanup that does not run. This one is about
+cleanup that was never written, and it is worse, because the flow keeps
+passing while the damage accumulates.
+
+**Two symptoms, 2026-09-21 and 22, and they are one bug.** `06-people-chat`
+sends the constant string `[qa] automated test message` and removes nothing.
+On the seventh run the live tree held **seven `msg-*` elements, six carrying
+that identical accessibility label**, one per previous run. `msg-mine-.*`
+matches all six, Maestro picks one, and by then the one it picks has scrolled
+off the screen. `15-sessions-switch` creates a conversation called `QA switch
+target` and later asserts it is gone — against an account that still holds one
+from an earlier run, so the assertion fails before the test begins.
+
+The general property is worth stating on its own, because it is not "these two
+flows are dirty":
+
+> **A flow that writes to a live server and never removes what it wrote has a
+> verdict that depends on how many times it has been run before.**
+
+That is a worse property than failing outright. It **passes early and fails
+later**, so the failure arrives detached from the change that caused it — which
+is nobody's change, because nothing changed. Both times, the first reading was
+that the app had regressed. Twice I reported a cause that was wrong, and the
+wrong cause reached the board. A flow like this does not just fail; it
+**manufactures false defect reports about the product**.
+
+**The rule, and it is a fork, not a preference.** Every flow that creates data
+does one of two things, and says in its header which:
+
+- **Removes it**, structurally — not as the last line of the happy path. See
+  the section above for why that distinction is the whole of it.
+- **Makes what it creates unique per run and addresses it by that
+  uniqueness.** A constant string is not a selector; it is a selector that
+  works once. `evalScript` can stamp a run id, and the value is then usable in
+  both the `inputText` and the selector that finds it again.
+
+Uniqueness is the stronger of the two, because it survives the run being
+killed. Removal alone does not.
+
+### The audit, so the next session greps for a shorter list
+
+All 24 files `flow_lint` counts — 22 flows and 2 helpers — read on 2026-09-22
+for what they commit to the server. The answer to "is it only 06 and 15" is **no**, and
+the shape of the rest is the useful part.
+
+**Accumulates, no cleanup at all — the defect above:**
+
+- `06-people-chat` — a constant message, sent. **Confirmed breaking the flow.**
+- `01-ask` — sends `Do I owe anyone money?` to the QA account's standing
+  conversation and never removes it: one question and one real AI answer per
+  run, without bound, in his account. Not failing yet. Note what it has already
+  caused, though — `15`'s own header *depends* on that conversation being
+  non-empty ("every `01-ask` run adds to it"), so a flow is already resting an
+  assertion on another flow's residue. That is the dependency this rule exists
+  to forbid, and it is already written down as design.
+
+**Creates and removes, but only on success — and with a constant name, so an
+aborted run poisons the next one:** `04-delete-conversation` (`QA delete
+target`), `15-sessions-switch` (`QA switch target`, `QA switch other`),
+`19-session-options` (`QA options target`). The previous section already has
+these; the constant name is the second ingredient, and uniqueness fixes both at
+once.
+
+**Writes, but overwrites rather than appends:** `13-profile` sets the first
+name and the About text to the same values every run, so nothing grows. It does
+permanently hold his QA profile at a rig-written string and never restores it —
+which is a decision, not a defect, but it should be a stated one.
+
+**A side effect outside the database:** `11-forgot-password` submits the real
+form, so a password-reset email reaches the QA mailbox on every run.
+
+**Types but never commits, and this is deliberate in each case** — worth
+recording so nobody "fixes" one into writing: `02-sign-in` (wrong credentials
+on purpose), `03-dictation` and `09-keyboard` (type into the composer, never
+press send — `09` clears it), `10-sign-up` (signs up with the QA address, which
+already exists, so it cannot create), `14-change-password` (the final submit
+carries a deliberately wrong *current* password, so the password never
+changes), `16-ai-keys` (an invalid key the provider rejects before it is
+saved).
+
+**Reads only:** `05-upload` (opens the attach sheet, never picks a file),
+`07`, `08`, `12`, `17`, `18-delete-account` (opens and never confirms), `20`,
+`99`, `signed-out`, and both helpers.
+
+## What a Maestro selector actually matches — read out of the jar, not guessed
+
+Answering "does `id:` plus `text:` compose the way I assumed?" from
+`~/.maestro/lib` rather than from another emulator boot. Maestro 2.7.0,
+`javap` on `maestro-client.jar` and `maestro-orchestra.jar`. Four facts, each
+checkable the same way:
+
+- **Several keys on one selector are an AND, over the same node set.**
+  `Orchestra.buildFilter` collects one filter per key and combines them with
+  `Filters.intersect`, which applies each to the *same* input list and
+  set-intersects the results. So `id:` + `text:` means one element satisfying
+  both, not two elements.
+- **`id:` reads `resource-id` and nothing else** (`Filters.idMatches`). On
+  React Native Android that is `testID`.
+- **`text:` reads three attributes and unions them**: `text`, `hintText` and
+  **`accessibilityText`**, which `AndroidDriver` fills from `content-desc` —
+  so on Android a selector's `text:` matches an `accessibilityLabel` too. That
+  is not obvious from the name and it is the reason a `text:` selector can hit
+  a `Pressable` that displays no text of its own.
+- **Newlines are replaced with spaces before matching**, and each attribute
+  gets three chances: the regex against the raw value, an exact equality
+  against the *pattern* string, and the regex against the newline-flattened
+  value. A two-line label is therefore matchable as one line with a space —
+  which narrows, but does not repeal, the `ANCHORED` rule: Maestro still
+  matches the **whole** node.
+
+**What this settles, and what it does not.** The combined selector was NOT the
+reason the `06` fix failed — the composition is exactly what it looked like, so
+that suspect is now excluded by reading rather than by another run. What
+remains untested is whether `${output.…}` interpolation reaches a *selector*
+the same way it reaches an `inputText`, which is the next thing to probe and
+needs a device.

@@ -824,3 +824,46 @@ nothing returned. It is not: `markAllRead` is called from
 
 Neither is mine to fix: both are `src/` and belong to whoever holds the code
 half. Reported rather than edited.
+
+## What run 9 would need — written 2026-09-22 23:55, before anybody asks for a sweep
+
+Run 8 was 23 PASS, 1 PARTIAL, 4 NOT MEASURED. Two of those four are now closed
+(`06` passes, `15` has a measured cause and a real defect under it). A full
+sweep is a different size of ask than two rows and nobody should start one on
+their own read of the numbers. What it would need, so the ask is concrete:
+
+**1. The delete defect lands first, or three flows stay blocked.**
+`04`, `15` and `19` all create a conversation and delete it. Every one of them
+now fails for any conversation that has produced a usage event — which, since
+`ai_usage_events` began on 2026-09-18, is every conversation the rig touches.
+This is the highest-value item on the list and it is not in this repo: it is
+`Conversation` needing `has_many :ai_usage_events, dependent: :nullify`
+(**nullify**, not destroy — a usage event is billing history and should outlive
+the conversation it came from). Until then those three flows measure the defect
+rather than their subject, which is a legitimate result but not a sweep.
+
+**2. The QA account needs a hand-clean first, and by a human.**
+Whatever the rig left before the cleanups existed: stale `QA switch target` /
+`QA switch other` / `QA options target` / `QA delete target` rows, and the
+accumulated `[qa] automated test message` pile in the people thread. `15`'s
+cleanup handles its own two now; nothing handles `06`'s messages, because this
+app has no delete-message path and inventing one for the rig would be building
+product to serve a test.
+
+**3. `01-ask` should be made unique-per-run before a sweep, not after.**
+It is the one remaining flow that writes without bound and it grows the QA
+account's standing conversation by a question and a real AI answer every run.
+A sweep multiplies that by however many times it runs.
+
+**4. Memory, and it is not ours to clear.** The ceiling on 2026-09-22 was two
+booklet stacks at about ten gigabytes, idle since half past four. The emulator
+is the smaller tenant. A sweep is ~24 flows rather than 2 and wants headroom
+that did not exist that night. **Boot on the symptom, not the gauge**:
+`/proc/pressure/memory` `full avg10` above 0.5 held, or `si` non-zero for more
+than a moment, aborts — with a hard floor at 2.0 GB available regardless,
+because avg10 is by definition ten seconds behind. Disk stays at 8 GB.
+
+**5. And say which case ran.** `07` and `08` still take empty-state branches
+because the QA account has no notifications and no events; `15`'s at-limit
+branch has still never executed. A sweep that does not name its branches is a
+number, not a result.

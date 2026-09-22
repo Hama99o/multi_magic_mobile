@@ -376,9 +376,14 @@ the shape of the rest is the useful part.
 **Accumulates, no cleanup at all — the defect above:**
 
 - `06-people-chat` — a constant message, sent. **Confirmed breaking the flow.**
-- `01-ask` — sends `Do I owe anyone money?` to the QA account's standing
+- `01-ask` — sends `Do I owe anyone money?` to **the QA account's** standing
   conversation and never removes it: one question and one real AI answer per
-  run, without bound, in his account. Not failing yet. Note what it has already
+  run, without bound. Not his account — `run.sh` and `qa.sh` export `EMAIL`
+  from `QA_EMAIL`, and the standing rule holds. Saying "his" here, as an
+  earlier draft of this line did, was one relay from reaching his board as
+  *"the tests are writing into your account"*: alarming, false, and the same
+  shape as the five causes below — a sentence that was nearly right, written in
+  passing, then read as fact. Not failing yet. Note what it has already
   caused, though — `15`'s own header *depends* on that conversation being
   non-empty ("every `01-ask` run adds to it"), so a flow is already resting an
   assertion on another flow's residue. That is the dependency this rule exists
@@ -393,8 +398,9 @@ once.
 
 **Writes, but overwrites rather than appends:** `13-profile` sets the first
 name and the About text to the same values every run, so nothing grows. It does
-permanently hold his QA profile at a rig-written string and never restores it —
-which is a decision, not a defect, but it should be a stated one.
+hold **the QA account's** profile at a rig-written string and never restores it
+— which is a decision, not a defect, and it is now stated in that flow's
+register row rather than left to surprise whoever next opens that account.
 
 **A side effect outside the database:** `11-forgot-password` submits the real
 form, so a password-reset email reaches the QA mailbox on every run.

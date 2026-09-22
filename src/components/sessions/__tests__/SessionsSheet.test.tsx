@@ -151,6 +151,47 @@ describe("deleting", () => {
     // The server never leaves the user with nowhere to talk.
     await waitFor(() => expect(onOpenSession).toHaveBeenCalledWith(9));
   });
+
+  /**
+   * THE SHEET STAYS OPEN, AND THAT IS THE CONTRACT — not an accident.
+   *
+   * `15-sessions-switch` deletes the two conversations it made back to back,
+   * naming the second row's menu with no reopen in between, and the whole
+   * register row for that flow rests on this holding. It was recorded there as
+   * the opposite ("deleting a conversation CLOSES the sheet"), and four
+   * attempts at a cleanup were written against that belief and reverted. The
+   * code says otherwise — `destroy.onSuccess` calls `refresh`, `setPending`
+   * and `onOpenSession`, and `onClose` appears nowhere on that path — but a
+   * belief that costs four attempts deserves a gate rather than a re-reading.
+   *
+   * The negative alone would be weak, so the row still being there is asserted
+   * with it: not-closed and still-rendered are different claims.
+   */
+  it("leaves the sheet OPEN afterwards, so the next row can be named without reopening", async () => {
+    const onClose = jest.fn();
+    (sessionsApi.list as jest.Mock).mockResolvedValue([session({ id: 4 }), session({ id: 5 })]);
+    jest.spyOn(sessionsApi, "destroy").mockResolvedValue(session({ id: 9, title: "New chat" }));
+    renderSheet({ onClose });
+
+    await waitFor(() => expect(screen.getByTestId("session-menu-4")).toBeTruthy());
+    fireEvent.press(screen.getByTestId("session-menu-4"));
+    await waitFor(() => expect(screen.getByTestId("session-menu-delete")).toBeTruthy());
+    fireEvent.press(screen.getByTestId("session-menu-delete"));
+    await waitFor(() => expect(screen.getByTestId("delete-conversation-yes")).toBeTruthy());
+
+    fireEvent.press(screen.getByTestId("delete-conversation-yes"));
+
+    // Wait for the delete to have LANDED before judging what is on screen —
+    // asserting before the mutation resolves would pass against a sheet that
+    // simply had not closed yet.
+    await waitFor(() => expect(sessionsApi.destroy).toHaveBeenCalledWith(4));
+    await waitFor(() => expect(screen.queryByTestId("delete-conversation-confirm")).toBeNull());
+
+    expect(onClose).not.toHaveBeenCalled();
+    // And still usable: the OTHER row's menu is right there to be named.
+    expect(screen.getByTestId("sessions-sheet")).toBeTruthy();
+    expect(screen.getByTestId("session-menu-5")).toBeTruthy();
+  });
 });
 
 describe("failures", () => {

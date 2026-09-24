@@ -279,7 +279,7 @@ glance the screen is not done.
 | `src/screens/people/PersonMessageRow.tsx` | the bubble, both sides, + reaction chips |
 | `src/screens/people/ReactionSheet.tsx` | six emoji + the action menu |
 | `src/screens/people/DayDivider.tsx` | `Today` / `Yesterday` / a date, and the `UNREAD` marker |
-| scroll policy | **`useAwayFromBottom(listRef)`** from `src/components/chat/ScrollToBottom.tsx` — shared with the assistant's chat so the two threads cannot drift. `pinned` (intent) drives the follow, `awayFromBottom` (position) drives `scroll-to-bottom`, `chasing` stops a jump of ours being read as the reader scrolling off, which is what left a BIG conversation half way down. Wired via `onScroll` · `onScrollBeginDrag` · `onContentSizeChange` · `onLayout` |
+| scroll policy | **An `inverted` FlatList with `useNewestAnchor(listRef)`** from `src/components/chat/ScrollToBottom.tsx` (2026-09-24), shared with the assistant's chat so the two threads cannot drift. `rows` is reversed whole, so each day and unread divider stays above the messages it heads. Offset 0 is the newest and nothing chases it; the button is one animated scroll to 0; older history loads via `onEndReached`. Measured on `qa_phone4`: opens on the newest, dividers in place, the button returns and hides. The previous chase (`useAwayFromBottom`) is in git at `915c54b` |
 | transcript + resync | **`useConversation({ conversationId, channel: "MessageChannel" })`** — the sibling's hook, unchanged (§0.2) |
 | typing + read + `mark_read` | `subscribeToChannel("ConversationChannel", …, { conversation_id })` and `performOnChannel(…, "mark_read", …)` from `src/lib/cable.ts` |
 | parsing | `obj/arr/str/id/bool` from `src/api/parse.ts`; `messagesApi.parseOne` for anything message-shaped |

@@ -21,10 +21,16 @@
  *
  * WHAT WE TAKE: **fade, and only fade.** Not one of the four moves a message
  * horizontally or bounces it. WHAT WE REJECT: a slide-up. It is the obvious
- * chat animation and no reference uses it, and here it would be actively
- * dangerous — `useAwayFromBottom` chases a content height that four commits
- * tonight were spent getting right, and a transform that changes layout is the
- * one thing that could unsettle it. **Opacity changes no layout.**
+ * chat animation and no reference uses it. (The second reason given here, that
+ * a layout-changing transform would unsettle `useAwayFromBottom`'s chase, died
+ * with that hook on 2026-09-24 when the threads became inverted lists.)
+ * **Opacity changes no layout.**
+ *
+ * **And note, 2026-09-24:** the inverted list's `maintainVisibleContentPosition`
+ * autoscroll now moves a new message into view with a short animated SCROLL,
+ * ~0.25 s, measured on `qa_phone4`. That is a slide in all but name, which this
+ * decision rejected. It is left for the owner (`docs/design/chat/SPEC.md`)
+ * rather than overruled silently.
  *
  * ── AND ONLY THE NEWEST ROW ──────────────────────────────────────────────
  * A `FlatList` mounts rows as they scroll into view, so fading every row on

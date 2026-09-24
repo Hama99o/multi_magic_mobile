@@ -504,3 +504,82 @@ describe("when the first read fails", () => {
     expect(result.current.messages).toEqual([]);
   });
 });
+
+// ── THE SOCKET AUDIT, 2026-09-24 ──────────────────────────────────────────
+describe("a reconnect after more than a page arrived", () => {
+  it("reads back until it meets what is on screen, so nothing in between is missing", async () => {
+    latest.mockResolvedValue({ messages: [message(1, "user", "a"), message(2, "assistant", "b")], hasMore: false });
+    const { result } = render();
+    await waitFor(() => expect(result.current.messages.map((m) => m.id)).toEqual([1, 2]));
+
+    // Offline long enough for the newest page to start at 30, with a gap
+    // between 2 and it.
+    latest.mockResolvedValue({ messages: [message(30, "user", "x"), message(31, "assistant", "y")], hasMore: true });
+    before.mockImplementation(async (_c: number, id: number) =>
+      id === 30
+        ? { messages: [message(10, "user", "m"), message(11, "assistant", "n")], hasMore: true }
+        : { messages: [message(3, "user", "p"), message(4, "assistant", "q")], hasMore: true },
+    );
+    await act(async () => {
+      listener().onConnected?.();
+    });
+
+    expect(before).toHaveBeenNthCalledWith(1, 4, 30);
+    expect(before).toHaveBeenNthCalledWith(2, 4, 10);
+    // It stopped at the page that met message 2, not at the start of history.
+    expect(before).toHaveBeenCalledTimes(2);
+    expect(result.current.messages.map((m) => m.id)).toEqual([1, 2, 3, 4, 10, 11, 30, 31]);
+  });
+
+  it("asks for nothing more when the newest page already meets the screen", async () => {
+    const { result } = render();
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    latest.mockResolvedValue({ messages: [message(1, "user", "Do I owe anyone?"), message(2, "assistant", "No.")], hasMore: true });
+    await act(async () => {
+      listener().onConnected?.();
+    });
+    expect(before).not.toHaveBeenCalled();
+  });
+});
+
+describe("a stale resync after an edit or a delete", () => {
+  it("does not give a deleted message its words back", async () => {
+    latest.mockResolvedValue({ messages: [message(2, "user", "secret")], hasMore: false });
+    const { result } = render();
+    await waitFor(() => expect(result.current.messages).toHaveLength(1));
+    await act(async () => {
+      listener().onData({ message: { ...rawMessage(2, "user", "secret"), deleted: true, body: null } });
+    });
+    // A read that started before the delete lands after it.
+    await act(async () => {
+      listener().onConnected?.();
+    });
+    expect(result.current.messages[0]).toMatchObject({ deleted: true, body: null });
+  });
+
+  it("does not revert an edit", async () => {
+    latest.mockResolvedValue({ messages: [message(2, "user", "old")], hasMore: false });
+    const { result } = render();
+    await waitFor(() => expect(result.current.messages).toHaveLength(1));
+    await act(async () => {
+      listener().onData({ message: { ...rawMessage(2, "user", "new"), edited_at: "2026-09-24T22:00:00Z" } });
+    });
+    await act(async () => {
+      listener().onConnected?.();
+    });
+    expect(result.current.messages[0]).toMatchObject({ body: "new", editedAt: "2026-09-24T22:00:00Z" });
+  });
+
+  it("but a LATER edit still wins", async () => {
+    latest.mockResolvedValue({
+      messages: [{ ...message(2, "user", "first"), editedAt: "2026-09-24T21:00:00Z" }],
+      hasMore: false,
+    });
+    const { result } = render();
+    await waitFor(() => expect(result.current.messages).toHaveLength(1));
+    await act(async () => {
+      listener().onData({ message: { ...rawMessage(2, "user", "second"), edited_at: "2026-09-24T22:00:00Z" } });
+    });
+    expect(result.current.messages[0]).toMatchObject({ body: "second" });
+  });
+});

@@ -49,6 +49,9 @@ import { messagesApi, type ChatMessage } from "@/api/ai";
 const RESYNC_MS = 3_000;
 /** Longest we keep waiting before giving the composer back. */
 const REPLY_TIMEOUT_MS = 180_000;
+/** How far a reconnect reads back to close a gap: 20 pages of 25. Past that
+ *  the thread is re-read from the newest, and older history loads on scroll. */
+const MAX_GAP_PAGES = 20;
 
 export type ConversationStatus = "loading" | "ready" | "failed";
 
@@ -127,6 +130,27 @@ interface SocketPayload {
  * overlaps it — and the two copies are not always identical: a resync's copy
  * carries `read_at` and reactions the broadcast did not.
  */
+/**
+ * A STALE SNAPSHOT MUST NOT UNDO A CHANGE (the socket audit, 2026-09-24).
+ *
+ * A resync is an HTTP read that started at some moment; a socket frame for an
+ * edit or a delete can land while it is in flight, and the response then
+ * arrives carrying the message as it was BEFORE. Taken whole, it would give a
+ * deleted message its words back, revert an edit, or re-offer an undone undo.
+ * The people thread resyncs whenever the other side reads, so this is not
+ * rare. Deleted, edited and undone only move forward. Everything else
+ * (reactions, read state) takes the incoming copy.
+ */
+function notOlder(had: ChatMessage, incoming: ChatMessage): ChatMessage {
+  let next = incoming;
+  if (had.deleted && !incoming.deleted) next = { ...next, deleted: true, body: had.body };
+  if (had.editedAt && (!incoming.editedAt || incoming.editedAt < had.editedAt)) {
+    next = { ...next, body: had.body, editedAt: had.editedAt };
+  }
+  if (had.undoneAt && !incoming.undoneAt) next = { ...next, undoneAt: had.undoneAt, undoable: had.undoable };
+  return next;
+}
+
 function merge(existing: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] {
   const byId = new Map<number, ChatMessage>();
   // A local question is superseded by the server's copy of it, whichever path
@@ -146,7 +170,8 @@ function merge(existing: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] 
     // poll re-rendered and re-parsed every visible answer, 413–602 ms per
     // commit measured on `qa_phone4` 2026-09-24.
     const had = byId.get(message.id);
-    byId.set(message.id, had && JSON.stringify(had) === JSON.stringify(message) ? had : message);
+    if (had && JSON.stringify(had) === JSON.stringify(message)) continue;
+    byId.set(message.id, had ? notOlder(had, message) : message);
   }
   return [...byId.values()].sort((a, b) => a.id - b.id);
 }
@@ -169,6 +194,9 @@ export function useConversation({
    */
   const conversationRef = useRef(conversationId);
   conversationRef.current = conversationId;
+  /** What is on screen, for a resync to know where its gap starts. */
+  const messagesRef = useRef<ChatMessage[]>([]);
+  messagesRef.current = messages;
 
   /**
    * The id of the question we are waiting on an answer to.
@@ -184,6 +212,24 @@ export function useConversation({
     if (id == null) return;
     try {
       const page = await messagesApi.latest(id);
+      // ── THE GAP A RECONNECT LEAVES (the socket audit, 2026-09-24) ─────
+      // The latest page is 25 messages. If more than that arrived while the
+      // socket was down, the ones between what is on screen and this page
+      // were never fetched, and `loadOlder` only reaches back from the OLDEST
+      // loaded message, so the hole stayed for as long as the screen was
+      // open: a thread that reconnects and quietly misses messages. So read
+      // back until the page meets what is already here, or history ends.
+      const newestKnown = Math.max(0, ...messagesRef.current.filter((m) => !isOptimisticId(m.id)).map((m) => m.id));
+      let hasMore = page.hasMore;
+      const filled = [...page.messages];
+      for (let i = 0; i < MAX_GAP_PAGES && newestKnown > 0 && hasMore; i++) {
+        const oldest = Math.min(...filled.map((m) => m.id));
+        if (oldest <= newestKnown + 1) break;
+        const older = await messagesApi.before(id, oldest);
+        filled.unshift(...older.messages);
+        hasMore = older.hasMore;
+      }
+      page.messages = filled;
       // Merged, not replaced. A reply can land on the socket while this request
       // is in flight, and replacing would drop it — the one message the user is
       // actually waiting for.

@@ -168,8 +168,18 @@ export const profileApi = {
       });
     } catch (error) {
       const data = (error as { response?: { status?: number; data?: unknown } })?.response;
-      const body = data?.data as { error?: unknown } | undefined;
-      if (data?.status === 422 && body?.error === "Current password is incorrect") {
+      const body = data?.data as { error?: unknown; code?: unknown } | undefined;
+      // By its CODE, not its sentence. multi_magic now answers in the
+      // reader's language ("Le mot de passe actuel est incorrect" for French)
+      // with `code: "wrong_current_password"` beside it (backend session,
+      // 2026-09-24). Matching the English sentence would stop recognising
+      // the error for every French reader. The English sentence stays as a
+      // fallback until that change is deployed: the server a phone talks to
+      // today still sends only the sentence.
+      if (
+        data?.status === 422 &&
+        (body?.code === "wrong_current_password" || body?.error === "Current password is incorrect")
+      ) {
         throw new WrongCurrentPassword();
       }
       throw error;

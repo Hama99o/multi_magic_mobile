@@ -53,6 +53,22 @@ describe("a wrong current password", () => {
     ).rejects.toBeInstanceOf(WrongCurrentPassword);
   });
 
+  // The server now answers in the reader's language, with a CODE beside it.
+  // Matching the sentence would miss every French reader.
+  it("is recognised by its code, in any language", async () => {
+    mock
+      .onPut("/api/v1/users/1/change_password")
+      .reply(422, { error: "Le mot de passe actuel est incorrect", code: "wrong_current_password" });
+
+    await expect(
+      profileApi.changePassword(1, {
+        currentPassword: "faux",
+        password: "newpass1",
+        passwordConfirmation: "newpass1",
+      }),
+    ).rejects.toBeInstanceOf(WrongCurrentPassword);
+  });
+
   it("would have signed the user out if the server had used 401", async () => {
     // Not a hypothetical: `http.ts`'s interceptor clears the token on ANY 401.
     // This test documents why the server's choice of 422 is load-bearing, by

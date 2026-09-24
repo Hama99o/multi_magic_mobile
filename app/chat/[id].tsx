@@ -535,7 +535,7 @@ export default function PersonThread() {
               <BubblesSkeleton />
             </View>
           ) : status === "failed" ? (
-            <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
+            <View testID="thread-load-failed" style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
               <Text tone="muted">{t("thread.loadFailed")}</Text>
               <Pressable onPress={() => void resync()} accessibilityRole="button" hitSlop={8}>
                 <Text tone="accent">{t("common.tryAgain")}</Text>

@@ -604,6 +604,80 @@ describe.each(FAILURES)("$name, when its load fails", ({ element, call, shows })
 });
 
 /**
+ * THE PEOPLE THREAD WHEN SOMETHING FAILS, in both languages: the thread does
+ * not load; a send the server refuses (its own sentence, which is fixture
+ * data here); a send with no network (no reason is known, so none is
+ * claimed: only the retry, labelled "not sent").
+ */
+describe("the people thread, when something fails", () => {
+  const thread = () =>
+    jest.requireMock("@/hooks/useConversation").useConversation({ conversationId: 266 }) as {
+      status: string;
+      messages: unknown[];
+    };
+  let kept: unknown[] = [];
+  const threadApi = () => (jest.requireMock("@/api/conversations") as { threadApi: { send: jest.Mock } }).threadApi;
+
+  const STATES: { name: string; setup: () => void; act?: () => Promise<void>; ready: string; undo: () => void }[] = [
+    {
+      name: "the thread does not load",
+      // EMPTY as well: the failure is the list's empty state, so a thread
+      // already showing messages keeps them rather than hiding them.
+      setup: () => {
+        // Kept ONCE: setup runs for each language, and the second call would
+        // otherwise keep the empty list the first call left.
+        if (thread().messages.length > 0) kept = thread().messages;
+        thread().status = "failed";
+        thread().messages = [];
+      },
+      ready: "thread-load-failed",
+      undo: () => {
+        thread().status = "ready";
+        thread().messages = kept;
+      },
+    },
+    ...([
+      ["the server refuses a send", { isAxiosError: true, response: { status: 422, data: { errors: ["Le message est trop long."] } } }],
+      ["a send with no network", { isAxiosError: true }],
+    ] as const).map(([name, error]) => ({
+      name,
+      setup: () => { threadApi().send.mockRejectedValue(error); },
+      act: async () => {
+        fireEvent.changeText(screen.getByTestId("people-composer-input"), "Un message qui ne partira pas");
+        await act(async () => {
+          fireEvent.press(screen.getByTestId("people-composer-send"));
+        });
+      },
+      ready: "msg-retry",
+      undo: () => { threadApi().send.mockReset(); },
+    })),
+  ];
+
+  it.each(STATES)("$name, in French", async (state) => {
+    const collect = async (language: "fr" | "en") => {
+      setWidth(411);
+      await i18n.changeLanguage(language);
+      state.setup();
+      const view = renderScreen(<Thread />);
+      await screen.findByTestId("thread-title");
+      if (state.act) await state.act();
+      await screen.findByTestId(state.ready, {}, { timeout: 5_000 });
+      const out = renderedStrings();
+      view.unmount();
+      return out;
+    };
+    try {
+      const fr = await collect("fr");
+      const en = await collect("en");
+      expect(englishIn(fr, withoutFixtures)).toEqual([]);
+      expect(identicalIn(fr, en, withoutFixtures)).toEqual([]);
+    } finally {
+      state.undo();
+    }
+  });
+});
+
+/**
  * THE PEOPLE THREAD IS INVERTED, NEWEST FIRST — the same anchor as the
  * assistant's (`useNewestAnchor`, 2026-09-24). Inverted alone would open on
  * the oldest; reversed alone would read upside down. And the day divider must

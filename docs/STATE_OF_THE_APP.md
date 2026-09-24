@@ -43,6 +43,17 @@ now reuses it rather than adding another, but it is still there until you
 delete it. Whether a conversation should exist before its first question is
 your call — `docs/SESSION_FEEL.md` §2.
 
+**After release: the lender's side of a shared AI key.** Since multi_magic
+`9a5a3cb` a key can be shared with a monthly credit limit per borrower. The
+phone shows the BORROWER's half (`ade727d`: spend against the limit, and the
+date a used-up key works again). It has no LENDER's half at all: no share, no
+unshare, no per-borrower limit. The contract is there when it is wanted:
+`POST /api/v1/ai_keys/:id/share` (`email`, optional `monthly_credit_limit`),
+`PATCH /api/v1/ai_keys/:id/share` (the same two; blank limit removes it), and
+each key's `shared_with` list in `GET /api/v1/ai_keys` (address, limit,
+`spent_this_month`). Deferred on 2026-09-24 as a new surface before release;
+the web has it (`KeySharing.tsx`).
+
 ## What nobody has measured
 
 **Dictation.** The mic renders and the emulator has no voice to hear, so

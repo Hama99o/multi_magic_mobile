@@ -49,6 +49,15 @@ export interface AiKey {
 export interface BorrowedKey {
   provider: string;
   ownerName: string | null;
+  /**
+   * The lender's monthly cap on what THIS person may spend (multi_magic
+   * `9a5a3cb`); null is no limit. Over it the key stops working for them
+   * until the month turns, and they should be able to see that coming.
+   */
+  monthlyCreditLimit: number | null;
+  spentThisMonth: number;
+  /** Over the limit right now — the key is not resolving for them. */
+  exhausted: boolean;
 }
 
 export interface AiKeyPayload {
@@ -76,6 +85,9 @@ function parseBorrowed(payload: unknown): BorrowedKey {
   return {
     provider: str(record.provider, "borrowed.provider"),
     ownerName: optStr(record.owner_name) ?? optStr(record.owner) ?? optStr(record.email),
+    monthlyCreditLimit: typeof record.monthly_credit_limit === "number" ? record.monthly_credit_limit : null,
+    spentThisMonth: typeof record.spent_this_month === "number" ? record.spent_this_month : 0,
+    exhausted: record.exhausted === true,
   };
 }
 

@@ -67,6 +67,12 @@ const CASES: Case[] = [
     times: 1,
   },
   {
+    rule: "words written straight into a <Text>",
+    fixture: "text-literal.tsx",
+    says: /English on a French phone/,
+    times: 1,
+  },
+  {
     rule: "a value import from lucide-react-native's index",
     fixture: "lucide-index.tsx",
     says: /ships all 1,556 icons/,
@@ -127,7 +133,7 @@ describe("every custom rule can actually fire", () => {
     expect(restricted(fixture).filter((hit) => says.test(hit.message))).toHaveLength(times);
   });
 
-  it("flags nothing in the legitimate forms of all six", () => {
+  it("flags nothing in the legitimate forms of all seven", () => {
     expect(restricted("clean.tsx").map((hit) => `${hit.line}: ${hit.message}`)).toEqual([]);
   });
 

@@ -372,8 +372,13 @@ this file outlives the bug unless somebody dates it.** If you fix something
 described here, change the description in the same commit.
 
 **An accessibility string is a user-facing string, and a `<Text>` child is one
-too.** The eslint rule guards `accessibilityLabel` and `accessibilityHint`
-only, so a bare literal in a visible `<Text>` is caught by nothing.
+too.** The eslint rule guards `accessibilityLabel` and `accessibilityHint`,
+and since 2026-09-24 a second one refuses words written straight into a
+`<Text>` (`.eslintrc.js`, "English on a French phone"; tests are exempt,
+because sample text is what a fixture is). Before it, a planted literal passed
+every gate; Jest caught one only when it replaced a key that then went unused.
+It sees JSX text only: a literal built in a variable and rendered as
+`{label}` is still caught by nothing.
 
 This paragraph used to end "three untranslated English literals sit in visible
 `<Text>` children in people-chat, one of which is a control's entire accessible

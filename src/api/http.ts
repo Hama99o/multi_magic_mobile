@@ -266,10 +266,14 @@ export function apiErrorMessage(error: unknown): string | null {
   const data = (error as AxiosError | undefined)?.response?.data;
   if (typeof data !== "object" || data === null) return null;
   const record = data as { error?: unknown; message?: unknown; errors?: unknown };
+  const lines = errorLines(record.errors);
+  // SEVERAL reasons beat one. Account deletion now answers with BOTH keys,
+  // `{ error: messages.first, errors: messages }` (multi_magic `30dce44`), so
+  // reading `error` first would drop every reason after the first.
+  if (lines.length > 1) return lines.join("\n");
   if (typeof record.error === "string" && record.error.trim()) return record.error;
   if (typeof record.message === "string" && record.message.trim()) return record.message;
-  const lines = errorLines(record.errors);
-  return lines.length > 0 ? lines.join("\n") : null;
+  return lines[0] ?? null;
 }
 
 /**

@@ -31,6 +31,7 @@ import { subscribeToChannel } from "@/lib/cable";
 import { conversationsApi, type Conversation } from "@/api/conversations";
 import { failureMessage } from "@/api/failure";
 import { ConversationRow } from "@/screens/people/ConversationRow";
+import { RowsSkeleton } from "@/components/reusables/skeleton";
 
 export default function Chats() {
   const colors = useColors();
@@ -136,7 +137,11 @@ export default function Chats() {
           />
         }
         ListEmptyComponent={
-          isLoading || error ? null : (
+          isLoading ? (
+            // Rows in the rows' own shape while they load (Telegram) — see
+            // `skeleton.tsx`. Not a blank list, not a spinner.
+            <RowsSkeleton />
+          ) : error ? null : (
             /* Gymshark and My BMW: a heading and one line that says what will
                fill it. No icon, no illustration (IDENTITY.md §6) — and no CTA,
                because there is nothing this screen could start. */

@@ -129,3 +129,27 @@ jest.mock("expo-speech", () => ({
   isSpeakingAsync: jest.fn(async () => false),
   maxSpeechInputLength: 4000,
 }));
+
+/**
+ * NATIVE-DRIVEN ANIMATIONS RUN ON JS UNDER JEST, AND ONLY UNDER JEST.
+ *
+ * The app drives its fades on the NATIVE thread (`Arriving`, `ThinkingDots`),
+ * because measured on `qa_phone4` 2026-09-24 the JS thread stalls for 0.3-1 s
+ * right after a send, exactly when the dots and the new message's fade are on
+ * screen, and a JS-driven animation freezes for the length of the stall.
+ *
+ * Under the test renderer there is no native view to attach to, so a native
+ * animation throws "Unable to locate attached view in the native tree"
+ * (`AnimatedProps.js`). RN's own `NODE_ENV === 'test'` escape there is not
+ * reached under this transform. So here, and nowhere else, the driver is
+ * refused, and RN falls back to the same animation on JS, which the tests can
+ * run. That used to be the reason the app itself stayed on the JS driver.
+ */
+jest.mock("react-native/src/private/animated/NativeAnimatedHelper", () => {
+  const actual = jest.requireActual("react-native/src/private/animated/NativeAnimatedHelper");
+  return {
+    __esModule: true,
+    ...actual,
+    default: { ...actual.default, shouldUseNativeDriver: () => false },
+  };
+});

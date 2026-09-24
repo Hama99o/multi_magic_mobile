@@ -291,7 +291,7 @@ export default function Notifications() {
       ) : null}
 
       {error ? (
-        <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
+        <View testID="notifications-load-failed" style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
           <Text tone="muted">
             {failureMessage(error, t("notifications.loadFailed"))}
           </Text>

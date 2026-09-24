@@ -222,7 +222,7 @@ export default function Calendar() {
       ) : null}
 
       {error ? (
-        <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
+        <View testID="calendar-load-failed" style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
           <Text tone="muted">
             {failureMessage(error, t("calendar.loadFailed"))}
           </Text>

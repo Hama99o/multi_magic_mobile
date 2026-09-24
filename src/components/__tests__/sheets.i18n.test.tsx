@@ -10,8 +10,12 @@
  * content before sweeping, because a sweep of a half-loaded sheet is green
  * for anything (TESTING.md §19).
  *
- * NOT SWEPT here: the dialogs a menu row opens (rename, scope,
- * instructions, delete), and the sheets' failed branches.
+ * And the dialogs a row menu opens (rename, instructions, scope, delete),
+ * plus the thumbs-down reason dialog.
+ *
+ * The conversations sheet's FAILED load is swept too, at the end of this file.
+ * NOT SWEPT here: loading states, and the delete confirm's server error, whose
+ * text is the server's own sentence.
  */
 import { fireEvent, render, screen } from "@testing-library/react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -26,6 +30,10 @@ import { englishIn, fixtureStripper, identicalIn, renderedStrings } from "@/__te
 import { SessionsSheet } from "../sessions/SessionsSheet";
 import { ProfileSheet } from "../settings/ProfileSheet";
 import { SourceSheet } from "../chat/SourceSheet";
+import { RenameDialog } from "../sessions/RenameDialog";
+import { InstructionsDialog, ScopeDialog } from "../sessions/SessionOptionsDialogs";
+import { DeleteConfirm } from "../sessions/DeleteConfirm";
+import { FeedbackReasonDialog } from "../chat/FeedbackReasonDialog";
 import { sessionsApi, type AiSession } from "@/api/ai";
 import { useAuthStore } from "@/stores/auth.store";
 
@@ -88,6 +96,32 @@ const CASES: Case[] = [
     },
   })),
   {
+    name: "the rename dialog",
+    element: () => <RenameDialog visible initialTitle="Budget maison" onCancel={noop} onSave={noop} />,
+    ready: "rename-dialog",
+  },
+  {
+    name: "the instructions dialog",
+    element: () => <InstructionsDialog visible initial="" onCancel={noop} onSave={noop} />,
+    ready: "instructions-input",
+  },
+  {
+    name: "the scope dialog",
+    // One app chosen, so "search everything" (scope-all) renders too.
+    element: () => <ScopeDialog visible initial={["notes"]} onCancel={noop} onSave={noop} />,
+    ready: "scope-all",
+  },
+  {
+    name: "the delete confirm, with files",
+    element: () => <DeleteConfirm visible fileCount={3} onCancel={noop} onConfirm={noop} />,
+    ready: "delete-conversation-question",
+  },
+  {
+    name: "the thumbs-down reason dialog",
+    element: () => <FeedbackReasonDialog visible onSkip={noop} onSend={noop} />,
+    ready: "feedback-reason",
+  },
+  {
     name: "a source",
     element: () => (
       <SourceSheet source={{ label: "Loyer septembre", path: "/notes/12", key: "note" }} onClose={noop} />
@@ -122,3 +156,25 @@ describe.each(CASES)("$name", (c) => {
     expect(identicalIn(fr, en, strip)).toEqual([]);
   });
 });
+
+// ── THE FAILED BRANCH ────────────────────────────────────────────────────
+// A conversation list that does not arrive says so (316b98c), and in the
+// reader's language, whether the server failed or the network did.
+describe("the conversations sheet, when its list fails", () => {
+  const failing: Case = {
+    name: "failed",
+    element: () => <SessionsSheet visible activeId={4} onClose={noop} onOpenSession={noop} />,
+    ready: "sessions-load-failed",
+  };
+  it.each([
+    ["a server error", new Error("down")],
+    ["no network", Object.assign(new Error("Network Error"), { isAxiosError: true })],
+  ])("says so in French, for %s", async (_kind, error) => {
+    jest.spyOn(sessionsApi, "list").mockRejectedValue(error);
+    const fr = await collect(failing, "fr");
+    const en = await collect(failing, "en");
+    expect(englishIn(fr, strip)).toEqual([]);
+    expect(identicalIn(fr, en, strip)).toEqual([]);
+  });
+});
+

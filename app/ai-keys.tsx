@@ -134,7 +134,7 @@ export default function AiKeys() {
       </Text>
 
       {error ? (
-        <View style={{ gap: metrics.space.sm }}>
+        <View testID="ai-keys-load-failed" style={{ gap: metrics.space.sm }}>
           <Text tone="muted">
             {failureMessage(error, t("aiKeys.loadFailed"))}
           </Text>

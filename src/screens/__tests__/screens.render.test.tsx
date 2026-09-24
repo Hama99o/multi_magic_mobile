@@ -481,9 +481,12 @@ describe.each(SCREENS)("$name", ({ element, handles, french }) => {
  * The assistant screen is swept since 2026-09-24, in its EMPTY state, which
  * is where its suggested questions render (and they SEND when tapped).
  *
- * NOT SWEPT, so not claimed: the sheets (conversations, profile, sources),
- * two-factor, and every state other than the one these fixtures produce:
- * empty, failed and loading branches render other strings, and a date only
+ * The sheets and dialogs are swept in `sheets.i18n.test.tsx`, and the FAILED
+ * loads of chats, notifications, calendar, AI keys and profile at the end of
+ * this file.
+ *
+ * NOT SWEPT, so not claimed: two-factor; the assistant's and the thread's
+ * failed states; every loading state; the empty branches; and a date only
  * says "Aujourd’hui" when the fixture is from today, which is how
  * `DayDivider`'s English "Today" went unseen (now `dayLabel.test.ts`).
  */
@@ -525,6 +528,78 @@ describe.each(SCREENS)("$name, swept in French", ({ element, handles, french, se
     const fr = await collect("fr");
     const en = await collect("en");
     expect(identicalIn(fr, en, withoutFixtures)).toEqual([]);
+  });
+});
+
+/**
+ * THE FAILED BRANCHES, in both languages. The sweep above reads each screen
+ * in the state its fixtures produce, which is success. A load that FAILS
+ * renders other sentences, and tonight's worst claims lived in exactly those
+ * branches. So each screen's list request is made to fail, twice: once as a
+ * plain server error (the screen's own "could not load" sentence) and once
+ * as a network failure with no response (`failure.unreachable`). Then the
+ * same two checks run on what rendered.
+ */
+const networkDown = Object.assign(new Error("Network Error"), { isAxiosError: true });
+const FAILURES: { name: string; element: () => ReactElement; call: () => jest.Mock; shows: string }[] = [
+  {
+    name: "chats",
+    element: () => <Chats />,
+    call: () => jest.requireMock("@/api/conversations").conversationsApi.list,
+    shows: "chats-load-failed",
+  },
+  {
+    name: "notifications",
+    element: () => <Notifications />,
+    call: () => jest.requireMock("@/api/notifications").notificationsApi.list,
+    shows: "notifications-load-failed",
+  },
+  {
+    name: "calendar",
+    element: () => <Calendar />,
+    call: () => jest.requireMock("@/api/calendar").calendarApi.upcoming,
+    shows: "calendar-load-failed",
+  },
+  {
+    name: "ai-keys",
+    element: () => <AiKeys />,
+    call: () => jest.requireMock("@/api/aiKeys").aiKeysApi.list,
+    shows: "ai-keys-load-failed",
+  },
+  {
+    name: "profile",
+    element: () => <Profile />,
+    call: () => jest.requireMock("@/api/profile").profileApi.me,
+    shows: "profile-load-failed",
+  },
+];
+
+describe.each(FAILURES)("$name, when its load fails", ({ element, call, shows }) => {
+  const collect = async (language: "fr" | "en") => {
+    setWidth(360);
+    await i18n.changeLanguage(language);
+    const view = renderScreen(element());
+    await screen.findByTestId(shows);
+    const out = renderedStrings();
+    view.unmount();
+    return out;
+  };
+
+  it.each([
+    ["a server error", new Error("down")],
+    ["no network", networkDown],
+  ])("says so in French, for %s", async (_kind, error) => {
+    const fn = call();
+    const original = fn.getMockImplementation();
+    fn.mockRejectedValue(error);
+    try {
+      const fr = await collect("fr");
+      const en = await collect("en");
+      expect(englishIn(fr, withoutFixtures)).toEqual([]);
+      expect(identicalIn(fr, en, withoutFixtures)).toEqual([]);
+    } finally {
+      fn.mockImplementation(original);
+    }
   });
 });
 

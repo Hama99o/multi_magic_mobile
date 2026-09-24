@@ -37,6 +37,12 @@ export const SAME_IN_BOTH = new Set([
   // so the language chooser reads the same in both.
   "English",
   "Français",
+  // scope.notes / scope.pages / scope.contacts: the same words in French;
+  // scope.flow: Flow is a product name.
+  "Notes",
+  "Pages",
+  "Contacts",
+  "Flow",
 ]);
 
 /** Every string the current screen rendered, skipping any node inside

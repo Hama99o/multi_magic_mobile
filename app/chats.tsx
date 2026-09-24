@@ -109,7 +109,7 @@ export default function Chats() {
       </View>
 
       {error ? (
-        <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
+        <View testID="chats-load-failed" style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
           <Text tone="muted">
             {failureMessage(error, t("chats.loadFailed"))}
           </Text>

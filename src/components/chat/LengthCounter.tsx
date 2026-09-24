@@ -16,15 +16,17 @@ import { Text } from "@/components/reusables/text";
 import { useMetrics } from "@/hooks/useColors";
 import { LIMITS } from "@/api/ai";
 
-/** From here on the count is shown. */
-const SHOW_FROM = LIMITS.messageLength - 1_000;
+/** How far below the limit the count starts to show. Read when rendering,
+ *  never at import: a module-level read of LIMITS crashed a whole test suite
+ *  that mocks `@/api/ai` without it (2026-09-24). */
+const SHOW_WITHIN = 1_000;
 
 export const isTooLong = (text: string) => text.length > LIMITS.messageLength;
 
 export function LengthCounter({ length, testID = "composer-length" }: { length: number; testID?: string }) {
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
-  if (length < SHOW_FROM) return null;
+  if (length < LIMITS.messageLength - SHOW_WITHIN) return null;
 
   const over = length - LIMITS.messageLength;
   const n = (v: number) => v.toLocaleString(i18n.language);

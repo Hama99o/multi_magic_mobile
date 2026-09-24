@@ -272,3 +272,30 @@ there was more. The indicator is shown.
 Was `SPECIFIED`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
 
 `04-delete-conversation`, `15-sessions-switch` and `19-session-options` all pass, and the sheet's list defect found in the 360 dp photographs was fixed at `138306d` and **re-photographed** — the four shots are the only proof, because no test here has a layout engine.
+
+
+## Remember things from this chat — 2026-09-24
+
+A switch in each conversation's own row menu, never app-wide: it gates the
+`remember_this` tool for THAT chat only (`rag_chat.rb#offered_tools`). ON, the
+assistant may note lasting facts from the chat in the ordinary note
+"What the assistant remembers", which the person can read and edit. OFF,
+nothing from this chat goes into that note, and **it still reads what the note
+already holds**. The copy says both, because "Memory: off" would suggest the
+second is off too. `sessions.rememberTitle` / `rememberOn` / `rememberOff`.
+
+Wire: `PATCH /api/v1/ai/sessions/:id { remember: true | false }`. An omitted
+key is unchanged; anything that is not `false` casts to TRUE
+(`ai/sessions.rb:80`), so the app always sends a real boolean, pinned in
+`SessionsSheet.test.tsx`. Optimistic, reverted on failure with a line.
+
+**Rule Zero:** Claude (`mobbin.com/screens/4f79178a-756d-4a75-89aa-f8d88cd46c49`)
+"Generate memory from chat history"; ChatGPT
+(`mobbin.com/screens/de9619f9-b49a-4586-9737-4b507cad3c6b`) "Reference saved
+memories"; Booking.com (`mobbin.com/screens/ef14c154-5fb0-4170-bf62-87cff106ec55`)
+"Allow us to save and use AI memories"; Perplexity
+(`mobbin.com/screens/a5c43b36-639c-44ba-97ec-f26523cb7988`), a project-scoped
+switch. **TAKE** the verb and object in the label and the consequence in the
+line below, with the scope stated. **REJECT** ChatGPT's "save and use", which
+would be false here. The note's title is English on the server (`NOTE_TITLE`),
+so the French copy names it as it really appears. **NOT SEEN ON A DEVICE.**

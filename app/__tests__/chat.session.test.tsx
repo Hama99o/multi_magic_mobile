@@ -45,7 +45,7 @@ function session(id: number, title: string): AiSession {
   return {
     id, title, messageCount: 2, documentCount: 0,
     createdAt: "2026-09-01T09:00:00Z", updatedAt: new Date().toISOString(),
-    instructions: null, apps: [],
+    instructions: null, apps: [], remember: true,
   };
 }
 

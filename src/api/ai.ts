@@ -140,6 +140,14 @@ export interface AiSession {
    * narrow nothing.
    */
   apps: string[];
+  /**
+   * Whether the assistant may WRITE lasting facts from this chat into the
+   * note "What the assistant remembers" (the `remember_this` tool). Off, the
+   * tool is not offered in this chat at all (`rag_chat.rb#offered_tools`).
+   * Off does NOT stop it reading what that note already holds. Default true;
+   * absent from an older server reads as true, which is that default.
+   */
+  remember: boolean;
 }
 
 export interface AiDocument {
@@ -281,6 +289,7 @@ function parseSession(payload: unknown): AiSession {
     updatedAt: str(record.updated_at, "session.updated_at"),
     instructions: optStr(record.instructions),
     apps: optArr(record.apps).filter((a): a is string => typeof a === "string"),
+    remember: record.remember !== false,
   };
 }
 
@@ -476,7 +485,10 @@ export const sessionsApi = {
    */
   update: async (
     sessionId: number,
-    changes: { title?: string; instructions?: string; apps?: string[] },
+    // `remember` must be a REAL boolean: the server checks `params.key?` and
+    // casts anything that is not `false` (null, "", "false") to TRUE, so a
+    // badly formed value would switch memory back on. Omitted is unchanged.
+    changes: { title?: string; instructions?: string; apps?: string[]; remember?: boolean },
   ): Promise<AiSession> => {
     const res = await http.patch(`/api/v1/ai/sessions/${sessionId}`, changes);
     return parseSession(obj(res.data, "session").session);

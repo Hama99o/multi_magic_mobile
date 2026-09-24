@@ -302,3 +302,25 @@ describe("feedbackApi", () => {
     expect(JSON.parse(mock.history.post.at(-1)!.data)).toEqual({ message_id: 6, rating: null });
   });
 });
+
+// `remember` on a session: true unless the server says false (its default).
+describe("a session's memory switch", () => {
+  it("reads remember, and treats its absence as the default ON", async () => {
+    mock.onGet("/api/v1/ai/sessions").reply(200, {
+      sessions: [
+        { id: 1, title: "a", message_count: 0, document_count: 0, created_at: "x", updated_at: "x", remember: false },
+        { id: 2, title: "b", message_count: 0, document_count: 0, created_at: "x", updated_at: "x" },
+      ],
+    });
+    const list = await sessionsApi.list();
+    expect(Object.fromEntries(list.map((s) => [s.id, s.remember]))).toEqual({ 1: false, 2: true });
+  });
+
+  it("sends remember as a boolean in the PATCH body", async () => {
+    mock.onPatch("/api/v1/ai/sessions/4").reply(200, {
+      session: { id: 4, title: "a", message_count: 0, document_count: 0, created_at: "x", updated_at: "x", remember: false },
+    });
+    await sessionsApi.update(4, { remember: false });
+    expect(JSON.parse(mock.history.patch.at(-1)!.data)).toEqual({ remember: false });
+  });
+});

@@ -240,6 +240,12 @@ export const en = {
   },
 
   sessions: {
+    rememberTitle: "Remember things from this chat",
+    rememberOn:
+      "On: the assistant may note lasting facts you mention here, like a name or a preference, in your note “What the assistant remembers”. You can read and edit that note.",
+    rememberOff:
+      "Off: nothing from this chat is added to that note. What it already remembers from other chats is still used.",
+    rememberFailed: "That setting was not saved.",
     title: "Conversations",
     today: "Today",
     earlier: "Earlier",

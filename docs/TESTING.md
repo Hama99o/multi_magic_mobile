@@ -1283,3 +1283,45 @@ wrong. It is in `docs/APP_STORE_CONNECT.md` §2 beside the command that needs it
 
 The common thread with the two above: **the message you get and the problem you
 have are different objects**, and the gap is where the time goes.
+
+## 18 · Planting the instruments themselves, 2026-09-24
+
+The rule is "a test that has never failed is a hypothesis". This is the same
+rule applied to the checkers, one feature removed at a time. Five suspected,
+two dead, three alive, and the survivors are written down so nobody
+re-suspects them.
+
+**Dead, and fixed:**
+- `src/i18n/__tests__/keys.test.ts` could not see a key written as DATA
+  (`labelKey: "…"`, the sign-up key maps). A theme option labelled
+  `appearance.doesNotExist` left 77 suites and 869 tests green. It now also
+  collects key-shaped literals whose namespace exists (`e261c4c`).
+- Nothing caught words typed straight into a `<Text>`. A planted sentence
+  passed every gate; Jest noticed only when it replaced a key that then went
+  unused. Now a lint error (`505640a`), which closes the class and not just
+  one instance: a new sentence without a key is caught too.
+
+**Alive on plant, and what each one actually proves:**
+- `src/__tests__/a11y.test.tsx`, "finds no nameless Pressable": removing the
+  name from the icon-only *Clear read notifications* button fails it. It
+  proves every press handler in `app/` and `src/` has a name. It does NOT
+  prove the name is right, or that the control can be reached.
+- `src/i18n/__tests__/locales.test.ts`, "no French value that is still the
+  English one": setting `whySkip` to "Skip" in `fr.ts` fails it. It proves
+  no French value was copied from English, apart from the reasoned exceptions
+  in `SAME_IN_BOTH`. It does NOT prove the French is good.
+- `ScopeDialog.test.tsx` caught a planted scope option, but **by accident**:
+  it counts the options. It is not a key check, and it would not catch a
+  wrong label on an existing option.
+
+**And the instrument that was dead on arrival:** the first trial of the
+`<Text>` rule used a config that crashed ESLint. Stderr went to `/dev/null`,
+so the crash read as "0 findings", which is §16's shape exactly, a minute
+after it was the thing being hunted. Show a new check firing before
+believing its silence.
+
+**A green run means two numbers.** `e262136` was committed on "tests passed"
+while a whole suite had failed to RUN: "1 failed, 76 passed; 733 tests",
+where the full count is 869. A suite that crashes on import reports zero
+failures for every test in it. Quote the suite count AND the test count, and
+compare the test count with the last one.

@@ -50,12 +50,27 @@ export function DeleteConfirm({
   visible,
   fileCount,
   busy,
+  error,
   onCancel,
   onConfirm,
 }: {
   visible: boolean;
   fileCount: number;
   busy?: boolean;
+  /**
+   * WHY THE ERROR BELONGS IN HERE AND NOT IN THE SHEET BEHIND IT.
+   *
+   * It used to render only as `sessions-error`, in the sheet's body — which is
+   * behind this dialog's own `Modal`, so it was on a surface nobody could see
+   * while the dialog was up. Measured on a device 2026-09-22: the server
+   * answers `DELETE /api/v1/ai/sessions/281` with a 500 (a foreign key on
+   * `ai_usage_events`), the mutation's `onError` fired, the message rendered
+   * where it always had, and the user saw a Delete button that did nothing at
+   * all, forever, with the explanation hidden behind the thing explaining it.
+   *
+   * A failure has to be legible on the surface that caused it.
+   */
+  error?: string | null;
   onCancel: () => void;
   onConfirm: () => void;
 }) {
@@ -98,6 +113,12 @@ export function DeleteConfirm({
           <Text tone="muted" testID="delete-conversation-safe">
             {t("deleteConversation.safe")}
           </Text>
+
+          {error ? (
+            <Text tone="danger" testID="delete-conversation-error">
+              {error}
+            </Text>
+          ) : null}
 
           <View style={{ gap: metrics.space.sm }}>
             <Button

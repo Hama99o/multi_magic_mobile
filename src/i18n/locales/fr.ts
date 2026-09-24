@@ -156,7 +156,7 @@ export const fr: Translations = {
       "Votre téléphone ne sait pas encore dicter en {{language}}. Vous pouvez toujours écrire.",
     title: "Langue de la dictée",
     someUnavailable:
-      "Une langue grisée n’est pas installée sur ce téléphone. Android les ajoute dans Paramètres › Système › Langues.",
+      "Une langue que ce téléphone n’a pas installée vous le dira au moment de dicter. Android les ajoute dans Réglages › Système › Langues.",
   },
 
   answer: {

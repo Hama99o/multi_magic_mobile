@@ -6,7 +6,7 @@
  * distinguishable from one that is merely slow.
  */
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { AccessibilityInfo } from "react-native";
+import { AccessibilityInfo, FlatList } from "react-native";
 
 const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({
@@ -37,7 +37,9 @@ function message(id: number, role: "user" | "assistant", body: string, sources: 
 }
 
 let conversation: Record<string, unknown>;
-let addPending: jest.Mock;
+let addOptimistic: jest.Mock;
+let confirmPending: jest.Mock;
+let dropPending: jest.Mock;
 
 /**
  * The session id arrives from `useQuery`, so nothing can be posted until it
@@ -76,10 +78,13 @@ beforeEach(async () => {
   // tests — so a question typed in one test comes back as the draft in the
   // next. That is the draft feature working; each test wants a fresh device.
   await AsyncStorage.clear();
-  addPending = jest.fn();
+  addOptimistic = jest.fn(() => 9_000_000_000_000_000);
+  confirmPending = jest.fn();
+  dropPending = jest.fn();
   conversation = {
     messages: [], status: "ready", awaitingReply: false, failed: false,
-    hasOlder: false, loadOlder: jest.fn(), addPending, resync: jest.fn(),
+    hasOlder: false, loadOlder: jest.fn(), addOptimistic, confirmPending, dropPending,
+    keyOf: (m: ChatMessage) => String(m.id), resync: jest.fn(),
   };
   mockUseConversation.mockImplementation(() => conversation);
   jest.spyOn(aiApi, "currentSessionId").mockResolvedValue(4);
@@ -139,8 +144,34 @@ describe("the empty state", () => {
   });
 });
 
+// ── THE LIST IS INVERTED, NEWEST FIRST ────────────────────────────────────
+//
+// Chosen 2026-09-24 after the chase was measured shaking the thread on
+// `qa_phone4` (`useNewestAnchor`). Inverted with the data in the old order
+// would open on the OLDEST message; the two only mean "newest at the bottom"
+// together, so both are asserted.
+describe("the thread", () => {
+  it("is an inverted list with the newest message first in its data", async () => {
+    conversation.messages = [message(1, "user", "First?"), message(2, "assistant", "Newest.")];
+    renderChat();
+    await waitForSession();
+
+    const list = screen.UNSAFE_getByType(FlatList);
+    expect(list.props.inverted).toBe(true);
+    expect((list.props.data as ChatMessage[]).map((m) => m.id)).toEqual([2, 1]);
+  });
+});
+
 describe("posting a question", () => {
-  it("draws it immediately, using the SERVER's id so the socket echo merges", async () => {
+  // ── DRAWN BEFORE THE POST ANSWERS, THEN GIVEN THE SERVER'S ID ────────────
+  //
+  // Measured 2026-09-24, `qa_phone4`: drawing the bubble only after the 202
+  // left the question on screen NOWHERE for ~1.4 s, and the thread dropped
+  // back and jumped up. The echo-twice worry that kept it pessimistic is
+  // handled in `useConversation`'s merge, and tested there.
+  it("draws it BEFORE the server answers, then swaps in the server's id", async () => {
+    let answer!: (v: { conversationId: number; userMessageId: number }) => void;
+    (aiApi.ask as jest.Mock).mockReturnValue(new Promise((r) => { answer = r; }));
     renderChat();
     await waitForSession();
 
@@ -149,11 +180,14 @@ describe("posting a question", () => {
       fireEvent.press(screen.getByTestId("composer-send"));
     });
 
-    // 202 carries the user_message_id. Inventing a local id would show the
-    // question twice the moment the socket echoed it back.
-    await waitFor(() =>
-      expect(addPending).toHaveBeenCalledWith(expect.objectContaining({ id: 11, sentByMe: true })),
+    // The POST is still in flight, and the question is already drawn.
+    expect(addOptimistic).toHaveBeenCalledWith(
+      expect.objectContaining({ body: "Do I owe anyone?", sentByMe: true }),
     );
+    expect(confirmPending).not.toHaveBeenCalled();
+
+    await act(async () => answer({ conversationId: 4, userMessageId: 11 }));
+    expect(confirmPending).toHaveBeenCalledWith(9_000_000_000_000_000, 11);
   });
 
   // ── A QUESTION MUST NEVER VANISH ──────────────────────────────────────────
@@ -168,8 +202,9 @@ describe("posting a question", () => {
     });
 
     await waitFor(() => expect(screen.getByTestId("chat-send-failed")).toBeTruthy());
-    // Back in the composer, not lost to an optimistic bubble.
+    // Back in the composer, and the optimistic bubble taken back off.
     expect(screen.getByTestId("composer-input").props.value).toBe("Do I owe anyone?");
+    expect(dropPending).toHaveBeenCalledWith(9_000_000_000_000_000);
   });
 
   // ── A 429 IS A WAIT, NOT A FAILURE ──────────────────────────────────────

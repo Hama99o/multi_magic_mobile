@@ -30,6 +30,15 @@ const SIGNED = "https://mm.test/rails/active_storage/blobs/abc/payslip.pdf?expir
 afterEach(() => jest.restoreAllMocks());
 
 describe("a file the assistant handed back", () => {
+  // A tap outside the sheet closes it — the same fix as the conversations
+  // sheet, owner's report 2026-09-24.
+  it("closes on a tap outside the sheet", () => {
+    const onClose = jest.fn();
+    render(<FilePreview link={{ label: "payslip.pdf", url: SIGNED }} onClose={onClose} />);
+    fireEvent.press(screen.getByTestId("file-preview-scrim"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+
   it("is not a screen at all until there is a link", () => {
     render(<FilePreview link={null} onClose={jest.fn()} />);
     expect(screen.queryByTestId("file-preview")).toBeNull();

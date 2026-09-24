@@ -63,7 +63,7 @@ tags:
 - inputText: "Rig"
 - tapOn:
     id: "sign-up-email"
-- inputText: ${EMAIL}
+- inputText: ${MAESTRO_QA_EMAIL}
 - tapOn:
     id: "sign-up-password"
 - inputText: "never-created-by-the-rig"

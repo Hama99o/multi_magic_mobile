@@ -63,7 +63,7 @@ describe("the three languages", () => {
 });
 
 describe("when the phone says which languages it has", () => {
-  it("disables one it cannot hear, rather than hiding it", async () => {
+  it("still offers one it did not list — nothing here is a gate", async () => {
     mockGetSupportedLocales.mockResolvedValue({
       locales: ["fr_FR", "en_US"],
       installedLocales: ["en_US"],
@@ -72,11 +72,13 @@ describe("when the phone says which languages it has", () => {
     render(<DictationRow lang="fr-FR" onChange={onChange} />);
 
     await settled();
-    expect(screen.getByTestId("dictation-ps-AF").props.accessibilityState.disabled).toBe(true);
-    // Hiding it would make his request look ignored; offering it would fail at
-    // the mic instead of here.
+    // This asserted `disabled: true` until 2026-09-24. It blocked on an oracle
+    // that is wrong often enough to matter — an empty array on Android 12, a
+    // service that refuses, a recogniser that lists less than it can do. The
+    // phone answers at the microphone now, through `problemSentence`.
+    expect(screen.getByTestId("dictation-ps-AF").props.accessibilityState.disabled).toBeUndefined();
     fireEvent.press(screen.getByTestId("dictation-ps-AF"));
-    expect(onChange).not.toHaveBeenCalled();
+    expect(onChange).toHaveBeenCalledWith("ps-AF");
   });
 
   it("says why, once, rather than beside every row", async () => {
@@ -95,17 +97,20 @@ describe("when the phone says which languages it has", () => {
    * the language subtag.
    */
   it("matches on the language, not the region or the separator", async () => {
+    // All three are covered here by a DIFFERENT region, so the advisory note
+    // appearing would mean the subtag comparison had failed. That note is the
+    // only consumer of the matching left, now that nothing is disabled.
     mockGetSupportedLocales.mockResolvedValue({
-      locales: ["fr_CA", "en_GB"],
+      locales: ["fr_CA", "en_GB", "ps_PK"],
       installedLocales: [],
     });
     render(<DictationRow lang="fr-FR" onChange={noop} />);
-    // `settled()` rather than `waitFor` on the assertion: the row starts
-    // enabled, so a waitFor would pass on the state BEFORE the query resolves
-    // and prove nothing about the matching.
+    // `settled()` rather than `waitFor`: the note is absent before the query
+    // resolves too, so a waitFor would pass on the state BEFORE the answer and
+    // prove nothing about the matching.
     await settled();
 
-    expect(screen.getByTestId("dictation-fr-FR").props.accessibilityState.disabled).toBe(false);
+    expect(screen.queryByTestId("dictation-unavailable")).toBeNull();
   });
 });
 
@@ -126,7 +131,7 @@ describe("when the phone cannot say", () => {
     // and survived a plant that treated an empty list as "supports nothing".
     await settled();
 
-    expect(screen.getByTestId("dictation-ps-AF").props.accessibilityState.disabled).toBe(false);
+    expect(screen.getByTestId("dictation-ps-AF").props.accessibilityState.disabled).toBeUndefined();
     fireEvent.press(screen.getByTestId("dictation-ps-AF"));
     expect(onChange).toHaveBeenCalledWith("ps-AF");
     expect(screen.queryByTestId("dictation-unavailable")).toBeNull();
@@ -138,7 +143,7 @@ describe("when the phone cannot say", () => {
     render(<DictationRow lang="fr-FR" onChange={onChange} />);
     await settled();
 
-    expect(screen.getByTestId("dictation-ps-AF").props.accessibilityState.disabled).toBe(false);
+    expect(screen.getByTestId("dictation-ps-AF").props.accessibilityState.disabled).toBeUndefined();
     fireEvent.press(screen.getByTestId("dictation-ps-AF"));
     expect(onChange).toHaveBeenCalledWith("ps-AF");
   });

@@ -353,6 +353,26 @@ does not. Written up as a proposal in `docs/DICTATION_LANGUAGE.md` and
 **deliberately unbuilt — the owner decides.** Audited here, not fixed, on e7's
 note and that document's own instruction.
 
+### D5 · The assistant thread's tree order is newest-first — MEASURED, undecided
+
+`app/chat.tsx`, from the commit that made the list `inverted` (2026-09-24,
+the owner's choice, to stop the thread jumping). An inverted FlatList is the
+data **newest first** under a `scaleY(-1)` flip, so the screen reads top to
+bottom in time order while the **view tree runs the other way**.
+
+Measured on `qa_phone4` with `uiautomator dump`, the input TalkBack's linear
+navigation follows: the newest answer (y=1437) first, then its question
+(y=1178), and so on up the screen to the oldest visible (y=338). **TalkBack
+itself was not run**, so this is its input and not its behaviour. On that
+input, swiping forward reads the conversation backwards.
+
+Newest-first is arguably useful in a chat (the reply you are waiting for comes
+first), and it is still a change nobody asked for. React Native 0.81 has
+`experimental_accessibilityOrder` (`ViewPropTypes.js:499`), which could put
+time order back, but it is experimental and wants a native id per row, and a
+virtualised list does not mount every row. **Not built — the owner decides**
+between accepting newest-first and paying for that.
+
 ---
 
 ## Touch targets

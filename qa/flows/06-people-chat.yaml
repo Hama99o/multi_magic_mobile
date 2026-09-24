@@ -110,6 +110,32 @@ tags:
           visible:
             id: "msg-mine-.*"
           timeout: 30000
+
+      # ── AND NOW THE KEYBOARD GOES DOWN. THIS IS WHY 06 FAILED. ──────────
+      # Measured 2026-09-22, three runs isolating one variable:
+      #
+      #   no send at all, long press msg-mine-2355  -> sheet OPENS
+      #   send, settle, long press                  -> NO SHEET
+      #   send, settle, hideKeyboard, long press    -> sheet OPENS
+      #
+      # Same row, same bounds ([407,920][1038,1041]), same selector. The only
+      # difference is the IME. With the keyboard up the long press does not
+      # reach the row; the command still reports COMPLETED, which is why this
+      # looked for two nights like a broken gesture and then like an ambiguous
+      # selector. It was neither: `longPressOn` drives this app fine, and the
+      # selector resolves fine.
+      #
+      # The comment above says NO hideKeyboard, and it is right about the place
+      # it was written — BEFORE the send, where it hides the send button
+      # (`01-ask`). After the send there is no button left to hide.
+      #
+      # The other hazard in that comment is real and is guarded rather than
+      # argued with: this is a PUSHED screen, so if the IME is already down a
+      # Back can pop the thread. The assertion underneath makes that fail here,
+      # loudly, instead of drifting into the next step on the chat list.
+      - hideKeyboard
+      - assertVisible:
+          id: "thread-list"
       - takeScreenshot: reports/08-thread-sent-right-side
 
       # ── React, and take it back ─────────────────────────────────────────

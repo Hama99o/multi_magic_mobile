@@ -11,7 +11,7 @@
  * A question must **never vanish into an optimistic bubble**: on failure it
  * stays on screen with a Retry under it.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, FlatList, Pressable, View } from "react-native";
 import { Bell, CalendarDays, MessageSquareText, Users } from "lucide-react-native";
 import { router } from "expo-router";
@@ -33,7 +33,7 @@ import { MessageRow } from "@/components/chat/MessageRow";
 import { ThinkingDots } from "@/components/chat/ThinkingDots";
 import { Composer } from "@/components/chat/Composer";
 import { EmptyState } from "@/components/chat/EmptyState";
-import { ScrollToBottom, useAwayFromBottom } from "@/components/chat/ScrollToBottom";
+import { ScrollToBottom, useNewestAnchor } from "@/components/chat/ScrollToBottom";
 import { Arriving } from "@/components/chat/Arriving";
 import { SourceSheet, useOpenSource } from "@/components/chat/SourceSheet";
 import { FilePreview } from "@/components/chat/FilePreview";
@@ -196,7 +196,7 @@ export default function Chat() {
     },
     [userId],
   );
-  const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addPending, mergeMessage, resync } =
+  const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addOptimistic, confirmPending, dropPending, keyOf, mergeMessage, resync } =
     useConversation({ conversationId, channel: "MessageChannel" });
 
   const { draft, setDraft, clear } = useDraft(conversationId);
@@ -282,8 +282,10 @@ export default function Chat() {
   const [openFile, setOpenFile] = useState<AnswerLink | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
   const listRef = useRef<FlatList<ChatMessage>>(null);
-  const { awayFromBottom, settled, onScroll, onScrollBeginDrag, onContentSizeChange, onListLayout, toBottom } =
-    useAwayFromBottom(listRef);
+  const { awayFromBottom, onScroll, toBottom, maintainVisibleContentPosition } =
+    useNewestAnchor(listRef);
+  // NEWEST FIRST, for the inverted list — see `useNewestAnchor`.
+  const newestFirst = useMemo(() => [...messages].reverse(), [messages]);
 
   /**
    * ONLY THE MOST RECENT undoable reply gets the button.
@@ -305,32 +307,36 @@ export default function Chat() {
 
       setFailedQuestion(null);
       setPosting(true);
+      // Drawn NOW, in the same render that empties the composer, so the thread
+      // makes one move rather than dropping back and jumping up a beat later
+      // (`useConversation`, `addOptimistic`).
+      const localId = addOptimistic({
+        conversationId,
+        role: "user",
+        body: question,
+        createdAt: new Date().toISOString(),
+        deleted: false,
+        userId: user?.id ?? null,
+        sentByMe: true,
+        editedAt: null,
+        readAt: null,
+        reactions: [],
+        links: [],
+        sources: [],
+        undoable: false,
+        undoneAt: null,
+      });
       clear();
 
       try {
         const { userMessageId } = await aiApi.ask({ conversationId, body: question });
-        // Drawn immediately from the server's OWN id, so when the socket echoes
+        // The server's OWN id replaces the local one, so when the socket echoes
         // the same message it merges rather than appearing twice.
-        addPending({
-          id: userMessageId,
-          conversationId,
-          role: "user",
-          body: question,
-          createdAt: new Date().toISOString(),
-          deleted: false,
-          userId: user?.id ?? null,
-          sentByMe: true,
-          editedAt: null,
-          readAt: null,
-          reactions: [],
-          links: [],
-          sources: [],
-          undoable: false,
-          undoneAt: null,
-        });
+        confirmPending(localId, userMessageId);
       } catch (e) {
         // The question comes BACK, into the composer and onto the screen. The
         // one thing this must never do is swallow it.
+        dropPending(localId);
         setDraft(question);
         if (isRateLimited(e)) {
           // A wait, not a failure — see `waitUntil`.
@@ -347,13 +353,12 @@ export default function Chat() {
         setPosting(false);
       }
     },
-    [conversationId, posting, clear, addPending, setDraft, user, t],
+    [conversationId, posting, clear, addOptimistic, confirmPending, dropPending, setDraft, user, t],
   );
 
-  // A question of theirs is a request to be at the bottom, whatever they were
-  // reading a moment ago. Following NEW CONTENT is `useAwayFromBottom`'s job
-  // and happens on content size rather than on `messages`, because the list has
-  // not laid out when the array changes.
+  // A question of theirs is a request to be at the newest, whatever they were
+  // reading a moment ago. At the newest already, this does nothing: the
+  // inverted list keeps the new question in view by itself.
   useEffect(() => {
     if (awaitingReply) toBottom();
   }, [awaitingReply, toBottom]);
@@ -361,7 +366,7 @@ export default function Chat() {
   /**
    * THE ANSWER ARRIVING IS THE PRODUCT, AND NOTHING SAID IT.
    *
-   * `scrollToEnd` above is the sighted half of this: the screen moves to where
+   * `toBottom` above is the sighted half of this: the screen moves to where
    * the answer landed. Someone using a screen reader got neither — no movement
    * they could perceive and no announcement — so a posted question was followed
    * by silence, and the only way to find out whether the reply had come was to
@@ -469,13 +474,18 @@ export default function Chat() {
         <View style={{ flex: 1 }}>
         <FlatList
           ref={listRef}
-          data={messages}
-          keyExtractor={(m) => String(m.id)}
+          // INVERTED: offset 0 is the newest message, so the keyboard, the
+          // composer wrapping and a reply growing all keep it in place with no
+          // scroll issued from here. `useNewestAnchor` has the measurements.
+          inverted
+          data={newestFirst}
+          keyExtractor={keyOf}
+          maintainVisibleContentPosition={maintainVisibleContentPosition}
           renderItem={({ item, index }) => (
             // Only the newest row fades — see `Arriving`. A FlatList mounts
             // rows as they scroll into view, so animating every mount would
             // flicker the history under a finger.
-            <Arriving arriving={index === messages.length - 1}>
+            <Arriving arriving={index === 0}>
             <MessageRow
               message={item}
               onOpenSource={openLink}
@@ -493,22 +503,12 @@ export default function Chat() {
           )}
           onScroll={onScroll}
           scrollEventThrottle={64}
-          // A finger here means the position is theirs — see `useAwayFromBottom`.
-          onScrollBeginDrag={onScrollBeginDrag}
-          // The list grew: another virtualisation batch, or a reply. Chased
-          // only while we are still pinned to the newest, so a message arriving
-          // never yanks somebody out of the history they scrolled up to read —
-          // which is the reason a "back to newest" button is worth having
-          // rather than a workaround for not having one.
-          onContentSizeChange={onContentSizeChange}
-          // Older history by cursor, pulled in as the reader reaches the top.
-          // NOT UNTIL THE FIRST LANDING IS DONE. A list opens at offset 0, which is
-          // the top, so this used to fire on mount and prepend an older page above
-          // somebody who had not gone looking for one — moving the bottom we were
-          // trying to reach. `settled` is the hook's word for "the opening scroll
-          // has finished".
-          onStartReached={hasOlder && settled ? () => void loadOlder() : undefined}
-          onStartReachedThreshold={0.3}
+          // Older history by cursor, as the reader reaches the OLDEST end —
+          // which, inverted, is the list's end. No "wait for the opening
+          // landing" gate: an inverted list opens at the newest, so it is not
+          // at the oldest end on mount unless the whole thread fits.
+          onEndReached={hasOlder ? () => void loadOlder() : undefined}
+          onEndReachedThreshold={0.3}
           showsVerticalScrollIndicator={false}
           // §8: the conversation takes a measure and centres on a tablet. A
           // full-width line of serif text at 800 dp is unreadable.
@@ -519,14 +519,17 @@ export default function Chat() {
             flexGrow: 1,
             // BREATHING ROOM UNDER THE NEWEST REPLY. There was none, so the
             // last line sat flush against the composer and read as cut off.
-            paddingBottom: metrics.space.xl,
+            // `paddingTop` because the list is inverted: top and bottom swap.
+            paddingTop: metrics.space.xl,
           }}
-          // THE KEYBOARD SHRINKS THIS LIST, AND NOTHING USED TO RE-SCROLL.
-          // His words: "it should move latest message up so it did not hide by
-          // keyboard and input where i write the text." `useAwayFromBottom`.
-          onLayout={onListLayout}
+          // WRAPPED IN A PLAIN VIEW, because the list un-flips its empty
+          // component by passing it `style` (`VirtualizedList.js`
+          // `_renderEmptyComponent`), and `EmptyState` takes no style — so,
+          // inverted, the empty state rendered UPSIDE DOWN. Seen on
+          // `qa_phone4` 2026-09-24; a View forwards the style.
           ListEmptyComponent={
-            status === "loading" ? null : status === "failed" ? (
+            <View>
+            {status === "loading" ? null : status === "failed" ? (
               <View style={{ gap: metrics.space.md, paddingVertical: metrics.space.xl }}>
                 <Text tone="muted" testID="chat-load-failed">
                   {t("chat.loadFailed")}
@@ -535,9 +538,12 @@ export default function Chat() {
               </View>
             ) : (
               <EmptyState onPick={(q) => void send(q)} prompts={prompts} />
-            )
+            )}
+            </View>
           }
-          ListFooterComponent={
+          // HEADER, not footer: an inverted list draws its header at the
+          // bottom, under the newest message, which is where the dots go.
+          ListHeaderComponent={
             <View style={{ gap: metrics.space.sm }}>
               {awaitingReply ? <ThinkingDots /> : null}
 

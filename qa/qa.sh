@@ -178,9 +178,10 @@ case "${1:-all}" in
 
   flow)
     require_rig || exit 3
-    # The password is EXPORTED, never argv — see `run.sh` for the measurement.
-    # `-e PASSWORD=...` puts it in the process table where any `ps` reads it.
-    export EMAIL="$QA_EMAIL" PASSWORD="$QA_PASSWORD"
+    # The password is EXPORTED, never argv — see `run.sh` for the measurement,
+    # and for why the name MUST start `MAESTRO_`: a bare export is invisible
+    # to the flow, which then types `undefined`.
+    export MAESTRO_QA_EMAIL="$QA_EMAIL" MAESTRO_QA_PASSWORD="$QA_PASSWORD"
     maestro --device "$SERIAL" test \
       -e APP_ID="$APP_ID" -e DEEP_LINK="$DEEP_LINK" \
       "$DIR/flows/${2:?name a flow}";;

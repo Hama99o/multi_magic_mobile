@@ -180,6 +180,46 @@ so from any Expo project it needs no arguments.
 | Screenshots | `scripts/shots.py` — reserve, chunk-PUT, commit with the file's md5 |
 | Uploading a build | `eas build -p ios --profile production`, then `eas submit` |
 
+### Submitting for review, and the endpoint that is gone
+
+`POST /appStoreVersionSubmissions` is **dead**. It answers
+
+    403 FORBIDDEN_ERROR: The resource 'appStoreVersionSubmissions' does not
+    allow 'CREATE'. Allowed operation is: DELETE
+
+so it still works for *removing* a version from review and not for putting one
+there. Found on 2026-09-24 mid-swap, with the app sitting out of review — the
+worst moment to discover it, which is why it is here.
+
+Submission is now three calls against `reviewSubmissions`:
+
+1. `POST /reviewSubmissions` — `attributes: {platform: "IOS"}`, related to the
+   app. Check `GET /apps/{id}/reviewSubmissions` first and reuse anything in
+   `READY_FOR_REVIEW` rather than creating a second; a `COMPLETE` one is a past
+   submission and is not reusable.
+2. `POST /reviewSubmissionItems` — relating that submission to the
+   `appStoreVersion`.
+3. `PATCH /reviewSubmissions/{id}` — `attributes: {submitted: true}`. Nothing
+   reaches Apple until this call.
+
+**Replacing the build of a version already in review** is: `DELETE
+/appStoreVersionSubmissions/{id}` (still allowed), `PATCH
+/appStoreVersions/{id}` with the new `build` relationship, then the three calls
+above. The build must be `VALID` first — `PROCESSING` is refused, and Apple
+takes about five minutes after upload.
+
+It costs the queue position. On 2026-09-24 that was the right trade: 1.0.0 had
+sat unreviewed for three days carrying build 3, which has no `app/two-factor.tsx`
+and therefore cannot sign in an account with two-step enabled.
+
+### Uploading needs the key in eas.json, and that is what scripts/submit-ios.sh is for
+
+`eas submit --non-interactive` refuses to SET UP an API key and has no flag to
+receive one; it reads the key only from the submit profile. Those fields cannot
+live in a public repo — and note that `ascApiKeyPath` leaks too, because Apple
+names the file `AuthKey_<KEYID>.p8`. `scripts/submit-ios.sh` injects all three
+for one command and restores `eas.json` on a trap, including on failure.
+
 ### Pricing, and the one endpoint shaped differently
 
 `Tarification` does not appear in the pre-submission error list until the items

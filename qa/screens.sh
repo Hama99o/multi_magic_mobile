@@ -89,8 +89,10 @@ load_gate() {
 
 run_flow() {  # run_flow <yaml> <extra -e args...>
   local f="$1"; shift
+  # Exported, not `-e`, and `MAESTRO_`-prefixed — `run.sh` has why.
+  MAESTRO_QA_EMAIL="$QA_EMAIL" MAESTRO_QA_PASSWORD="$QA_PASSWORD" \
   maestro --device "$SERIAL" test \
-    -e APP_ID="$APP_ID" -e EMAIL="$QA_EMAIL" -e PASSWORD="$QA_PASSWORD" -e DEEP_LINK="$DL" \
+    -e APP_ID="$APP_ID" -e DEEP_LINK="$DL" \
     "$@" "$DIR/flows/$f"
 }
 

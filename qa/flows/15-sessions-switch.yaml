@@ -18,9 +18,11 @@
 #
 # ── THE PROOF OF A SWITCH ────────────────────────────────────────────────
 # Two proofs, because each alone can be fooled. A brand-new conversation is
-# EMPTY — `chat-empty` — and the QA account's standing conversation is not
-# (every `01-ask` run adds to it), so the empty state appearing after "New
-# conversation" proves the screen moved to the new one. And after switching
+# EMPTY — `chat-empty` — and the QA account's standing conversation is not,
+# so the empty state appearing after "New conversation" proves the screen moved
+# to the new one. (That non-emptiness is RESIDUE: old `01-ask` runs put it
+# there, and since 2026-09-24 `01` asks in a conversation of its own and deletes
+# it, so nothing replenishes it. It still holds today; it is not guaranteed.) And after switching
 # back by title, the sheet marks that row `selected`, which is `activeId` and
 # nothing else.
 #
@@ -42,6 +44,84 @@ tags:
     id: "sessions-sheet"
 - assertVisible: "Conversations"
 - takeScreenshot: reports/79-sessions-sheet
+
+# ── THE PRECONDITION, SET DELIBERATELY, BEFORE ANYTHING IS CREATED ────────
+# This flow used to inherit its starting state from whatever earlier runs had
+# left in the account, and then assert `notVisible` on a name a previous run
+# had already written. That is not a flaky flow, it is a flow whose verdict
+# depends on how many times it has been run (`qa/QA_HANDBOOK.md`, "A flow that
+# writes and never cleans up").
+#
+# ── AND IT RUNS RIGHT HERE, WITH THE SHEET ALREADY OPEN ──────────────────
+# The register recorded four reverted attempts at this, all of them written
+# against a cause that was wrong: "deleting closes the sheet" and "a cleanup
+# that opens its own sheet finds no `chat-open-sessions`". Measured 2026-09-22:
+# deleting does NOT close the sheet — `destroy.onSuccess` calls `refresh`,
+# `setPending` and `onOpenSession`, and `onClose` is on none of those paths
+# (gated by `SessionsSheet.test.tsx`, "leaves the sheet OPEN afterwards"). And
+# `chat-open-sessions` being unreachable is not a bug at all: it is a `Modal`
+# covering the header, behaving correctly.
+#
+# So there is nothing to open and nothing to reopen. The sheet is open on the
+# line above. Bounded at four rather than looped on a condition, because a
+# delete that silently stops working must end this flow rather than spin.
+- repeat:
+    times: 4
+    commands:
+      - runFlow:
+          when:
+            visible: "Options for QA switch target"
+          commands:
+            - tapOn: "Options for QA switch target"
+            - tapOn:
+                id: "session-menu-delete"
+            - tapOn:
+                id: "delete-conversation-yes"
+            # The confirm must actually CLOSE before the next iteration looks
+            # at the sheet. Without this the first run of this cleanup left the
+            # dialog up, every later step ran against a covered sheet, and the
+            # two assertions below passed by being unreachable.
+            - extendedWaitUntil:
+                notVisible:
+                  id: "delete-conversation-confirm"
+                timeout: 20000
+            - waitForAnimationToEnd:
+                timeout: 5000
+      - runFlow:
+          when:
+            visible: "Options for QA switch other"
+          commands:
+            - tapOn: "Options for QA switch other"
+            - tapOn:
+                id: "session-menu-delete"
+            - tapOn:
+                id: "delete-conversation-yes"
+            # The confirm must actually CLOSE before the next iteration looks
+            # at the sheet. Without this the first run of this cleanup left the
+            # dialog up, every later step ran against a covered sheet, and the
+            # two assertions below passed by being unreachable.
+            - extendedWaitUntil:
+                notVisible:
+                  id: "delete-conversation-confirm"
+                timeout: 20000
+            - waitForAnimationToEnd:
+                timeout: 5000
+# ── POSITIVE FIRST, OR THE TWO BELOW ARE TOOTHLESS ───────────────────────
+# `assertNotVisible` cannot tell "the row is gone" from "something is covering
+# the sheet". The first run of this cleanup proved that the hard way: a delete
+# confirm stayed up, both assertions passed against a covered sheet, and the
+# flow then failed four steps later on `sessions-new` — a real dialog, an
+# invisible cause, and a green assertion in between. So the sheet is asserted
+# PRESENT and usable first, and the absences mean something only after it.
+- assertVisible:
+    id: "sessions-sheet"
+- assertVisible:
+    id: "sessions-new"
+# Now it is true because this flow made it true, not because the account
+# happened to be in that state — nor because nothing was visible at all.
+- assertNotVisible: "Options for QA switch target"
+- assertNotVisible: "Options for QA switch other"
+- takeScreenshot: reports/79b-precondition-set
 
 # ── At the cap there is nothing to create: say so and stop ───────────────
 # NOT MEASURED past here, which is a different fact from passed. Delete a

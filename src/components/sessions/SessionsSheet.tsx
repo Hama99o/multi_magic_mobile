@@ -198,7 +198,18 @@ export function SessionsSheet({
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+        {/* THE SCRIM IS A SIBLING, NOT A PARENT — docs/ACCESSIBILITY.md N1,
+            the same shape as AttachSheet. It was a plain View, so a tap
+            outside the sheet did nothing (owner's report, 2026-09-24); now it
+            closes, and names only itself to a screen reader. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("common.close")}
+          onPress={onClose}
+          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" }}
+          testID="sessions-scrim"
+        />
         <View
           style={{
             backgroundColor: colors.ground,
@@ -440,8 +451,20 @@ export function SessionsSheet({
         visible={pending?.kind === "delete"}
         fileCount={pending?.session.documentCount ?? 0}
         busy={destroy.isPending}
-        onCancel={() => setPending(null)}
-        onConfirm={() => pending && destroy.mutate(pending.session.id)}
+        // Only while THIS dialog is up: `error` is shared with the sheet's own
+        // failures (create, clear, rename), and showing one of those inside a
+        // delete confirm would explain the wrong thing.
+        error={pending?.kind === "delete" ? error : null}
+        onCancel={() => {
+          setError(null);
+          setPending(null);
+        }}
+        onConfirm={() => {
+          // A retry starts clean, so a stale message cannot be read as the
+          // result of the press that just happened.
+          setError(null);
+          if (pending) destroy.mutate(pending.session.id);
+        }}
       />
     </Modal>
   );

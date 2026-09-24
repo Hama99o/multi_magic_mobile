@@ -325,3 +325,341 @@ The general form: **if the only thing that undoes your side effect is the last
 line of the thing that caused it, the side effect is permanent for every run
 that does not reach that line** — and the runs that do not reach it are
 exactly the ones that went wrong, which is when a dirty account hurts most.
+
+## A flow that writes and never cleans up has a verdict that depends on its own history
+
+The section above is about cleanup that does not run. This one is about
+cleanup that was never written, and it is worse, because the flow keeps
+passing while the damage accumulates.
+
+**Two symptoms, 2026-09-21 and 22, and they are one bug.** `06-people-chat`
+sends the constant string `[qa] automated test message` and removes nothing.
+On the seventh run the live tree held **seven `msg-*` elements, six carrying
+that identical accessibility label**, one per previous run. `msg-mine-.*`
+matches all six, Maestro picks one, and by then the one it picks has scrolled
+off the screen. `15-sessions-switch` creates a conversation called `QA switch
+target` and later asserts it is gone — against an account that still holds one
+from an earlier run, so the assertion fails before the test begins.
+
+The general property is worth stating on its own, because it is not "these two
+flows are dirty":
+
+> **A flow that writes to a live server and never removes what it wrote has a
+> verdict that depends on how many times it has been run before.**
+
+That is a worse property than failing outright. It **passes early and fails
+later**, so the failure arrives detached from the change that caused it — which
+is nobody's change, because nothing changed. Both times, the first reading was
+that the app had regressed. Twice I reported a cause that was wrong, and the
+wrong cause reached the board. A flow like this does not just fail; it
+**manufactures false defect reports about the product**.
+
+**The rule, and it is a fork, not a preference.** Every flow that creates data
+does one of two things, and says in its header which:
+
+- **Removes it**, structurally — not as the last line of the happy path. See
+  the section above for why that distinction is the whole of it.
+- **Makes what it creates unique per run and addresses it by that
+  uniqueness.** A constant string is not a selector; it is a selector that
+  works once. `evalScript` can stamp a run id, and the value is then usable in
+  both the `inputText` and the selector that finds it again.
+
+Uniqueness is the stronger of the two, because it survives the run being
+killed. Removal alone does not.
+
+### The audit, so the next session greps for a shorter list
+
+All 24 files `flow_lint` counts — 22 flows and 2 helpers — read on 2026-09-22
+for what they commit to the server. The answer to "is it only 06 and 15" is **no**, and
+the shape of the rest is the useful part.
+
+**Accumulates, no cleanup at all — the defect above:**
+
+- `06-people-chat` — a constant message, sent. **Confirmed breaking the flow.**
+- `01-ask` — **fixed 2026-09-24**: it now asks a run-stamped question in a
+  new conversation and deletes that conversation by its autotitle, sweeping
+  any `QA ask …` row a killed run left. What follows is what it *did*.
+  It sent `Do I owe anyone money?` to **the QA account's** standing
+  conversation and never removed it: one question and one real AI answer per
+  run, without bound. Not his account — `run.sh` and `qa.sh` export `EMAIL`
+  from `QA_EMAIL`, and the standing rule holds. Saying "his" here, as an
+  earlier draft of this line did, was one relay from reaching his board as
+  *"the tests are writing into your account"*: alarming, false, and the same
+  shape as the five causes below — a sentence that was nearly right, written in
+  passing, then read as fact. Not failing yet. Note what it has already
+  caused, though — `15`'s own header *depends* on that conversation being
+  non-empty ("every `01-ask` run adds to it"), so a flow is already resting an
+  assertion on another flow's residue. That is the dependency this rule exists
+  to forbid, and it is already written down as design.
+
+**Creates and removes, but only on success — and with a constant name, so an
+aborted run poisons the next one:** `04-delete-conversation` (`QA delete
+target`), `15-sessions-switch` (`QA switch target`, `QA switch other`),
+`19-session-options` (`QA options target`). The previous section already has
+these; the constant name is the second ingredient, and uniqueness fixes both at
+once.
+
+**Writes, but overwrites rather than appends:** `13-profile` sets the first
+name and the About text to the same values every run, so nothing grows. It does
+hold **the QA account's** profile at a rig-written string and never restores it
+— which is a decision, not a defect, and it is now stated in that flow's
+register row rather than left to surprise whoever next opens that account.
+
+**A side effect outside the database:** `11-forgot-password` submits the real
+form, so a password-reset email reaches the QA mailbox on every run.
+
+**Types but never commits, and this is deliberate in each case** — worth
+recording so nobody "fixes" one into writing: `02-sign-in` (wrong credentials
+on purpose), `03-dictation` and `09-keyboard` (type into the composer, never
+press send — `09` clears it), `10-sign-up` (signs up with the QA address, which
+already exists, so it cannot create), `14-change-password` (the final submit
+carries a deliberately wrong *current* password, so the password never
+changes), `16-ai-keys` (an invalid key the provider rejects before it is
+saved).
+
+**Reads only:** `05-upload` (opens the attach sheet, never picks a file),
+`07`, `08`, `12`, `17`, `18-delete-account` (opens and never confirms), `20`,
+`99`, `signed-out`, and both helpers.
+
+## What a Maestro selector actually matches — read out of the jar, not guessed
+
+Answering "does `id:` plus `text:` compose the way I assumed?" from
+`~/.maestro/lib` rather than from another emulator boot. Maestro 2.7.0,
+`javap` on `maestro-client.jar` and `maestro-orchestra.jar`. Four facts, each
+checkable the same way:
+
+- **Several keys on one selector are an AND, over the same node set.**
+  `Orchestra.buildFilter` collects one filter per key and combines them with
+  `Filters.intersect`, which applies each to the *same* input list and
+  set-intersects the results. So `id:` + `text:` means one element satisfying
+  both, not two elements.
+- **`id:` reads `resource-id` and nothing else** (`Filters.idMatches`). On
+  React Native Android that is `testID`.
+- **`text:` reads three attributes and unions them**: `text`, `hintText` and
+  **`accessibilityText`**, which `AndroidDriver` fills from `content-desc` —
+  so on Android a selector's `text:` matches an `accessibilityLabel` too. That
+  is not obvious from the name and it is the reason a `text:` selector can hit
+  a `Pressable` that displays no text of its own.
+- **Newlines are replaced with spaces before matching**, and each attribute
+  gets three chances: the regex against the raw value, an exact equality
+  against the *pattern* string, and the regex against the newline-flattened
+  value. A two-line label is therefore matchable as one line with a space —
+  which narrows, but does not repeal, the `ANCHORED` rule: Maestro still
+  matches the **whole** node.
+
+**What this settles, and what it does not.** The combined selector was NOT the
+reason the `06` fix failed — the composition is exactly what it looked like, so
+that suspect is now excluded by reading rather than by another run. What
+remains untested is whether `${output.…}` interpolation reaches a *selector*
+the same way it reaches an `inputText`, which is the next thing to probe and
+needs a device.
+
+## A recorded cause is a hypothesis until something re-measures it
+
+`FLOW_REGISTER.md` is rigorous about verdicts. `PASS`, `NOT MEASURED` and the
+"does NOT cover" column exist precisely so nobody reads more into a green than
+it earned. **The causes written beside those verdicts get none of that
+discipline**, and the cause is what the next session actually acts on — a
+verdict tells you where to look, a cause tells you what to do.
+
+**Five recorded causes were found wrong in a single night, 2026-09-21 into 22.**
+Three of them in this repo, measured here:
+
+1. *"Maestro's `longPressOn` does not land."* It lands. An isolated probe opens
+   the reaction sheet. The flow's selector was ambiguous — six identical labels.
+2. *"Deleting a conversation closes the sheet."* It does not. `onClose` is
+   called at four sites and none is the delete path, and a run on 19 September
+   deleted two conversations back to back and passed.
+3. *"A cleanup that opens its own sheet finds no `chat-open-sessions`."* Not a
+   bug at all: a `Modal` covering a header, behaving exactly as it should.
+
+Two more were reported over the relay the same night from the other repos — a
+swallowed 422 said to make later calls fail when four endpoints returned 200,
+and a nullable session expiry pinned in a spec as a deliberate admin feature
+that exists nowhere. **Those two are recorded here as reported, not as
+measured**, which is the whole of this section applied to itself.
+
+**They are all one object.** A plausible explanation, written down at the moment
+of a failure, never re-measured, then read as a fact by whoever came next. Each
+cost more than the defect it described: #1 and #2 together cost four reverted
+attempts and put a non-defect in front of him as the app's only known bug.
+
+**The rule.** Every cause recorded next to a verdict carries one word:
+
+- **measured** — somebody drove it and watched the outcome, or read the code
+  that decides it. Say what was driven or which file and line.
+- **inferred** — it is the best explanation of a failure nobody has re-tested.
+
+An unmarked cause reads as **inferred**. That is the safe default and it is the
+honest one, because most of them are. The marker costs a word; #1 and #2 above
+would each have been caught by somebody reading "inferred" and spending ten
+minutes rather than four attempts.
+
+And the sharper half, which is the one that actually bites: **a cause is not
+made measured by being confidently written, by being repeated, or by being
+quoted back to you.** Two of the five were repeated to a peer as established
+fact before anybody drove them. Being told your own guess is the same as being
+told nothing.
+
+## Ask what the report would look like if the step had done nothing
+
+The costliest failures in this rig are not steps that fail. They are steps that
+**report success for a reason unrelated to the thing being asked**. A green that
+could not have been red is not weak evidence, it is no evidence, and it reads
+exactly like the real thing.
+
+One question catches all of them, before the run rather than after:
+
+> **If this step had done nothing at all, what would its report look like?**
+> If the answer is "the same", the step is not evidence.
+
+Two worked examples from one night, two different masks on the same object:
+
+**The tool reported success for an action that never reached the app.**
+`longPressOn: id: msg-mine-.*` prints `COMPLETED` when the gesture is
+dispatched, not when anything receives it. With the keyboard up it reached
+nothing, and `COMPLETED` was printed just the same. That single misreading
+produced two wrong recorded causes over two nights — first "the gesture is not
+drivable", then "the selector is ambiguous" — and cost a defect report against
+an app that did not have the defect. What finally settled it was three runs
+changing **one** variable, with a case that was known to pass as the control.
+
+**The assertion was incapable of failing for the right reason.**
+`15-sessions-switch`'s first cleanup ended with `assertNotVisible` on two
+conversation titles. It passed — against a sheet completely covered by a delete
+confirm that had never closed. `assertNotVisible` cannot tell *"the row is
+gone"* from *"nothing is visible at all"*, so a covered screen satisfies it
+perfectly. Green assertion, real dialog, invisible cause, and a failure four
+steps later pointing at `sessions-new`, which was innocent.
+
+**The remedy for a negative assertion is a positive one in front of it.** Assert
+the surface is present and usable, *then* assert what is absent from it. Absence
+only means something once you have established there was somewhere for the thing
+to be. `15` now asserts `sessions-sheet` and `sessions-new` before asserting the
+two titles are gone.
+
+**And knowing this entry does not protect you from it.** The `assertNotVisible`
+example above was written into a cleanup **eleven minutes after** the session
+writing it committed this section's first half. A supervising session made the
+same move at wider spacing the same night: corrected on a memory gauge at six
+o'clock, wrote the correction down, and handed out a tripwire built on the wrong
+number at ten. Knowing a rule and holding it under time pressure are different
+skills, and the gap between them does not close by stating the rule more
+clearly.
+
+What closed both was not care. It was **an artifact and a second pair of eyes**
+— a hierarchy dump from the failing step, and somebody who measured
+independently instead of taking the report. So the operational form of this
+entry is not "be careful", which is not a rule:
+
+> **Look at what the run produced, not at what you meant it to do.**
+
+The dump, the log, the screenshot. Every wrong cause recorded this week
+survived because somebody reasoned about the run instead of opening its
+artifacts, and every one of them died within minutes of somebody opening them.
+
+And the general one: **a negative control is not optional rigour, it is what
+converts a pass into information.** When `${output.…}` was checked against a
+selector, the four passes meant nothing until a fifth run asserted a string that
+was deliberately absent and failed — printing the resolved value, which proved
+the interpolation had happened at all. Three suspects were excluded that night
+by negative controls and all three had been believed.
+
+## `pgrep -f <pattern>` matches the process doing the looking — including you
+
+There is already a note above about `until ! pgrep -f maestro` waiting for
+itself forever. It has a second face, and it caught a session on 2026-09-22
+checking the emulator count for a teardown report:
+
+```sh
+pgrep -af qemu-system | wc -l     # 3   ← two of them were the shell running this
+ps -eo comm= | grep -c '^qemu-system'   # 1   ← the truth
+```
+
+`pgrep -f` matches the full command line, and the command line of the thing
+asking the question contains the pattern by definition. Reporting "three
+emulators are running" on a box whose whole contract is *one device at a time*
+would have been an emergency invented out of a grep. **Match on `comm` — the
+executable name — whenever you are counting processes**, and keep `-f` for
+finding one you already know exists.
+
+Both traps are the same object as the section above: a command that answers
+confidently without being able to answer.
+
+## PARKED, NOT FIXED — the backend check asserts a status, not an identity
+
+Not done. Written down on 2026-09-23 so it is not lost, and left for whoever
+picks it up with time to do it properly.
+
+`qa/preflight.sh`'s `backend_up()` reports **"backend reachable"** on a 200 from
+`$API_URL_LOCAL/up`. Nothing in it asserts *which application answered*, and it
+is the odd one out in this rig: `qa.sh`'s Metro check greps the response body
+for `packager`, which is an identity, and is already the right shape.
+
+**Measured here, and it is worse than the body being ignored:**
+
+```sh
+backend_up(){ … curl -s -o /dev/null -w '%{http_code}' … "$API_URL_LOCAL/up" … = "200" }
+```
+
+- `-o /dev/null` **throws the body away**, so there is nothing to identify with.
+- And keeping it would not help. `/up` is `rails/health#show`
+  (`config/routes.rb:5`), the Rails **default** health route that every Rails
+  7.1+ app has, and its entire body is
+  `<html><body style="background-color: green"></body></html>`. **It carries
+  nothing identifying at all.** Any Rails app on any port answers it the same.
+
+**Why it matters, from Karwan's rig the same night** — reported, not measured
+here: their preflight asked `localhost:3000`, got a healthy 200, and then 404ed
+on every real route, because 3000 is a different Rails app. What exposed it was
+a version string in the 404, and only because the failure came first. **A run
+that happened to succeed would have gone green against a stranger's app and
+been believed.**
+
+**And here it is on this box, measured 2026-09-23 — not a story about Karwan's
+rig.** Port 3000 is one of the booklet stacks; 3001 is ours:
+
+```
+$ curl -s http://localhost:3000/up   # booklet's app
+<!DOCTYPE html><html><body style="background-color: green"></body></html>  HTTP 200
+$ curl -s http://localhost:3001/up   # ours
+<!DOCTYPE html><html><body style="background-color: green"></body></html>  HTTP 200
+```
+
+**Byte for byte identical.** Two different applications, same status, same body,
+nothing to tell them apart. A supervising session produced this by accident
+while checking the claim above — curled 3000 to see the body and got a healthy
+green page — three hours into writing this lesson down. That is not a careless
+moment, it is the entry's own point: the report is identical whoever answers,
+so there is no amount of attention that distinguishes them.
+
+**And what an identity check looks like — also measured here, same night,
+same box.** Karwan's step-4 endpoint, on their port:
+
+```
+$ curl -s http://localhost:3017/api/v1/public/merchant_categories
+{"merchant_categories":[{"id":1,"slug":"kabab","name":"کباب"},
+ {"id":2,"slug":"qabuli","name":"قابلی پلو"},{"id":3,"slug":"mantu","name":"منتو"},…
+```
+
+**Content only that application could produce** — not a version header, not a
+status code. Nothing else on this machine answers with those. That is the bar,
+and a health endpoint every framework ships cannot clear it by construction,
+which is why the fix here is a different endpoint rather than a better read of
+`/up`. (Their public catalogue, read-only, one GET; nothing of theirs touched.)
+
+Put the two side by side and the whole finding is three commands: 3000 and 3001
+indistinguishable, 3017 unmistakable.
+
+**Read `karwan-api/bin/preflight` step 4 BEFORE writing anything.** It already
+does this: it fetches a real endpoint and branches three ways — ours, nothing
+answered, and **something else answered**. That third branch is the point;
+collapsing it into "not reachable" throws away the whole finding. The session
+over there nearly built a second mechanism beside the one that already existed,
+so the first move here is to go and read theirs, not to design ours.
+
+Their general lesson, in their words: **a guard only guards the path it is on.**
+Theirs was correct, enforced, and walked around by hand.
+
+This sits with "Ask what the report would look like if the step had done
+nothing" above. A 200 from a stranger and a 200 from us are the same report.

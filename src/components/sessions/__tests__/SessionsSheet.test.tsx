@@ -46,6 +46,18 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
+// ── A TAP OUTSIDE THE SHEET CLOSES IT ─────────────────────────────────────
+// Owner's report, 2026-09-24: "it did not close outside that dialog". The
+// dimmed area was a plain View with no handler.
+describe("outside the sheet", () => {
+  it("closes it", async () => {
+    const onClose = jest.fn();
+    renderSheet({ onClose });
+    fireEvent.press(await screen.findByTestId("sessions-scrim"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("the list", () => {
   it("shows the counts the serializer already carries", async () => {
     renderSheet();
@@ -150,6 +162,88 @@ describe("deleting", () => {
 
     // The server never leaves the user with nowhere to talk.
     await waitFor(() => expect(onOpenSession).toHaveBeenCalledWith(9));
+  });
+
+  /**
+   * THE SHEET STAYS OPEN, AND THAT IS THE CONTRACT — not an accident.
+   *
+   * `15-sessions-switch` deletes the two conversations it made back to back,
+   * naming the second row's menu with no reopen in between, and the whole
+   * register row for that flow rests on this holding. It was recorded there as
+   * the opposite ("deleting a conversation CLOSES the sheet"), and four
+   * attempts at a cleanup were written against that belief and reverted. The
+   * code says otherwise — `destroy.onSuccess` calls `refresh`, `setPending`
+   * and `onOpenSession`, and `onClose` appears nowhere on that path — but a
+   * belief that costs four attempts deserves a gate rather than a re-reading.
+   *
+   * The negative alone would be weak, so the row still being there is asserted
+   * with it: not-closed and still-rendered are different claims.
+   */
+  it("leaves the sheet OPEN afterwards, so the next row can be named without reopening", async () => {
+    const onClose = jest.fn();
+    (sessionsApi.list as jest.Mock).mockResolvedValue([session({ id: 4 }), session({ id: 5 })]);
+    jest.spyOn(sessionsApi, "destroy").mockResolvedValue(session({ id: 9, title: "New chat" }));
+    renderSheet({ onClose });
+
+    await waitFor(() => expect(screen.getByTestId("session-menu-4")).toBeTruthy());
+    fireEvent.press(screen.getByTestId("session-menu-4"));
+    await waitFor(() => expect(screen.getByTestId("session-menu-delete")).toBeTruthy());
+    fireEvent.press(screen.getByTestId("session-menu-delete"));
+    await waitFor(() => expect(screen.getByTestId("delete-conversation-yes")).toBeTruthy());
+
+    fireEvent.press(screen.getByTestId("delete-conversation-yes"));
+
+    // Wait for the delete to have LANDED before judging what is on screen —
+    // asserting before the mutation resolves would pass against a sheet that
+    // simply had not closed yet.
+    await waitFor(() => expect(sessionsApi.destroy).toHaveBeenCalledWith(4));
+    await waitFor(() => expect(screen.queryByTestId("delete-conversation-confirm")).toBeNull());
+
+    expect(onClose).not.toHaveBeenCalled();
+    // And still usable: the OTHER row's menu is right there to be named.
+    expect(screen.getByTestId("sessions-sheet")).toBeTruthy();
+    expect(screen.getByTestId("session-menu-5")).toBeTruthy();
+  });
+
+  /**
+   * A FAILURE HAS TO BE LEGIBLE ON THE SURFACE THAT CAUSED IT.
+   *
+   * Found on a device, not here. The server answers
+   * `DELETE /api/v1/ai/sessions/281` with a 500 — a foreign key on
+   * `ai_usage_events` that `Ai::Sessions.destroy` does not clear, so a
+   * conversation that has ever produced a usage event cannot be deleted at
+   * all. The mutation's `onError` fired correctly and set the message. It
+   * rendered as `sessions-error`, in the sheet's body, which is BEHIND this
+   * dialog's own `Modal`.
+   *
+   * So the button did nothing, forever, and the explanation sat on a surface
+   * the user could not see while the thing it explained was on screen. Tapping
+   * it again by hand changed nothing; only logcat said why.
+   */
+  it("shows WHY inside the confirm when the server refuses, and stays open", async () => {
+    jest.spyOn(sessionsApi, "destroy").mockRejectedValue({
+      isAxiosError: true,
+      response: { status: 500, data: { error: "Could not delete this conversation." } },
+    });
+    renderSheet();
+
+    await waitFor(() => expect(screen.getByTestId("session-menu-4")).toBeTruthy());
+    fireEvent.press(screen.getByTestId("session-menu-4"));
+    await waitFor(() => expect(screen.getByTestId("session-menu-delete")).toBeTruthy());
+    fireEvent.press(screen.getByTestId("session-menu-delete"));
+    await waitFor(() => expect(screen.getByTestId("delete-conversation-yes")).toBeTruthy());
+
+    fireEvent.press(screen.getByTestId("delete-conversation-yes"));
+
+    // Inside the dialog, not behind it.
+    await waitFor(() =>
+      expect(screen.getByTestId("delete-conversation-error")).toHaveTextContent(
+        "Could not delete this conversation.",
+      ),
+    );
+    // And the dialog is still there to read it on, and to cancel from.
+    expect(screen.getByTestId("delete-conversation-confirm")).toBeTruthy();
+    expect(screen.getByTestId("delete-conversation-cancel")).toBeTruthy();
   });
 });
 

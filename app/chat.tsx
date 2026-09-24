@@ -8,8 +8,11 @@
  * at once, and renders the answer when it lands — and survives the socket
  * dropping by re-reading the transcript on reconnect (`useConversation`).
  *
- * A question must **never vanish into an optimistic bubble**: on failure it
- * stays on screen with a Retry under it.
+ * A question must **never vanish**. It is drawn the moment it is sent (an
+ * optimistic bubble, since 85585e8), and if the POST fails that bubble is
+ * taken back off and the question goes BACK INTO THE COMPOSER, with the
+ * reason and a Retry under the thread (`chat-send-failed`). What it may never
+ * do is disappear with the words.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, FlatList, Pressable, View, type ViewStyle } from "react-native";

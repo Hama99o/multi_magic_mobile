@@ -21,9 +21,21 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import type { BorrowedKey } from "@/api/aiKeys";
 
-/** The first day of next month, when a monthly limit resets. */
+/**
+ * When a monthly limit resets: the next month start on the SERVER's calendar,
+ * which is UTC. `spent_this_month` sums `Time.current.all_month`
+ * (`multi_magic` `user_ai_key_grant.rb`), and `config/application.rb` leaves
+ * `time_zone` at Rails' default. The caller formats this instant in the
+ * phone's own zone.
+ *
+ * It used to be the first of next month on the PHONE's calendar. Two ways
+ * wrong: west of UTC the key comes back on the evening of the last day, not
+ * "on the 1st"; east of UTC, in the first hours of a local month (Paris,
+ * 00:00 to 02:00 on the 1st), the server is still in last month, so the key
+ * is back within two hours while the row said it returns in a MONTH.
+ */
 export function resetDate(now: Date = new Date()): Date {
-  return new Date(now.getFullYear(), now.getMonth() + 1, 1);
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
 }
 
 export function BorrowedKeyRow({ borrowed, testID }: { borrowed: BorrowedKey; testID?: string }) {

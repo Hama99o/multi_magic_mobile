@@ -20,6 +20,7 @@
  * only that the words that fill the column are the right ones.
  */
 import { render, screen } from "@testing-library/react-native";
+import i18n from "i18next";
 import { EventRow } from "../EventRow";
 import type { Occurrence } from "@/api/calendar";
 
@@ -187,5 +188,21 @@ describe("a timestamp it cannot read", () => {
 
     expect(screen.getByText("All day")).toBeTruthy();
     expect(screen.queryByText("Unknown")).toBeNull();
+  });
+});
+
+// An event the server sends WITHOUT a title. The parser used to fill in the
+// English word "Untitled", so a French phone read English in its agenda. The
+// word is now chosen here, at render, in the reader's language.
+describe("an untitled event", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("says so in the reader's language, on screen and to a screen reader", async () => {
+    await i18n.changeLanguage("fr");
+    render(<EventRow occurrence={occurrence({}, { title: null })} onPress={jest.fn()} />);
+    expect(screen.getByText("Événement sans titre")).toBeTruthy();
+    expect(screen.getByLabelText(/Événement sans titre/)).toBeTruthy();
   });
 });

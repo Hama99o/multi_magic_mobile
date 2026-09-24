@@ -137,7 +137,7 @@ export default function Calendar() {
   const ask = useCallback(
     (occurrence: Occurrence) => {
       const when = headingFor(occurrence.on, localDateKey(new Date()), t, i18n.language).label;
-      setDraft(t("calendar.question", { title: occurrence.event.title, when }));
+      setDraft(t("calendar.question", { title: occurrence.event.title ?? t("calendar.untitled"), when }));
       setComposed(true);
       router.push("/chat");
     },

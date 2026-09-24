@@ -243,6 +243,7 @@ export const en = {
   },
 
   sessions: {
+    loadFailed: "Could not load your conversations.",
     rememberTitle: "Remember things from this chat",
     rememberOn:
       "On: the assistant may note lasting facts you mention here, like a name or a preference, in your note “What the assistant remembers”. You can read and edit that note.",
@@ -497,6 +498,7 @@ export const en = {
   },
 
   calendar: {
+    untitled: "Untitled event",
     title: "What's next",
     refresh: "Refresh the calendar",
     today: "Today",

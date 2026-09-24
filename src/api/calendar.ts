@@ -41,7 +41,9 @@ import { arr, id, obj, optStr, str } from "./parse";
 
 export interface CalendarEvent {
   id: number;
-  title: string;
+  /** Null when the server sends none. The word for "untitled" is chosen at
+   *  render, in the reader's language, not baked in here in English. */
+  title: string | null;
   description: string | null;
   location: string | null;
   kind: string | null;
@@ -81,7 +83,7 @@ function parseEvent(payload: unknown): CalendarEvent {
   const record = obj(payload, "event");
   return {
     id: id(record.id, "event.id"),
-    title: optStr(record.title) ?? "Untitled",
+    title: optStr(record.title),
     description: optStr(record.description),
     location: optStr(record.location),
     kind: optStr(record.kind),

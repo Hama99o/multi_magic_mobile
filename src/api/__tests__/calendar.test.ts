@@ -145,6 +145,13 @@ describe("the colour bar", () => {
     // An unexpected string here is a red box on Android and a silent no-op on
     // iOS — so the row falls back to `categoryColorFor` instead.
     expect(__parse.parseColor("rebeccapurple")).toBeNull();
+  });
+
+  it("leaves a missing title EMPTY, rather than writing English into it", () => {
+    // Was `?? "Untitled"`: English on a French phone, and a word the starter
+    // prompts then asked the assistant about as if he had written it.
+    const occurrence = __parse.parseOccurrence({ ...standup, event: { ...standup.event, title: null } });
+    expect(occurrence.event.title).toBeNull();
     expect(__parse.parseColor("javascript:alert(1)")).toBeNull();
     expect(__parse.parseColor(null)).toBeNull();
     expect(__parse.parseColor(7)).toBeNull();

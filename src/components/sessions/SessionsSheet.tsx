@@ -22,6 +22,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { X } from "@/components/icons";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
+import { failureMessage } from "@/api/failure";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { LIMITS, sessionsApi, type AiSession } from "@/api/ai";
@@ -61,7 +62,21 @@ export function SessionsSheet({
   const [pending, setPending] = useState<Pending>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const { data: sessions = [], isLoading } = useQuery({
+  /**
+   * A FAILED LOAD IS NOT AN EMPTY LIST (2026-09-24, found by reading). This
+   * used to take `sessions = []` and `isLoading` only, so a list that did not
+   * arrive rendered as no conversations at all, beside a working "New
+   * conversation". That button's two decisions both read this list: reuse
+   * an empty conversation instead of making another, and the 50 cap. So on a
+   * failed load it would make a duplicate, and hide the cap. Now the failure
+   * says so, with a retry, and the button waits for a list to decide from.
+   */
+  const {
+    data: sessions = [],
+    isLoading,
+    error: loadError,
+    refetch,
+  } = useQuery({
     queryKey: ["ai", "sessions"],
     queryFn: sessionsApi.list,
     enabled: visible,
@@ -318,6 +333,13 @@ export function SessionsSheet({
           <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: metrics.space.lg }}>
             {isLoading ? (
               <ActivityIndicator color={colors.accent} />
+            ) : loadError ? (
+              <View testID="sessions-load-failed" style={{ gap: metrics.space.sm }}>
+                <Text tone="muted">{failureMessage(loadError, t("sessions.loadFailed"))}</Text>
+                <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
+                  <Text tone="accent">{t("common.tryAgain")}</Text>
+                </Pressable>
+              </View>
             ) : (
               groups.map((entry) => group(entry.label, entry.rows))
             )}
@@ -331,7 +353,7 @@ export function SessionsSheet({
             <Button
               label={t("sessions.newConversation")}
               busy={create.isPending}
-              disabled={atLimit}
+              disabled={atLimit || loadError != null}
               onPress={() => create.mutate()}
               testID="sessions-new"
             />

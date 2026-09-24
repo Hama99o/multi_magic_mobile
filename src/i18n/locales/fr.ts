@@ -257,6 +257,7 @@ export const fr: Translations = {
   },
 
   sessions: {
+    loadFailed: "Impossible de charger vos conversations.",
     rememberTitle: "Retenir des choses de cette conversation",
     rememberOn:
       "Activé : l’assistant peut noter des faits durables que vous mentionnez ici, comme un nom ou une préférence, dans votre note « What the assistant remembers ». Vous pouvez lire et modifier cette note.",
@@ -513,6 +514,7 @@ export const fr: Translations = {
   },
 
   calendar: {
+    untitled: "Événement sans titre",
     title: "À venir",
     refresh: "Actualiser l\u2019agenda",
     today: "Aujourd’hui",

@@ -143,7 +143,10 @@ export function useStarterPrompts(conversationId: number | null): {
       buildPrompts(
         files ?? [],
         // An Occurrence wraps the event; the title lives on the event itself.
-        (events ?? []).map((o) => ({ title: o.event.title })),
+        // An UNTITLED event is skipped: a suggestion must come from his data,
+        // and until 2026-09-24 this one would have asked about "Untitled",
+        // a word the parser substituted, not anything he wrote.
+        (events ?? []).flatMap((o) => (o.event.title ? [{ title: o.event.title }] : [])),
         summary?.stocked ?? [],
       ),
     [files, events, summary],

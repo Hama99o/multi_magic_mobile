@@ -429,3 +429,27 @@ describe("new chat, and what counts as unnamed", () => {
     expect(create).not.toHaveBeenCalled();
   });
 });
+
+// ── A FAILED LOAD IS NOT AN EMPTY LIST ────────────────────────────────────
+// Found by reading, 2026-09-24: a list that did not arrive rendered as no
+// conversations, next to a working "New conversation" whose reuse-an-empty
+// and 50-cap decisions both read that list.
+describe("when the list does not arrive", () => {
+  it("says so, offers a retry, and holds New until there is a list to decide from", async () => {
+    jest.spyOn(sessionsApi, "list").mockRejectedValue(new Error("offline"));
+    renderSheet();
+    expect(await screen.findByTestId("sessions-load-failed")).toBeTruthy();
+    expect(screen.getByText("Try again")).toBeTruthy();
+    expect(screen.getByTestId("sessions-new").props.accessibilityState).toMatchObject({ disabled: true });
+  });
+
+  it("and a list that arrived EMPTY is not a failure", async () => {
+    jest.spyOn(sessionsApi, "list").mockResolvedValue([]);
+    renderSheet();
+    await waitFor(() => expect(sessionsApi.list).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByTestId("sessions-new").props.accessibilityState).not.toMatchObject({ disabled: true }),
+    );
+    expect(screen.queryByTestId("sessions-load-failed")).toBeNull();
+  });
+});

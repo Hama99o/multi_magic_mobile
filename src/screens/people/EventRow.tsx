@@ -70,6 +70,7 @@ export function EventRow({
   const colors = useColors();
   const metrics = useMetrics();
   const { event } = occurrence;
+  const title = event.title ?? t("calendar.untitled");
   const bar = event.color ?? categoryColorFor(event.id);
   const duration = durationLabel(occurrence);
 
@@ -78,7 +79,7 @@ export function EventRow({
       testID={`calendar-event-${occurrence.key}`}
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={t("calendar.event", { title: event.title, when: timeLabel(occurrence) })}
+      accessibilityLabel={t("calendar.event", { title, when: timeLabel(occurrence) })}
       accessibilityHint={t("calendar.eventHint")}
       android_ripple={{ color: colors.border }}
       style={{
@@ -104,7 +105,7 @@ export function EventRow({
       <View style={{ flex: 1, gap: 2 }}>
         <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.xs }}>
           <Text variant="label" numberOfLines={2} style={{ flex: 1, fontSize: 15 }}>
-            {event.title}
+            {title}
           </Text>
           {event.recurrence ? (
             <Repeat testID="event-repeats" size={13} color={colors.inkMuted} />

@@ -2,7 +2,7 @@
  * The assistant's API surface, and above all WHICH ENDPOINT THE RESYNC USES.
  */
 import MockAdapter from "axios-mock-adapter";
-import { aiApi, documentsApi, messagesApi, sessionsApi } from "../ai";
+import { aiApi, documentsApi, feedbackApi, messagesApi, sessionsApi } from "../ai";
 import { ApiShapeError } from "../parse";
 import { __resetTokenCache, http } from "../http";
 import { __resetFingerprintCache } from "@/lib/fingerprint";
@@ -279,5 +279,26 @@ describe("documents", () => {
     expect(mock.history.post[0].headers?.["Content-Type"]).toBe("multipart/form-data");
     // `pending` is normal: extraction and embedding happen in a background job.
     expect(doc.status).toBe("pending");
+  });
+});
+
+// ── THE FEEDBACK CALLS: a reason only when there is one, and clear untouched ──
+describe("feedbackApi", () => {
+  it("sends a comment with a thumbs-down when there is one", async () => {
+    mock.onPost("/api/v1/ai/feedbacks").reply(200, {});
+    await feedbackApi.rate(6, "negative", "  wrong Aisha ");
+    expect(JSON.parse(mock.history.post.at(-1)!.data)).toEqual({ message_id: 6, rating: "negative", comment: "wrong Aisha" });
+  });
+
+  it("sends no comment key at all without one", async () => {
+    mock.onPost("/api/v1/ai/feedbacks").reply(200, {});
+    await feedbackApi.rate(6, "positive");
+    expect(JSON.parse(mock.history.post.at(-1)!.data)).toEqual({ message_id: 6, rating: "positive" });
+  });
+
+  it("still clears with the key SENT as null, exactly as before", async () => {
+    mock.onPost("/api/v1/ai/feedbacks").reply(200, { id: null, rating: null });
+    await feedbackApi.clear(6);
+    expect(JSON.parse(mock.history.post.at(-1)!.data)).toEqual({ message_id: 6, rating: null });
   });
 });

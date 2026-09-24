@@ -245,6 +245,73 @@ describe("the thumbs", () => {
   });
 });
 
+// ── "WHAT WAS WRONG?" AFTER A THUMBS-DOWN ────────────────────────────────
+// multi_magic 357dd7a: the reason reaches the model ("Why: …"). The thumb
+// saves at once; the reason is optional, asked only on a thumbs-DOWN.
+describe("the reason for a thumbs-down", () => {
+  const renderIt = (over: Partial<ChatMessage> = {}) =>
+    render(<AnswerActions message={answer(over)} onUndone={jest.fn()} showUndo={false} />);
+
+  it("is asked after a thumbs-DOWN, with the thumb already saved", async () => {
+    const rate = jest.spyOn(feedbackApi, "rate").mockResolvedValue(undefined as never);
+    renderIt();
+    fireEvent.press(screen.getByTestId("answer-down"));
+    expect(await screen.findByTestId("feedback-reason")).toBeTruthy();
+    // Saved WITHOUT waiting for a reason.
+    await waitFor(() => expect(rate).toHaveBeenCalledWith(4120, "negative"));
+  });
+
+  it("is never asked on a thumbs-up", async () => {
+    jest.spyOn(feedbackApi, "rate").mockResolvedValue(undefined as never);
+    renderIt();
+    fireEvent.press(screen.getByTestId("answer-up"));
+    await waitFor(() => expect(screen.getByTestId("answer-up").props.accessibilityState.selected).toBe(true));
+    expect(screen.queryByTestId("feedback-reason")).toBeNull();
+  });
+
+  it("is not asked when the press CLEARS a thumbs-down", async () => {
+    jest.spyOn(feedbackApi, "clear").mockResolvedValue(undefined as never);
+    renderIt({ rating: "negative" });
+    fireEvent.press(screen.getByTestId("answer-down"));
+    await waitFor(() => expect(screen.getByTestId("answer-down").props.accessibilityState.selected).toBe(false));
+    expect(screen.queryByTestId("feedback-reason")).toBeNull();
+  });
+
+  it("sends the words as the comment, then says so and closes", async () => {
+    const rate = jest.spyOn(feedbackApi, "rate").mockResolvedValue(undefined as never);
+    renderIt();
+    fireEvent.press(screen.getByTestId("answer-down"));
+    fireEvent.changeText(await screen.findByTestId("feedback-reason-input"), "wrong Aisha");
+    fireEvent.press(screen.getByTestId("feedback-reason-send"));
+    await waitFor(() => expect(rate).toHaveBeenCalledWith(4120, "negative", "wrong Aisha"));
+    await waitFor(() => expect(screen.queryByTestId("feedback-reason")).toBeNull());
+    expect(screen.getByTestId("answer-reason-sent")).toBeTruthy();
+  });
+
+  it("Skip closes it and sends nothing more; the thumb stays down", async () => {
+    const rate = jest.spyOn(feedbackApi, "rate").mockResolvedValue(undefined as never);
+    renderIt();
+    fireEvent.press(screen.getByTestId("answer-down"));
+    fireEvent.press(await screen.findByTestId("feedback-reason-skip"));
+    await waitFor(() => expect(screen.queryByTestId("feedback-reason")).toBeNull());
+    expect(rate).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("answer-down").props.accessibilityState.selected).toBe(true);
+  });
+
+  it("a failed send keeps the dialog open, with the words still in it", async () => {
+    jest.spyOn(feedbackApi, "rate")
+      .mockResolvedValueOnce(undefined as never)
+      .mockRejectedValueOnce(new Error("network"));
+    renderIt();
+    fireEvent.press(screen.getByTestId("answer-down"));
+    fireEvent.changeText(await screen.findByTestId("feedback-reason-input"), "wrong Aisha");
+    fireEvent.press(screen.getByTestId("feedback-reason-send"));
+    await waitFor(() => expect(screen.getByTestId("feedback-reason-send").props.accessibilityState?.busy).toBeFalsy());
+    expect(screen.getByTestId("feedback-reason")).toBeTruthy();
+    expect(screen.getByTestId("feedback-reason-input").props.value).toBe("wrong Aisha");
+  });
+});
+
 describe("a rating that the server refuses", () => {
   it("lights the thumb immediately, because waiting for a round trip to show a press is worse", async () => {
     jest.spyOn(feedbackApi, "rate").mockResolvedValue(undefined as never);

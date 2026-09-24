@@ -354,8 +354,17 @@ export const undoApi = {
 
 export const feedbackApi = {
   /** A thumb on an answer. Upserted server-side, so pressing again replaces. */
-  rate: async (messageId: number, rating: Rating): Promise<void> => {
-    await http.post("/api/v1/ai/feedbacks", { message_id: messageId, rating });
+  rate: async (messageId: number, rating: Rating, comment?: string): Promise<void> => {
+    // `comment` goes only when there is one: the server stores
+    // `params[:comment].presence`, so an absent key and a blank one are the
+    // same, and a thumbs-up never carries one. It reaches the model in the
+    // rating turn (multi_magic `rag_chat_job.rb`, "Why: …", 300 chars).
+    const reason = comment?.trim();
+    await http.post("/api/v1/ai/feedbacks", {
+      message_id: messageId,
+      rating,
+      ...(reason ? { comment: reason } : {}),
+    });
   },
   /**
    * Take a thumb back off: the SAME endpoint with `rating: null`. The key must

@@ -151,6 +151,16 @@ describe("the empty state", () => {
 // would open on the OLDEST message; the two only mean "newest at the bottom"
 // together, so both are asserted.
 describe("the thread", () => {
+  // The first load: the thread's SHAPE, not a blank screen (owner,
+  // 2026-09-24; `src/components/reusables/skeleton.tsx`).
+  it("shows the thread's shape while it loads, and not the empty state", async () => {
+    conversation.status = "loading";
+    renderChat();
+    await waitForSession();
+    expect(await screen.findByTestId("thread-skeleton", { includeHiddenElements: true })).toBeTruthy();
+    expect(screen.queryByTestId("chat-empty")).toBeNull();
+  });
+
   it("is an inverted list with the newest message first in its data", async () => {
     conversation.messages = [message(1, "user", "First?"), message(2, "assistant", "Newest.")];
     renderChat();

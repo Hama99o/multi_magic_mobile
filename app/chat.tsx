@@ -35,6 +35,7 @@ import { Composer } from "@/components/chat/Composer";
 import { EmptyState } from "@/components/chat/EmptyState";
 import { ScrollToBottom, useNewestAnchor } from "@/components/chat/ScrollToBottom";
 import { Arriving } from "@/components/chat/Arriving";
+import { ThreadSkeleton } from "@/components/reusables/skeleton";
 import { SourceSheet, useOpenSource } from "@/components/chat/SourceSheet";
 import { FilePreview } from "@/components/chat/FilePreview";
 import type { AnswerLink } from "@/components/chat/AnswerMarkdown";
@@ -449,7 +450,10 @@ export default function Chat() {
   const listEmpty = useMemo(
     () => (
             <View>
-            {status === "loading" ? null : status === "failed" ? (
+            {status === "loading" ? (
+              // The shape of the thread while it loads — see `skeleton.tsx`.
+              <ThreadSkeleton />
+            ) : status === "failed" ? (
               <View style={{ gap: metrics.space.md, paddingVertical: metrics.space.xl }}>
                 <Text tone="muted" testID="chat-load-failed">
                   {t("chat.loadFailed")}

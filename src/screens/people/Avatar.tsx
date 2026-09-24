@@ -34,7 +34,10 @@ export function Avatar({
   const tint = categoryColorFor(userId);
   // Codepoint-aware: `name[0]` on an emoji or an accented pair gives half a
   // character, and this app's corpus is largely French.
-  const initial = [...name.trim()][0]?.toUpperCase() ?? "?";
+  // NO NAME YET is a quiet circle, not a "?" on a colour. On a cold start the
+  // header drew "?" until the profile arrived, which read as "who are you?"
+  // rather than "loading" (owner, 2026-09-24).
+  const initial = [...name.trim()][0]?.toUpperCase() ?? null;
 
   return (
     <View style={{ width: size, height: size }}>
@@ -50,17 +53,20 @@ export function Avatar({
             width: size,
             height: size,
             borderRadius: size / 2,
-            backgroundColor: tint,
+            backgroundColor: initial ? tint : colors.border,
             alignItems: "center",
             justifyContent: "center",
           }}
+          testID={initial ? undefined : "avatar-pending"}
         >
-          <Text
-            variant="label"
-            style={{ color: colors.ground, fontSize: size * 0.4, lineHeight: size * 0.5 }}
-          >
-            {initial}
-          </Text>
+          {initial ? (
+            <Text
+              variant="label"
+              style={{ color: colors.ground, fontSize: size * 0.4, lineHeight: size * 0.5 }}
+            >
+              {initial}
+            </Text>
+          ) : null}
         </View>
       )}
 

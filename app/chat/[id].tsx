@@ -55,6 +55,7 @@ import type { ChatMessage } from "@/api/ai";
 import { Avatar } from "@/screens/people/Avatar";
 import { PersonMessageRow } from "@/screens/people/PersonMessageRow";
 import { ScrollToBottom, useNewestAnchor } from "@/components/chat/ScrollToBottom";
+import { BubblesSkeleton } from "@/components/reusables/skeleton";
 import { PersonComposer } from "@/screens/people/PersonComposer";
 import { ReactionSheet } from "@/screens/people/ReactionSheet";
 import { DayDivider, UnreadDivider, dayLabel } from "@/screens/people/DayDivider";
@@ -500,7 +501,13 @@ export default function PersonThread() {
   );
   const listEmpty = useMemo(
     () => (
-          status === "loading" ? null : status === "failed" ? (
+          status === "loading" ? (
+            // A View, so the inverted list can un-flip it (`app/chat.tsx`,
+            // "WRAPPED IN A PLAIN VIEW"). The thread's shape while it loads.
+            <View>
+              <BubblesSkeleton />
+            </View>
+          ) : status === "failed" ? (
             <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
               <Text tone="muted">{t("thread.loadFailed")}</Text>
               <Pressable onPress={() => void resync()} accessibilityRole="button" hitSlop={8}>

@@ -1335,3 +1335,13 @@ on failure" (no optimistic step existed), the feedback contract (changed by
 does not. When a comment claims behaviour, the claim belongs in a test, and
 the comment shrinks to the reason. The test goes red when the claim stops
 being true; the comment never does.
+
+**Worse than a stale comment: one that forecloses an option.** The fourth on
+2026-09-24, in `Arriving.tsx`: Reanimated's worklets "would not run here"
+for want of a babel plugin. They would: `babel-preset-expo` adds that plugin
+automatically (`build/index.js:284`). The comment was found only because the
+keyboard research needed Reanimated. Left alone, it would have ruled out the
+right tool before anyone tried it. A wrong comment that only misinforms is a
+nuisance; one that says "this can't work here" is a decision made by a dead
+line of text. Before trusting a comment that rules something out, check it
+against the source it names.

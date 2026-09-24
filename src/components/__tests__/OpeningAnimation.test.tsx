@@ -35,12 +35,46 @@ it("asks for the native driver for every step", async () => {
   expect(timing.mock.calls.every(([, c]) => (c as { useNativeDriver?: boolean }).useNativeDriver === true)).toBe(true);
 });
 
-it("under Reduce Motion: no burst, only a short fade", async () => {
+it("starts on mount, without waiting to hear about Reduce Motion", () => {
+  // Measured 2026-09-24: awaiting this answer froze the tiles for 0.72 s.
+  jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockReturnValue(new Promise(() => {}));
+  // STARTED, not merely built: a plant that moved only `.start()` behind the
+  // promise passed a check on `Animated.sequence` being called.
+  const realSequence = Animated.sequence;
+  const started = jest.fn();
+  jest.spyOn(Animated, "sequence").mockImplementation((steps) => {
+    const composite = realSequence(steps);
+    const start = composite.start.bind(composite);
+    composite.start = (cb) => {
+      started();
+      start(cb);
+    };
+    return composite;
+  });
+  render(<OpeningAnimation ground="#F7F9F9" onDone={jest.fn()} />);
+  expect(started).toHaveBeenCalledTimes(1);
+});
+
+it("ends by fading the cover out gently, not cutting", () => {
+  jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false);
+  const timing = jest.spyOn(Animated, "timing");
+  render(<OpeningAnimation ground="#F7F9F9" onDone={jest.fn()} />);
+  const fade = timing.mock.calls.find(([, c]) => (c as { toValue: number }).toValue === 0);
+  const easing = (fade?.[1] as { easing: (t: number) => number }).easing;
+  // The last 16 ms frame of the fade is a small step, not the largest one.
+  const lastStep = easing(1) - easing(1 - 16 / 220);
+  expect(lastStep).toBeLessThan(0.02);
+});
+
+it("under Reduce Motion: the burst stops, and a short fade ends it once", async () => {
   jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
   const timing = jest.spyOn(Animated, "timing");
   const onDone = jest.fn();
   render(<OpeningAnimation ground="#F7F9F9" onDone={onDone} />);
   await waitFor(() => expect(onDone).toHaveBeenCalled(), { timeout: 2_000 });
-  expect(timing).toHaveBeenCalledTimes(1);
-  expect((timing.mock.calls[0][1] as { duration: number }).duration).toBeLessThanOrEqual(150);
+  const last = timing.mock.calls[timing.mock.calls.length - 1][1] as { toValue: number; duration: number };
+  expect(last.toValue).toBe(0);
+  expect(last.duration).toBeLessThanOrEqual(150);
+  await new Promise((r) => setTimeout(r, 700));
+  expect(onDone).toHaveBeenCalledTimes(1);
 });

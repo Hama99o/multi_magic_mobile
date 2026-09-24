@@ -1465,3 +1465,26 @@ false comments described a mechanism that had since changed, and they
 misled a reader. This one described a feature that had never been built,
 so nobody built it. A comment that says "X shows Y" is a claim about the
 UI, and the UI is the only place to check it.
+
+### The family: a check that is true for a reason unrelated to its claim
+
+Eight instruments in this repo, built on 2026-09-24, were each green on
+their first run and blind. Every one was found by a plant, and several only
+by planting AGAIN after a fix. They share one sentence: **the check was true
+for a reason unrelated to the claim.**
+
+| # | What it claimed | Why it was true anyway |
+|---|---|---|
+| 1 | the opening starts on mount | it checked the animation was BUILT |
+| 2 | four animated parts run | each spied on the constructor |
+| 3 | a message ends visible | it starts visible, and it asserted before the fade |
+| 4 | the chats screen reads French | it swept before the list's data arrived |
+| 5 | no region-formatted time | its own comments, quoting the bug, excused it |
+| 6 | "Qa Mobile" is fixture data | a regex's quote-pairing slipped (false positive; could as easily hide) |
+| 7 | "Ask again" is translated | the test's title and assertion, containing it, excused it |
+| 8 | a radio announces its state | the framework adds an empty state object |
+
+And one more in time rather than content: a wait on a mock's call history
+passed on the previous render's calls. The general form, for the next
+instrument: **before trusting green, ask what ELSE would make this true.**
+`docs/INSTRUMENTS.md` has each as a recipe for the web.

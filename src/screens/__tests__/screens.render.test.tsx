@@ -281,6 +281,7 @@ jest.mock("@/api/me", () => ({
 /* eslint-disable import/first */
 import { useThemeStore } from "@/stores/theme.store";
 import { englishIn, fixtureStripper, identicalIn, renderedStrings } from "@/__tests__/i18nSweep";
+import { a11yFindings } from "@/__tests__/a11ySweep";
 import Assistant from "../../../app/chat";
 import i18n from "@/i18n";
 import Chats from "../../../app/chats";
@@ -531,6 +532,17 @@ describe.each(SCREENS)("$name, swept in French", ({ element, handles, french, se
     // floor because privacy's only non-policy strings are its title and Back.
     expect(strings.length).toBeGreaterThanOrEqual(2);
     expect(englishIn(strings, withoutFixtures)).toEqual([]);
+  });
+
+  // `src/__tests__/a11ySweep.ts`: every control named, no raw key spoken,
+  // every choice announcing its state. In French, the harder language.
+  it("names every control, speaks no raw key, and announces each choice's state", async () => {
+    setWidth(360);
+    await i18n.changeLanguage("fr");
+    renderScreen(element());
+    for (const handle of handles) await screen.findByTestId(handle);
+    for (const text of settled ?? []) await screen.findAllByText(text, { exact: false });
+    expect(a11yFindings()).toEqual([]);
   });
 
   it("renders nothing byte-identical in English and French, beyond the allowlist", async () => {

@@ -28,6 +28,7 @@ import { testQueryClient } from "@/__tests__/queryClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import i18n from "@/i18n";
 import { englishIn, fixtureStripper, identicalIn, renderedStrings } from "@/__tests__/i18nSweep";
+import { a11yFindings } from "@/__tests__/a11ySweep";
 
 function message(id: number, role: "user" | "assistant", body: string, sources: unknown[] = []) {
   return {
@@ -537,6 +538,7 @@ describe("in French, every failure state", () => {
     })),
   ];
 
+  let a11y: string[] = [];
   const collect = async (state: (typeof STATES)[number], language: "fr" | "en") => {
     await i18n.changeLanguage(language);
     // Reset between the two renders, and through the store's own seam, which
@@ -564,6 +566,8 @@ describe("in French, every failure state", () => {
     // the screen in one test, on a box that runs three sessions' suites.
     await screen.findByTestId(state.ready, {}, { timeout: 5_000 });
     const strings = renderedStrings();
+    // The composer and send are the first things a person cannot do without.
+    if (language === "fr") a11y = a11yFindings();
     view.unmount();
     return strings;
   };
@@ -581,6 +585,7 @@ describe("in French, every failure state", () => {
     const en = await collect(state, "en");
     expect(englishIn(fr, strip)).toEqual([]);
     expect(identicalIn(fr, en, strip)).toEqual([]);
+    expect(a11y).toEqual([]);
   });
 });
 

@@ -28,6 +28,7 @@ jest.mock("expo-router", () => ({ router: { push: jest.fn(), back: jest.fn(), re
 import i18n from "@/i18n";
 import { testQueryClient } from "@/__tests__/queryClient";
 import { englishIn, fixtureStripper, identicalIn, renderedStrings } from "@/__tests__/i18nSweep";
+import { a11yFindings } from "@/__tests__/a11ySweep";
 import { SessionsSheet } from "../sessions/SessionsSheet";
 import { ProfileSheet } from "../settings/ProfileSheet";
 import { SourceSheet } from "../chat/SourceSheet";
@@ -175,6 +176,18 @@ async function collect(c: Case, language: "fr" | "en"): Promise<string[]> {
 }
 
 describe.each(CASES)("$name", (c) => {
+  it("names every control, speaks no raw key, and announces each choice's state", async () => {
+    await i18n.changeLanguage("fr");
+    const view = render(<QueryClientProvider client={testQueryClient()}>{c.element()}</QueryClientProvider>);
+    await screen.findByTestId(c.ready);
+    if (c.open) {
+      c.open.press();
+      await screen.findByTestId(c.open.shows);
+    }
+    expect(a11yFindings()).toEqual([]);
+    view.unmount();
+  });
+
   it("renders no English prose in French", async () => {
     const strings = await collect(c, "fr");
     expect(strings.length).toBeGreaterThanOrEqual(2);

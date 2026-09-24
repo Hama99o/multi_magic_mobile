@@ -153,6 +153,35 @@ where it was a fixture question. Nothing measured on his data or a device.
 chats list to its end, and the notifications past twenty; scroll a
 thousand-message thread back; open the longest answer he has.
 
+## Accessibility, over what rendered (2026-09-24)
+
+`src/__tests__/a11ySweep.ts` runs on every screen in `SCREENS` (in French),
+every sheet, pane and dialog in `sheets.i18n.test.tsx`, and every assistant
+failure state in `chat.test.tsx`. Beside `a11y.test.tsx`'s static scan of the
+source, it asks, of what rendered:
+- **every control has a name**: a pressable by its label or the text inside
+  it, a `Switch` by its label, a field by its label or placeholder;
+- **nothing spoken is a raw key** (`answer.bad`, which i18next returns for a
+  key it does not have);
+- **every radio or checkbox says selected or checked.**
+
+**Result: nothing found.** Every control in those states is named, and the
+choosers, thumbs and switches announce their state. Planted, each red: the
+composer's send stripped of its label (it is icon-only), the brief switch
+unlabelled, the language radios stripped of `selected`, and a hint built
+from a key that does not exist. The instrument's own hole, found by
+planting: `Pressable` gives its host an `accessibilityState` object even when
+none was written, so "has a state" passed a silent radio. It now asks which
+state.
+
+**Not answerable here, on the device with TalkBack on** (beside run 9):
+- **touch-target size**, since Jest has no layout;
+- **focus order**: whether the composer, the send and the thumbs come in a
+  usable order, and D5 (the newest-first thread order,
+  `docs/ACCESSIBILITY.md`);
+- **what TalkBack actually says**: the sweep proves a name exists, not that
+  it is the right one.
+
 ## What I would do next, in order
 
 1. **Run 9 on a device, the moment the disk frees.** More changed today than

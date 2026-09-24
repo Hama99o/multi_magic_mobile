@@ -1345,3 +1345,28 @@ right tool before anyone tried it. A wrong comment that only misinforms is a
 nuisance; one that says "this can't work here" is a decision made by a dead
 line of text. Before trusting a comment that rules something out, check it
 against the source it names.
+
+## 19 · A test that checks something was BUILT passes for code that never runs it
+
+Found 2026-09-24 in the author's own test, minutes after writing it.
+`OpeningAnimation.test.tsx` was meant to prove the opening starts on mount
+instead of waiting for the Reduce Motion answer. It asserted
+`Animated.sequence` had been called. A plant that kept building the sequence
+and moved only its `.start()` behind the promise left it green, because the
+object was still constructed on mount. The freeze it was meant to prevent,
+0.72 s of tiles standing still, would have shipped under a passing test named
+after its absence.
+
+The shape is general. An animation, a subscription, a request, a timer: each
+is an object first and an effect second, and a spy on the constructor sees
+only the object. A factory call proves the code *could* do the thing. Assert
+the call that makes it happen (`start`, `subscribe`, the fetch, the timer
+firing) or the outcome. The fixed test wraps the composite's `start` and
+counts that (`34e179b`).
+
+The same plant pass found the opposite case, and it belongs here so nobody
+"fixes" it. Deleting the `stop()` on the Reduce Motion path stayed green, and
+that is correct. Starting the fade on `cover` already stops the `parallel`
+that animates it, and with it the burst, so the line is redundant. A plant
+that survives does not always mean a dead test. Sometimes it means the code
+it removed was dead. Say which, in the file.

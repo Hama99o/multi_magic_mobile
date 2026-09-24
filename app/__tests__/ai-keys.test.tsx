@@ -32,6 +32,7 @@ jest.mock("expo-router", () => ({
 
 /* eslint-disable import/first */
 import { KeyRefused, aiKeysApi, type AiKeyPayload } from "@/api/aiKeys";
+import type { BorrowedKey } from "@/api/aiKeys";
 import AiKeys from "../ai-keys";
 
 const payload = (over: Partial<AiKeyPayload> = {}): AiKeyPayload => ({
@@ -123,10 +124,43 @@ describe("the request itself failing", () => {
   });
 });
 
+/** A key lent to this user; no monthly limit unless the test sets one. */
+const lent = (over: Partial<BorrowedKey> = {}): BorrowedKey => ({
+  provider: "gemini", ownerName: "Husna", monthlyCreditLimit: null, spentThisMonth: 0, exhausted: false, ...over,
+});
+
 describe("a key somebody else lent you", () => {
+  // ── THE LENDER'S MONTHLY LIMIT (multi_magic 9a5a3cb) ──────────────────────
+  it("shows how much of the month's limit is used", async () => {
+    jest.spyOn(aiKeysApi, "list").mockResolvedValue(
+      payload({ borrowed: [lent({ monthlyCreditLimit: 10, spentThisMonth: 3.25 })] }),
+    );
+    renderScreen();
+    await waitFor(() => expect(screen.getByTestId("ai-keys-borrowed-0-limit")).toBeTruthy());
+    expect(screen.getByText("3.25 of 10 credits used this month")).toBeTruthy();
+    const bar = screen.getByLabelText("Monthly credit limit");
+    expect(bar.props.accessibilityValue).toEqual({ min: 0, max: 10, now: 3.25 });
+  });
+
+  it("says it is used up, and the date it works again, when the limit is reached", async () => {
+    jest.spyOn(aiKeysApi, "list").mockResolvedValue(
+      payload({ borrowed: [lent({ monthlyCreditLimit: 10, spentThisMonth: 10.5, exhausted: true })] }),
+    );
+    renderScreen();
+    await waitFor(() => expect(screen.getByTestId("ai-keys-borrowed-0-limit")).toBeTruthy());
+    expect(screen.getByText(/^Used up for this month\. Works again on .+\.$/)).toBeTruthy();
+  });
+
+  it("adds nothing when the lender set no limit", async () => {
+    jest.spyOn(aiKeysApi, "list").mockResolvedValue(payload({ borrowed: [lent()] }));
+    renderScreen();
+    await waitFor(() => expect(screen.getByTestId("ai-keys-borrowed")).toBeTruthy());
+    expect(screen.queryByTestId("ai-keys-borrowed-0-limit")).toBeNull();
+  });
+
   it("names the person, because it is not yours to remove", async () => {
     jest.spyOn(aiKeysApi, "list").mockResolvedValue(
-      payload({ borrowed: [{ provider: "gemini", ownerName: "Husna" }] }),
+      payload({ borrowed: [lent({ ownerName: "Husna" })] }),
     );
 
     renderScreen();
@@ -137,7 +171,7 @@ describe("a key somebody else lent you", () => {
 
   it("falls back to 'someone' rather than printing nothing", async () => {
     jest.spyOn(aiKeysApi, "list").mockResolvedValue(
-      payload({ borrowed: [{ provider: "gemini", ownerName: null }] }),
+      payload({ borrowed: [lent({ ownerName: null })] }),
     );
 
     renderScreen();

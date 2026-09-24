@@ -39,6 +39,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { KeyRefused, aiKeysApi, type AiKey, type AiKeyPayload } from "@/api/aiKeys";
 import { failureMessage } from "@/api/failure";
+import { BorrowedKeyRow } from "@/components/settings/BorrowedKeyRow";
 
 export default function AiKeys() {
   const colors = useColors();
@@ -260,16 +261,11 @@ export default function AiKeys() {
       {/* ── Lent to you by somebody else ───────────────────────────────── */}
       {(data?.borrowed.length ?? 0) > 0 ? (
         <View testID="ai-keys-borrowed" style={{ marginTop: metrics.space.lg }}>
-          <Text variant="caption" tone="muted">
-            {data?.borrowed
-              .map((b) =>
-                t("aiKeys.lentToYou", {
-                  provider: b.provider,
-                  name: b.ownerName ?? t("aiKeys.someone"),
-                }),
-              )
-              .join("\n")}
-          </Text>
+          <View style={{ gap: metrics.space.md }}>
+            {data?.borrowed.map((b, i) => (
+              <BorrowedKeyRow key={`${b.provider}-${i}`} borrowed={b} testID={`ai-keys-borrowed-${i}`} />
+            ))}
+          </View>
         </View>
       ) : null}
 

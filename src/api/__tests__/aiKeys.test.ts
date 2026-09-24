@@ -137,7 +137,22 @@ describe("a key lent to you", () => {
     const parsed = parseKeyPayload(
       payload({ borrowed: [{ provider: "gemini", owner_name: "Hamid" }] }),
     );
-    expect(parsed.borrowed).toEqual([{ provider: "gemini", ownerName: "Hamid" }]);
+    // No limit on the wire reads as no limit, nothing spent, not used up.
+    expect(parsed.borrowed).toEqual([
+      { provider: "gemini", ownerName: "Hamid", monthlyCreditLimit: null, spentThisMonth: 0, exhausted: false },
+    ]);
     expect(JSON.stringify(parsed.borrowed)).not.toContain("masked");
+  });
+
+  // multi_magic 9a5a3cb: the lender's monthly limit, and this person's spend.
+  it("reads the monthly limit, the spend against it, and whether it is used up", () => {
+    const parsed = parseKeyPayload(
+      payload({
+        borrowed: [
+          { provider: "openai", owner_name: "Hamid", monthly_credit_limit: 10, spent_this_month: 10.2, exhausted: true },
+        ],
+      }),
+    );
+    expect(parsed.borrowed[0]).toMatchObject({ monthlyCreditLimit: 10, spentThisMonth: 10.2, exhausted: true });
   });
 });

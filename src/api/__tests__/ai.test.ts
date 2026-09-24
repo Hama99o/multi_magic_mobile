@@ -324,3 +324,18 @@ describe("a session's memory switch", () => {
     expect(JSON.parse(mock.history.patch.at(-1)!.data)).toEqual({ remember: false });
   });
 });
+
+// multi_magic 6670dcd: the notice's machine-readable code.
+describe("key_problem", () => {
+  it("is read when set and null otherwise", async () => {
+    mock.onGet("/api/v1/conversations/4/messages").reply(200, {
+      messages: [
+        message(6, "assistant", "busy", { key_problem: "provider_busy" }),
+        message(7, "assistant", "a normal answer"),
+      ],
+      meta: { pagy: { pages: 1 } },
+    });
+    const ms = (await messagesApi.latest(4)).messages;
+    expect(Object.fromEntries(ms.map((m) => [m.id, m.keyProblem]))).toEqual({ 6: "provider_busy", 7: null });
+  });
+});

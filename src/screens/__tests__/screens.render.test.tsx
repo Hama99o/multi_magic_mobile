@@ -440,6 +440,31 @@ describe("the people thread", () => {
     expect(data.at(-1)?.kind).toBe("day");
   });
 
+  // A CLAIM MOVED FROM A COMMENT INTO A TEST (2026-09-24). `app/chat/[id].tsx`
+  // says a message that fails to send "stays on screen, never disappears into
+  // an optimistic bubble" — asserted only on the row, never on the screen.
+  // Here: a refused send stays, with the server's reason and its retry.
+  it("keeps a refused message on screen, with the server's reason and a retry", async () => {
+    setWidth(411);
+    await i18n.changeLanguage("en");
+    const { threadApi } = jest.requireMock("@/api/conversations") as { threadApi: { send: jest.Mock } };
+    threadApi.send.mockRejectedValueOnce({
+      isAxiosError: true,
+      response: { status: 422, data: { errors: ["Body is too long (maximum is 10000 characters)"] } },
+    });
+    renderScreen(<Thread />);
+    await screen.findByTestId("thread-list");
+
+    fireEvent.changeText(screen.getByTestId("people-composer-input"), "a message that will be refused");
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("people-composer-send"));
+    });
+
+    expect(await screen.findByText("a message that will be refused")).toBeTruthy();
+    expect(screen.getByTestId("msg-retry")).toBeTruthy();
+    expect(screen.getByText("Body is too long (maximum is 10000 characters)")).toBeTruthy();
+  });
+
   // Measured 2026-09-24 on `qa_phone4`: typing here gave 17 list commits of
   // 112-432 ms, every bubble re-rendering per keystroke. FlatList is a
   // PureComponent, so the proof is that no prop changes IDENTITY across a

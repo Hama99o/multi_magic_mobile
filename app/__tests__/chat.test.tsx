@@ -21,7 +21,7 @@ jest.mock("@/hooks/useConversation", () => ({
 
 /* eslint-disable import/first */
 import Chat from "../chat";
-import { aiApi, documentsApi, type ChatMessage } from "@/api/ai";
+import { KEY_PROBLEMS, RETRYABLE_KEY_PROBLEMS, aiApi, documentsApi, type ChatMessage } from "@/api/ai";
 import { useReachability } from "@/stores/reachability.store";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { testQueryClient } from "@/__tests__/queryClient";
@@ -197,6 +197,35 @@ describe("typing", () => {
     const after = screen.UNSAFE_getByType(FlatList).props;
     const changed = Object.keys(before).filter((key) => after[key] !== before[key]);
     expect(changed).toEqual([]);
+  });
+});
+
+// ── ASK AGAIN, ONLY WHERE ASKING AGAIN CAN WORK ────────────────────────────
+// multi_magic 6670dcd: a busy provider or a failed turn now arrives as a saved
+// notice, not as aiError, so the old "Ask again" never appeared for them.
+describe("a notice the next question could fix", () => {
+  it.each(KEY_PROBLEMS)("%s: Ask again only if retrying can work", async (code) => {
+    conversation.messages = [
+      message(1, "user", "Do I owe anyone?"),
+      { ...message(2, "assistant", "notice"), keyProblem: code },
+    ];
+    renderChat();
+    await waitForSession();
+    const offered = screen.queryByTestId("chat-ask-again") !== null;
+    expect(offered).toBe(RETRYABLE_KEY_PROBLEMS.includes(code));
+  });
+
+  it("Ask again re-sends the last question", async () => {
+    conversation.messages = [
+      message(1, "user", "Do I owe anyone?"),
+      { ...message(2, "assistant", "busy"), keyProblem: "provider_busy" },
+    ];
+    renderChat();
+    await waitForSession();
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("chat-ask-again"));
+    });
+    expect(aiApi.ask).toHaveBeenCalledWith({ conversationId: 4, body: "Do I owe anyone?" });
   });
 });
 

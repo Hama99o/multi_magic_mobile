@@ -65,6 +65,26 @@ export interface MessageReaction {
  */
 export type Rating = "positive" | "negative";
 
+/**
+ * Set only on the assistant's own NOTICE about the AI key or provider
+ * (multi_magic `6670dcd`, `MessageSerializer#key_problem`), so the phone never
+ * has to read prose to know what happened. Null on every normal answer. Kept a
+ * string: an unknown future code is still a notice.
+ */
+export const KEY_PROBLEMS = [
+  "missing_key",
+  "shared_limit_reached",
+  "invalid_key",
+  "shared_key_refused",
+  "no_credit",
+  "shared_key_no_credit",
+  "provider_busy",
+  "unexpected_failure",
+] as const;
+/** The two where asking again can work: the provider was busy, or the turn
+ *  failed for a reason nobody has to fix. The other six need a key changed. */
+export const RETRYABLE_KEY_PROBLEMS: readonly string[] = ["provider_busy", "unexpected_failure"];
+
 export interface ChatMessage {
   id: number;
   conversationId: number;
@@ -88,6 +108,8 @@ export interface ChatMessage {
    * a serializer that predates the field, which reads as "not rated".
    */
   rating?: Rating | null;
+  /** See `KEY_PROBLEMS`. Null on a normal answer. */
+  keyProblem?: string | null;
   /** Everyone else has read it — what a double tick means. Null otherwise. */
   readAt: string | null;
   reactions: MessageReaction[];
@@ -272,6 +294,7 @@ function parseMessage(payload: unknown): ChatMessage {
     sentByMe: typeof record.sent_by_me === "boolean" ? record.sent_by_me : false,
     editedAt: optStr(record.edited_at),
     rating: record.rating === "positive" || record.rating === "negative" ? record.rating : null,
+    keyProblem: optStr(record.key_problem),
     readAt: optStr(record.read_at),
     reactions: optArr(record.reactions).map(parseReaction),
     links: optArr(record.links).map(parseLink),

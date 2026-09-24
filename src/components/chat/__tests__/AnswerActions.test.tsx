@@ -19,7 +19,7 @@
  */
 import { render, screen, fireEvent, waitFor, act } from "@testing-library/react-native";
 import * as Clipboard from "expo-clipboard";
-import { feedbackApi, undoApi, type ChatMessage } from "@/api/ai";
+import { KEY_PROBLEMS, feedbackApi, undoApi, type ChatMessage } from "@/api/ai";
 
 import { AnswerActions } from "../AnswerActions";
 
@@ -242,6 +242,25 @@ describe("the thumbs", () => {
     fireEvent.press(screen.getByTestId("answer-up"));
 
     await waitFor(() => expect(onRated).toHaveBeenCalledWith(expect.objectContaining({ rating: "positive" })));
+  });
+});
+
+// ── NO THUMBS ON A KEY/PROVIDER NOTICE, for EVERY code ─────────────────────
+// A thumbs-down becomes a turn the model reads; on a notice that would tell it
+// something the person never said. All eight codes, because an unhandled one
+// is the one user who hits it.
+describe("a notice about the key or provider", () => {
+  it.each(KEY_PROBLEMS)("%s offers no thumbs", (code) => {
+    render(<AnswerActions message={answer({ keyProblem: code })} onUndone={jest.fn()} showUndo={false} />);
+    expect(screen.queryByTestId("answer-up")).toBeNull();
+    expect(screen.queryByTestId("answer-down")).toBeNull();
+    expect(screen.getByTestId("answer-copy")).toBeTruthy();
+  });
+
+  it("a normal answer still has both thumbs", () => {
+    render(<AnswerActions message={answer({ keyProblem: null })} onUndone={jest.fn()} showUndo={false} />);
+    expect(screen.getByTestId("answer-up")).toBeTruthy();
+    expect(screen.getByTestId("answer-down")).toBeTruthy();
   });
 });
 

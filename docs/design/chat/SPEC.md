@@ -340,3 +340,121 @@ container with a name acquires a control inside it again.
 Was `SPECIFIED`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
 
 `01-ask`, `03-dictation` and `09-keyboard` all carry dated passes; `ours/` holds 360, 411 and 800 in both modes plus French at 360. **Two coverage gaps are named rather than hidden:** this account's assistant cites no sources, so `source-chips` and the `source-sheet` handles are unreachable from any flow; and `answer-read*` cannot render until the rebuild, because the installed binary predates read-aloud and the modules are native.
+
+
+## Keyboard smoothness — RESEARCH, 2026-09-24, NOT BUILT
+
+Ranked first for smoothness: in a chat the keyboard opens on every message,
+and on Android it is where jank lives.
+
+**What the app does today.** `Screen avoidKeyboard` is React Native's
+`KeyboardAvoidingView` (`behavior="padding"`), over an inverted list since
+`915c54b`. RN's KAV learns the keyboard's height from keyboard EVENTS and
+applies the padding in a step; it does not follow the keyboard frame by frame.
+So the composer and the newest message move as a jump, or trail the keyboard,
+rather than riding on top of it. That is reasoning from how RN's KAV works,
+not a recording. The recording is the first job of the next device slot.
+
+**What the good chat apps do.** The composer rides the keyboard: it tracks the
+IME animation frame by frame (Android 11+ `WindowInsetsAnimation`, iOS's
+keyboard curve), so nothing jumps. On Mobbin this is motion, which a still
+cannot show, so the references are behavioural: WhatsApp, Telegram and
+iMessage all move the composer with the keyboard.
+
+**The standard way to get that in RN** is `react-native-keyboard-controller`
+(`KeyboardAvoidingView` / `KeyboardStickyView`, driven off the UI thread
+with Reanimated worklets). Facts checked:
+- it is listed in `expo/bundledNativeModules.json` for both SDKs (1.18.5 on
+  54, 1.21.9 on 57), which means version-compatible with the SDK. It does
+  NOT prove Expo Go ships it. **Whether the owner's Expo Go has it is
+  unmeasured, and it decides everything**: if it doesn't, the library can't
+  run on his phone until a real build.
+- Reanimated's babel plugin IS active: `babel-preset-expo` adds it
+  automatically (`index.js:284`). `Arriving.tsx` said otherwise; corrected.
+- a native module means a dev-client rebuild on the emulator (`gradlew`), a
+  disk and time cost to clear with Hamma9901 first.
+
+**Plan for the device slot, in order:** (1) record the keyboard opening and
+closing on the current build at 60 fps and measure whether the composer steps
+or tracks; (2) find out whether Expo Go SDK 57 has keyboard-controller
+(import it behind a guard and log); (3) only then decide between the library
+and tuning what exists. Nothing is changed until (1) says there is a problem.
+
+### What the probe's answer decides — written BEFORE the answer, 2026-09-24
+
+A probe in sdk-57's `_layout` asks his Expo Go for `KeyboardController` (the
+library's own registration name, `src/specs/NativeKeyboardController.ts:23`
+of 1.21.9), with `RNCSafeAreaContext` as a control. The steps are firmer than
+before, from RN's own source: on Android `KeyboardAvoidingView` listens to
+`keyboardDidShow` (`KeyboardAvoidingView.js:212`), which fires AFTER the
+keyboard has finished moving. Android has no "will show" event, and its
+`LayoutAnimation` smoothing (line 171) needs a duration Android does not
+send. So the composer is covered while the keyboard slides, and rises in one
+step at the end. That's from the source; the frames will confirm it.
+
+**true / true (Expo Go has it).** The change, ready to make:
+`npx expo install react-native-keyboard-controller` (a JS install; no rebuild
+for Expo Go, whose native side already exists). One wrapper,
+`src/components/KeyboardSafe.tsx`, chooses at runtime: if
+`TurboModuleRegistry.get("KeyboardController")` is present, `KeyboardProvider`
+at the root and the library's `KeyboardAvoidingView` in `Screen`'s
+`avoidKeyboard` path (same props); otherwise RN's own, exactly as today. The
+emulator's dev client does NOT have the native module until it's rebuilt,
+and without the guard it would break. Touches `app/_layout.tsx` and
+`src/components/ScreenContainer.tsx`; the three dialogs keep RN's KAV until
+the screen is proven. Regression risks, to watch in the frames: the inverted
+list's viewport now changes every frame while the keyboard moves (offset 0
+should hold, and `maintainVisibleContentPosition` must not fight it);
+`09-keyboard`; Jest needs the library's own mock
+(`react-native-keyboard-controller/jest`). Peer dependency Reanimated ≥ 3:
+we have 4.x, and its babel plugin is active.
+
+**false / true (Expo Go lacks it).** Then only a real build gets it. The bar
+for a rebuild FOR THE KEYBOARD ALONE, set now so the frames can't talk us into
+it: the recording must show either (a) the composer or the newest message
+covered by the keyboard for **≥ 100 ms (6 frames at 60 fps)** while it opens,
+or (b) a visible jump of **≥ one line** after it settles. Below that, it waits
+to ride along with a build he wants anyway.
+
+**false / false.** The probe itself is dead. Try again; conclude nothing.
+
+**A cheaper fix, without the library, for any outcome.** RN gives no IME
+progress on Android, so true tracking needs native code. But the step can be
+made to START with the keyboard instead of after it: remember the last
+keyboard height, and when the composer gains focus, animate the padding to
+that height over ~250 ms (the IME's own duration) at once, correcting on
+`keyboardDidShow` if the height differs. It moves with the keyboard rather
+than tracking it exactly. On the second open onwards it may get most of the
+way. It is a guess until recorded, and is the first thing to try if the bar
+above is not met.
+
+### MEASURED, 2026-09-24, `qa_phone4` (Android 15, edge-to-edge), 60 fps
+
+The composer's bottom edge against the keyboard's top edge, frame by frame,
+over two openings (the first with nothing remembered, the second after):
+- the composer rose **about 0.1 s BEFORE the keyboard began to appear**
+  (2.70 s vs 2.80 s; 8.60 s vs 8.63 s); the keyboard then slid in underneath
+  it in ~0.2 s;
+- **covered: 0 ms**, both times; no jump after settling. **The bar for a
+  library or a rebuild is not met.**
+- the premise above was WRONG on this device: here `keyboardDidShow` fires
+  at the START of the slide. The source said "after"; the device said
+  otherwise. That is why the frames came first.
+- `KeyboardLift` (`b68894a`) was reverted, and **not because anticipation
+  was shown to be useless**: its animation never ran. The `LayoutAnimation`
+  it relied on did not animate on this build (the content moved in one
+  frame), so whether starting the lift on focus helps **could not be
+  evaluated**. The first opening, with nothing remembered, looked like the
+  second, which is consistent with that. Code that measurably did nothing was
+  removed; that is a finding about `LayoutAnimation` here, not about keyboards.
+- **n = 1.** One Android 15 emulator with edge-to-edge. The "start of the
+  slide" timing is platform behaviour that has changed across versions, and
+  RN's own source, where the original premise came from, describes the older
+  one. **What would overturn "no library, no rebuild"**: an older Android, or
+  a real phone, where the composer is covered for ≥ 100 ms while the keyboard
+  opens. The conclusion holds for this device and no further.
+- **What is still wrong, and survives the revert:** the content jumps ~694 px
+  (~264 dp) in a SINGLE frame as the composer rises. RN's KAV smooths through
+  the same `LayoutAnimation` that did not animate, so the snap is there either
+  way. The fix must not depend on `LayoutAnimation`. That is the remaining
+  keyboard issue.

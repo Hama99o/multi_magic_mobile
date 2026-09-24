@@ -46,6 +46,18 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
+// ── A TAP OUTSIDE THE SHEET CLOSES IT ─────────────────────────────────────
+// Owner's report, 2026-09-24: "it did not close outside that dialog". The
+// dimmed area was a plain View with no handler.
+describe("outside the sheet", () => {
+  it("closes it", async () => {
+    const onClose = jest.fn();
+    renderSheet({ onClose });
+    fireEvent.press(await screen.findByTestId("sessions-scrim"));
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("the list", () => {
   it("shows the counts the serializer already carries", async () => {
     renderSheet();

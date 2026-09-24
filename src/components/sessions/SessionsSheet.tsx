@@ -198,7 +198,18 @@ export function SessionsSheet({
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)", justifyContent: "flex-end" }}>
+      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+        {/* THE SCRIM IS A SIBLING, NOT A PARENT — docs/ACCESSIBILITY.md N1,
+            the same shape as AttachSheet. It was a plain View, so a tap
+            outside the sheet did nothing (owner's report, 2026-09-24); now it
+            closes, and names only itself to a screen reader. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("common.close")}
+          onPress={onClose}
+          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" }}
+          testID="sessions-scrim"
+        />
         <View
           style={{
             backgroundColor: colors.ground,

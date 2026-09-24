@@ -17,7 +17,7 @@
  * signed blob path works without a session; anything else is offered as a plain
  * open and says where it is going.
  */
-import { Image, Linking, Modal, Pressable, ScrollView, View } from "react-native";
+import { Image, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
@@ -45,7 +45,18 @@ export function FilePreview({
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.6)", justifyContent: "flex-end" }}>
+      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+        {/* THE SCRIM IS A SIBLING, NOT A PARENT — docs/ACCESSIBILITY.md N1,
+            the same shape as AttachSheet. It was a plain View, so a tap
+            outside the sheet did nothing (owner's report, 2026-09-24); now it
+            closes, and names only itself to a screen reader. */}
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={t("common.close")}
+          onPress={onClose}
+          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)" }}
+          testID="file-preview-scrim"
+        />
         <View
           style={{
             backgroundColor: colors.ground,

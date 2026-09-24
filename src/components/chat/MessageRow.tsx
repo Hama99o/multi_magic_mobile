@@ -18,6 +18,7 @@
  * be a second implementation of a question already answered, and the two would
  * disagree the first time an id arrived as a string.
  */
+import { memo } from "react";
 import { View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
@@ -27,7 +28,12 @@ import { SourceChips } from "./SourceChips";
 import { AnswerMarkdown, type AnswerLink } from "./AnswerMarkdown";
 import { AnswerActions } from "./AnswerActions";
 
-export function MessageRow({
+/**
+ * Memoised: in a newest-first list every row's index shifts when a message
+ * arrives, so without this each arrival re-rendered and re-parsed every
+ * visible answer (`app/chat.tsx`, `renderItem`, measured 2026-09-24).
+ */
+export const MessageRow = memo(function MessageRow({
   message,
   onOpenSource,
   showUndo = false,
@@ -121,4 +127,4 @@ export function MessageRow({
       />
     </View>
   );
-}
+});

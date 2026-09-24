@@ -12,7 +12,7 @@
  * stays on screen with a Retry under it.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { AccessibilityInfo, FlatList, Pressable, View } from "react-native";
+import { AccessibilityInfo, FlatList, Pressable, View, type ViewStyle } from "react-native";
 import { Bell, CalendarDays, MessageSquareText, Users } from "lucide-react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -285,6 +285,39 @@ export default function Chat() {
     .reverse()
     .find((m) => m.undoable && !m.undoneAt)?.id ?? null;
 
+  /**
+   * STABLE, so typing re-renders no row at all.
+   *
+   * Measured 2026-09-24 on `qa_phone4` with `React.Profiler`: with an inline
+   * `renderItem`, every keystroke re-rendered the Chat screen, handed the list
+   * a new function, and re-rendered every visible row, re-parsing its markdown
+   * each time. 212–382 ms per commit while TYPING, and 741 ms just after send:
+   * the stall he felt as "not responsive", and the likeliest cause of what he
+   * saw "when I stop typing". `MessageRow` is memoised as well, because a new
+   * message shifts every index in a newest-first list.
+   */
+  const renderItem = useCallback(
+    ({ item, index }: { item: ChatMessage; index: number }) => (
+      // Only the newest row fades — see `Arriving`. A FlatList mounts
+      // rows as they scroll into view, so animating every mount would
+      // flicker the history under a finger.
+      <Arriving arriving={index === 0}>
+        <MessageRow
+          message={item}
+          onOpenSource={openLink}
+          onOpenLink={setOpenFile}
+          showUndo={item.id === newestUndoableId}
+          // Merged in place — NOT `addPending`. The reply now carries
+          // `undone_at`; nothing new is being waited for, and claiming
+          // otherwise would start a three-minute poll for an answer that has
+          // already arrived.
+          onUndone={mergeMessage}
+        />
+      </Arriving>
+    ),
+    [openLink, newestUndoableId, mergeMessage],
+  );
+
   const send = useCallback(
     async (body: string) => {
       if (conversationId == null || posting) return;
@@ -370,6 +403,107 @@ export default function Chat() {
     }
     wasAwaiting.current = awaitingReply;
   }, [awaitingReply, t]);
+
+  // ── EVERY LIST PROP STABLE ACROSS A KEYSTROKE ──────────────────────────
+  // `FlatList` is a PureComponent: with these memoised (and `renderItem`
+  // above), typing into the composer does not re-render the list at all.
+  // Inline, each was a fresh object per render. Measured 2026-09-24 on
+  // `qa_phone4`: 51–116 ms of list work per keystroke with only `renderItem`
+  // stable.
+  const onEndReached = useMemo(() => (hasOlder ? () => void loadOlder() : undefined), [hasOlder, loadOlder]);
+
+  // §8: the conversation takes a measure and centres on a tablet. A
+  // full-width line of serif text at 800 dp is unreadable.
+  const listContentStyle = useMemo<ViewStyle>(
+    () => ({
+      width: "100%",
+      maxWidth: metrics.maxMeasure,
+      alignSelf: "center",
+      flexGrow: 1,
+      // BREATHING ROOM UNDER THE NEWEST REPLY. There was none, so the
+      // last line sat flush against the composer and read as cut off.
+      // `paddingTop` because the list is inverted: top and bottom swap.
+      paddingTop: metrics.space.xl,
+    }),
+    [metrics],
+  );
+
+  // WRAPPED IN A PLAIN VIEW, because the list un-flips its empty component by
+  // passing it `style` (`VirtualizedList.js` `_renderEmptyComponent`), and
+  // `EmptyState` takes no style — so, inverted, the empty state rendered
+  // UPSIDE DOWN. Seen on `qa_phone4` 2026-09-24; a View forwards the style.
+  const listEmpty = useMemo(
+    () => (
+            <View>
+            {status === "loading" ? null : status === "failed" ? (
+              <View style={{ gap: metrics.space.md, paddingVertical: metrics.space.xl }}>
+                <Text tone="muted" testID="chat-load-failed">
+                  {t("chat.loadFailed")}
+                </Text>
+                <Button label={t("common.tryAgain")} tone="neutral" onPress={() => void resync()} />
+              </View>
+            ) : (
+              <EmptyState onPick={(q) => void send(q)} prompts={prompts} />
+            )}
+            </View>
+    ),
+    [status, metrics, t, resync, send, prompts],
+  );
+
+  // HEADER, not footer: an inverted list draws its header at the bottom,
+  // under the newest message, which is where the dots go.
+  const listHeader = useMemo(
+    () => (
+            <View style={{ gap: metrics.space.sm }}>
+              {awaitingReply ? <ThinkingDots /> : null}
+
+              {failed ? (
+                <View style={{ gap: metrics.space.sm }} testID="chat-answer-failed">
+                  <Text variant="caption" tone="danger">
+                    {t("chat.answerFailed")}
+                  </Text>
+                  <Button
+                    label={t("chat.askAgain")}
+                    tone="neutral"
+                    block={false}
+                    onPress={() => {
+                      const last = [...messages].reverse().find((m) => m.role === "user");
+                      if (last?.body) void send(last.body);
+                    }}
+                  />
+                </View>
+              ) : null}
+
+              {secondsLeft > 0 ? (
+                <View style={{ gap: metrics.space.xs }} testID="chat-rate-limited">
+                  {/* Muted, no button. The number is the whole message. */}
+                  <Text variant="caption" tone="muted">
+                    {t("chat.rateLimited", {
+                      perMinute: LIMITS.questionsPerMinute,
+                      perHour: LIMITS.questionsPerHour,
+                      seconds: secondsLeft,
+                    })}
+                  </Text>
+                </View>
+              ) : null}
+
+              {failedQuestion ? (
+                <View style={{ gap: metrics.space.sm }} testID="chat-send-failed">
+                  <Text variant="caption" tone="danger">
+                    {failedQuestion.reason}
+                  </Text>
+                  <Button
+                    label={t("chat.retry")}
+                    tone="neutral"
+                    block={false}
+                    onPress={() => void send(failedQuestion.body)}
+                  />
+                </View>
+              ) : null}
+            </View>
+    ),
+    [awaitingReply, failed, secondsLeft, failedQuestion, metrics, t, messages, send],
+  );
 
   return (
     /* `avoidKeyboard` — and this screen is the one that most needed it and was
@@ -467,117 +601,19 @@ export default function Chat() {
           data={newestFirst}
           keyExtractor={keyOf}
           maintainVisibleContentPosition={maintainVisibleContentPosition}
-          renderItem={({ item, index }) => (
-            // Only the newest row fades — see `Arriving`. A FlatList mounts
-            // rows as they scroll into view, so animating every mount would
-            // flicker the history under a finger.
-            <Arriving arriving={index === 0}>
-            <MessageRow
-              message={item}
-              onOpenSource={openLink}
-              onOpenLink={setOpenFile}
-              showUndo={item.id === newestUndoableId}
-              onUndone={(updated) =>
-                // Merged in place — NOT `addPending`. The reply now carries
-                // `undone_at`; nothing new is being waited for, and claiming
-                // otherwise would start a three-minute poll for an answer that
-                // has already arrived.
-                mergeMessage(updated)
-              }
-            />
-            </Arriving>
-          )}
+          renderItem={renderItem}
           onScroll={onScroll}
           scrollEventThrottle={64}
           // Older history by cursor, as the reader reaches the OLDEST end —
           // which, inverted, is the list's end. No "wait for the opening
           // landing" gate: an inverted list opens at the newest, so it is not
           // at the oldest end on mount unless the whole thread fits.
-          onEndReached={hasOlder ? () => void loadOlder() : undefined}
+          onEndReached={onEndReached}
           onEndReachedThreshold={0.3}
           showsVerticalScrollIndicator={false}
-          // §8: the conversation takes a measure and centres on a tablet. A
-          // full-width line of serif text at 800 dp is unreadable.
-          contentContainerStyle={{
-            width: "100%",
-            maxWidth: metrics.maxMeasure,
-            alignSelf: "center",
-            flexGrow: 1,
-            // BREATHING ROOM UNDER THE NEWEST REPLY. There was none, so the
-            // last line sat flush against the composer and read as cut off.
-            // `paddingTop` because the list is inverted: top and bottom swap.
-            paddingTop: metrics.space.xl,
-          }}
-          // WRAPPED IN A PLAIN VIEW, because the list un-flips its empty
-          // component by passing it `style` (`VirtualizedList.js`
-          // `_renderEmptyComponent`), and `EmptyState` takes no style — so,
-          // inverted, the empty state rendered UPSIDE DOWN. Seen on
-          // `qa_phone4` 2026-09-24; a View forwards the style.
-          ListEmptyComponent={
-            <View>
-            {status === "loading" ? null : status === "failed" ? (
-              <View style={{ gap: metrics.space.md, paddingVertical: metrics.space.xl }}>
-                <Text tone="muted" testID="chat-load-failed">
-                  {t("chat.loadFailed")}
-                </Text>
-                <Button label={t("common.tryAgain")} tone="neutral" onPress={() => void resync()} />
-              </View>
-            ) : (
-              <EmptyState onPick={(q) => void send(q)} prompts={prompts} />
-            )}
-            </View>
-          }
-          // HEADER, not footer: an inverted list draws its header at the
-          // bottom, under the newest message, which is where the dots go.
-          ListHeaderComponent={
-            <View style={{ gap: metrics.space.sm }}>
-              {awaitingReply ? <ThinkingDots /> : null}
-
-              {failed ? (
-                <View style={{ gap: metrics.space.sm }} testID="chat-answer-failed">
-                  <Text variant="caption" tone="danger">
-                    {t("chat.answerFailed")}
-                  </Text>
-                  <Button
-                    label={t("chat.askAgain")}
-                    tone="neutral"
-                    block={false}
-                    onPress={() => {
-                      const last = [...messages].reverse().find((m) => m.role === "user");
-                      if (last?.body) void send(last.body);
-                    }}
-                  />
-                </View>
-              ) : null}
-
-              {secondsLeft > 0 ? (
-                <View style={{ gap: metrics.space.xs }} testID="chat-rate-limited">
-                  {/* Muted, no button. The number is the whole message. */}
-                  <Text variant="caption" tone="muted">
-                    {t("chat.rateLimited", {
-                      perMinute: LIMITS.questionsPerMinute,
-                      perHour: LIMITS.questionsPerHour,
-                      seconds: secondsLeft,
-                    })}
-                  </Text>
-                </View>
-              ) : null}
-
-              {failedQuestion ? (
-                <View style={{ gap: metrics.space.sm }} testID="chat-send-failed">
-                  <Text variant="caption" tone="danger">
-                    {failedQuestion.reason}
-                  </Text>
-                  <Button
-                    label={t("chat.retry")}
-                    tone="neutral"
-                    block={false}
-                    onPress={() => void send(failedQuestion.body)}
-                  />
-                </View>
-              ) : null}
-            </View>
-          }
+          contentContainerStyle={listContentStyle}
+          ListEmptyComponent={listEmpty}
+          ListHeaderComponent={listHeader}
         />
 
           <ScrollToBottom visible={awayFromBottom} onPress={toBottom} />

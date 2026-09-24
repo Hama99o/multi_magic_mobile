@@ -139,7 +139,15 @@ function merge(existing: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] 
     if (isOptimisticId(message.id) && arrived.has(message.body)) continue;
     byId.set(message.id, message);
   }
-  for (const message of incoming) byId.set(message.id, message);
+  for (const message of incoming) {
+    // KEEP THE OBJECT WE HAVE when nothing in it changed. The 3-second resync
+    // while an answer is pending re-reads the whole page, and handing every
+    // row a fresh-but-identical object defeated `MessageRow`'s memo: each
+    // poll re-rendered and re-parsed every visible answer, 413–602 ms per
+    // commit measured on `qa_phone4` 2026-09-24.
+    const had = byId.get(message.id);
+    byId.set(message.id, had && JSON.stringify(had) === JSON.stringify(message) ? had : message);
+  }
   return [...byId.values()].sort((a, b) => a.id - b.id);
 }
 

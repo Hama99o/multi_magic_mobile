@@ -239,6 +239,31 @@ describe("waiting for an answer", () => {
     expect(result.current.awaitingReply).toBe(false);
   });
 
+  // ── THE POLL MUST NOT HAND EVERY ROW A NEW OBJECT ────────────────────────
+  //
+  // Measured 2026-09-24 on `qa_phone4`: identical-but-fresh copies from the
+  // 3-second resync defeated `MessageRow`'s memo, and every poll re-parsed
+  // every visible answer (413–602 ms commits).
+  it("keeps the SAME object for a message a resync returns unchanged", async () => {
+    const { result } = render();
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    const before = result.current.messages[0];
+
+    await act(async () => { await result.current.resync(); });
+
+    expect(result.current.messages[0]).toBe(before);
+  });
+
+  it("but takes the new object when the message really changed", async () => {
+    const { result } = render();
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    latest.mockResolvedValue({ messages: [{ ...message(1, "user", "Do I owe anyone?"), editedAt: "2026-09-18T11:00:00Z" }], hasMore: false });
+
+    await act(async () => { await result.current.resync(); });
+
+    expect(result.current.messages[0].editedAt).toBe("2026-09-18T11:00:00Z");
+  });
+
   // ── "ARRIVES, OR SAYS IT DID NOT" ─────────────────────────────────────────
   //
   // The server already broadcasts `aiError`. Without this branch a failed

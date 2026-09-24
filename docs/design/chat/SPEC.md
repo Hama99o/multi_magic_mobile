@@ -521,3 +521,18 @@ They prove the PROP, not the feel.
 fall (`9b56a2e`) while the list is moving under the finger. The two
 interacting badly would be new jank in the place one was just removed.
 Record it in the same slot as the lift.
+
+**Why not `"interactive"` on iOS**, which is what iMessage's hand-feel suggests
+(asked 2026-09-24). On iOS, RN's KAV listens to `keyboardWillShow` and
+`keyboardWillHide` only; its own comment in `componentDidMount` explains the
+choice over `keyboardWillChangeFrame`. During an interactive dismiss the
+keyboard follows the finger and neither event fires until release. So the
+composer would hold still while the keyboard slid away under it, then jump.
+**The event list is read from source; the resulting look is INFERRED, with
+no iOS device here.** iMessage gets away with it because its composer is
+attached to the keyboard. Ours sits above a padding. `"on-drag"` is one
+`keyboardWillHide`, which KAV animates with the keyboard's own duration and
+curve, so on iOS it should be the smooth one. `"interactive"` becomes right
+when the composer tracks the keyboard frame
+(`react-native-keyboard-controller`'s `KeyboardStickyView`). That is the Expo
+Go SDK 57 availability question the `[PROBE]` asks.

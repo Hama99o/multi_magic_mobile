@@ -91,6 +91,12 @@ const CASES: Case[] = [
     times: 1,
   },
   {
+    rule: "a jest spy on Animated, which sees an animation built and not run",
+    fixture: "animated-spy.ts",
+    says: /BUILT, not started/,
+    times: 1,
+  },
+  {
     // FOUR, one per branch of the compound selector — a compound selector can
     // have dead branches and still look alive, which is this file's subject.
     rule: "a bare worded string in an accessibility attribute",
@@ -133,7 +139,7 @@ describe("every custom rule can actually fire", () => {
     expect(restricted(fixture).filter((hit) => says.test(hit.message))).toHaveLength(times);
   });
 
-  it("flags nothing in the legitimate forms of all seven", () => {
+  it("flags nothing in the legitimate forms of all eight", () => {
     expect(restricted("clean.tsx").map((hit) => `${hit.line}: ${hit.message}`)).toEqual([]);
   });
 

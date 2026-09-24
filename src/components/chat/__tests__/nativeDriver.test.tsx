@@ -12,30 +12,30 @@
  * is a device observation.
  */
 import { render, waitFor } from "@testing-library/react-native";
-import { AccessibilityInfo, Animated, Text } from "react-native";
+import { AccessibilityInfo, Text } from "react-native";
+import { allNative, watchTimings } from "@/__tests__/animated";
 import { Arriving } from "../Arriving";
 import { ThinkingDots } from "../ThinkingDots";
 
 afterEach(() => jest.restoreAllMocks());
 
-const asked = (spy: jest.SpyInstance) =>
-  spy.mock.calls.map(([, config]) => (config as { useNativeDriver?: boolean }).useNativeDriver);
-
-it("the arriving fade asks for the native driver", async () => {
+// STARTED, not built: with `.start()` removed, a new message sat at opacity 0
+// for ever and the earlier form of this test stayed green (TESTING.md §19).
+it("the arriving fade starts, on the native driver", async () => {
   jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false);
-  const timing = jest.spyOn(Animated, "timing");
+  const { started } = watchTimings();
   render(
     <Arriving arriving>
       <Text>new</Text>
     </Arriving>,
   );
-  await waitFor(() => expect(timing).toHaveBeenCalled());
-  expect(asked(timing)).toEqual(asked(timing).map(() => true));
+  await waitFor(() => expect(started.length).toBeGreaterThan(0));
+  expect(allNative(started)).toBe(true);
 });
 
-it("every step of the dots' loop asks for the native driver", () => {
-  const timing = jest.spyOn(Animated, "timing");
+it("the dots' loop starts, every step on the native driver", async () => {
+  const { started } = watchTimings();
   render(<ThinkingDots />);
-  expect(timing).toHaveBeenCalled();
-  expect(asked(timing).every((v) => v === true)).toBe(true);
+  await waitFor(() => expect(started.length).toBeGreaterThan(0));
+  expect(allNative(started)).toBe(true);
 });

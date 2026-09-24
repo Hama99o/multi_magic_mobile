@@ -6,7 +6,8 @@
  * a recording.
  */
 import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import { Animated, Keyboard, Text, type KeyboardEvent } from "react-native";
+import { Keyboard, Text, type KeyboardEvent } from "react-native";
+import { watchTimings } from "@/__tests__/animated";
 import { KeyboardPadding, RISE_MS, FALL_MS } from "../KeyboardPadding";
 
 afterEach(() => jest.restoreAllMocks());
@@ -19,7 +20,7 @@ function mount() {
     listeners[name] = fn as Listener;
     return { remove: jest.fn() } as unknown as ReturnType<typeof Keyboard.addListener>;
   });
-  const timing = jest.spyOn(Animated, "timing");
+  const { started } = watchTimings();
   render(
     <KeyboardPadding>
       <Text>content</Text>
@@ -39,8 +40,9 @@ function mount() {
       }),
     );
   const hide = () => act(() => listeners.keyboardDidHide({} as KeyboardEvent));
-  const steps = () =>
-    timing.mock.calls.map(([, c]) => c as { toValue: number; duration: number; useNativeDriver: boolean });
+  // STARTED steps: a lift built and never started leaves the composer under
+  // the keyboard (TESTING.md §19).
+  const steps = () => started;
   return { show, hide, steps };
 }
 

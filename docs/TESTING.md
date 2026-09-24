@@ -1325,3 +1325,13 @@ while a whole suite had failed to RUN: "1 failed, 76 passed; 733 tests",
 where the full count is 869. A suite that crashes on import reports zero
 failures for every test in it. Quote the suite count AND the test count, and
 compare the test count with the last one.
+
+**A comment that says HOW something works outlives the how.** Three stale
+behaviour comments were found on 2026-09-24, and all three described a
+mechanism that had since been replaced: notifications "optimistic, put back
+on failure" (no optimistic step existed), the feedback contract (changed by
+`622c25b`), and the assistant chat's "stays as a bubble" (replaced by
+`85585e8`). A comment that says WHY survives a refactor; one that says WHAT
+does not. When a comment claims behaviour, the claim belongs in a test, and
+the comment shrinks to the reason. The test goes red when the claim stops
+being true; the comment never does.

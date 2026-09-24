@@ -101,11 +101,12 @@ export default function Notifications() {
   );
 
   /**
-   * Marking read is optimistic, and put back on failure.
+   * Marking read, and then re-reading the list.
    *
-   * The row loses its tint the moment it is pressed rather than after a round
-   * trip — on a bad connection that round trip is the difference between a list
-   * that responds and one that seems broken.
+   * This comment used to say "optimistic, and put back on failure"; there is
+   * no optimistic step (no `onMutate`), so the row changes when the list
+   * reloads. A failure here stays quiet ON PURPOSE: the reload shows the
+   * truth, and the person pressed a row to open it, not to mark it.
    */
   const markRead = useMutation({
     mutationFn: (id: number) => notificationsApi.markRead(id),
@@ -125,8 +126,19 @@ export default function Notifications() {
     [markRead, setDraft, t],
   );
 
+  /**
+   * The three actions a person CONFIRMS — delete, mark all read, clear read —
+   * had no error handling at all: a refusal just put the row back on the next
+   * reload with nothing said, which reads as a missed tap. Now it says why.
+   */
+  const [actionFailure, setActionFailure] = useState<string | null>(null);
+  const onActionFailed = (e: unknown) =>
+    setActionFailure(failureMessage(e, t("notifications.actionFailed")));
+
   const remove = useMutation({
     mutationFn: (id: number) => notificationsApi.remove(id),
+    onMutate: () => setActionFailure(null),
+    onError: onActionFailed,
     onSettled: reload,
   });
 
@@ -158,11 +170,15 @@ export default function Notifications() {
 
   const markAllRead = useMutation({
     mutationFn: () => notificationsApi.markAllRead(),
+    onMutate: () => setActionFailure(null),
+    onError: onActionFailed,
     onSettled: reload,
   });
 
   const clearRead = useMutation({
     mutationFn: () => notificationsApi.clearRead(),
+    onMutate: () => setActionFailure(null),
+    onError: onActionFailed,
     onSettled: reload,
   });
 
@@ -259,6 +275,18 @@ export default function Notifications() {
       {composed ? (
         <Text variant="caption" tone="muted" style={{ paddingBottom: metrics.space.sm }}>
           {t("notifications.composed")}
+        </Text>
+      ) : null}
+
+      {actionFailure ? (
+        <Text
+          variant="caption"
+          tone="danger"
+          testID="notifications-action-failed"
+          accessibilityLiveRegion="polite"
+          style={{ paddingBottom: metrics.space.sm }}
+        >
+          {actionFailure}
         </Text>
       ) : null}
 

@@ -457,6 +457,8 @@ export const en = {
     unread: "Unread",
     deleted: "This message was deleted.",
     notSent: "Not sent. Tap to retry.",
+    editFailed: "That edit was not saved. Your text is back in the box.",
+    deleteFailed: "That message could not be deleted.",
     edited: "edited",
     // The tick is a SHAPE and nothing else. Spoken, it needs words.
     sent: "Sent",
@@ -467,6 +469,7 @@ export const en = {
     title: "Notifications",
     refresh: "Refresh notifications",
     markAllRead: "Mark all as read",
+    actionFailed: "That did not go through. Nothing was changed.",
     clearRead: "Clear read notifications",
     empty: "You're all caught up.",
     loadFailed: "Could not load your notifications.",

@@ -69,6 +69,7 @@ export function PersonMessageRow({
   /** Posted locally and not yet accepted by the server. */
   pending = false,
   failed = false,
+  failureReason = null,
 }: {
   message: ChatMessage;
   senderName?: string | null;
@@ -77,6 +78,8 @@ export function PersonMessageRow({
   onRetry?: () => void;
   pending?: boolean;
   failed?: boolean;
+  /** The server's reason for refusing it, shown above "Not sent". */
+  failureReason?: string | null;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -282,6 +285,11 @@ export function PersonMessageRow({
       {/* A message that could not be sent STAYS ON SCREEN with a way back.
           `BRIEF.md` §5 — it "arrives, or says it did not", never vanishes into
           an optimistic bubble. */}
+      {failed && failureReason ? (
+        <Text variant="caption" tone="danger" testID="msg-failure-reason" style={{ marginTop: metrics.space.xs }}>
+          {failureReason}
+        </Text>
+      ) : null}
       {failed ? (
         <Pressable
           testID="msg-retry"

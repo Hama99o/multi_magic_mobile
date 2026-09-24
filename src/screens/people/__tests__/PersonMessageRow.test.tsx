@@ -103,3 +103,28 @@ describe("the long press that opens the reaction sheet", () => {
     expect(screen.getByTestId("msg-mine-2311").props.accessibilityHint).toBeUndefined();
   });
 });
+
+// ── A REFUSED MESSAGE SAYS WHY ────────────────────────────────────────────
+// A body over 10,000 characters is a 422 whose reason says exactly that
+// (`message.rb`, `validates :body, length: { maximum: 10_000 }`). "Tap to
+// retry" alone would retry it for ever.
+describe("a message that was not sent", () => {
+  it("shows the server's reason above the retry when it refused", () => {
+    render(
+      <PersonMessageRow
+        message={message()}
+        failed
+        failureReason="Body is too long (maximum is 10000 characters)"
+        onRetry={jest.fn()}
+      />,
+    );
+    expect(screen.getByText("Body is too long (maximum is 10000 characters)")).toBeTruthy();
+    expect(screen.getByTestId("msg-retry")).toBeTruthy();
+  });
+
+  it("shows only the retry when nothing was said (unreachable, not refused)", () => {
+    render(<PersonMessageRow message={message()} failed onRetry={jest.fn()} />);
+    expect(screen.queryByTestId("msg-failure-reason")).toBeNull();
+    expect(screen.getByTestId("msg-retry")).toBeTruthy();
+  });
+});

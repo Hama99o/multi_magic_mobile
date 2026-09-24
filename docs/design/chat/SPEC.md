@@ -379,3 +379,51 @@ closing on the current build at 60 fps and measure whether the composer steps
 or tracks; (2) find out whether Expo Go SDK 57 has keyboard-controller
 (import it behind a guard and log); (3) only then decide between the library
 and tuning what exists. Nothing is changed until (1) says there is a problem.
+
+### What the probe's answer decides — written BEFORE the answer, 2026-09-24
+
+A probe in sdk-57's `_layout` asks his Expo Go for `KeyboardController` (the
+library's own registration name, `src/specs/NativeKeyboardController.ts:23`
+of 1.21.9), with `RNCSafeAreaContext` as a control. The steps are firmer than
+before, from RN's own source: on Android `KeyboardAvoidingView` listens to
+`keyboardDidShow` (`KeyboardAvoidingView.js:212`), which fires AFTER the
+keyboard has finished moving. Android has no "will show" event, and its
+`LayoutAnimation` smoothing (line 171) needs a duration Android does not
+send. So the composer is covered while the keyboard slides, and rises in one
+step at the end. That's from the source; the frames will confirm it.
+
+**true / true (Expo Go has it).** The change, ready to make:
+`npx expo install react-native-keyboard-controller` (a JS install; no rebuild
+for Expo Go, whose native side already exists). One wrapper,
+`src/components/KeyboardSafe.tsx`, chooses at runtime: if
+`TurboModuleRegistry.get("KeyboardController")` is present, `KeyboardProvider`
+at the root and the library's `KeyboardAvoidingView` in `Screen`'s
+`avoidKeyboard` path (same props); otherwise RN's own, exactly as today. The
+emulator's dev client does NOT have the native module until it's rebuilt,
+and without the guard it would break. Touches `app/_layout.tsx` and
+`src/components/ScreenContainer.tsx`; the three dialogs keep RN's KAV until
+the screen is proven. Regression risks, to watch in the frames: the inverted
+list's viewport now changes every frame while the keyboard moves (offset 0
+should hold, and `maintainVisibleContentPosition` must not fight it);
+`09-keyboard`; Jest needs the library's own mock
+(`react-native-keyboard-controller/jest`). Peer dependency Reanimated ≥ 3:
+we have 4.x, and its babel plugin is active.
+
+**false / true (Expo Go lacks it).** Then only a real build gets it. The bar
+for a rebuild FOR THE KEYBOARD ALONE, set now so the frames can't talk us into
+it: the recording must show either (a) the composer or the newest message
+covered by the keyboard for **≥ 100 ms (6 frames at 60 fps)** while it opens,
+or (b) a visible jump of **≥ one line** after it settles. Below that, it waits
+to ride along with a build he wants anyway.
+
+**false / false.** The probe itself is dead. Try again; conclude nothing.
+
+**A cheaper fix, without the library, for any outcome.** RN gives no IME
+progress on Android, so true tracking needs native code. But the step can be
+made to START with the keyboard instead of after it: remember the last
+keyboard height, and when the composer gains focus, animate the padding to
+that height over ~250 ms (the IME's own duration) at once, correcting on
+`keyboardDidShow` if the height differs. It moves with the keyboard rather
+than tracking it exactly. On the second open onwards it may get most of the
+way. It is a guess until recorded, and is the first thing to try if the bar
+above is not met.

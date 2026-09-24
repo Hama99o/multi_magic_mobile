@@ -874,11 +874,22 @@ the device and a working local backend can close these in one sitting:
   (`75de280`); unrun since, and void inside the broken window.
 - `09-keyboard`: its 2026-09-21 second half has never run.
 
-**Waiting on a RIG fix, which is desk work:**
+**Waiting on a CHOICE, not desk work (corrected 2026-09-24 21:40):**
 - `06-people-chat`: `hideKeyboard` goes Back on the current boot
-  (control-checked). Replacing that step with one that cannot pop the screen
-  is the fix. Why the boot matters is unmeasured (`QA_HANDBOOK.md`, "A fresh
-  boot has its own state").
+  (control-checked). This line used to say "replacing that step with one
+  that cannot pop the screen is the fix, which is desk work". **There is no
+  such step today.** The thread screen offers no Back-free way to close the
+  keyboard: no `keyboardDismissMode`, no `Keyboard.dismiss`, nothing in
+  `app/chat/[id].tsx` or `src/screens/people/` (grepped). Maestro has no
+  "keyboard is up" condition to guard a Back with, and cannot run the
+  `adb shell dumpsys input_method` that would answer it. The one Back-free
+  route is an APP change: a drag on the thread closes the keyboard
+  (`keyboardDismissMode="on-drag"`, what messengers do), after which the flow
+  swipes `thread-list` instead of pressing Back. That is user-facing, so it
+  needs Rule Zero and a device look (it also has to be measured against
+  `KeyboardPadding`'s fall, `9b56a2e`). It is not a flow edit. Why the boot
+  matters is unmeasured (`QA_HANDBOOK.md`, "A fresh boot has its own
+  state").
 
 **Waiting on a DECISION about data, the owner's:**
 - `07-notifications`, `08-calendar`: the populated branches need the QA
@@ -891,11 +902,28 @@ the device and a working local backend can close these in one sitting:
 
 **Waiting on HARDWARE nobody here has:** everything on iOS, and a TalkBack
 run (the tree order in `docs/ACCESSIBILITY.md` D5 was read from
-`uiautomator`, not heard).
+`uiautomator`, not heard). Also two run-8 rows this list used to omit:
+- `03-dictation` on the current binary: NOT MEASURED in run 8. The mic
+  rendered, and a tap produced none of listening / refused / problem, with
+  no SpeechRecognizer line in logcat. An emulator has no utterance to
+  recognise, so a physical Android phone separates rig from app. It stays
+  flagged as a candidate app finding, because `Composer.tsx` says a
+  recogniser that cannot work must SAY so.
+- read-aloud in French: NOT MEASURED. It needs a French answer from the
+  assistant (ask in French on the QA account, with the app set to French)
+  and a PERSON LISTENING to whether the voice is French. No gate here hears
+  audio. The server side has its own tests; the device has confirmed
+  nothing.
 
-**And right now, everything device-side is waiting on the local backend**,
-which answers 500 on every request (unresolved conflicts in `multi_magic`
-after a stray `git stash pop`, 2026-09-24 ~17:00; the owner's reset).
+**The local backend is back, measured 2026-09-24 21:33.** `GET /up` → 200.
+Unauthenticated `GET /api/v1/ai/conversation` → 401, the right refusal and
+not the 500 from earlier. As the QA account (never his): `POST /users/login`
+→ 200 with a token, a read-only `GET /api/v1/notifications` → 200,
+`DELETE /users/logout` → 204. *This line used to say it answered 500 on
+every request (unresolved conflicts in `multi_magic` after a stray
+`git stash pop`, ~17:00).* Not checked: pending migrations, which preflight
+compares. So device-side now waits on the device alone, which is blocked on
+disk.
 
 ## Run 9's running order — by what most likely BROKE, written 2026-09-24
 

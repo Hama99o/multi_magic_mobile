@@ -31,13 +31,13 @@ function Dot({ delay }: { delay: number }) {
     const loop = Animated.loop(
       Animated.sequence([
         Animated.delay(delay),
-        // `useNativeDriver: false`: the native driver resolves a real view at
-        // start, and under react-test-renderer there is none — the loop throws
-        // "Unable to locate attached view in the native tree" and takes the
-        // whole screen's test with it. Three dots fading is a trivial JS-driven
-        // animation, so the driver buys nothing here and costs testability.
-        Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: false }),
-        Animated.timing(opacity, { toValue: 0.3, duration: 400, useNativeDriver: false }),
+        // NATIVE driver. This said "the driver buys nothing here"; measured
+        // 2026-09-24 on `qa_phone4` it buys the whole thing: the dots are on
+        // screen during the 0.3-1 s JS stall after a send, and a JS-driven
+        // loop freezes for exactly that long. Tests refuse the driver in
+        // `src/__tests__/setup.ts`, which was the old reason to go without.
+        Animated.timing(opacity, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(opacity, { toValue: 0.3, duration: 400, useNativeDriver: true }),
         Animated.delay(800 - delay),
       ]),
     );

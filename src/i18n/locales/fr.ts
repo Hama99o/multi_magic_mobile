@@ -49,6 +49,7 @@ export const fr: Translations = {
     rateLimited: "Trop de requêtes pour le moment. Patientez une minute.",
     sessionEnded: "Votre session est terminée. Reconnectez-vous.",
     checkConnection: "Impossible de joindre MultiMagic. Vérifiez votre connexion.",
+    notAllowed: "Vous n’êtes pas autorisé à faire cela ici.",
   },
 
   session: {
@@ -452,6 +453,7 @@ export const fr: Translations = {
     emptyTitle: "Pas encore de discussion",
     emptyBody: "Les discussions que vous commencez sur MultiMagic apparaissent ici.",
     loadFailed: "Impossible de charger vos discussions.",
+    untitled: "Conversation sans nom",
   },
 
   thread: {

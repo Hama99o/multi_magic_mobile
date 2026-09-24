@@ -84,7 +84,12 @@ function parseBorrowed(payload: unknown): BorrowedKey {
   const record = obj(payload, "borrowed");
   return {
     provider: str(record.provider, "borrowed.provider"),
-    ownerName: optStr(record.owner_name) ?? optStr(record.owner) ?? optStr(record.email),
+    // `shared_by` and nothing else: `Ai::KeySharing.borrowed_by`
+    // (key_sharing.rb:78) sends the lender's name, or their email when they
+    // have none, under that one key. This used to guess `owner_name`, `owner`
+    // and `email`, none of which the payload has, so every borrower was told
+    // the key came from "someone" (found 2026-09-24).
+    ownerName: optStr(record.shared_by),
     monthlyCreditLimit: typeof record.monthly_credit_limit === "number" ? record.monthly_credit_limit : null,
     spentThisMonth: typeof record.spent_this_month === "number" ? record.spent_this_month : 0,
     exhausted: record.exhausted === true,

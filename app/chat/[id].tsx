@@ -52,8 +52,7 @@ import {
   type ConversationEvent,
 } from "@/api/conversations";
 import type { ChatMessage } from "@/api/ai";
-import { apiErrorMessage } from "@/api/http";
-import { failureMessage } from "@/api/failure";
+import { failureMessage, refusalReason } from "@/api/failure";
 import { Avatar } from "@/screens/people/Avatar";
 import { PersonMessageRow } from "@/screens/people/PersonMessageRow";
 import { ScrollToBottom, useNewestAnchor } from "@/components/chat/ScrollToBottom";
@@ -344,7 +343,7 @@ export default function PersonThread() {
       // thing on offer.
       setOutbox((current) =>
         current.map((item) =>
-          item.key === key ? { ...item, failed: true, reason: apiErrorMessage(e) } : item,
+          item.key === key ? { ...item, failed: true, reason: refusalReason(e) } : item,
         ),
       );
     }
@@ -361,7 +360,7 @@ export default function PersonThread() {
       } catch (e) {
         setOutbox((current) =>
           current.map((row) =>
-            row.key === item.key ? { ...row, failed: true, reason: apiErrorMessage(e) } : row,
+            row.key === item.key ? { ...row, failed: true, reason: refusalReason(e) } : row,
           ),
         );
       }

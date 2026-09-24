@@ -42,6 +42,7 @@
 import { http } from "./http";
 import { messagesApi, type ChatMessage } from "./ai";
 import { arr, id, num, obj, optStr, str } from "./parse";
+import { t } from "@/i18n";
 
 /** One member of a thread, as the list and the header draw them. */
 export interface Participant {
@@ -154,7 +155,9 @@ function parseParticipant(payload: unknown): Participant {
   const user = obj(record.user, "participant.user");
   return {
     id: id(user.id, "participant.user.id"),
-    name: optStr(user.fullname) ?? optStr(user.email) ?? "Someone",
+    // The last resort is TRANSLATED: it was an English literal, so a French
+    // user saw "Someone" for a nameless participant.
+    name: optStr(user.fullname) ?? optStr(user.email) ?? t("thread.someone"),
     avatar: absoluteUrl(optStr(user.avatar)),
     isOnline: typeof user.is_online === "boolean" ? user.is_online : false,
     isAdmin: typeof record.is_admin === "boolean" ? record.is_admin : false,
@@ -170,7 +173,7 @@ function parseConversation(payload: unknown): Conversation {
 
   return {
     id: id(record.id, "conversation.id"),
-    displayName: optStr(user.fullname) ?? optStr(user.email) ?? "Conversation",
+    displayName: optStr(user.fullname) ?? optStr(user.email) ?? t("chats.untitled"),
     isGroup: typeof record.is_group === "boolean" ? record.is_group : false,
     isOnline: typeof user.is_online === "boolean" ? user.is_online : false,
     avatar: absoluteUrl(optStr(user.avatar)),

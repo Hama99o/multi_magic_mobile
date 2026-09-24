@@ -32,6 +32,7 @@ export const en = {
     rateLimited: "Too many requests just now. Give it a minute.",
     sessionEnded: "Your session ended. Sign in again.",
     checkConnection: "Could not reach MultiMagic. Check your connection.",
+    notAllowed: "You’re not allowed to do that here.",
   },
 
   session: {
@@ -435,6 +436,7 @@ export const en = {
     emptyTitle: "No conversations yet",
     emptyBody: "Chats you start on MultiMagic appear here.",
     loadFailed: "Could not load your chats.",
+    untitled: "Conversation",
   },
 
   thread: {

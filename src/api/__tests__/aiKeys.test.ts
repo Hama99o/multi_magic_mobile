@@ -135,7 +135,7 @@ describe("providers", () => {
 describe("a key lent to you", () => {
   it("is rendered as provider and owner, with no mask and no last four", () => {
     const parsed = parseKeyPayload(
-      payload({ borrowed: [{ provider: "gemini", owner_name: "Hamid" }] }),
+      payload({ borrowed: [{ provider: "gemini", shared_by: "Hamid" }] }),
     );
     // No limit on the wire reads as no limit, nothing spent, not used up.
     expect(parsed.borrowed).toEqual([
@@ -149,7 +149,7 @@ describe("a key lent to you", () => {
     const parsed = parseKeyPayload(
       payload({
         borrowed: [
-          { provider: "openai", owner_name: "Hamid", monthly_credit_limit: 10, spent_this_month: 10.2, exhausted: true },
+          { provider: "openai", shared_by: "Hamid", monthly_credit_limit: 10, spent_this_month: 10.2, exhausted: true },
         ],
       }),
     );

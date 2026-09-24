@@ -43,7 +43,22 @@ export function failureMessage(error: unknown, fallback: string): string {
   // A 401 has already signed the user out through the interceptor; saying
   // anything else about it here would be describing a screen they have left.
   if (isUnauthorized(error)) return t("failure.sessionEnded");
-  return apiErrorMessage(error) ?? fallback;
+  return apiErrorMessage(error) ?? (isForbidden(error) ? t("failure.notAllowed") : fallback);
+}
+
+/**
+ * Why the server REFUSED, or null when it did not answer at all.
+ *
+ * For a line next to a retry: an unreachable server needs no sentence beyond
+ * "Not sent. Tap to retry"; a refusal does, because retrying it will not help.
+ */
+export function refusalReason(error: unknown): string | null {
+  if (isNetworkFailure(error) || error instanceof ApiShapeError) return null;
+  return apiErrorMessage(error) ?? (isForbidden(error) ? t("failure.notAllowed") : null);
+}
+
+function isForbidden(error: unknown): boolean {
+  return (error as { response?: { status?: number } } | undefined)?.response?.status === 403;
 }
 
 /** True when the failure is ours rather than the network's or the server's —

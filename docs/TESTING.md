@@ -1455,3 +1455,13 @@ leaked timer is wrong on its own. The real fix clears the mock before each
 render. **A wait is only evidence about the state it was waiting for if the
 thing it reads could not already have been true.** That is §19's starting
 state again, in time rather than in content.
+
+**A comment claiming a feature EXISTS stops anyone building it.** Found
+2026-09-24 in `app/chat.tsx`. The documents poll's header explained that
+without it "the chip a user just uploaded says pending for ever". No such
+chip existed: after an upload, a chip showed name and size whatever the
+server did, so a file the server could not read looked ready. The earlier
+false comments described a mechanism that had since changed, and they
+misled a reader. This one described a feature that had never been built,
+so nobody built it. A comment that says "X shows Y" is a claim about the
+UI, and the UI is the only place to check it.

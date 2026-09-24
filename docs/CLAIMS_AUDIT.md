@@ -24,6 +24,8 @@ hints and placeholders, so strings built in code are seen.
 | the assistant | transcript failed, answer never came, thinking, send failed ×2, rate limit, all 8 `key_problem` notices | `app/__tests__/chat.test.tsx` |
 | conversations sheet, its row menu, profile menu + 3 panes, a source | open; the sheet's list FAILED ×2 | `sheets.i18n.test.tsx` |
 | rename, instructions, scope, delete confirm, thumbs-down reason | open | same |
+| attach, profile photo, reactions (on your own message) | open | same |
+| chats, notifications, calendar, AI keys; the assistant with nothing to suggest | EMPTY | `screens.render.test.tsx` |
 | day labels, file sizes | both languages, pinned | `dayLabel.test.ts`, `useAttachments.test.ts` |
 
 "Done" means: in those states, those surfaces show no untranslated text.
@@ -43,21 +45,25 @@ the SERVER sends is in the reader's language.
 
 ## NOT DONE — neither pass, or only one
 
-- **Empty branches**: chats-empty, notifications-empty, calendar
-  "nothing today", the assistant's empty state with NO suggestions. They
-  use keys, but no sweep renders them.
-- **Sheets never opened in a sweep**: attach (upload), photo, reactions.
 - **Form error states**: sign-up, forgot-password (its "sent" state too),
   change-password, delete-account, profile validation. These show SERVER
   sentences, which the backend now localises (backend session, 2026-09-24).
 - **Two-factor's "trust this phone" pane.**
 - **The two unread badges** show nothing when their count fails to load: a
   silent 0. Low cost, conventional, and left as it is on purpose.
-- **Server-side findings, routed and not fixed here**: "Online" reads a field
-  that moves only on people-thread events and lags one (`user_serializer.rb`);
-  the web's French `rememberHint` quotes the English note name; Pundit's
-  default English refusal is filtered on mobile by its TEXT (`isPolicyText`),
-  so it needs a code if the backend localises it.
+- **Server-side findings, routed to the backend** (status as the backend
+  session reported it, 2026-09-24; deploys are Hamma9900's call):
+  - "Online" lagged one event: now reads `current_sign_in_at`, fixed LOCALLY
+    (`multi_magic` `1dd2379`), not deployed. Counting activity outside people
+    threads is Hamma9900's decision about visibility.
+  - The web's French `rememberHint` named the English note: fixed LOCALLY
+    (`26c57fa`), with a spec that fails if web and server titles diverge.
+  - Pundit's developer text is already GONE in production (`4a39266`), so
+    mobile's `isPolicyText` matches nothing live. Every 403 will carry
+    `code: "forbidden"` (`a5f7245`, local). When that deploys, match on the
+    code and delete the regex.
+  - The wrong-current-password `code` (`3f7ec45` here) keeps its English
+    fallback until the backend says it is live.
 - **Everything on a device**: the rebuilt opening, the Android keyboard lift,
   drag-to-dismiss, run 9 (`qa/FLOW_REGISTER.md` has the running order).
 
@@ -65,9 +71,7 @@ the SERVER sends is in the reader's language.
 
 1. **Run 9 on a device, the moment the disk frees.** More changed today than
    any desk check can vouch for, and the running order is ready.
-2. **The empty branches and the three unopened sheets into the sweep
-   tables.** Cheap: the machinery exists, and each is a row.
-3. **Form error states**, once the backend's localisation is deployed, so
+2. **Form error states**, once the backend's localisation is deployed, so
    the sweep checks the text people will actually get.
 
 ## The instruments' own failures, for whoever extends them

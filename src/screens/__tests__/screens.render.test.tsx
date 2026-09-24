@@ -499,9 +499,12 @@ describe.each(SCREENS)("$name", ({ element, handles, french }) => {
  *
  * Two-factor is a row since 2026-09-24, in its code-entry state.
  *
+ * The EMPTY branches of chats, notifications, calendar, AI keys and the
+ * assistant (with nothing to suggest) are swept too.
+ *
  * NOT SWEPT, so not claimed: two-factor's "verified, trust this phone?"
  * pane; every loading state (these render skeletons, which carry no text);
- * the empty branches; and a date only
+ * and a date only
  * says "Aujourd’hui" when the fixture is from today, which is how
  * `DayDivider`'s English "Today" went unseen (now `dayLabel.test.ts`).
  */
@@ -588,6 +591,98 @@ const FAILURES: { name: string; element: () => ReactElement; call: () => jest.Mo
     shows: "profile-load-failed",
   },
 ];
+
+/**
+ * THE EMPTY BRANCHES, in both languages: each list answers with nothing,
+ * so what renders is the screen's "nothing here" sentence. The assistant's
+ * empty state with NO suggestions (no files, no events, nothing stocked) is
+ * here too, since that is the state a new account meets first.
+ */
+const EMPTIES: { name: string; element: () => ReactElement; call: () => jest.Mock; empty: () => Promise<unknown>; shows: string }[] = [
+  {
+    name: "chats",
+    element: () => <Chats />,
+    call: () => jest.requireMock("@/api/conversations").conversationsApi.list,
+    empty: async () => ({ conversations: [], unreadConversations: 0, hasMore: false }),
+    shows: "chats-empty",
+  },
+  {
+    name: "notifications",
+    element: () => <Notifications />,
+    call: () => jest.requireMock("@/api/notifications").notificationsApi.list,
+    empty: async () => ({ notifications: [], unreadCount: 0, hasMore: false }),
+    shows: "notifications-empty",
+  },
+  {
+    name: "calendar",
+    element: () => <Calendar />,
+    call: () => jest.requireMock("@/api/calendar").calendarApi.upcoming,
+    empty: async () => [],
+    shows: "calendar-nothing-today",
+  },
+  {
+    name: "ai-keys",
+    element: () => <AiKeys />,
+    call: () => jest.requireMock("@/api/aiKeys").aiKeysApi.list,
+    empty: async () => ({ keys: [], providers: ["gemini", "deepseek"], borrowed: [] }),
+    shows: "ai-keys-empty",
+  },
+];
+
+describe.each(EMPTIES)("$name, when there is nothing", ({ element, call, empty, shows }) => {
+  it("says so in French", async () => {
+    const fn = call();
+    const original = fn.getMockImplementation();
+    fn.mockImplementation(empty);
+    const collect = async (language: "fr" | "en") => {
+      setWidth(360);
+      await i18n.changeLanguage(language);
+      const view = renderScreen(element());
+      await screen.findByTestId(shows);
+      const out = renderedStrings();
+      view.unmount();
+      return out;
+    };
+    try {
+      const fr = await collect("fr");
+      const en = await collect("en");
+      expect(englishIn(fr, withoutFixtures)).toEqual([]);
+      expect(identicalIn(fr, en, withoutFixtures)).toEqual([]);
+    } finally {
+      fn.mockImplementation(original);
+    }
+  });
+});
+
+describe("the assistant, empty and with nothing to suggest", () => {
+  it("says so in French", async () => {
+    const mocks = [
+      [jest.requireMock("@/api/ai").documentsApi.list, async () => []],
+      [jest.requireMock("@/api/me").meApi.summary, async () => ({ counts: {}, stocked: [] })],
+      [jest.requireMock("@/api/calendar").calendarApi.upcoming, async () => []],
+    ] as [jest.Mock, () => Promise<unknown>][];
+    const originals = mocks.map(([fn]) => fn.getMockImplementation());
+    mocks.forEach(([fn, impl]) => fn.mockImplementation(impl));
+    const collect = async (language: "fr" | "en") => {
+      setWidth(360);
+      await i18n.changeLanguage(language);
+      const view = renderScreen(<Assistant />);
+      await screen.findByTestId("chat-empty");
+      await screen.findByTestId("composer-input");
+      const out = renderedStrings();
+      view.unmount();
+      return out;
+    };
+    try {
+      const fr = await collect("fr");
+      const en = await collect("en");
+      expect(englishIn(fr, withoutFixtures)).toEqual([]);
+      expect(identicalIn(fr, en, withoutFixtures)).toEqual([]);
+    } finally {
+      mocks.forEach(([fn], i) => fn.mockImplementation(originals[i]));
+    }
+  });
+});
 
 describe.each(FAILURES)("$name, when its load fails", ({ element, call, shows }) => {
   const collect = async (language: "fr" | "en") => {

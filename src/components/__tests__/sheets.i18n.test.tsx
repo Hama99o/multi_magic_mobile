@@ -11,7 +11,8 @@
  * for anything (TESTING.md §19).
  *
  * And the dialogs a row menu opens (rename, instructions, scope, delete),
- * plus the thumbs-down reason dialog.
+ * the thumbs-down reason dialog, and the attach, profile-photo and reaction
+ * sheets.
  *
  * The conversations sheet's FAILED load is swept too, at the end of this file.
  * NOT SWEPT here: loading states, and the delete confirm's server error, whose
@@ -34,6 +35,10 @@ import { RenameDialog } from "../sessions/RenameDialog";
 import { InstructionsDialog, ScopeDialog } from "../sessions/SessionOptionsDialogs";
 import { DeleteConfirm } from "../sessions/DeleteConfirm";
 import { FeedbackReasonDialog } from "../chat/FeedbackReasonDialog";
+import { AttachSheet } from "../chat/AttachSheet";
+import { PhotoSheet } from "@/screens/account/PhotoSheet";
+import { ReactionSheet } from "@/screens/people/ReactionSheet";
+import type { ChatMessage } from "@/api/ai";
 import { sessionsApi, type AiSession } from "@/api/ai";
 import { useAuthStore } from "@/stores/auth.store";
 
@@ -69,6 +74,11 @@ interface Case {
 }
 
 const noop = () => {};
+const MY_MESSAGE = {
+  id: 31, conversationId: 266, role: "user", body: "À demain au café", createdAt: new Date().toISOString(),
+  deleted: false, userId: 7, sentByMe: true, editedAt: null, readAt: null,
+  reactions: [], links: [], sources: [], undoable: false, undoneAt: null,
+} as ChatMessage;
 const CASES: Case[] = [
   {
     name: "the conversations sheet",
@@ -120,6 +130,27 @@ const CASES: Case[] = [
     name: "the thumbs-down reason dialog",
     element: () => <FeedbackReasonDialog visible onSkip={noop} onSend={noop} />,
     ready: "feedback-reason",
+  },
+  {
+    name: "the attach sheet",
+    element: () => (
+      <AttachSheet visible fileCount={2} onClose={noop} onPickImage={noop} onTakePhoto={noop} onPickDocument={noop} />
+    ),
+    ready: "attach-limits",
+  },
+  {
+    // With a photo, so "remove" renders too.
+    name: "the profile photo sheet",
+    element: () => <PhotoSheet visible hasPhoto onPicked={noop} onRemove={noop} onClose={noop} />,
+    ready: "photo-sheet",
+  },
+  {
+    // One of MINE, so edit and delete render beside the emoji and copy.
+    name: "the reaction sheet",
+    element: () => (
+      <ReactionSheet message={MY_MESSAGE} onReact={noop} onCopy={noop} onEdit={noop} onDelete={noop} onClose={noop} />
+    ),
+    ready: "reaction-sheet",
   },
   {
     name: "a source",

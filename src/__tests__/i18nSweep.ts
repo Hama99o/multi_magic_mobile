@@ -43,6 +43,9 @@ export const SAME_IN_BOTH = new Set([
   "Pages",
   "Contacts",
   "Flow",
+  // files.photo / files.document: the same words in French.
+  "Photo",
+  "Document",
 ]);
 
 /** Every string the current screen rendered, skipping any node inside

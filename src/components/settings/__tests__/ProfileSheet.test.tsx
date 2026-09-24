@@ -27,7 +27,10 @@ const noop = () => {};
 /** The scrim must COVER the screen, not merely exist. Pressing by testID works
  *  on a zero-sized element, which is exactly how a scrim with no size shipped
  *  (`src/theme/fill.ts`), so the geometry is asserted too. */
-function expectCovers(node: { props: { style: unknown } }) {
+// `ReactTestInstance.props` is `any` on SDK 54 and typed on SDK 57, where the
+// narrower shape below stopped being assignable. Takes the instance itself so
+// the helper compiles on both — the sdk-57 worktree is where that surfaced.
+function expectCovers(node: { props: Record<string, unknown> }) {
   expect(StyleSheet.flatten(node.props.style as never)).toMatchObject({
     position: "absolute", top: 0, right: 0, bottom: 0, left: 0,
   });

@@ -410,6 +410,14 @@ describe("the server's error sentence", () => {
     ).toBe("has already been taken");
   });
 
+  // multi_magic 30dce44: account deletion answers with BOTH keys.
+  it("reads the both-keys shape, keeping every reason", () => {
+    expect(apiErrorMessage(refusal({ error: "Password is incorrect", errors: ["Password is incorrect"] }))).toBe(
+      "Password is incorrect",
+    );
+    expect(apiErrorMessage(refusal({ error: "A", errors: ["A", "B"] }))).toBe("A\nB");
+  });
+
   it("says nothing rather than something empty", () => {
     expect(apiErrorMessage(refusal({ errors: [] }))).toBeNull();
     expect(apiErrorMessage(refusal({ error: "" }))).toBeNull();

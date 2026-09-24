@@ -7,7 +7,8 @@
  * cannot prove: that it LOOKS right. That is a device screenshot.
  */
 import { render, screen, waitFor } from "@testing-library/react-native";
-import { AccessibilityInfo, Animated } from "react-native";
+import { AccessibilityInfo } from "react-native";
+import { allNative, watchTimings } from "@/__tests__/animated";
 import { BubblesSkeleton, RowsSkeleton, ThreadSkeleton } from "../skeleton";
 import { Avatar } from "@/screens/people/Avatar";
 
@@ -25,21 +26,22 @@ it.each([
   expect(node.props.accessibilityElementsHidden).toBe(true);
 });
 
-it("pulses on the native driver", async () => {
+it("pulses, on the native driver", async () => {
   jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false);
-  const timing = jest.spyOn(Animated, "timing");
+  const { started } = watchTimings();
   render(<ThreadSkeleton />);
-  await waitFor(() => expect(timing).toHaveBeenCalled());
-  expect(timing.mock.calls.every(([, c]) => (c as { useNativeDriver?: boolean }).useNativeDriver === true)).toBe(true);
+  await waitFor(() => expect(started.length).toBeGreaterThan(0));
+  expect(allNative(started)).toBe(true);
 });
 
 it("holds still under Reduce Motion", async () => {
   const reduced = jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(true);
-  const timing = jest.spyOn(Animated, "timing");
+  const { built } = watchTimings();
   render(<ThreadSkeleton />);
   await waitFor(() => expect(reduced).toHaveBeenCalled());
   await new Promise((r) => setTimeout(r, 20));
-  expect(timing).not.toHaveBeenCalled();
+  // Not even built: a negative about construction is the strong one.
+  expect(built).toHaveLength(0);
 });
 
 it("an avatar with no name yet is a quiet circle, not a question mark", () => {

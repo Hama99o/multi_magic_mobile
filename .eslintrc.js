@@ -233,6 +233,26 @@ const config = {
         message:
           "A `selectable` Text inside a long-pressable element eats the long press on Android — the platform's text-selection menu takes the gesture and onLongPress never runs. Offer Copy in the menu the long press opens instead. See src/screens/people/PersonMessageRow.tsx and docs/design/people-chat/SPEC.md.",
       },
+      /**
+       * A SPY ON `Animated` SEES AN ANIMATION BUILT, NOT RUN.
+       *
+       * `docs/TESTING.md` §19. Measured 2026-09-24: with `.start()` removed
+       * from four animated components, all four suites that spied on
+       * `Animated.timing` stayed green. One of them was a new message left
+       * at opacity 0 for ever. Tests watch animations through
+       * `watchTimings()` in `src/__tests__/animated.ts`, which records the
+       * ones that STARTED. That file is the only place allowed to spy.
+       *
+       * DOES NOT COVER: a spy reached through a renamed import, or
+       * `jest.mock` of the whole module. It also cannot see whether an
+       * animation that started was the RIGHT one.
+       */
+      {
+        id: "animated-spy",
+        selector: "CallExpression[callee.object.name='jest'][callee.property.name='spyOn'][arguments.0.name='Animated']",
+        message:
+          "A spy on Animated sees an animation BUILT, not started: a component that never calls .start() passes it. Use watchTimings() from src/__tests__/animated.ts. See docs/TESTING.md §19.",
+      },
       {
         selector:
           "JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > ConditionalExpression > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > LogicalExpression > Literal[value=/[A-Za-z]{3,}/]",
@@ -272,6 +292,15 @@ config.overrides = [
     files: ["**/__tests__/**"],
     rules: {
       "no-restricted-syntax": strip(restricted.filter((entry) => entry.id !== "text-literal")),
+    },
+  },
+  {
+    // The one place that may spy on Animated: it is what the rule points to.
+    files: ["src/__tests__/animated.ts"],
+    rules: {
+      "no-restricted-syntax": strip(
+        restricted.filter((entry) => entry.id !== "text-literal" && entry.id !== "animated-spy"),
+      ),
     },
   },
 ];

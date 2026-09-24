@@ -1370,3 +1370,26 @@ that is correct. Starting the fade on `cover` already stops the `parallel`
 that animates it, and with it the burst, so the line is redundant. A plant
 that survives does not always mean a dead test. Sometimes it means the code
 it removed was dead. Say which, in the file.
+
+**Then the class, the same evening.** The same plant, `.start()` removed, was
+tried on every other animated component with a test: `ThinkingDots`,
+`Arriving`, the skeleton pulse and `KeyboardPadding`. **All four suites stayed
+green.** Two of those would have been visible defects on every use. `Arriving`
+sets a new message to opacity 0 before fading it in, so the message would
+never appear. `KeyboardPadding` would leave the composer under the keyboard.
+Each test spied on `Animated.timing` and checked its config, which is the
+construction.
+
+Closed as a class rather than four times:
+- `watchTimings()` in `src/__tests__/animated.ts` wraps each timing's own
+  `start`. It records the ones that ran, including those started by a
+  `loop`, `sequence` or `stagger` around them.
+- All five suites now assert on what STARTED. The same plant turns every one
+  red, the opening included.
+- A lint rule (`animated-spy` in `.eslintrc.js`, fixture
+  `eslint-fixtures/animated-spy.ts`) refuses `jest.spyOn(Animated, …)`
+  everywhere except that helper. The next test to watch an animation cannot
+  make the old mistake without being told.
+
+It does not cover `jest.mock` of the whole module, or a started animation
+that is the wrong one.

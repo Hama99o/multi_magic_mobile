@@ -27,7 +27,7 @@
  * product. There is no `if (dark)` anywhere below, because a conditional inside
  * a test is a second implementation of the thing under test.
  */
-import { render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { testQueryClient } from "@/__tests__/queryClient";
 import type { ReactElement } from "react";
@@ -84,8 +84,14 @@ const MESSAGE = {
   undoneAt: null,
 };
 
-jest.mock("@/hooks/useConversation", () => ({
-  useConversation: () => ({
+// ONE object for the whole run, like the real hook: its callbacks are
+// useCallbacks and its arrays change only when the data does. A fresh object
+// per call made every list prop look new on each render, which the typing
+// test below would read as the screen's fault.
+jest.mock("@/hooks/useConversation", () => {
+  let value: unknown;
+  return {
+    useConversation: () => (value ??= ({
     messages: [MESSAGE],
     status: "ready",
     awaitingReply: false,
@@ -95,8 +101,9 @@ jest.mock("@/hooks/useConversation", () => ({
     mergeMessage: jest.fn(),
     failed: false,
     resync: jest.fn(),
-  }),
-}));
+  })),
+  };
+});
 
 jest.mock("@/api/conversations", () => ({
   REACTION_EMOJI: [{ emoji: "👍", id: "thumbs-up" }],
@@ -429,6 +436,27 @@ describe("the people thread", () => {
     }[];
     expect(data[0].kind).not.toBe("day");
     expect(data.at(-1)?.kind).toBe("day");
+  });
+
+  // Measured 2026-09-24 on `qa_phone4`: typing here gave 17 list commits of
+  // 112-432 ms, every bubble re-rendering per keystroke. FlatList is a
+  // PureComponent, so the proof is that no prop changes IDENTITY across a
+  // keystroke. Identity only: a deep compare of a list's props exhausted a
+  // Jest worker's heap once already (`app/__tests__/chat.test.tsx`).
+  it("hands the list the SAME props before and after a keystroke", async () => {
+    setWidth(411);
+    await i18n.changeLanguage("en");
+    renderScreen(<Thread />);
+    await screen.findByTestId("thread-list");
+    fireEvent.changeText(screen.getByTestId("people-composer-input"), "H");
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+    const list = () => screen.UNSAFE_getByProps({ testID: "thread-list", inverted: true });
+    const before = { ...list().props };
+
+    fireEvent.changeText(screen.getByTestId("people-composer-input"), "Hello");
+
+    const after = list().props;
+    expect(Object.keys(before).filter((key) => after[key] !== before[key])).toEqual([]);
   });
 });
 

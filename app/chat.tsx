@@ -325,7 +325,7 @@ export default function Chat() {
           // `undone_at`; nothing new is being waited for, and claiming
           // otherwise would start a three-minute poll for an answer that has
           // already arrived.
-          onUndone={mergeMessage}
+          onChange={mergeMessage}
         />
       </Arriving>
     ),

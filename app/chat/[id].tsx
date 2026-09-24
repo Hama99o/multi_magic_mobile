@@ -33,8 +33,8 @@
  * a silent no-op, and a send that vanishes is the worst failure a chat can
  * have." `typing` and `mark_read` may ride the socket; a message may not.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, View } from "react-native";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { FlatList, Pressable, View, type ViewStyle } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "lucide-react-native";
@@ -75,6 +75,96 @@ type Row =
   | { kind: "unread"; key: string }
   | { kind: "message"; key: string; message: ChatMessage; isLastSent: boolean }
   | { kind: "outgoing"; key: string; outgoing: Outgoing };
+
+/** Module-level so the list is handed the same function every render. */
+const rowKey = (row: Row) => row.key;
+
+/** Two rows are the same row when everything the row DRAWS is the same.
+ *  `rows` is rebuilt on every message change, so its objects are always new;
+ *  comparing their fields is what lets an unchanged bubble skip rendering. */
+function sameRow(a: Row, b: Row): boolean {
+  if (a.kind !== b.kind || a.key !== b.key) return false;
+  if (a.kind === "day" && b.kind === "day") return a.label === b.label;
+  if (a.kind === "message" && b.kind === "message") {
+    return a.message === b.message && a.isLastSent === b.isLastSent;
+  }
+  if (a.kind === "outgoing" && b.kind === "outgoing") {
+    return a.outgoing.body === b.outgoing.body && a.outgoing.failed === b.outgoing.failed;
+  }
+  return true;
+}
+
+/**
+ * ONE ROW OF THE THREAD, MEMOISED.
+ *
+ * Measured 2026-09-24 on `qa_phone4` with React.Profiler: with an inline
+ * `renderItem` and a fresh `onLongPress` arrow per row, typing in this
+ * thread gave 17 list commits of 112-432 ms each, every visible bubble
+ * re-rendering on every keystroke. The same defect the assistant's thread had
+ * (`app/chat.tsx`, `renderItem`).
+ */
+const ThreadRow = memo(
+  function ThreadRow({
+    row,
+    conversationId,
+    nameFor,
+    onOpenSheet,
+    onRetry,
+  }: {
+    row: Row;
+    conversationId: number;
+    nameFor: (message: ChatMessage) => string | null;
+    onOpenSheet: (message: ChatMessage) => void;
+    onRetry: (outgoing: Outgoing) => void;
+  }) {
+    if (row.kind === "day") return <DayDivider label={row.label} />;
+    if (row.kind === "unread") return <UnreadDivider />;
+    if (row.kind === "outgoing") {
+      return (
+        <PersonMessageRow
+          message={{
+            // A local echo. It never merges into the transcript — it has
+            // no server id — and it is replaced by the saved message the
+            // moment the POST answers.
+            id: -1,
+            conversationId,
+            role: "user",
+            body: row.outgoing.body,
+            createdAt: new Date().toISOString(),
+            deleted: false,
+            userId: null,
+            sentByMe: true,
+            editedAt: null,
+            readAt: null,
+            reactions: [],
+            links: [],
+            sources: [],
+            undoable: false,
+            undoneAt: null,
+          }}
+          pending={!row.outgoing.failed}
+          failed={row.outgoing.failed}
+          onRetry={() => onRetry(row.outgoing)}
+        />
+      );
+    }
+    const { message } = row;
+    return (
+      <PersonMessageRow
+        message={message}
+        senderName={nameFor(message)}
+        isLastSent={row.isLastSent}
+        onLongPress={() => onOpenSheet(message)}
+      />
+    );
+  },
+  (a, b) =>
+    sameRow(a.row, b.row) &&
+    a.conversationId === b.conversationId &&
+    a.nameFor === b.nameFor &&
+    a.onOpenSheet === b.onOpenSheet &&
+    a.onRetry === b.onRetry,
+);
 
 export default function PersonThread() {
   const colors = useColors();
@@ -375,6 +465,57 @@ export default function PersonThread() {
     [isGroup, detail],
   );
 
+  // ── EVERY LIST PROP STABLE ACROSS A KEYSTROKE — see `ThreadRow` ────────
+  const openSheet = useCallback((message: ChatMessage) => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    setSheetFor(message);
+  }, []);
+  const onRetryOutgoing = useCallback((outgoing: Outgoing) => void retry(outgoing), [retry]);
+  const renderItem = useCallback(
+    ({ item }: { item: Row }) => (
+      <ThreadRow
+        row={item}
+        conversationId={conversationId}
+        nameFor={nameFor}
+        onOpenSheet={openSheet}
+        onRetry={onRetryOutgoing}
+      />
+    ),
+    [conversationId, nameFor, openSheet, onRetryOutgoing],
+  );
+  const onEndReached = useMemo(() => (hasOlder ? () => void loadOlder() : undefined), [hasOlder, loadOlder]);
+  const listContentStyle = useMemo<ViewStyle>(
+    () => ({
+      width: "100%",
+      maxWidth: metrics.maxMeasure,
+      alignSelf: "center",
+      flexGrow: 1,
+      // Was `space.md`, which left the newest message almost touching the
+      // composer. Same value as the assistant's chat so the two threads
+      // feel like one app.
+      // `paddingTop` because the list is inverted: top and bottom swap.
+      paddingTop: metrics.space.xl,
+    }),
+    [metrics],
+  );
+  const listEmpty = useMemo(
+    () => (
+          status === "loading" ? null : status === "failed" ? (
+            <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
+              <Text tone="muted">{t("thread.loadFailed")}</Text>
+              <Pressable onPress={() => void resync()} accessibilityRole="button" hitSlop={8}>
+                <Text tone="accent">{t("common.tryAgain")}</Text>
+              </Pressable>
+            </View>
+          ) : (
+            <View style={{ flex: 1, justifyContent: "flex-end", paddingBottom: metrics.space.lg }}>
+              <Text tone="muted">{t("thread.noMessages")}</Text>
+            </View>
+          )
+    ),
+    [status, metrics, t, resync],
+  );
+
   return (
     <Screen measure avoidKeyboard>
       <View
@@ -432,90 +573,24 @@ export default function PersonThread() {
         // day and unread divider visually ABOVE the messages it heads.
         inverted
         data={newestFirst}
-        keyExtractor={(row) => row.key}
+        keyExtractor={rowKey}
         maintainVisibleContentPosition={maintainVisibleContentPosition}
-        renderItem={({ item }) => {
-          if (item.kind === "day") return <DayDivider label={item.label} />;
-          if (item.kind === "unread") return <UnreadDivider />;
-          if (item.kind === "outgoing") {
-            return (
-              <PersonMessageRow
-                message={{
-                  // A local echo. It never merges into the transcript — it has
-                  // no server id — and it is replaced by the saved message the
-                  // moment the POST answers.
-                  id: -1,
-                  conversationId,
-                  role: "user",
-                  body: item.outgoing.body,
-                  createdAt: new Date().toISOString(),
-                  deleted: false,
-                  userId: null,
-                  sentByMe: true,
-                  editedAt: null,
-                  readAt: null,
-                  reactions: [],
-                  links: [],
-                  sources: [],
-                  undoable: false,
-                  undoneAt: null,
-                }}
-                pending={!item.outgoing.failed}
-                failed={item.outgoing.failed}
-                onRetry={() => void retry(item.outgoing)}
-              />
-            );
-          }
-          return (
-            <PersonMessageRow
-              message={item.message}
-              senderName={nameFor(item.message)}
-              isLastSent={item.isLastSent}
-              onLongPress={() => {
-                void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setSheetFor(item.message);
-              }}
-            />
-          );
-        }}
+        renderItem={renderItem}
         onScroll={onScroll}
         scrollEventThrottle={64}
         // History by cursor as the reader reaches the OLDEST end — the list's
         // end, inverted. An id cursor cannot skip a message that arrived while
         // they were scrolling, which is what page numbers did
         // (`messages_controller.rb:19-23`).
-        onEndReached={hasOlder ? () => void loadOlder() : undefined}
+        onEndReached={onEndReached}
         onEndReachedThreshold={0.3}
         showsVerticalScrollIndicator={false}
         // IDENTITY.md §8: at 800 dp the conversation takes a measure and
         // centres rather than stretching — the same treatment the assistant's
         // list already has, and the one place a wide screen needs a decision
         // instead of a resize.
-        contentContainerStyle={{
-          width: "100%",
-          maxWidth: metrics.maxMeasure,
-          alignSelf: "center",
-          flexGrow: 1,
-          // Was `space.md`, which left the newest message almost touching the
-          // composer. Same value as the assistant's chat so the two threads
-          // feel like one app.
-          // `paddingTop` because the list is inverted: top and bottom swap.
-          paddingTop: metrics.space.xl,
-        }}
-        ListEmptyComponent={
-          status === "loading" ? null : status === "failed" ? (
-            <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
-              <Text tone="muted">{t("thread.loadFailed")}</Text>
-              <Pressable onPress={() => void resync()} accessibilityRole="button" hitSlop={8}>
-                <Text tone="accent">{t("common.tryAgain")}</Text>
-              </Pressable>
-            </View>
-          ) : (
-            <View style={{ flex: 1, justifyContent: "flex-end", paddingBottom: metrics.space.lg }}>
-              <Text tone="muted">{t("thread.noMessages")}</Text>
-            </View>
-          )
-        }
+        contentContainerStyle={listContentStyle}
+        ListEmptyComponent={listEmpty}
       />
 
         <ScrollToBottom visible={awayFromBottom} onPress={toBottom} />

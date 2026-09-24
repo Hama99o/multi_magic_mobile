@@ -63,6 +63,8 @@ export interface MessageReaction {
  * assistant reads a subset, and narrowing here would mean re-parsing the same
  * payload a second way the moment people chat arrives.
  */
+export type Rating = "positive" | "negative";
+
 export interface ChatMessage {
   id: number;
   conversationId: number;
@@ -81,6 +83,11 @@ export interface ChatMessage {
    */
   sentByMe: boolean;
   editedAt: string | null;
+  /**
+   * THIS user's own thumb on this answer, as the server holds it. Absent from
+   * a serializer that predates the field, which reads as "not rated".
+   */
+  rating?: Rating | null;
   /** Everyone else has read it — what a double tick means. Null otherwise. */
   readAt: string | null;
   reactions: MessageReaction[];
@@ -253,6 +260,7 @@ function parseMessage(payload: unknown): ChatMessage {
     userId: typeof record.user_id === "number" ? record.user_id : null,
     sentByMe: typeof record.sent_by_me === "boolean" ? record.sent_by_me : false,
     editedAt: optStr(record.edited_at),
+    rating: record.rating === "positive" || record.rating === "negative" ? record.rating : null,
     readAt: optStr(record.read_at),
     reactions: optArr(record.reactions).map(parseReaction),
     links: optArr(record.links).map(parseLink),
@@ -346,8 +354,17 @@ export const undoApi = {
 
 export const feedbackApi = {
   /** A thumb on an answer. Upserted server-side, so pressing again replaces. */
-  rate: async (messageId: number, rating: "positive" | "negative"): Promise<void> => {
+  rate: async (messageId: number, rating: Rating): Promise<void> => {
     await http.post("/api/v1/ai/feedbacks", { message_id: messageId, rating });
+  },
+  /**
+   * Take a thumb back off: the SAME endpoint with `rating: null`. The key must
+   * be SENT with a null value, not omitted: the controller clears on
+   * `params.key?(:rating) && params[:rating].blank?`. Idempotent (clearing
+   * nothing is a 200), and scoped exactly like a rating.
+   */
+  clear: async (messageId: number): Promise<void> => {
+    await http.post("/api/v1/ai/feedbacks", { message_id: messageId, rating: null });
   },
 };
 

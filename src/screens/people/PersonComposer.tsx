@@ -41,7 +41,6 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { LANGUAGES, useSpeechToText } from "@/hooks/useSpeechToText";
 import { LengthCounter, isTooLong } from "@/components/chat/LengthCounter";
-import { anticipateKeyboard } from "@/components/KeyboardLift";
 
 /** Long enough that a pause between words does not re-announce. */
 const TYPING_THROTTLE_MS = 3_000;
@@ -163,7 +162,6 @@ export function PersonComposer({
       >
         <TextInput
           testID="people-composer-input"
-        onFocus={anticipateKeyboard}
           value={value}
           onChangeText={onChange}
           placeholder={editing ? t("thread.editMessage") : t("thread.message")}

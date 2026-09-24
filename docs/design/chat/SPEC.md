@@ -427,3 +427,23 @@ that height over ~250 ms (the IME's own duration) at once, correcting on
 than tracking it exactly. On the second open onwards it may get most of the
 way. It is a guess until recorded, and is the first thing to try if the bar
 above is not met.
+
+### MEASURED, 2026-09-24, `qa_phone4` (Android 15, edge-to-edge), 60 fps
+
+The composer's bottom edge against the keyboard's top edge, frame by frame,
+over two openings (the first with nothing remembered, the second after):
+- the composer rose **about 0.1 s BEFORE the keyboard began to appear**
+  (2.70 s vs 2.80 s; 8.60 s vs 8.63 s); the keyboard then slid in underneath
+  it in ~0.2 s;
+- **covered: 0 ms**, both times; no jump after settling. **The bar for a
+  library or a rebuild is not met.**
+- the premise above was WRONG on this device: here `keyboardDidShow` fires
+  at the START of the slide. The source said "after"; the device said
+  otherwise. That is why the frames came first.
+- so `KeyboardLift` (`b68894a`) measured the same as RN's own KAV: the first
+  opening, with nothing remembered, behaved like the second. It was reverted
+  as complexity that bought nothing.
+- **What is still wrong:** the content jumps ~694 px (~264 dp) in a SINGLE
+  frame as the composer rises. A `LayoutAnimation` did not animate it on
+  this build. That snap is the remaining keyboard issue, and the next thing
+  to try.

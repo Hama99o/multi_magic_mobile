@@ -228,8 +228,13 @@ else
   fi
 fi
 
-# 8. Expo Go present, and the right build for this SDK
-if adb -s "$SERIAL" shell pm list packages 2>/dev/null | grep -q "$APP_ID"; then
+# 8. The app present — and, for Expo Go only, the right build for this SDK.
+# The SDK match is Expo Go's question: the dev build carries its own runtime
+# and reports OUR versionName (app.json `version`, 1.0.0), so asking it for
+# 54.* failed every USE_DEV_BUILD=1 doctor on 2026-09-23.
+if [ "$APP_ID" != "host.exp.exponent" ] && adb -s "$SERIAL" shell pm list packages 2>/dev/null | grep -q "package:$APP_ID\$"; then
+  ok "$APP_ID installed (dev build — no Expo Go SDK match to make)"
+elif adb -s "$SERIAL" shell pm list packages 2>/dev/null | grep -q "$APP_ID"; then
   v=$(adb -s "$SERIAL" shell dumpsys package "$APP_ID" 2>/dev/null | grep -m1 versionName | cut -d= -f2 | tr -d '\r')
   case "$v" in
     54.*) ok "Expo Go $v (matches SDK 54)" ;;

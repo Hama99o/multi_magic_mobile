@@ -11,7 +11,7 @@ import "@/styles/global.css";
 // initialised before the first `t()` runs, and a screen importing it lazily
 // would render one frame of raw keys.
 import "@/i18n";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
@@ -25,6 +25,7 @@ import { profileApi } from "@/api/profile";
 import { useScheme } from "@/hooks/useColors";
 import { loadToken } from "@/api/http";
 import { TOKENS } from "@/theme/tokens";
+import { OpeningAnimation } from "@/components/OpeningAnimation";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -55,6 +56,9 @@ export default function RootLayout() {
    */
   const scheme = useScheme();
   const [ready, setReady] = useState(false);
+  // Once per cold start, over the first screen — see `OpeningAnimation`.
+  const [opening, setOpening] = useState(true);
+  const endOpening = useCallback(() => setOpening(false), []);
 
   useEffect(() => {
     void (async () => {
@@ -150,6 +154,7 @@ export default function RootLayout() {
             },
           }}
         />
+        {opening ? <OpeningAnimation ground={TOKENS[scheme].ground} onDone={endOpening} /> : null}
       </SafeAreaProvider>
     </QueryClientProvider>
   );

@@ -149,8 +149,16 @@ export function AnswerActions({
     <View style={{ gap: metrics.space.xs }} testID="answer-actions">
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
         {iconButton("copy", copied ? t("answer.copied") : t("answer.copy"), Copy, () => void copy())}
-        {iconButton("up", t("answer.good"), ThumbsUp, () => void toggle("positive"), rating === "positive")}
-        {iconButton("down", t("answer.bad"), ThumbsDown, () => void toggle("negative"), rating === "negative")}
+        {/* NO THUMBS ON A NOTICE. "You need an API key" is not an answer to
+            rate, and since multi_magic 357dd7a a thumbs-down becomes a turn
+            the model reads ("I marked your previous answer as unhelpful"): a
+            stray tap here would tell it something the person never said. */}
+        {message.keyProblem ? null : (
+          <>
+            {iconButton("up", t("answer.good"), ThumbsUp, () => void toggle("positive"), rating === "positive")}
+            {iconButton("down", t("answer.bad"), ThumbsDown, () => void toggle("negative"), rating === "negative")}
+          </>
+        )}
 
         {/* Read aloud — behind READ_ALOUD_ENABLED; renders nothing until it
             flips. See ReadAloud.tsx. */}

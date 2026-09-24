@@ -25,7 +25,7 @@ import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useAuthStore } from "@/stores/auth.store";
-import { LIMITS, aiApi, type ChatMessage } from "@/api/ai";
+import { LIMITS, RETRYABLE_KEY_PROBLEMS, aiApi, type ChatMessage } from "@/api/ai";
 import { isRateLimited, isNetworkFailure, apiErrorMessage, retryAfterSeconds } from "@/api/http";
 import { useReachability } from "@/stores/reachability.store";
 import { useConversation } from "@/hooks/useConversation";
@@ -408,6 +408,16 @@ export default function Chat() {
     wasAwaiting.current = awaitingReply;
   }, [awaitingReply, t]);
 
+  /** The newest message is a notice that asking again could fix. */
+  const retryableNotice = useMemo(() => {
+    const newest = messages[messages.length - 1];
+    return newest?.role === "assistant" && RETRYABLE_KEY_PROBLEMS.includes(newest.keyProblem ?? "");
+  }, [messages]);
+  const askAgain = useCallback(() => {
+    const last = [...messages].reverse().find((m) => m.role === "user");
+    if (last?.body) void send(last.body);
+  }, [messages, send]);
+
   // ── EVERY LIST PROP STABLE ACROSS A KEYSTROKE ──────────────────────────
   // `FlatList` is a PureComponent: with these memoised (and `renderItem`
   // above), typing into the composer does not re-render the list at all.
@@ -464,6 +474,20 @@ export default function Chat() {
             <View style={{ gap: metrics.space.sm }}>
               {awaitingReply ? <ThinkingDots /> : null}
 
+              {/* ASK AGAIN under the newest reply when it is a notice that asking
+                  again can fix (the provider was busy, or the turn failed).
+                  Since multi_magic 6670dcd those arrive as saved messages, not
+                  as `aiError`, so the button below no longer appeared for them. */}
+              {!failed && !awaitingReply && retryableNotice ? (
+                <Button
+                  label={t("chat.askAgain")}
+                  tone="neutral"
+                  block={false}
+                  onPress={askAgain}
+                  testID="chat-ask-again"
+                />
+              ) : null}
+
               {failed ? (
                 <View style={{ gap: metrics.space.sm }} testID="chat-answer-failed">
                   <Text variant="caption" tone="danger">
@@ -473,10 +497,7 @@ export default function Chat() {
                     label={t("chat.askAgain")}
                     tone="neutral"
                     block={false}
-                    onPress={() => {
-                      const last = [...messages].reverse().find((m) => m.role === "user");
-                      if (last?.body) void send(last.body);
-                    }}
+                    onPress={askAgain}
                   />
                 </View>
               ) : null}
@@ -509,7 +530,7 @@ export default function Chat() {
               ) : null}
             </View>
     ),
-    [awaitingReply, failed, secondsLeft, failedQuestion, metrics, t, messages, send],
+    [awaitingReply, failed, secondsLeft, failedQuestion, metrics, t, retryableNotice, askAgain, send],
   );
 
   return (

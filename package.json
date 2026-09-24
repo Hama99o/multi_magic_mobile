@@ -12,7 +12,8 @@
     "bundle": "EXPO_PUBLIC_API_URL=http://10.0.2.2:3001 expo export --platform android --output-dir /tmp/mm-bundle-check",
     "typecheck": "tsc --noEmit",
     "lint:flows": "python3 qa/flow_lint.py",
-    "pretest": "npm run lint:flows"
+    "test:qa": "bash qa/app_checks_test.sh",
+    "pretest": "npm run lint:flows && npm run test:qa"
   },
   "dependencies": {
     "@rails/actioncable": "^7.2.302",

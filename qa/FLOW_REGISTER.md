@@ -1000,13 +1000,16 @@ splash-to-opening hand-over cannot be judged without a rebuild. The last
 incremental rebuild took 2 min 18 s. `app.json` changes may need a prebuild
 first, which is more.
 
-**Preflight: two checks that can pass without measuring, reported to
-whoever holds `qa/preflight.sh`:**
-- Step 8 checks the app is INSTALLED, not that it is current. The APK above
-  passes it.
-- Step 9 launches over the deep link and reports "no fatal errors". This
-  rig measured that the dev client's deep link does not open the app (every
-  recording used `monkey`), so step 9 can pass having launched nothing.
+**Preflight's two blind checks are FIXED (2026-09-25), tested by
+`qa/app_checks_test.sh`, which runs in `npm test`:**
+- Step 8 now asks whether the dev build is CURRENT: installed time against
+  the newest native change in git. **So on today's APK preflight FAILS at
+  step 8**, because the APK predates `97b0c5c`. That is correct, since the
+  build cannot show the new splash. Rebuild, or run with
+  `ALLOW_STALE_BUILD=1` for the JS-only flows.
+- Step 9 launches a dev build with `monkey`, and checks what is in FRONT
+  before claiming a clean launch. The dev launcher waiting for a server is a
+  warning that names the tap to make.
 
 **Before the first flow:** Metro on 3029 with
 `EXPO_PUBLIC_API_URL=http://10.0.2.2:3001` (inlined at build time, so it must be

@@ -9,6 +9,8 @@
 set -uo pipefail
 DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/qa.config.sh"
+# Steps 8 and 9's decisions, as pure functions tested by qa/app_checks_test.sh.
+. "$DIR/app_checks.sh"
 
 fail=0
 ok(){   echo "  ok    $1"; }
@@ -234,6 +236,24 @@ fi
 # 54.* failed every USE_DEV_BUILD=1 doctor on 2026-09-23.
 if [ "$APP_ID" != "host.exp.exponent" ] && adb -s "$SERIAL" shell pm list packages 2>/dev/null | grep -q "package:$APP_ID\$"; then
   ok "$APP_ID installed (dev build — no Expo Go SDK match to make)"
+  # INSTALLED IS NOT CURRENT (2026-09-25). A dev build older than a change to
+  # native config (app.json, package.json, android/, plugins/) is missing that
+  # change, and JavaScript over Metro cannot bring it: the light splash,
+  # added in 97b0c5c, was absent from a build that passed this step.
+  native=$(git -C "$DIR/.." log -1 --format='%ct %h %s' -- app.json package.json android plugins 2>/dev/null)
+  installed=$(installed_epoch "$(adb -s "$SERIAL" shell dumpsys package "$APP_ID" 2>/dev/null | tr -d '\r')" \
+    "$(adb -s "$SERIAL" shell date '+%F %T' 2>/dev/null | tr -d '\r')" \
+    "$(adb -s "$SERIAL" shell date +%s 2>/dev/null | tr -d '\r')")
+  if [ -z "$installed" ] || [ -z "$native" ]; then
+    bad "cannot tell whether the installed build is current (no lastUpdateTime, or no git history)"
+  elif build_is_current "$installed" "${native%% *}"; then
+    ok "installed build is newer than the last native change (${native#* })"
+  elif [ "${ALLOW_STALE_BUILD:-0}" = 1 ]; then
+    warn "installed build PREDATES a native change (${native#* }); ALLOW_STALE_BUILD=1, so JS-only flows may run"
+  else
+    bad "installed build PREDATES a native change: ${native#* }"
+    bad "  rebuild it, or ALLOW_STALE_BUILD=1 to run JS-only flows on it anyway"
+  fi
 elif adb -s "$SERIAL" shell pm list packages 2>/dev/null | grep -q "$APP_ID"; then
   v=$(adb -s "$SERIAL" shell dumpsys package "$APP_ID" 2>/dev/null | grep -m1 versionName | cut -d= -f2 | tr -d '\r')
   case "$v" in
@@ -244,13 +264,26 @@ else
   bad "$APP_ID not installed"
 fi
 
-# 9. Clean launch over the deep link
+# 9. A clean launch, and PROOF that something launched.
+# The dev client ignores the deep link (every recording on this rig used
+# `monkey`), and this step used to report "no fatal errors" having launched
+# nothing. So a dev build is launched as the rig launches it, and what is in
+# FRONT is checked before any "clean" is claimed.
 if [ "$fail" = 0 ]; then
   adb -s "$SERIAL" logcat -c >/dev/null 2>&1
-  adb -s "$SERIAL" shell am start -a android.intent.action.VIEW -d "$DEEP_LINK" "$APP_ID" >/dev/null 2>&1
+  if [ "$APP_ID" = "host.exp.exponent" ]; then
+    adb -s "$SERIAL" shell am start -a android.intent.action.VIEW -d "$DEEP_LINK" "$APP_ID" >/dev/null 2>&1
+  else
+    adb -s "$SERIAL" shell monkey -p "$APP_ID" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
+  fi
   sleep 25
+  case "$(front_is "$APP_ID" "$(adb -s "$SERIAL" shell dumpsys activity activities 2>/dev/null | tr -d '\r')")" in
+    app)      ok "$APP_ID is in front" ;;
+    launcher) warn "the dev launcher is in front, waiting for a server: tap its $METRO_PORT entry before the first flow" ;;
+    *)        bad "$APP_ID is NOT in front after the launch: nothing launched, so no crash check means anything" ;;
+  esac
   crash=$(adb -s "$SERIAL" logcat -d 2>/dev/null | grep -iE 'FATAL EXCEPTION|AndroidRuntime|Cannot find native module|Unable to load script|Could not connect to development server' | head -5)
-  [ -z "$crash" ] && ok "app launched over $DEEP_LINK with no fatal errors" \
+  [ -z "$crash" ] && ok "no fatal errors in the 25 s after the launch" \
                   || { bad "errors after launch:"; echo "$crash" | sed 's/^/        /'; }
 fi
 

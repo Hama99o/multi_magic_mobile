@@ -1488,3 +1488,14 @@ And one more in time rather than content: a wait on a mock's call history
 passed on the previous render's calls. The general form, for the next
 instrument: **before trusting green, ask what ELSE would make this true.**
 `docs/INSTRUMENTS.md` has each as a recipe for the web.
+
+
+**A leak between TESTS is the same family as a leak between people**
+(2026-09-25, `useDraft.test.ts`). One test replaced `AsyncStorage.getItem`
+with `mockImplementation`, which `jest.clearAllMocks()` does not undo. Every
+later test that read the same conversation got that test's words back. It
+stayed invisible until a later test read that conversation, which is when a
+new draft test went red for a reason that had nothing to do with it. The
+fix restores the real implementation before each test. The general rule:
+**whatever a test replaces, the next test inherits unless something puts it
+back**, and `clearAllMocks` clears calls, not implementations.

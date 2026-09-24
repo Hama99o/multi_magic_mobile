@@ -22,6 +22,7 @@
 import {
   Pressable,
   View,
+  type FlatList,
   type LayoutChangeEvent,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -335,6 +336,69 @@ export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
     onContentSizeChange,
     onListLayout,
     toBottom,
+  };
+}
+
+/**
+ * THE NEWEST MESSAGE AS THE LIST'S OWN ANCHOR — for an `inverted` FlatList.
+ *
+ * Chosen 2026-09-24 over the chase above (`useAwayFromBottom`), after it was
+ * measured on `qa_phone4`. The chase aimed at a bottom it computed from two
+ * height sources that disagreed while the keyboard was up (a jump "to 374"
+ * landing at 269), corrected every resize a frame or more after the native
+ * layout had already been drawn, and fought its own animated scroll after a
+ * send (+81 / -81 / +81 px). Every one of those is a JS program trying to hold
+ * a position the native list could hold by itself.
+ *
+ * Inverted, offset 0 IS the newest message. The keyboard opening, the composer
+ * wrapping, a reply growing while it arrives: each changes a height at the
+ * bottom edge, and a list anchored at offset 0 stays at offset 0. Nothing here
+ * issues a scroll for any of them. What is left for JS:
+ *
+ *   - whether the reader has left the newest (`awayFromBottom`, the button);
+ *   - the button itself, one animated scroll to 0;
+ *   - `maintainVisibleContentPosition`, so a message arriving while they read
+ *     history does not shove the history under their finger, and so one
+ *     arriving while they are AT the newest still shows (the autoscroll
+ *     threshold).
+ *
+ * What dies with the chase, so nobody rediscovers it: the "scroll issued
+ * inside onContentSizeChange travels to the OLD bottom" problem, the
+ * `scrollToEnd` approximation for an unmeasured tall last cell
+ * (`VirtualizedList.getCellMetricsApprox`), the retries and the settle clock.
+ * None of those can occur when no scroll is issued. They remain TRUE of a
+ * non-inverted list, which is why `useAwayFromBottom` keeps its reasoning
+ * until the last thread stops using it.
+ */
+export function useNewestAnchor<T>(listRef: RefObject<FlatList<T> | null>) {
+  const [awayFromBottom, setAway] = useState(false);
+  const away = useRef(false);
+
+  const onScroll = useCallback((e: NativeSyntheticEvent<NativeScrollEvent>) => {
+    // Inverted: the offset IS the distance from the newest.
+    const next = e.nativeEvent.contentOffset.y > AWAY;
+    // Only on a flip — a scroll event re-rendering the screen on every frame
+    // would cost more than the button is worth.
+    if (next !== away.current) {
+      away.current = next;
+      setAway(next);
+    }
+  }, []);
+
+  const toBottom = useCallback(() => {
+    // Already at the newest: nothing to do, and `maintainVisibleContentPosition`
+    // shows what arrives. Animating anyway is the send-shake this replaced.
+    if (!away.current) return;
+    away.current = false;
+    setAway(false);
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  }, [listRef]);
+
+  return {
+    awayFromBottom,
+    onScroll,
+    toBottom,
+    maintainVisibleContentPosition: { minIndexForVisible: 0, autoscrollToTopThreshold: AWAY },
   };
 }
 

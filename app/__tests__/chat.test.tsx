@@ -6,7 +6,7 @@
  * distinguishable from one that is merely slow.
  */
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
-import { AccessibilityInfo } from "react-native";
+import { AccessibilityInfo, FlatList } from "react-native";
 
 const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({
@@ -141,6 +141,24 @@ describe("the empty state", () => {
         body: "What does payslip.pdf say?",
       }),
     );
+  });
+});
+
+// ── THE LIST IS INVERTED, NEWEST FIRST ────────────────────────────────────
+//
+// Chosen 2026-09-24 after the chase was measured shaking the thread on
+// `qa_phone4` (`useNewestAnchor`). Inverted with the data in the old order
+// would open on the OLDEST message; the two only mean "newest at the bottom"
+// together, so both are asserted.
+describe("the thread", () => {
+  it("is an inverted list with the newest message first in its data", async () => {
+    conversation.messages = [message(1, "user", "First?"), message(2, "assistant", "Newest.")];
+    renderChat();
+    await waitForSession();
+
+    const list = screen.UNSAFE_getByType(FlatList);
+    expect(list.props.inverted).toBe(true);
+    expect((list.props.data as ChatMessage[]).map((m) => m.id)).toEqual([2, 1]);
   });
 });
 

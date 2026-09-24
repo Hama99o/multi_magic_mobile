@@ -11,7 +11,7 @@ import { render, screen, fireEvent, act } from "@testing-library/react-native";
 import { renderHook } from "@testing-library/react-native";
 import type { LayoutChangeEvent, NativeScrollEvent, NativeSyntheticEvent } from "react-native";
 
-import { ScrollToBottom, useAwayFromBottom } from "../ScrollToBottom";
+import { ScrollToBottom, useAwayFromBottom, useNewestAnchor } from "../ScrollToBottom";
 
 /** A scroll event `fromBottom` pixels above the end of the content. */
 const scrolled = (fromBottom: number) =>
@@ -505,5 +505,50 @@ describe("going to the bottom by measurement rather than by approximation", () =
     act(() => result.current.onContentSizeChange(0, 4000));
     expect(list.scrollToEnd).toHaveBeenCalled();
     expect(list.scrollToOffset).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * THE INVERTED LIST'S ANCHOR. Offset 0 is the newest message, so the only
+ * scroll this hook may ever issue is the button's — the resize, send and
+ * reply cases that the chase above handled issue none, and that is the point.
+ */
+describe("useNewestAnchor", () => {
+  const offset = (y: number) =>
+    ({ nativeEvent: { contentOffset: { y }, contentSize: { height: 3000 }, layoutMeasurement: { height: 400 } } }) as unknown as NativeSyntheticEvent<NativeScrollEvent>;
+
+  it("is away only past the threshold, measured from offset 0", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useNewestAnchor(list.ref as never));
+    act(() => result.current.onScroll(offset(100)));
+    expect(result.current.awayFromBottom).toBe(false);
+    act(() => result.current.onScroll(offset(600)));
+    expect(result.current.awayFromBottom).toBe(true);
+  });
+
+  it("scrolls nowhere when already at the newest — the list holds it", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useNewestAnchor(list.ref as never));
+    act(() => result.current.onScroll(offset(0)));
+    act(() => result.current.toBottom());
+    expect(list.jumps).toHaveLength(0);
+  });
+
+  it("the button makes ONE animated scroll to offset 0, and hides", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useNewestAnchor(list.ref as never));
+    act(() => result.current.onScroll(offset(1200)));
+    act(() => result.current.toBottom());
+    expect(list.jumps).toEqual([{ animated: true, offset: 0 }]);
+    expect(result.current.awayFromBottom).toBe(false);
+  });
+
+  it("keeps history still under a reader, and shows what arrives at the newest", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useNewestAnchor(list.ref as never));
+    expect(result.current.maintainVisibleContentPosition).toEqual({
+      minIndexForVisible: 0,
+      autoscrollToTopThreshold: expect.any(Number),
+    });
   });
 });

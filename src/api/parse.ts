@@ -93,3 +93,29 @@ export function readable<T>(items: unknown[], parse: (item: unknown) => T): T[] 
   }
   return out;
 }
+
+/**
+ * A list of ROWS, read row by row, with a count of the ones that could not
+ * be read, so the screen can SAY so (decided by Hamma9901, 2026-09-25).
+ *
+ * Until then one unreadable row failed its whole list into "could not
+ * load": one bad notification cost every notification. Dropping it silently
+ * would be worse in a different way, since it hides data he has, the same
+ * shape as the conversation that page 1 never showed. So the rows that parse
+ * are kept, and the rest are COUNTED, and every list screen shows "N items
+ * could not be read" (`UnreadableNotice`). Only ApiShapeError is counted;
+ * anything else is a bug and still throws.
+ */
+export function readableRows<T>(items: unknown[], parse: (item: unknown) => T): { rows: T[]; unreadable: number } {
+  const rows: T[] = [];
+  let unreadable = 0;
+  for (const item of items) {
+    try {
+      rows.push(parse(item));
+    } catch (e) {
+      if (!(e instanceof ApiShapeError)) throw e;
+      unreadable += 1;
+    }
+  }
+  return { rows, unreadable };
+}

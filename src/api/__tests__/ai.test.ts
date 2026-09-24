@@ -203,13 +203,20 @@ describe("the message parser", () => {
     expect(m.role).toBe("user");
   });
 
-  it("REFUSES a stringified id instead of coercing it", async () => {
+  // Still REFUSED, never coerced into a number. What changed on 2026-09-25
+  // (Hamma9901's call) is what the refusal costs: the row, counted, rather
+  // than the whole page and with it the whole thread. The screen says how
+  // many could not be read (`UnreadableNotice`).
+  it("REFUSES a stringified id instead of coercing it, and counts it rather than losing the page", async () => {
     mock.onGet("/api/v1/conversations/4/messages").reply(200, {
-      messages: [message("7" as unknown as number, "user", "hi")],
+      messages: [message(8, "assistant", "fine"), message("7" as unknown as number, "user", "hi")],
       meta: { pagy: { pages: 1 } },
     });
 
-    await expect(messagesApi.latest(4)).rejects.toBeInstanceOf(ApiShapeError);
+    const page = await messagesApi.latest(4);
+    expect(page.messages.map((m) => m.id)).toEqual([8]);
+    expect(page.unreadable).toBe(1);
+    expect(() => messagesApi.parseOne(message("7" as unknown as number, "user", "hi"))).toThrow(ApiShapeError);
   });
 });
 

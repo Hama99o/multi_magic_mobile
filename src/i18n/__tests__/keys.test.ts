@@ -120,7 +120,12 @@ const COMPOSED = [
 ];
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
-const PLURAL = new Set(["sessions.messages", "sessions.files", "deleteConversation.questionWithFiles"]);
+const PLURAL = new Set([
+  "sessions.messages",
+  "sessions.files",
+  "deleteConversation.questionWithFiles",
+  "common.unreadable",
+]);
 
 const CALLED = calledKeys();
 const NAMESPACES = new Set(Object.keys(i18n.getResourceBundle("en", "translation")));

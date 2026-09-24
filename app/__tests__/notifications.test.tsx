@@ -96,3 +96,22 @@ describe("more than one page", () => {
     expect(list).toHaveBeenCalledTimes(1);
   });
 });
+
+// ── AN UNREADABLE ROW IS SKIPPED AND SAID (Hamma9901's call, 2026-09-25) ──
+describe("rows the app could not read", () => {
+  it("are counted on screen, not hidden in silence, and not allowed to take the list", async () => {
+    jest.spyOn(notificationsApi, "list").mockResolvedValue({ notifications: [read], unreadCount: 0, hasMore: false, unreadable: 2 });
+    renderScreen();
+    expect(await screen.findByText("Anisa's loan is due")).toBeTruthy();
+    expect(screen.getByTestId("unreadable-notice").props.children).toBe(
+      "2 items here could not be read, so they are not shown.",
+    );
+  });
+
+  it("say nothing when every row was read", async () => {
+    jest.spyOn(notificationsApi, "list").mockResolvedValue({ notifications: [read], unreadCount: 0, hasMore: false, unreadable: 0 });
+    renderScreen();
+    await screen.findByText("Anisa's loan is due");
+    expect(screen.queryByTestId("unreadable-notice")).toBeNull();
+  });
+});

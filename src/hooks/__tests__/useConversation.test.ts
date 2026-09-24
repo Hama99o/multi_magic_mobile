@@ -583,3 +583,11 @@ describe("a stale resync after an edit or a delete", () => {
     expect(result.current.messages[0]).toMatchObject({ body: "second" });
   });
 });
+
+describe("messages the parser could not read", () => {
+  it("are counted for the screen to say so", async () => {
+    latest.mockResolvedValue({ messages: [message(1, "user", "Do I owe anyone?")], hasMore: false, unreadable: 1 });
+    const { result } = render();
+    await waitFor(() => expect(result.current.unreadable).toBe(1));
+  });
+});

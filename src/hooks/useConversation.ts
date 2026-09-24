@@ -114,6 +114,9 @@ export interface UseConversationResult {
   /** The reply did not arrive — the server said so over the socket, or we gave
    *  up waiting. */
   failed: boolean;
+  /** Messages the parser could not read and left out, for the screen to say
+   *  so (`UnreadableNotice`). */
+  unreadable: number;
   resync: () => Promise<void>;
 }
 
@@ -186,6 +189,10 @@ export function useConversation({
   const [hasOlder, setHasOlder] = useState(false);
   const [awaitingReply, setAwaitingReply] = useState(false);
   const [failed, setFailed] = useState(false);
+  /** Messages the parser could not read: the latest read's, plus every older
+   *  page's (`readableRows`). The screen says so (`UnreadableNotice`). */
+  const [unreadableLatest, setUnreadableLatest] = useState(0);
+  const [unreadableOlder, setUnreadableOlder] = useState(0);
 
   /**
    * The live conversation id, read inside callbacks that must not be rebuilt
@@ -221,6 +228,7 @@ export function useConversation({
       // back until the page meets what is already here, or history ends.
       const newestKnown = Math.max(0, ...messagesRef.current.filter((m) => !isOptimisticId(m.id)).map((m) => m.id));
       let hasMore = page.hasMore;
+      let unreadable = page.unreadable ?? 0;
       const filled = [...page.messages];
       for (let i = 0; i < MAX_GAP_PAGES && newestKnown > 0 && hasMore; i++) {
         const oldest = Math.min(...filled.map((m) => m.id));
@@ -228,8 +236,10 @@ export function useConversation({
         const older = await messagesApi.before(id, oldest);
         filled.unshift(...older.messages);
         hasMore = older.hasMore;
+        unreadable += older.unreadable ?? 0;
       }
       page.messages = filled;
+      setUnreadableLatest(unreadable);
       // Merged, not replaced. A reply can land on the socket while this request
       // is in flight, and replacing would drop it — the one message the user is
       // actually waiting for.
@@ -254,6 +264,7 @@ export function useConversation({
       // A CURSOR, not a page number — see `messagesApi.before`.
       const page = await messagesApi.before(id, oldest);
       setMessages((current) => merge(current, page.messages));
+      setUnreadableOlder((n) => n + (page.unreadable ?? 0));
       setHasOlder(page.hasMore);
     } catch {
       // Leave what is on screen. Failing to load history is not a reason to
@@ -424,5 +435,6 @@ export function useConversation({
   return {
     messages, status, awaitingReply, hasOlder, loadOlder,
     addPending, addOptimistic, confirmPending, dropPending, keyOf, mergeMessage, failed, resync,
+    unreadable: unreadableLatest + unreadableOlder,
   };
 }

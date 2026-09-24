@@ -29,6 +29,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { subscribeToChannel } from "@/lib/cable";
 import { conversationsApi, type Conversation } from "@/api/conversations";
+import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { failureMessage } from "@/api/failure";
 import { ConversationRow } from "@/screens/people/ConversationRow";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
@@ -125,6 +126,8 @@ export default function Chats() {
           {t("chats.title")}
         </Text>
       </View>
+
+      <UnreadableNotice count={(data?.pages ?? []).reduce((n, page) => n + (page.unreadable ?? 0), 0)} />
 
       {error ? (
         <View testID="chats-load-failed" style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>

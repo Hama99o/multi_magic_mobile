@@ -190,6 +190,13 @@ jest.mock("@/api/notifications", () => ({
 
 jest.mock("@/api/calendar", () => ({
   calendarApi: {
+    // The screen reads the PAGE (with its unreadable count); it delegates to
+    // `upcoming`, so the failure and empty tables that override `upcoming`
+    // still drive it.
+    upcomingPage: jest.fn(async (days: number) => ({
+      occurrences: await jest.requireMock("@/api/calendar").calendarApi.upcoming(days),
+      unreadable: 0,
+    })),
     upcoming: jest.fn(async () => [
       {
         key: "5:2026-09-19",

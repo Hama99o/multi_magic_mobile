@@ -15,10 +15,23 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { useAuthStore } from "@/stores/auth.store";
 
 const PREFIX = "mm-draft:";
 
+/**
+ * KEYED BY WHO IS SIGNED IN as well as by conversation (2026-09-25, the
+ * sign-out audit; decided by Hamma9901). A draft is his, so it survives his
+ * own sign-out and comes back when he signs in again; but it is his, so no
+ * other account's key can ever match it, the way the remembered session is
+ * already keyed. With nobody signed in, nothing is read or written.
+ */
+function keyFor(userId: number, conversationId: number): string {
+  return `${PREFIX}${userId}:${conversationId}`;
+}
+
 export function useDraft(conversationId: number | null) {
+  const userId = useAuthStore((s) => s.user?.id ?? null);
   /**
    * The draft is TAGGED with the conversation it belongs to, and the reset on
    * a switch is a DERIVATION rather than an effect.
@@ -34,14 +47,18 @@ export function useDraft(conversationId: number | null) {
    * eleven tests, four of which re-render with a different conversation,
    * written before this change for exactly that reason.
    */
-  const [held, setHeld] = useState<{ id: number | null; text: string }>({
+  // Tagged with the USER too: an account switch while this screen is mounted
+  // must not show, or write under the new account's key, the previous
+  // account's text for the same conversation id.
+  const [held, setHeld] = useState<{ id: number | null; user: number | null; text: string }>({
     id: conversationId,
+    user: userId,
     text: "",
   });
-  const draft = held.id === conversationId ? held.text : "";
+  const draft = held.id === conversationId && held.user === userId ? held.text : "";
   const setDraft = useCallback(
-    (text: string) => setHeld({ id: conversationId, text }),
-    [conversationId],
+    (text: string) => setHeld({ id: conversationId, user: userId, text }),
+    [conversationId, userId],
   );
 
   /**
@@ -53,12 +70,12 @@ export function useDraft(conversationId: number | null) {
 
   useEffect(() => {
     loaded.current = false;
-    if (conversationId == null) return;
+    if (conversationId == null || userId == null) return;
 
     let cancelled = false;
     void (async () => {
       try {
-        const stored = await AsyncStorage.getItem(`${PREFIX}${conversationId}`);
+        const stored = await AsyncStorage.getItem(keyFor(userId, conversationId));
         if (!cancelled && stored) setDraft(stored);
       } catch {
         // A draft that cannot be read is an empty composer, which is where the
@@ -74,12 +91,12 @@ export function useDraft(conversationId: number | null) {
     // `setDraft` is a `useCallback` over `conversationId`, so its identity
     // changes exactly when this effect already re-runs. Listing it satisfies
     // exhaustive-deps without widening what re-runs this.
-  }, [conversationId, setDraft]);
+  }, [conversationId, userId, setDraft]);
 
   useEffect(() => {
-    if (conversationId == null || !loaded.current) return;
+    if (conversationId == null || userId == null || !loaded.current) return;
 
-    const key = `${PREFIX}${conversationId}`;
+    const key = keyFor(userId, conversationId);
     void (async () => {
       try {
         if (draft) await AsyncStorage.setItem(key, draft);
@@ -88,7 +105,7 @@ export function useDraft(conversationId: number | null) {
         // Nothing to do — the draft is still in state for this session.
       }
     })();
-  }, [draft, conversationId]);
+  }, [draft, conversationId, userId]);
 
   /** Called once the question is safely posted. */
   const clear = useCallback(() => setDraft(""), [setDraft]);

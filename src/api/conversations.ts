@@ -41,7 +41,7 @@
  */
 import { http } from "./http";
 import { messagesApi, type ChatMessage } from "./ai";
-import { arr, id, num, obj, optStr, readable, str } from "./parse";
+import { arr, id, num, obj, optStr, readable, readableRows, str } from "./parse";
 import { t } from "@/i18n";
 
 /** One member of a thread, as the list and the header draw them. */
@@ -89,6 +89,8 @@ export interface ConversationList {
   /** THREADS with something unread — the badge on the chats icon. */
   unreadConversations: number;
   hasMore: boolean;
+  /** Rows on this page the parser could not read (`readableRows`). */
+  unreadable?: number;
 }
 
 /**
@@ -204,10 +206,10 @@ export const conversationsApi = {
     const record = obj(res.data, "conversations");
     const meta = obj(record.meta, "conversations.meta");
     const pagy = obj(meta.pagy, "conversations.meta.pagy");
+    const { rows, unreadable } = readableRows(arr(record.conversations, "conversations.conversations"), parseConversation);
     return {
-      conversations: arr(record.conversations, "conversations.conversations").map(
-        parseConversation,
-      ),
+      conversations: rows,
+      unreadable,
       unreadConversations: typeof meta.unread_conversations === "number"
         ? meta.unread_conversations
         : 0,

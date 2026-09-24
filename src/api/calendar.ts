@@ -37,7 +37,7 @@
  * the wrong day.
  */
 import { http } from "./http";
-import { arr, id, obj, optStr, str } from "./parse";
+import { arr, id, obj, optStr, readableRows, str } from "./parse";
 
 export interface CalendarEvent {
   id: number;
@@ -119,12 +119,17 @@ export const calendarApi = {
    * and re-sorting on the client would mean re-deriving a rule that arrives for
    * free — and getting it subtly different.
    */
-  upcoming: async (days = 7): Promise<Occurrence[]> => {
+  upcoming: async (days = 7): Promise<Occurrence[]> => (await calendarApi.upcomingPage(days)).occurrences,
+
+  /** The same, with a count of the occurrences that could not be read, for
+   *  the calendar screen to say so (`readableRows`, parse.ts). */
+  upcomingPage: async (days = 7): Promise<{ occurrences: Occurrence[]; unreadable: number }> => {
     const res = await http.get("/api/v1/calendar_app/events/upcoming", {
       params: { days },
     });
     const record = obj(res.data, "upcoming");
-    return arr(record.occurrences, "upcoming.occurrences").map(parseOccurrence);
+    const { rows, unreadable } = readableRows(arr(record.occurrences, "upcoming.occurrences"), parseOccurrence);
+    return { occurrences: rows, unreadable };
   },
 };
 

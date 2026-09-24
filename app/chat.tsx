@@ -28,6 +28,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { LIMITS, RETRYABLE_KEY_PROBLEMS, aiApi, type ChatMessage } from "@/api/ai";
 import { isRateLimited, isNetworkFailure, apiErrorMessage, retryAfterSeconds } from "@/api/http";
 import { useReachability } from "@/stores/reachability.store";
+import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { useConversation } from "@/hooks/useConversation";
 import { useDraft } from "@/hooks/useDraft";
 import { useStarterPrompts } from "@/hooks/useStarterPrompts";
@@ -208,7 +209,7 @@ export default function Chat() {
     },
     [user?.id],
   );
-  const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addOptimistic, confirmPending, dropPending, keyOf, mergeMessage, resync } =
+  const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addOptimistic, confirmPending, dropPending, keyOf, mergeMessage, resync, unreadable } =
     useConversation({ conversationId, channel: "MessageChannel" });
 
   const { draft, setDraft, clear } = useDraft(conversationId);
@@ -670,6 +671,9 @@ export default function Chat() {
           </View>
         </View>
 
+        {/* Messages the server sent that could not be read, said rather than
+            skipped in silence (`readableRows`, parse.ts). */}
+        <UnreadableNotice count={unreadable ?? 0} />
         {/* Wraps the list so `ScrollToBottom`'s absolute position anchors to
             the list's box rather than the screen's — anchored to the screen it
             lands ON the composer instead of above it. */}

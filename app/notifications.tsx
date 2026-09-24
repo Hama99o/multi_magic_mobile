@@ -39,6 +39,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { RefreshButton, UpdatedLine } from "@/components/Freshness";
 import { subscribeToChannel } from "@/lib/cable";
 import { aiApi } from "@/api/ai";
+import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { failureMessage } from "@/api/failure";
 import {
   notificationsApi,
@@ -305,6 +306,8 @@ export default function Notifications() {
           {actionFailure}
         </Text>
       ) : null}
+
+      <UnreadableNotice count={(data?.pages ?? []).reduce((n, page) => n + (page.unreadable ?? 0), 0)} />
 
       {error ? (
         <View testID="notifications-load-failed" style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>

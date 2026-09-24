@@ -23,7 +23,7 @@
  * `message_count`, and the mapping to camelCase happens once, here, explicitly.
  */
 import { http } from "./http";
-import { arr, bool, id, num, obj, optStr, readable, str } from "./parse";
+import { arr, bool, id, num, obj, optStr, readable, readableRows, str } from "./parse";
 
 export type MessageRole = "user" | "assistant" | "system";
 
@@ -184,6 +184,8 @@ export interface MessagePage {
   /** Oldest first, ready to render. */
   messages: ChatMessage[];
   hasMore: boolean;
+  /** Messages on this page the parser could not read (`readableRows`). */
+  unreadable?: number;
 }
 
 /** Server limits, mirrored so the app can refuse before the round trip. */
@@ -438,11 +440,12 @@ export const messagesApi = {
   latest: async (conversationId: number): Promise<MessagePage> => {
     const res = await http.get(`/api/v1/conversations/${conversationId}/messages`);
     const record = obj(res.data, "messages");
-    const rows = arr(record.messages, "messages.messages").map(parseMessage);
+    const { rows, unreadable } = readableRows(arr(record.messages, "messages.messages"), parseMessage);
     const meta = obj(record.meta, "messages.meta");
     const pagy = obj(meta.pagy, "messages.meta.pagy");
     return {
       messages: rows.reverse(),
+      unreadable,
       hasMore: num(pagy.pages, "messages.meta.pagy.pages") > 1,
     };
   },
@@ -461,10 +464,11 @@ export const messagesApi = {
       params: { before_id: beforeId },
     });
     const record = obj(res.data, "messages");
-    const rows = arr(record.messages, "messages.messages").map(parseMessage);
+    const { rows, unreadable } = readableRows(arr(record.messages, "messages.messages"), parseMessage);
     const meta = obj(record.meta, "messages.meta");
     return {
       messages: rows.reverse(),
+      unreadable,
       hasMore: bool(meta.has_more, "messages.meta.has_more"),
     };
   },

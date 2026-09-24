@@ -7,6 +7,8 @@
  */
 export const en = {
   common: {
+    unreadable_one: "{{count}} item here could not be read, so it is not shown.",
+    unreadable_other: "{{count}} items here could not be read, so they are not shown.",
     back: "Back",
     refresh: "Refresh",
     updated: "Updated {{when}}",

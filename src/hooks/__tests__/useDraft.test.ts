@@ -18,12 +18,27 @@
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useDraft } from "../useDraft";
+import { useAuthStore } from "@/stores/auth.store";
 
-const KEY = (id: number) => `mm-draft:${id}`;
+/** Keyed by the signed-in user as well (see useDraft.ts). */
+const KEY = (id: number, userId = 7) => `mm-draft:${userId}:${id}`;
+const signIn = (id: number) =>
+  useAuthStore.setState({ user: { id, email: null, firstName: null, lastName: null, fullName: null, avatar: null } as never });
+
+/**
+ * The storage mock's REAL read, restored before every test. One test below
+ * swaps `getItem` for a slow promise with `mockImplementation`, and
+ * `clearAllMocks` does not undo an implementation, so every later test that
+ * read that conversation got the slow test's words back. It was latent until
+ * a later test read the same conversation id (2026-09-25).
+ */
+const realGetItem = (AsyncStorage.getItem as jest.Mock).getMockImplementation();
 
 beforeEach(async () => {
   jest.clearAllMocks();
+  if (realGetItem) (AsyncStorage.getItem as jest.Mock).mockImplementation(realGetItem);
   await AsyncStorage.clear();
+  signIn(7);
 });
 
 describe("restoring", () => {
@@ -186,4 +201,44 @@ describe("no conversation yet", () => {
     expect(AsyncStorage.getItem).not.toHaveBeenCalled();
     expect(AsyncStorage.setItem).not.toHaveBeenCalled();
   });
+});
+
+
+// ── WHOSE DRAFT (the sign-out audit, 2026-09-25) ──────────────────────────
+describe("whose draft it is", () => {
+  it("is not shown to another account on the same conversation id", async () => {
+    await AsyncStorage.setItem(KEY(4, 7), "his half-written question");
+    signIn(8);
+    const { result } = renderHook(() => useDraft(4));
+    await act(async () => {});
+    expect(result.current.draft).toBe("");
+  });
+
+  it("comes back to him after signing in again", async () => {
+    await AsyncStorage.setItem(KEY(4, 7), "his half-written question");
+    const { result } = renderHook(() => useDraft(4));
+    await waitFor(() => expect(result.current.draft).toBe("his half-written question"));
+  });
+
+  it("is not written anywhere while nobody is signed in", async () => {
+    useAuthStore.setState({ user: null });
+    const { result } = renderHook(() => useDraft(4));
+    await act(async () => {
+      result.current.setDraft("typed while signed out");
+    });
+    expect(await AsyncStorage.getAllKeys()).toEqual([]);
+  });
+});
+
+it("an account switch while the screen is open shows the new account nothing of the old one's", async () => {
+  const { result } = renderHook(() => useDraft(4));
+  await act(async () => {});
+  await act(async () => {
+    result.current.setDraft("his text");
+  });
+  await act(async () => {
+    signIn(8);
+  });
+  expect(result.current.draft).toBe("");
+  expect(await AsyncStorage.getItem(KEY(4, 8))).toBeNull();
 });

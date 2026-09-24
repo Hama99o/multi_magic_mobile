@@ -44,6 +44,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { useConversation } from "@/hooks/useConversation";
 import { performOnChannel, subscribeToChannel } from "@/lib/cable";
 import {
@@ -209,7 +210,7 @@ export default function PersonThread() {
    * cost is now taken rather than carried. Nothing here expects a reply, so
    * nothing here calls `addPending`.
    */
-  const { messages, status, hasOlder, loadOlder, mergeMessage, resync } = useConversation({
+  const { messages, status, hasOlder, loadOlder, mergeMessage, resync, unreadable } = useConversation({
     conversationId: Number.isFinite(conversationId) ? conversationId : null,
     // See this file's header. NOT ConversationChannel.
     channel: "MessageChannel",
@@ -597,6 +598,8 @@ export default function PersonThread() {
         </View>
       </View>
 
+      {/* Messages that could not be read, said rather than skipped in silence. */}
+      <UnreadableNotice count={unreadable ?? 0} />
       {/* Wrapped so the button anchors to the list rather than the screen —
           anchored to the screen it lands on the composer. */}
       <View style={{ flex: 1 }}>

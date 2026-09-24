@@ -54,6 +54,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { calendarApi, type Occurrence } from "@/api/calendar";
 import { aiApi } from "@/api/ai";
+import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { failureMessage } from "@/api/failure";
 import { useDraft } from "@/hooks/useDraft";
 import { EventRow } from "@/screens/people/EventRow";
@@ -111,7 +112,9 @@ export default function Calendar() {
 
   const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt } = useQuery({
     queryKey: ["calendar", "upcoming", WINDOW_DAYS],
-    queryFn: () => calendarApi.upcoming(WINDOW_DAYS),
+    // The page, not the bare list: it carries how many occurrences could not
+    // be read, which the screen says (`UnreadableNotice`).
+    queryFn: () => calendarApi.upcomingPage(WINDOW_DAYS),
   });
 
   const reload = useCallback(() => {
@@ -145,7 +148,7 @@ export default function Calendar() {
   );
 
   const rows = useMemo<Row[]>(() => {
-    const occurrences = data ?? [];
+    const occurrences = data?.occurrences ?? [];
     const today = localDateKey(new Date());
     const out: Row[] = [];
 
@@ -220,6 +223,8 @@ export default function Calendar() {
           {t("calendar.composed")}
         </Text>
       ) : null}
+
+      <UnreadableNotice count={data?.unreadable ?? 0} />
 
       {error ? (
         <View testID="calendar-load-failed" style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>

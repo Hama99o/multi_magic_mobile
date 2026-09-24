@@ -32,7 +32,7 @@
  */
 import { http } from "./http";
 import { absoluteUrl } from "./conversations";
-import { arr, id, num, obj, optStr, readable, str } from "./parse";
+import { arr, id, num, obj, optStr, readable, readableRows, str } from "./parse";
 
 export interface NotificationActor {
   id: number;
@@ -69,6 +69,8 @@ export interface NotificationPage {
   notifications: AppNotification[];
   unreadCount: number;
   hasMore: boolean;
+  /** Rows on this page the parser could not read (`readableRows`). */
+  unreadable?: number;
 }
 
 function parseActor(payload: unknown): NotificationActor | null {
@@ -112,10 +114,10 @@ export const notificationsApi = {
     const record = obj(res.data, "notifications");
     const meta = obj(record.meta, "notifications.meta");
     const pagy = obj(meta.pagy, "notifications.meta.pagy");
+    const { rows, unreadable } = readableRows(arr(record.notifications, "notifications.notifications"), parseNotification);
     return {
-      notifications: arr(record.notifications, "notifications.notifications").map(
-        parseNotification,
-      ),
+      notifications: rows,
+      unreadable,
       unreadCount: typeof meta.unread_count === "number" ? meta.unread_count : 0,
       hasMore: num(pagy.pages, "notifications.meta.pagy.pages") > page,
     };

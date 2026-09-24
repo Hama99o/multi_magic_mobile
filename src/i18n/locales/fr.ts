@@ -24,6 +24,8 @@ import type { Translations } from "./en";
 
 export const fr: Translations = {
   common: {
+    unreadable_one: "{{count}} élément n’a pas pu être lu, il n’est donc pas affiché.",
+    unreadable_other: "{{count}} éléments n’ont pas pu être lus, ils ne sont donc pas affichés.",
     back: "Retour",
     refresh: "Actualiser",
     updated: "Mis à jour {{when}}",

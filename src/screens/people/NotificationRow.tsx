@@ -91,7 +91,16 @@ export function NotificationRow({
           {notification.title}
         </Text>
         {notification.body ? (
-          <Text variant="caption" tone="muted" numberOfLines={1}>
+          // ONE line, except the morning brief: several short lines, each of
+          // which is the point (multi_magic 55ca44c, which made the web's bell
+          // show it in full). Here a tap composes a question rather than
+          // opening the notification, so a brief cut to one line had no
+          // other place on the phone where the rest could be read.
+          <Text
+            variant="caption"
+            tone="muted"
+            numberOfLines={notification.kind === "ai.morning_brief" ? undefined : 1}
+          >
             {notification.body}
           </Text>
         ) : null}

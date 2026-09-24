@@ -6,6 +6,7 @@
  * with the Authorization header and the fingerprint both absent — which are the
  * two things this file exists to get right.
  */
+import i18n from "@/i18n";
 import MockAdapter from "axios-mock-adapter";
 import * as SecureStore from "expo-secure-store";
 import {
@@ -55,6 +56,24 @@ describe("the request interceptor", () => {
     await http.get("/api/v1/ai/conversation");
 
     expect(mock.history.get[0].headers?.Authorization).toBe("Bearer eyJhbGciOi.payload.sig");
+  });
+
+  // BEFORE sign-in the server can only learn the reader's language from this
+  // header (multi_magic `reader_locale`, 4c6b728), and the app sent none, so a
+  // French reader's sign-in and reset errors came back in English. Read per
+  // request: switching language changes the next request, not the next launch.
+  it("sends the APP's language on every request, and follows a switch", async () => {
+    mock.onGet("/anything").reply(200, {});
+    await i18n.changeLanguage("fr");
+    try {
+      await http.get("/anything");
+      expect(mock.history.get[0].headers?.["Accept-Language"]).toBe("fr");
+      await i18n.changeLanguage("en");
+      await http.get("/anything");
+      expect(mock.history.get[1].headers?.["Accept-Language"]).toBe("en");
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 
   it("sends the device fingerprint on EVERY request", async () => {

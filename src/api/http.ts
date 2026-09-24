@@ -29,6 +29,7 @@ import axios, { type AxiosError, type AxiosInstance } from "axios";
 import * as SecureStore from "expo-secure-store";
 import { API_URL } from "@/config/env";
 import { getDeviceFingerprint } from "@/lib/fingerprint";
+import i18n from "@/i18n";
 
 export const BASE_URL = API_URL;
 
@@ -223,6 +224,14 @@ http.interceptors.request.use(async (config) => {
   // token as stolen.
   config.headers["X-Device-Fingerprint"] = await getDeviceFingerprint();
 
+  // THE APP'S LANGUAGE, read per request because the reader can change it.
+  // multi_magic answers in `users.lang` once signed in, and BEFORE sign-in in
+  // `Accept-Language` (`application_controller.rb`, `reader_locale`,
+  // `4c6b728`). This app sent none, so a French reader's sign-in, sign-up,
+  // reset and two-factor errors came back in English. Found 2026-09-24 by
+  // reading the backend's commits against what the phone sends.
+  config.headers["Accept-Language"] = i18n.language;
+
   // ONLY ON THE LOGIN REQUEST. This is what lets a 2FA account skip the
   // emailed code on a device it has already vouched for
   // (`sessions_controller#trusted_device_for?`), and it is the ONE request
@@ -244,6 +253,7 @@ http.interceptors.request.use(async (config) => {
 export async function authHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     "X-Device-Fingerprint": await getDeviceFingerprint(),
+    "Accept-Language": i18n.language,
   };
   const token = await loadToken();
   if (token) headers.Authorization = token;

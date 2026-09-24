@@ -982,6 +982,43 @@ map cannot see. Each is named with its commit.
 - **`99-screens`** goes last. It takes pictures, and the pictures are only
   worth taking once the flows above have said the screens work.
 
+## Run 9 go/no-go, checked from the desk at 2026-09-25 00:06
+
+**GO, measured:**
+- All 24 flow files lint clean against today's code (`qa/flow_lint.py`, exit 0).
+- Backend up (`/up` 200 at 00:06). The QA account (never his) signs in, with
+  `lang` en and nothing left over from runs 8 and 9 (3 assistant chats, none
+  stamped). It has 1 people conversation (`06` needs it), 0 notifications and
+  0 events, so `07`, `08` and `20` take their empty branches again. The local
+  backend sends `ai_morning_brief`, so the new switch appears there.
+
+**BUILD: fine for the flows, NOT fine for judging the opening.** The APK is
+from 2026-09-21 21:56. Every app change since is JavaScript, served by
+Metro, EXCEPT two `app.json` changes: the light splash (`97b0c5c`) and the
+dictation plugin's config (`7f5922a`). So the flows run on this APK, but the
+splash-to-opening hand-over cannot be judged without a rebuild. The last
+incremental rebuild took 2 min 18 s. `app.json` changes may need a prebuild
+first, which is more.
+
+**Preflight: two checks that can pass without measuring, reported to
+whoever holds `qa/preflight.sh`:**
+- Step 8 checks the app is INSTALLED, not that it is current. The APK above
+  passes it.
+- Step 9 launches over the deep link and reports "no fatal errors". This
+  rig measured that the dev client's deep link does not open the app (every
+  recording used `monkey`), so step 9 can pass having launched nothing.
+
+**Before the first flow:** Metro on 3029 with
+`EXPO_PUBLIC_API_URL=http://10.0.2.2:3001` (inlined at build time, so it must be
+right before Metro starts); launch with `monkey`, and if the dev launcher
+appears, tap its 10.0.2.2:3029 entry.
+
+**Slot length, estimated from run 8 (about 2 h for 28 flows with a
+rebuild):** boot and preflight about 10 min; the run-9 order about
+60–75 min; the three recordings (keyboard at 60 fps, one push, the opening)
+about 20 min. **About 1 h 45 min**, plus the rebuild if the opening is to be
+judged.
+
 ## What run 9 would need — written 2026-09-22 23:55, before anybody asks for a sweep
 
 Run 8 was 23 PASS, 1 PARTIAL, 4 NOT MEASURED. Two of those four are now closed

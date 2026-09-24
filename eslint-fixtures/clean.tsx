@@ -2,6 +2,7 @@
 // A rule that fires on these is over-broad, which this test catches too.
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import type { LucideIcon } from "lucide-react-native";
 
 // A literal require of a name written out: the form the app actually uses.
 let audio: unknown = null;
@@ -26,10 +27,10 @@ export function ObjectStyle() {
 
 // `selectable` with NO long press anywhere near it — the assistant's answer,
 // the question bubble, the privacy text.
-export function SelectableWithoutLongPress() {
+export function SelectableWithoutLongPress({ answer }: { answer: string }) {
   return (
     <View>
-      <Text selectable>an answer somebody may want to copy</Text>
+      <Text selectable>{answer}</Text>
     </View>
   );
 }
@@ -59,5 +60,14 @@ export function Scrims() {
 }
 
 // Icons: a TYPE import from the index is erased, so it is allowed.
-import type { LucideIcon } from "lucide-react-native";
 export type AnyIcon = LucideIcon;
+
+// Text children that are not words: a separator, and a value.
+export function NotWords({ count }: { count: number }) {
+  return (
+    <View>
+      <Text> · </Text>
+      <Text>{count}</Text>
+    </View>
+  );
+}

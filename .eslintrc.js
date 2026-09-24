@@ -15,7 +15,7 @@
  * so the next reader knows what would flip it — **the first RTL language brings
  * this rule back**, and counting locales will not tell you when that happens.
  */
-module.exports = {
+const config = {
   extends: ["expo"],
   overrides: [
     {
@@ -139,6 +139,22 @@ module.exports = {
         selector: "CallExpression[callee.name='require'] > :first-child:not(Literal)",
         message:
           "require() needs a string LITERAL — Metro resolves requires statically and a variable makes the app unbundleable, while Node and Jest accept it. One try/catch per module with the name written out; see src/stores/readAloud.store.ts and docs/TESTING.md §1.",
+      },
+      /**
+       * A WORD WRITTEN STRAIGHT INTO A <Text> IS ENGLISH ON A FRENCH PHONE.
+       *
+       * `CLAUDE.md` said it plainly: "a bare literal in a visible <Text> is
+       * caught by nothing". Measured 2026-09-24: a literal planted in
+       * `app/chats.tsx` passed lint, and Jest caught it only because the key
+       * it replaced lost its caller. A NEW sentence, with no key behind it,
+       * passed every gate. Two letters or more, so a "·" or a "/" separator
+       * is not a finding.
+       */
+      {
+        id: "text-literal",
+        selector: "JSXElement[openingElement.name.name='Text'] > JSXText[value=/[A-Za-z]{2,}/]",
+        message:
+          "Words written straight into <Text> are English on a French phone. Put them in src/i18n/locales/{en,fr}.ts and render t(\"…\"). See docs/LANGUAGES.md.",
       },
       /**
        * THE ICON LIBRARY'S INDEX SHIPS EVERY ICON IT HAS.
@@ -269,3 +285,27 @@ module.exports = {
     "eslint-fixtures/",
   ],
 };
+
+/**
+ * TESTS MAY WRITE WORDS INTO <Text>: sample content is the point of a
+ * fixture. Everything else in the list still applies to them. `id` is ours,
+ * not ESLint's, and is stripped before the config is handed over.
+ */
+const restricted = config.rules["no-restricted-syntax"];
+const strip = (entries) =>
+  entries.map((entry) => {
+    if (typeof entry !== "object") return entry;
+    const { id: _id, ...rest } = entry;
+    return rest;
+  });
+config.rules["no-restricted-syntax"] = strip(restricted);
+config.overrides = [
+  {
+    files: ["**/__tests__/**"],
+    rules: {
+      "no-restricted-syntax": strip(restricted.filter((entry) => entry.id !== "text-literal")),
+    },
+  },
+];
+
+module.exports = config;

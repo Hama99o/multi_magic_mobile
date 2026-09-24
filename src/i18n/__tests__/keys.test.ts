@@ -73,38 +73,59 @@ function calledKeys(): Map<string, string> {
 }
 
 /**
- * Keys built at the call site from a variable — `t(\`session.${reason}\`)`,
- * `t(app.labelKey)`. The grep cannot see them, so they are listed, and the
- * list is short on purpose: a key a reader cannot grep for is a key nobody
- * can find when it is wrong.
+ * KEYS WRITTEN AS DATA — `labelKey: "scope.notes"`, `LABEL_KEYS`, and so on —
+ * then handed to `t(option.labelKey)`.
+ *
+ * DEAD INSTRUMENT, found and planted 2026-09-24: these used to come ONLY from
+ * the hand list below, so a NEW option was invisible to both checks. A theme
+ * option labelled `appearance.doesNotExist` left the whole suite green
+ * (77 suites, 869 tests) while the screen would have printed the raw key.
+ * Now every string literal shaped like a key, in a namespace the locale
+ * really has, is collected from the source, with comments stripped so a
+ * filename in a comment (`chat.tsx`) is not mistaken for one.
+ */
+function literalKeys(namespaces: Set<string>): Map<string, string> {
+  const LITERAL = /(["'`])([a-z][A-Za-z]*\.[a-zA-Z][\w.]*)\1/g;
+  const found = new Map<string, string>();
+  for (const root of ROOTS) {
+    for (const file of sourceFiles(root)) {
+      const code = fs
+        .readFileSync(file, "utf8")
+        .replace(/\/\*[\s\S]*?\*\//g, "")
+        .replace(/(^|[^:"'`])\/\/.*$/gm, "$1");
+      for (const match of code.matchAll(LITERAL)) {
+        const key = match[2];
+        // A parser's SHAPE LABEL — `str(record.id, "session.id")` names a
+        // payload path for an error message, not a translation.
+        const before = code.slice(Math.max(0, (match.index ?? 0) - 80), match.index);
+        if (/\b(?:str|num|id|obj|arr|optArr|parseId|bool)\((?:[^()]|\([^()]*\))*,\s*$/.test(before)) continue;
+        if (namespaces.has(key.split(".")[0]) && !found.has(key)) found.set(key, file);
+      }
+    }
+  }
+  return found;
+}
+
+/**
+ * Keys built from a TEMPLATE at the call site — `t(\`session.${reason}\`)` —
+ * the one shape no source scan can read. Everything that used to be here
+ * because it sat in a data map is found by `literalKeys` now; keep this list
+ * to templates only.
  */
 const COMPOSED = [
+  // `sessionEndSentence` in auth.store.ts: t(`session.${reason}`), reason is
+  // `SessionEndReason` ("expired" | "revoked") in api/http.ts.
   "session.expired",
   "session.revoked",
-  "appearance.system",
-  "appearance.light",
-  "appearance.dark",
-  "scope.notes",
-  "scope.pages",
-  "scope.contacts",
-  "scope.todos",
-  "scope.money",
-  "scope.flow",
-  "scope.calendar",
-  "signUp.firstName",
-  "signUp.lastName",
-  "signUp.email",
-  "signUp.password",
-  "signUp.missingFirstName",
-  "signUp.missingLastName",
-  "signUp.missingEmail",
-  "signUp.missingPassword",
 ];
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
 const PLURAL = new Set(["sessions.messages", "sessions.files", "deleteConversation.questionWithFiles"]);
 
 const CALLED = calledKeys();
+const NAMESPACES = new Set(Object.keys(i18n.getResourceBundle("en", "translation")));
+const LITERAL = literalKeys(NAMESPACES);
+for (const [key, file] of LITERAL) if (!CALLED.has(key)) CALLED.set(key, file);
 const ALL = [...new Set([...CALLED.keys(), ...COMPOSED])].sort();
 
 describe("the keys the app actually calls", () => {

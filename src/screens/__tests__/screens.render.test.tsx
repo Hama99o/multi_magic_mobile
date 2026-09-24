@@ -419,6 +419,94 @@ describe.each(SCREENS)("$name", ({ element, handles, french }) => {
 });
 
 /**
+ * NO ENGLISH PROSE ON A FRENCH SCREEN — every string, not one per screen.
+ *
+ * The "reads in French" row above checks ONE sentence per screen, and that is
+ * how two whole surfaces stayed English (2026-09-24 claims audit): the chats
+ * list's rows computed "You: …" and "No messages yet" in code, and its row
+ * only looked at the title. The `<Text>` lint rule sees JSX text, not a string
+ * returned from a function. So this collects what actually RENDERED on every
+ * screen above, in French — each text node, and each accessibility label,
+ * hint and placeholder — and fails on any that carries an English-only word.
+ *
+ * Enumerated from the reachable side: a screen added to `SCREENS` is swept
+ * without anyone writing a French test for it.
+ *
+ * Exempt, each for a stated reason, and nothing else:
+ * - a string that appears verbatim in THIS FILE: that is fixture data the
+ *   test fed in (his notes, his events), which is his words, not the app's;
+ * - anything inside `privacy-body`: the policy is one English document in
+ *   both languages, by design (the `privacy` row's comment above).
+ *
+ * The word list is English words that are NOT also French, so "message",
+ * "contacts", "notes", "pages" and "conversation" are deliberately absent.
+ *
+ * Planted, 2026-09-24: the old chats row ("You: …", "…, 2 unread") and an
+ * English label held in a variable on the account screen are both red here.
+ * Lint passed the second.
+ *
+ * NOT SWEPT, so not claimed: the assistant screen (not in `SCREENS`, so its
+ * suggested questions are covered by `useStarterPrompts.test.ts` only), the
+ * sheets (conversations, profile, sources), two-factor, and every state
+ * other than the one these fixtures produce: empty, failed and loading
+ * branches render other strings. An English word outside the list is also
+ * missed; the list is a net, not a dictionary.
+ */
+const ENGLISH_ONLY = /\b(the|you|your|yours|is|are|was|were|what|when|where|which|who|how|with|this|that|these|and|from|have|has|not|yet|will|can|could|would|should|about|there|their|of|to|for|it|its|no|loading|delete|deleted|cancel|save|saved|back|send|retry|unread|search|settings|sign|account|password|edit|remove|close|done|error|failed|untitled|today|yesterday|online|typing|someone|upcoming|nothing|something|try|again|chat|chats|keys?|key)\b/i;
+
+function renderedStrings(): string[] {
+  const out: string[] = [];
+  const insidePrivacy = (node: { parent: unknown; props: { testID?: string } } | null): boolean => {
+    for (let n = node; n; n = n.parent as typeof node) if (n.props?.testID === "privacy-body") return true;
+    return false;
+  };
+  for (const node of screen.UNSAFE_root.findAll(() => true, { deep: true })) {
+    if (typeof node.type !== "string") continue;
+    if (insidePrivacy(node as never)) continue;
+    const { children, accessibilityLabel, accessibilityHint, placeholder } = node.props as Record<string, unknown>;
+    if (node.type === "Text") {
+      const text = ([] as unknown[]).concat(children).filter((c) => typeof c === "string" || typeof c === "number").join("");
+      if (text.trim()) out.push(text.trim());
+    }
+    for (const v of [accessibilityLabel, accessibilityHint, placeholder]) {
+      if (typeof v === "string" && v.trim()) out.push(v.trim());
+    }
+  }
+  return [...new Set(out)];
+}
+
+const THIS_FILE = require("fs").readFileSync(__filename, "utf8") as string;
+/** Every double-quoted literal of four characters or more in this file: the
+ *  fixture data. A rendered string often WRAPS one ("Non lu : <his title>"),
+ *  so each is cut out of the string before the check, not matched whole. */
+const FIXTURE_TEXT = [...THIS_FILE.matchAll(/"((?:[^"\\\n]|\\.){4,})"/g)]
+  .map((m) => m[1])
+  .sort((a, b) => b.length - a.length);
+const withoutFixtures = (text: string) =>
+  FIXTURE_TEXT.reduce((rest, literal) => rest.split(literal).join(" "), text);
+
+describe.each(SCREENS)("$name, swept in French", ({ element, handles, french }) => {
+  it("renders no English prose", async () => {
+    setWidth(360);
+    await i18n.changeLanguage("fr");
+    renderScreen(element());
+    // EVERY handle first, not just the French sentence. The first version
+    // swept as soon as the title appeared, before the list's data had
+    // arrived, and found two strings on the chats screen: a sweep of the
+    // starting state, which is green for anything (TESTING.md §19).
+    for (const handle of handles) await screen.findByTestId(handle);
+    await screen.findAllByText(french, { exact: false, includeHiddenElements: true });
+
+    const strings = renderedStrings();
+    // A sweep that collected nothing would pass for every screen. Two is the
+    // floor because privacy's only non-policy strings are its title and Back.
+    expect(strings.length).toBeGreaterThanOrEqual(2);
+    const english = strings.filter((s) => ENGLISH_ONLY.test(withoutFixtures(s)));
+    expect(english).toEqual([]);
+  });
+});
+
+/**
  * THE PEOPLE THREAD IS INVERTED, NEWEST FIRST — the same anchor as the
  * assistant's (`useNewestAnchor`, 2026-09-24). Inverted alone would open on
  * the oldest; reversed alone would read upside down. And the day divider must

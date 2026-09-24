@@ -682,3 +682,26 @@ Theirs was correct, enforced, and walked around by hand.
 
 This sits with "Ask what the report would look like if the step had done
 nothing" above. A 200 from a stranger and a 200 from us are the same report.
+
+## A refusal is only evidence if it is the RIGHT refusal — 2026-09-24
+
+**Today this is safe, for a reason that expires.** Every test in this repo
+that asserts a refusal (401 or 403) gets it from an axios-mock-adapter reply
+the test configures for that path (`http.test.ts`, `profile.test.ts`,
+`auth.store.test.ts`, `sign-in.test.tsx`, `delete-account.test.tsx`). So it
+cannot receive a different refusal by accident, and `http.test.ts` asserts
+401 (the session ends) and 403 (not allowed) separately.
+
+**That stops being true the moment a check goes LIVE.** The API binds a token
+to the device fingerprint (`src/lib/fingerprint`). A live request with a bare
+token, or without the fingerprint header, gets a **401 whatever the policy
+says**. A check expecting "refused" then passes for a reason unrelated to the
+rule it claims to test. That is TESTING.md §19's shape. The SafeZone web sweep
+hit exactly this, where only a 403 from a properly authenticated request
+proved the PIN gate. So a live refusal check sends the app's own headers,
+fingerprint included, and asserts the specific status (403 for policy), never
+merely "not 200".
+
+A live probe that expects a 401 on purpose, like 2026-09-24 21:33's
+unauthenticated call, is fine. It is checking authentication, which is what
+a 401 is.

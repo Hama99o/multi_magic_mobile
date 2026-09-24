@@ -83,4 +83,9 @@ fi
 # run's own record and the `ours/` folder each screen's DONE is measured by.
 echo
 "$DIR/evidence.sh" || echo "evidence.sh did not file anything — the pictures are still under ~/.maestro/tests/"
+# Which side of every `runFlow: when:` ran. A PASS on an empty branch and a
+# PASS on a populated one exit the same; this is the line that tells them
+# apart (`qa/FLOW_REGISTER.md`, "What run 9 would need", item 5).
+echo
+python3 "$DIR/branches.py" || true
 exit $rc

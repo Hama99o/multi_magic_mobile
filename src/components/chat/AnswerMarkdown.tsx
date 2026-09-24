@@ -34,8 +34,31 @@ export interface AnswerLink {
   url: string;
 }
 
-/** `[label](target)`, `**bold**`, `*italic*`, `` `code` `` — in one pass. */
-const INLINE = /(\[[^\]]+\]\([^)\s]+\))|(\*\*[^*]+\*\*)|(\*[^*\n]+\*)|(`[^`\n]+`)/g;
+/**
+ * `[label](target)`, `**bold**`, `*italic*`, `` `code` `` — in one pass.
+ *
+ * Two rules added 2026-09-25, because the model's output is not the app's to
+ * choose, and each of these silently changed what an answer SAID:
+ * - Bold and italic open and close only against TEXT (CommonMark's flanking
+ *   rule). Without it "12 * 3 * 4 = 144" rendered as "12  3  4 = 144", the
+ *   multiplication signs gone and the 3 in italics, in an app that answers
+ *   questions about money.
+ * - A link target may hold one level of balanced parentheses. Without it
+ *   `[Foo](https://…/Foo_(bar))` opened `…/Foo_(bar` and left a stray ")".
+ */
+const INLINE =
+  /(\[[^\]]+\]\((?:[^()\s]|\([^()\s]*\))+\))|(\*\*[^*\s](?:[^*]*[^*\s])?\*\*)|(\*[^*\s](?:[^*\n]*[^*\s])?\*)|(`[^`\n]+`)/g;
+
+/** What a screen reader should say for a block: the words the eye sees, not
+ *  the markup. The label used to be the raw source, so TalkBack read
+ *  "asterisk asterisk Total asterisk asterisk" (found 2026-09-25). */
+function spokenText(source: string): string {
+  return source.replace(INLINE, (token) => {
+    if (token.startsWith("[")) return token.slice(1, token.indexOf("]"));
+    if (token.startsWith("**")) return token.slice(2, -2);
+    return token.slice(1, -1);
+  });
+}
 
 /**
  * A relative path from the server is relative to the SERVER, not to the phone.
@@ -71,7 +94,7 @@ function renderInline(
 
     if (token.startsWith("[")) {
       const label = token.slice(1, token.indexOf("]"));
-      const target = token.slice(token.indexOf("](") + 2, -1);
+      const target = token.slice(token.indexOf("](") + 2, -1); // balanced parens kept
       out.push(
         <RNText
           key={`l${match.index}`}
@@ -135,7 +158,7 @@ export function AnswerMarkdown({
     if (!speaker || attributed) return undefined;
     if (/\[[^\]]*\]\([^)]*\)/.test(plain)) return undefined;
     attributed = true;
-    return `${speaker}. ${plain}`;
+    return `${speaker}. ${spokenText(plain)}`;
   };
   const lines = content.split("\n");
   let paragraph: string[] = [];

@@ -30,14 +30,6 @@ const PLATFORMS = ["ios", "android"] as const;
 /** Everything that puts a keyboard over its own content. */
 const LIFTS = [
   {
-    name: "a screen with avoidKeyboard",
-    element: () => (
-      <Screen avoidKeyboard>
-        <Text>anything</Text>
-      </Screen>
-    ),
-  },
-  {
     name: "the rename dialog",
     element: () => <RenameDialog visible initialTitle="Money" onCancel={jest.fn()} onSave={jest.fn()} />,
   },
@@ -63,6 +55,41 @@ describe.each(LIFTS)("$name", ({ element }) => {
   });
 });
 
+/**
+ * A `<Screen avoidKeyboard>` lifts on both, and by different means since
+ * 2026-09-24: KAV's padding on iOS, and on Android `KeyboardPadding`, which
+ * is KAV's arithmetic eased, because KAV sets it in one step there
+ * (`KeyboardPadding.tsx` names the source lines).
+ */
+describe("a screen with avoidKeyboard", () => {
+  const field = () => (
+    <Screen avoidKeyboard>
+      <Text>anything</Text>
+    </Screen>
+  );
+
+  it("pads with KAV on ios", () => {
+    const platform = jest.replaceProperty(Platform, "OS", "ios");
+    try {
+      render(field());
+      expect(screen.UNSAFE_getByType(KeyboardAvoidingView).props.behavior).toBe("padding");
+    } finally {
+      platform.restore();
+    }
+  });
+
+  it("lifts with the eased spacer on android, not KAV's single step", () => {
+    const platform = jest.replaceProperty(Platform, "OS", "android");
+    try {
+      render(field());
+      expect(screen.getByTestId("keyboard-padding")).toBeTruthy();
+      expect(screen.UNSAFE_queryByType(KeyboardAvoidingView)).toBeNull();
+    } finally {
+      platform.restore();
+    }
+  });
+});
+
 describe("a screen without a field", () => {
   it("does not wrap itself in one — the lift is opt-in", () => {
     render(
@@ -72,5 +99,6 @@ describe("a screen without a field", () => {
     );
 
     expect(screen.UNSAFE_queryByType(KeyboardAvoidingView)).toBeNull();
+    expect(screen.queryByTestId("keyboard-padding")).toBeNull();
   });
 });

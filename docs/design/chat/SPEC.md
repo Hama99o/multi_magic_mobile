@@ -458,3 +458,27 @@ over two openings (the first with nothing remembered, the second after):
   the same `LayoutAnimation` that did not animate, so the snap is there either
   way. The fix must not depend on `LayoutAnimation`. That is the remaining
   keyboard issue.
+
+**Correction, 2026-09-24, from the framework source rather than the device:**
+the sentence above has the cause wrong for KAV. On Android, KAV does not
+reach `LayoutAnimation` at all. It animates only `if (duration && easing)`
+(`KeyboardAvoidingView.js`, `_updateBottomIfNecessary`), and Android's only
+keyboard emitter sends `putDouble("duration", 0)` (`ReactRootView.java`,
+`createKeyboardEventPayload`; the only emitter in `ReactAndroid`). So the
+single-frame snap is KAV's designed behaviour on Android, on every screen with
+a field. What `KeyboardLift` showed about `LayoutAnimation` itself still
+stands.
+
+**The fix:** `src/components/KeyboardPadding.tsx`, used by `Screen` on Android
+only, with iOS keeping KAV. It uses KAV's own overlap arithmetic,
+`max(frame.y + frame.height - screenY, 0)`, so it is still 0 wherever the
+window resized itself, and eases a spacer to that height (250 ms up, 200 ms
+down, ease-out cubic) instead of setting it in one step. **It runs on the JS
+thread, and has to:** the native driver takes transform and opacity only, and
+this is a change of layout. Translating the content with the native driver
+instead would open a ~264 dp gap under the header while it moved. The timing
+is chosen, not sourced. **NOT MEASURED on a device.** The recording decides
+two things: whether it tracks the keyboard, and whether the JS thread is free
+enough when a field is focused to run it. If it stutters, the next step is
+running the same arithmetic on the UI thread. Reanimated is already in the
+tree (TESTING.md §18), so that is not a library question.

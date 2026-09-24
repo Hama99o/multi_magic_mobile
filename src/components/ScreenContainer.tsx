@@ -56,11 +56,17 @@
  * A flow that is written and never run proves exactly as much as no flow, and
  * is worse in one way: it occupies the slot where somebody would notice the
  * gap. `docs/TESTING.md` §6.
+ *
+ * **Since 2026-09-24, Android does not use KAV here at all.** KAV sets its
+ * padding in a single step on Android (the keyboard event there has
+ * `duration: 0`), which measured as a 264 dp one-frame jump in the chat.
+ * `KeyboardPadding` does the same arithmetic, eased. iOS keeps KAV.
  */
 import type { ReactNode } from "react";
-import { KeyboardAvoidingView, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import { KeyboardPadding } from "./KeyboardPadding";
 
 export type ScreenProps = {
   children: ReactNode;
@@ -110,12 +116,16 @@ export function Screen({
     inner
   );
 
-  const content = avoidKeyboard ? (
+  // Android gets the same lift, eased: RN's KAV sets it in one step there
+  // (see `KeyboardPadding.tsx` for the source lines that say so).
+  const content = !avoidKeyboard ? (
+    body
+  ) : Platform.OS === "android" ? (
+    <KeyboardPadding>{body}</KeyboardPadding>
+  ) : (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       {body}
     </KeyboardAvoidingView>
-  ) : (
-    body
   );
 
   return (

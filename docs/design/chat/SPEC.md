@@ -486,3 +486,38 @@ two things: whether it tracks the keyboard, and whether the JS thread is free
 enough when a field is focused to run it. If it stutters, the next step is
 running the same arithmetic on the UI thread. Reanimated is already in the
 tree (TESTING.md §18), so that is not a library question.
+
+### The keyboard goes away: a drag on the thread, 2026-09-24
+
+**The gap:** with the keyboard up, neither thread had a way to close it
+except Back. No `keyboardDismissMode` and no `Keyboard.dismiss` existed
+anywhere. On Android, Back is overloaded: on the pushed people thread it can
+leave the conversation. That is what `06-people-chat`'s `hideKeyboard` did on
+a fresh boot. So a person who wanted to read back after sending had to press
+the control that might take them out.
+
+**Rule Zero, Mobbin searched first:** Fable, "Replying to a chat"
+(`mobbin.com/flows/06c29cdc-fe08-4f27-ae41-405202ac6268`), shows the keyboard
+up while typing, then the thread with it down after the send. Fanatics Live
+(`mobbin.com/flows/37f26841-ba69-4b4c-8295-0376f0b2584c`) keeps it up after a
+send. Grok (`mobbin.com/flows/9c05b13f-5aed-4c4d-885b-0e52bb10f968`) shows
+the thread at rest with it down. **What the stills settle:** a messenger lets
+the keyboard go away without leaving the thread, and sending does not have to
+close it. **What they cannot settle:** the GESTURE, because a drag is motion.
+The choice of a drag rests on reasoning, not on the references: it is the
+only close that cannot leave the screen, and it is the ScrollView prop React
+Native provides for exactly this (`keyboardDismissMode`; `"on-drag"` is the
+value Android supports, `"interactive"` is iOS only). Decided by Hamma9901
+after reading Rule Zero.
+
+**How we code it:** `keyboardDismissMode="on-drag"` on both inverted
+FlatLists, `app/chat.tsx` and `app/chat/[id].tsx` (`thread-list`). Sending
+still leaves the keyboard up. Tests: `app/__tests__/chat.test.tsx` "a drag
+on the thread puts the keyboard away", and `screens.render.test.tsx` "puts
+the keyboard away on a drag". Each was planted red by removing the prop.
+They prove the PROP, not the feel.
+
+**NOT MEASURED on a device.** The drag starts `KeyboardPadding`'s 200 ms
+fall (`9b56a2e`) while the list is moving under the finger. The two
+interacting badly would be new jank in the place one was just removed.
+Record it in the same slot as the lift.

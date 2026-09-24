@@ -444,6 +444,16 @@ describe("the people thread", () => {
   // says a message that fails to send "stays on screen, never disappears into
   // an optimistic bubble" — asserted only on the row, never on the screen.
   // Here: a refused send stays, with the server's reason and its retry.
+  // Before this the only way to close the keyboard here was Back, which on a
+  // pushed screen can pop the thread (`docs/design/people-chat/SPEC.md`).
+  it("puts the keyboard away on a drag", async () => {
+    setWidth(411);
+    await i18n.changeLanguage("en");
+    renderScreen(<Thread />);
+    await screen.findByTestId("thread-list");
+    expect(screen.UNSAFE_getByProps({ testID: "thread-list", inverted: true }).props.keyboardDismissMode).toBe("on-drag");
+  });
+
   it("keeps a refused message on screen, with the server's reason and a retry", async () => {
     setWidth(411);
     await i18n.changeLanguage("en");

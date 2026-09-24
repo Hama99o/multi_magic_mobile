@@ -129,11 +129,25 @@ tags:
       # it was written — BEFORE the send, where it hides the send button
       # (`01-ask`). After the send there is no button left to hide.
       #
-      # The other hazard in that comment is real and is guarded rather than
-      # argued with: this is a PUSHED screen, so if the IME is already down a
-      # Back can pop the thread. The assertion underneath makes that fail here,
-      # loudly, instead of drifting into the next step on the chat list.
-      - hideKeyboard
+      # NOT `hideKeyboard` any more (2026-09-24). On Android it presses Back,
+      # and on a fresh boot it pressed it once too often and popped this
+      # pushed screen: three runs at 16:40–16:50 ended on the Chats list. The
+      # thread now puts the keyboard away on a DRAG (`keyboardDismissMode=
+      # "on-drag"`, `app/chat/[id].tsx`), which is a way a person closes it
+      # too, and one that cannot leave the screen.
+      #
+      # Down, then back up, so the newest message is in view again for the
+      # long press. UNRUN: if the thread is too short to scroll, a drag may not
+      # begin and the keyboard stays up. That fails loudly two steps down, at
+      # `reaction-sheet`, which is the symptom measured on 2026-09-22.
+      - swipe:
+          from:
+            id: "thread-list"
+          direction: DOWN
+      - swipe:
+          from:
+            id: "thread-list"
+          direction: UP
       - assertVisible:
           id: "thread-list"
       - takeScreenshot: reports/08-thread-sent-right-side

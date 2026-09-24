@@ -387,6 +387,15 @@ container with a name acquires a control inside it again.
 
 ---
 
+## The keyboard goes away on a drag — 2026-09-24
+
+`thread-list` now has `keyboardDismissMode="on-drag"`. Before it, Back was the
+only way to close the keyboard here, and on this pushed screen Back can pop
+the thread. The receipt (Mobbin, the reasoning, the tests, and what is NOT
+MEASURED) is in `docs/design/chat/SPEC.md`, "The keyboard goes away", because
+both threads got the same change. `qa/flows/06-people-chat.yaml` swipes
+`thread-list` instead of `hideKeyboard`. That edit is UNRUN.
+
 ## Status — DONE, set 2026-09-21 from the evidence
 
 Was `SPECIFIED`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.

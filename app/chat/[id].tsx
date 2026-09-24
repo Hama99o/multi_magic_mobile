@@ -600,6 +600,10 @@ export default function PersonThread() {
       <View style={{ flex: 1 }}>
       <FlatList
         testID="thread-list"
+        // A drag puts the keyboard away. Before this, the ONLY way to close it
+        // here was Back, and Back on a pushed screen can pop the thread
+        // (`docs/design/people-chat/SPEC.md`, and why `06` failed).
+        keyboardDismissMode="on-drag"
         ref={listRef}
         // INVERTED, newest first. Reversing the whole `rows` array keeps each
         // day and unread divider visually ABOVE the messages it heads.

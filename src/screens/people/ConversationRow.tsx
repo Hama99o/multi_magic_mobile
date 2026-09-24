@@ -21,6 +21,8 @@
  * both into `displayName`, so this file has no branch on `is_group` at all.
  */
 import { Pressable, View } from "react-native";
+import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { relativeTime } from "@/lib/relativeTime";
@@ -33,17 +35,22 @@ import { Avatar } from "./Avatar";
  * A deleted last message keeps its place in the thread (`body` is null and
  * `deleted` is true), and the list has to say the same thing the thread does
  * rather than rendering an empty line.
+ *
+ * ALL FOUR STRINGS WERE ENGLISH until 2026-09-24, found by the claims audit.
+ * They were return values rather than JSX text, so the `<Text>` lint rule
+ * could not see them. The chats list's French render checks only its title,
+ * so a French phone read "You: …" on every row the reader wrote last.
  */
-function previewOf(conversation: Conversation): string {
+function previewOf(conversation: Conversation, t: TFunction): string {
   const last = conversation.lastMessage;
-  if (!last) return "No messages yet";
-  if (last.deleted) return "Message deleted";
+  if (!last) return t("chats.noMessages");
+  if (last.deleted) return t("chats.deleted");
 
   const body = (last.body ?? "").replace(/\s+/g, " ").trim();
-  if (!body) return "No messages yet";
+  if (!body) return t("chats.noMessages");
   // "You: " on your own last message, as every reference does — it is the
   // difference between "they replied" and "you are waiting".
-  return last.sentByMe ? `You: ${body}` : body;
+  return last.sentByMe ? t("chats.fromYou", { body }) : body;
 }
 
 export function ConversationRow({
@@ -55,6 +62,7 @@ export function ConversationRow({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const { t } = useTranslation();
   const unread = conversation.unreadMessages > 0;
 
   return (
@@ -64,7 +72,7 @@ export function ConversationRow({
       accessibilityRole="button"
       accessibilityLabel={
         unread
-          ? `${conversation.displayName}, ${conversation.unreadMessages} unread`
+          ? t("chats.unreadLabel", { name: conversation.displayName, count: conversation.unreadMessages })
           : conversation.displayName
       }
       android_ripple={{ color: colors.border }}
@@ -89,14 +97,21 @@ export function ConversationRow({
           <Text variant="label" numberOfLines={1} style={{ flex: 1, fontSize: 16 }}>
             {conversation.displayName}
           </Text>
-          <Text variant="caption" tone={unread ? "accent" : "muted"}>
-            {relativeTime(conversation.lastMessage?.createdAt ?? conversation.updatedAt)}
-          </Text>
+          {/* The time of the LAST MESSAGE, or nothing. This used to fall back
+              to the conversation's `updated_at`, which moves on any update, a
+              rename included (`conversation_serializer.rb`). So an empty chat
+              renamed today read "today", a claim about messages that did not
+              happen. The preview line already says there are none. */}
+          {conversation.lastMessage ? (
+            <Text variant="caption" tone={unread ? "accent" : "muted"} testID={`chat-time-${conversation.id}`}>
+              {relativeTime(conversation.lastMessage.createdAt)}
+            </Text>
+          ) : null}
         </View>
 
         <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
           <Text variant="caption" tone="muted" numberOfLines={2} style={{ flex: 1 }}>
-            {previewOf(conversation)}
+            {previewOf(conversation, t)}
           </Text>
 
           {unread ? (

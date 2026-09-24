@@ -36,7 +36,29 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { documentsApi } from "@/api/ai";
 import { calendarApi } from "@/api/calendar";
-import { APP_NOUN, meApi, type AppKey } from "@/api/me";
+import { useTranslation } from "react-i18next";
+import { meApi, type AppKey } from "@/api/me";
+import { t } from "@/i18n";
+
+/**
+ * ONE WHOLE QUESTION PER APP, not a noun dropped into an English sentence.
+ * Until 2026-09-24 every suggestion here was English, including on a French
+ * phone, where tapping one SENT an English question. The claims audit found
+ * it: the templates were strings in code, which no gate reads. Whole
+ * questions, because French cannot splice a noun ("mon agenda" but
+ * "mes notes"). Literal keys, so `keys.test.ts` sees every one.
+ */
+const APP_QUESTION: Record<AppKey, string> = {
+  notes: "starter.appNotes",
+  todos: "starter.appTodos",
+  expenses: "starter.appExpenses",
+  incomes: "starter.appIncomes",
+  loans: "starter.appLoans",
+  events: "starter.appEvents",
+  contacts: "starter.appContacts",
+  pages: "starter.appPages",
+  documents: "starter.appDocuments",
+};
 
 export interface StarterPrompt {
   /** The question asked verbatim when tapped. */
@@ -67,7 +89,7 @@ export function buildPrompts(
     .filter((f) => f.status === "ready")
     .slice(0, 2)
     .forEach((file) => {
-      prompts.push({ text: `What does ${shorten(file.filename)} say?`, source: "file" });
+      prompts.push({ text: t("starter.file", { name: shorten(file.filename) }), source: "file" });
     });
 
   // THE NAMED EVENT FIRST, because it is the concrete one. Offering both
@@ -75,12 +97,12 @@ export function buildPrompts(
   // event is two questions about one fact — which is padding wearing a
   // derivation's clothes.
   if (events[0]?.title) {
-    prompts.push({ text: `When is ${shorten(events[0].title)}?`, source: "calendar" });
+    prompts.push({ text: t("starter.event", { title: shorten(events[0].title) }), source: "calendar" });
   }
   // The week only earns a slot when there is actually a week's worth to ask
   // about; with one event it says nothing the line above did not.
   if (events.length >= 3) {
-    prompts.push({ text: "What is on my calendar this week?", source: "calendar" });
+    prompts.push({ text: t("starter.week"), source: "calendar" });
   }
 
   // ── AND ONLY THEN, THE APPS THAT HOLD SOMETHING ───────────────────────
@@ -102,7 +124,7 @@ export function buildPrompts(
   for (const app of stocked) {
     if (prompts.length >= 3) break;
     if (alreadySpokenFor[app]) continue;
-    prompts.push({ text: `What is in my ${APP_NOUN[app]}?`, source: "app" });
+    prompts.push({ text: t(APP_QUESTION[app]), source: "app" });
   }
 
   return prompts.filter((p) => p.text.length <= MAX_LENGTH).slice(0, 3);
@@ -138,6 +160,9 @@ export function useStarterPrompts(conversationId: number | null): {
   // re-rendered it while typing (`app/chat.tsx`, found by the "typing" test,
   // 2026-09-24). The `= []` defaults moved inside for the same reason: a
   // default parameter is a fresh array each render.
+  // The language is a dependency: the questions are words, and they must
+  // change when the reader switches language, not on the next data change.
+  const { i18n: instance } = useTranslation();
   const prompts = useMemo(
     () =>
       buildPrompts(
@@ -149,7 +174,8 @@ export function useStarterPrompts(conversationId: number | null): {
         (events ?? []).flatMap((o) => (o.event.title ? [{ title: o.event.title }] : [])),
         summary?.stocked ?? [],
       ),
-    [files, events, summary],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the language is read through `t`
+    [files, events, summary, instance.language],
   );
 
   return {

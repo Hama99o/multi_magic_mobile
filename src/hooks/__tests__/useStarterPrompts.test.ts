@@ -2,6 +2,7 @@
  * The suggestions are DERIVED. These assert the three rules that keep them
  * honest, and the third is the one that matters.
  */
+import i18n from "i18next";
 import { buildPrompts } from "../useStarterPrompts";
 
 const file = (filename: string, status = "ready") => ({ filename, status });
@@ -150,5 +151,34 @@ describe("apps that hold something", () => {
 
   it("still stops at three", () => {
     expect(buildPrompts([], [], ["notes", "loans", "contacts", "pages", "todos"])).toHaveLength(3);
+  });
+});
+
+// ── IN THE READER'S LANGUAGE ──────────────────────────────────────────────
+// Until 2026-09-24 every suggestion was English on a French phone too, and
+// tapping one SENT that English question. The templates were code, which no
+// gate reads (claims audit).
+describe("in French", () => {
+  beforeAll(async () => {
+    await i18n.changeLanguage("fr");
+  });
+  afterAll(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("asks every kind of question in French", () => {
+    const texts = [
+      ...buildPrompts([file("facture.pdf")], [{ title: "Dentiste" }]),
+      ...buildPrompts([], [{ title: "A" }, { title: "B" }, { title: "C" }]),
+      ...buildPrompts([], [], ["notes", "events"]),
+    ].map((p) => p.text);
+    expect(texts).toEqual(expect.arrayContaining([
+      "Que dit facture.pdf ?",
+      "Quand a lieu Dentiste ?",
+      "Qu’y a-t-il dans mon agenda cette semaine ?",
+      "Qu’y a-t-il dans mes notes ?",
+    ]));
+    // And no English survived anywhere in them.
+    expect(texts.filter((x) => /\b(What|When|is in my)\b/.test(x))).toEqual([]);
   });
 });

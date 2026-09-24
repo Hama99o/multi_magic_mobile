@@ -458,12 +458,31 @@ export const fr: Translations = {
       "Chaque phrase a été vérifiée contre le code, mais ce texte attend encore une approbation et ne doit pas être publié en l’état.",
   },
 
+  starter: {
+    file: "Que dit {{name}} ?",
+    event: "Quand a lieu {{title}} ?",
+    week: "Qu’y a-t-il dans mon agenda cette semaine ?",
+    appNotes: "Qu’y a-t-il dans mes notes ?",
+    appTodos: "Qu’y a-t-il dans mes tâches ?",
+    appExpenses: "Qu’y a-t-il dans mes dépenses ?",
+    appIncomes: "Qu’y a-t-il dans mes revenus ?",
+    appLoans: "Qu’y a-t-il dans mes prêts ?",
+    appEvents: "Qu’y a-t-il dans mon agenda ?",
+    appContacts: "Qu’y a-t-il dans mes contacts ?",
+    appPages: "Qu’y a-t-il dans mes pages ?",
+    appDocuments: "Qu’y a-t-il dans mes documents ?",
+  },
+
   chats: {
     title: "Discussions",
     emptyTitle: "Pas encore de discussion",
     emptyBody: "Les discussions que vous commencez sur MultiMagic apparaissent ici.",
     loadFailed: "Impossible de charger vos discussions.",
     untitled: "Conversation sans nom",
+    noMessages: "Pas encore de message",
+    deleted: "Message supprimé",
+    fromYou: "Vous : {{body}}",
+    unreadLabel: "{{name}}, {{count}} non lus",
   },
 
   thread: {

@@ -82,21 +82,6 @@ export const meApi = {
   },
 };
 
-/**
- * What to call each app in a suggestion, in the words a person uses.
- *
- * Not the catalog's own `name` — "My Finance" is the product's label and
- * "your expenses" is what somebody would actually ask about. A prompt reads as
- * a question, not as a menu item.
- */
-export const APP_NOUN: Record<AppKey, string> = {
-  notes: "notes",
-  todos: "tasks",
-  expenses: "expenses",
-  incomes: "income",
-  loans: "loans",
-  events: "calendar",
-  contacts: "contacts",
-  pages: "pages",
-  documents: "documents",
-};
+// The words for each app in a suggestion now live in the locales, as whole
+// questions (`APP_QUESTION` in `src/hooks/useStarterPrompts.ts`). They were an
+// English constant here until 2026-09-24.

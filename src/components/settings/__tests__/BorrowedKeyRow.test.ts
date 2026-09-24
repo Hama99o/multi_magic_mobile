@@ -1,11 +1,8 @@
 import { resetDate } from "../BorrowedKeyRow";
 
-// A LIMIT OF THIS TEST, measured 2026-09-24: it catches a return to the
-// phone's calendar only on a machine EAST of UTC (this one is Europe/Paris).
-// On a UTC machine (GitHub Actions' default, so CI) the phone's calendar and the
-// server's agree and the old code passes. Setting `process.env.TZ` inside the
-// Jest worker was tried and changes nothing: the zone is fixed before the
-// test runs. So a regression here is caught on a laptop in Paris, not in CI.
+// Every suite runs in Europe/Paris (`jest.config.js`), so the old
+// phone-calendar version is red here on any machine, CI on UTC included.
+// Measured 2026-09-24 with TZ=UTC in the shell.
 
 // A monthly limit resets at the next month start on the SERVER's calendar,
 // which is UTC (`BorrowedKeyRow.tsx` names the server lines). Instants, not

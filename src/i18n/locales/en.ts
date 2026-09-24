@@ -441,12 +441,31 @@ export const en = {
       "Every sentence here was checked against the code, but this text is still waiting on approval and must not ship in this state.",
   },
 
+  starter: {
+    file: "What does {{name}} say?",
+    event: "When is {{title}}?",
+    week: "What is on my calendar this week?",
+    appNotes: "What is in my notes?",
+    appTodos: "What is in my tasks?",
+    appExpenses: "What is in my expenses?",
+    appIncomes: "What is in my income?",
+    appLoans: "What is in my loans?",
+    appEvents: "What is in my calendar?",
+    appContacts: "What is in my contacts?",
+    appPages: "What is in my pages?",
+    appDocuments: "What is in my documents?",
+  },
+
   chats: {
     title: "Chats",
     emptyTitle: "No conversations yet",
     emptyBody: "Chats you start on MultiMagic appear here.",
     loadFailed: "Could not load your chats.",
     untitled: "Conversation",
+    noMessages: "No messages yet",
+    deleted: "Message deleted",
+    fromYou: "You: {{body}}",
+    unreadLabel: "{{name}}, {{count}} unread",
   },
 
   thread: {

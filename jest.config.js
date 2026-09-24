@@ -11,6 +11,23 @@
  * error on `import` that points at OUR file's first import line rather than at
  * the module three hops away that actually needs the transform.
  */
+/**
+ * EVERY TEST RUNS IN PARIS, not in whatever zone the machine is in.
+ *
+ * Measured 2026-09-24: `BorrowedKeyRow.resetDate` had used the phone's
+ * calendar where the server's is UTC, and planting that bug back was red on
+ * this laptop (Europe/Paris) and GREEN under `TZ=UTC`, which is GitHub
+ * Actions' default. So CI could not see the bug. Any date bug that only shows
+ * away from UTC has the same blind spot. Setting TZ inside a test changes
+ * nothing, because the zone is fixed before the test runs. It has to be set
+ * here, before the workers start, and they inherit it.
+ *
+ * Paris because it is east of UTC with daylight saving, and because it is
+ * where this app is developed: the whole suite was already green here, so
+ * pinning it changes nothing on the laptop and makes CI agree with it.
+ */
+process.env.TZ = "Europe/Paris";
+
 /** @type {import('jest').Config} */
 module.exports = {
   preset: "jest-expo",

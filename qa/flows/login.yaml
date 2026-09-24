@@ -122,10 +122,10 @@ appId: ${APP_ID}
                 timeout: 60000
             - tapOn:
                 id: "sign-in-email"
-            - inputText: ${EMAIL}
+            - inputText: ${MAESTRO_QA_EMAIL}
             - tapOn:
                 id: "sign-in-password"
-            - inputText: ${PASSWORD}
+            - inputText: ${MAESTRO_QA_PASSWORD}
             # NOT `hideKeyboard`: dismissing it relayouts the form through
             # KeyboardAvoidingView and Maestro's snapshot catches the submit
             # button mid-transition. That cost 01-ask five runs.

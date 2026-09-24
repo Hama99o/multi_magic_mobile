@@ -48,15 +48,21 @@ set +e
 # `-e PASSWORD=...` puts the QA account's password in the process table, where
 # any `ps` on this box reads it, and into any shell history or CI log that
 # captures the invocation. Maestro resolves `${VAR}` from the ENVIRONMENT as
-# well as from `-e`, which was not obvious and so was measured both ways on
-# 2026-09-21: a flow asserting `${MAESTRO_PROBE_VALUE == "..."}` passes with
-# the variable exported and FAILS with it unset, so the mechanism is real
-# rather than a vacuous pass.
+# well as from `-e` — BUT ONLY FOR NAMES PREFIXED `MAESTRO_`.
+#
+# The 2026-09-21 measurement was real and was also narrower than the change
+# built on it: its probe was `MAESTRO_PROBE_VALUE`, prefixed, and the rig then
+# exported bare `EMAIL`/`PASSWORD`. From `71c2e16` until 2026-09-24 every
+# sign-in from a signed-out app typed the literal `undefined` into both fields
+# ("That email and password do not match."), which nothing noticed because
+# runs that started signed in skip the typing. Re-measured 2026-09-24, Maestro
+# 2.7.0, with a negative control: exported `MAESTRO_PROBE_PFX=yes` → assert
+# COMPLETED; exported `PROBE_BARE=yes` → the same assert FAILED.
 #
 # The address and the app id stay as `-e`: they are not secrets, and keeping
 # them visible makes a wrong APP_ID obvious in `ps` when a run misbehaves.
-export EMAIL="$QA_EMAIL"
-export PASSWORD="$QA_PASSWORD"
+export MAESTRO_QA_EMAIL="$QA_EMAIL"
+export MAESTRO_QA_PASSWORD="$QA_PASSWORD"
 ARGS=(-e APP_ID="$APP_ID" -e DEEP_LINK="$DEEP_LINK")
 if [ -n "$TAG" ]; then
   maestro --device "$SERIAL" test --include-tags "$TAG" "${ARGS[@]}" "$DIR/flows"

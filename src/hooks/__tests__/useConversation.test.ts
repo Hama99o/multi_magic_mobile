@@ -591,3 +591,25 @@ describe("messages the parser could not read", () => {
     await waitFor(() => expect(result.current.unreadable).toBe(1));
   });
 });
+
+describe("a conversation deleted on another device", () => {
+  it("is GONE on a 404, so the screen can say so", async () => {
+    const { result } = render();
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    latest.mockRejectedValue({ isAxiosError: true, response: { status: 404 } });
+    await act(async () => {
+      listener().onConnected?.();
+    });
+    expect(result.current.status).toBe("gone");
+  });
+
+  it("but any other failure keeps a thread already shown", async () => {
+    const { result } = render();
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    latest.mockRejectedValue({ isAxiosError: true, response: { status: 500 } });
+    await act(async () => {
+      listener().onConnected?.();
+    });
+    expect(result.current.status).toBe("ready");
+  });
+});

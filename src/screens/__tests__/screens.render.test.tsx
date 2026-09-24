@@ -767,6 +767,16 @@ describe("the people thread, when something fails", () => {
         thread().messages = kept;
       },
     },
+    {
+      name: "the thread was deleted on another device",
+      setup: () => {
+        thread().status = "gone";
+      },
+      ready: "thread-gone",
+      undo: () => {
+        thread().status = "ready";
+      },
+    },
     ...([
       ["the server refuses a send", { isAxiosError: true, response: { status: 422, data: { errors: ["Le message est trop long."] } } }],
       ["a send with no network", { isAxiosError: true }],

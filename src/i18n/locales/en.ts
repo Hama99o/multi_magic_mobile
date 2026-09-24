@@ -90,6 +90,7 @@ export const en = {
   },
 
   chat: {
+    gone: "This conversation was deleted on another device. Open Conversations to pick another.",
     scrollToBottom: "Scroll to the newest message",
     title: "Assistant",
     chats: "Chats",
@@ -483,6 +484,7 @@ export const en = {
   },
 
   thread: {
+    gone: "This conversation was deleted on another device.",
     today: "Today",
     typing: "typing…",
     someoneTyping: "{{name}} is typing…",

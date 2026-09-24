@@ -731,12 +731,19 @@ export default function Chat() {
             </Text>
           ) : null}
 
+          {/* Deleted on another device while open (`status: "gone"`). */}
+          {status === "gone" ? (
+            <Text variant="caption" tone="danger" testID="chat-gone" accessibilityLiveRegion="polite">
+              {t("chat.gone")}
+            </Text>
+          ) : null}
           <Composer
             value={draft}
             onChange={setDraft}
             onSend={() => void send(draft)}
-            // Off while a question is in flight AND while the minute runs down.
-            busy={posting || secondsLeft > 0}
+            // Off while a question is in flight, while the minute runs down, and
+            // for a conversation deleted elsewhere.
+            busy={posting || secondsLeft > 0 || status === "gone"}
             offline={!reachable}
             onAttach={conversationId != null ? () => setAttachOpen(true) : undefined}
           />

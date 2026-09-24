@@ -492,6 +492,7 @@ describe("in French, every failure state", () => {
 
   const STATES: { name: string; setup: () => void; act?: () => Promise<void>; ready: string }[] = [
     { name: "the transcript did not load", setup: () => { conversation.status = "failed"; }, ready: "chat-load-failed" },
+    { name: "the conversation was deleted on another device", setup: () => { conversation.status = "gone"; }, ready: "chat-gone" },
     {
       name: "the answer never came",
       setup: () => {

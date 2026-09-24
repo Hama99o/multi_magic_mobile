@@ -657,12 +657,20 @@ export default function PersonThread() {
         </Pressable>
       ) : null}
 
+      {/* Deleted on another device while open: said, and nothing more can be
+          sent into it (`status: "gone"`, useConversation). */}
+      {status === "gone" ? (
+        <Text variant="caption" tone="danger" testID="thread-gone" accessibilityLiveRegion="polite">
+          {t("thread.gone")}
+        </Text>
+      ) : null}
       <PersonComposer
         value={draft}
         onChange={setDraft}
         onSend={() => void send()}
         onTyping={announceTyping}
         editing={Boolean(editing)}
+        disabled={status === "gone"}
       />
 
       <ReactionSheet

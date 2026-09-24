@@ -53,7 +53,10 @@ const REPLY_TIMEOUT_MS = 180_000;
  *  the thread is re-read from the newest, and older history loads on scroll. */
 const MAX_GAP_PAGES = 20;
 
-export type ConversationStatus = "loading" | "ready" | "failed";
+/** "gone": the server answered 404, so the conversation was deleted
+ *  elsewhere (Hamma9901's call, 2026-09-25): the screen says so rather than
+ *  letting him type into something that no longer exists. */
+export type ConversationStatus = "loading" | "ready" | "failed" | "gone";
 
 /**
  * Ids at or above this are LOCAL — a question drawn before the server has
@@ -251,8 +254,14 @@ export function useConversation({
       if (page.messages.some((m) => m.role === "assistant" && m.id > askedAfterIdRef.current)) {
         setAwaitingReply(false);
       }
-    } catch {
-      setStatus((current) => (current === "ready" ? current : "failed"));
+    } catch (e) {
+      // A 404 is a fact, not a failure: the conversation was deleted on
+      // another device while this screen had it open. Silent here, it let
+      // him keep typing, and the send then failed looking like a network
+      // problem. Anything else keeps the old rule: a thread already shown
+      // stays shown.
+      if ((e as { response?: { status?: number } })?.response?.status === 404) setStatus("gone");
+      else setStatus((current) => (current === "ready" ? current : "failed"));
     }
   }, []);
 

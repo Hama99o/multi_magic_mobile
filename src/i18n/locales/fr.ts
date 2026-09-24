@@ -108,6 +108,7 @@ export const fr: Translations = {
   },
 
   chat: {
+    gone: "Cette conversation a été supprimée sur un autre appareil. Ouvrez Conversations pour en choisir une autre.",
     scrollToBottom: "Aller au message le plus récent",
     title: "Assistant",
     chats: "Discussions",
@@ -500,6 +501,7 @@ export const fr: Translations = {
   },
 
   thread: {
+    gone: "Cette discussion a été supprimée sur un autre appareil.",
     today: "Aujourd’hui",
     typing: "écrit…",
     someoneTyping: "{{name}} écrit…",

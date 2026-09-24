@@ -113,6 +113,25 @@ Two sessions lost the same hour to this on the same evening; it belongs beside
 the `adb reverse` note because it is the same shape — an instrument reporting
 truthfully about a state that no longer exists.
 
+## A fresh boot has its own state, and two of them bit on 2026-09-24
+
+After the box went down at ~15:04 and `qa_phone4` was booted again, two
+things were different from the device that had passed flows that morning.
+Both are written down as preconditions, not causes.
+
+- **Gboard came up in FLOATING mode.** A 60 fps recording at 17:09 shows the
+  floating toolbar, not the docked full-width keyboard. On the same boot
+  `06-people-chat` failed three times at `thread-list` right after
+  `hideKeyboard`: the step went Back to the Chats list, while by hand the
+  keyboard stays up after a send (`mInputShown=true`). **Whether floating mode
+  is what makes `hideKeyboard` press Back once too often is UNMEASURED.** It
+  is the likeliest candidate. Check the keyboard mode before believing a
+  keyboard-related failure on a freshly booted device.
+- **The dev client opened its launcher instead of the app**, because a second
+  Metro (8081, the owner's) was running as well as ours on 3029. It lists
+  both and waits. A flow that waits for `composer-input` then waits for
+  ever. Tap the `10.0.2.2:3029` entry, or deep-link to it, before a run.
+
 ## Match the severity marker, not the tag
 
 The first run reported five "runtime errors" that were the `am` command's own

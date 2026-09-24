@@ -9,6 +9,7 @@
 import MockAdapter from "axios-mock-adapter";
 import * as SecureStore from "expo-secure-store";
 import {
+  apiErrorMessage,
   __resetTokenCache, http, isNetworkFailure, isRateLimited, isUnauthorized,
   loadSessionEmail, loadToken, retryAfterSeconds, sessionEndReason, setReachabilityHandler,
   setSessionEmail, setToken, setTrustToken, setUnauthorizedHandler,
@@ -371,5 +372,47 @@ describe("the session email", () => {
     __resetTokenCache();
 
     expect(await loadSessionEmail()).toBe("person@example.com");
+  });
+});
+
+// ── `error` AND `errors`: the API speaks both ──────────────────────────────
+// Singular for most refusals; plural `full_messages` for validation, which is
+// what account deletion answers (`users_controller.rb:116`). Reading only the
+// singular made every plural refusal render as the generic fallback.
+describe("the server's error sentence", () => {
+  const refusal = (data: unknown) => ({ isAxiosError: true, response: { status: 422, data } });
+
+  it("reads the singular `error`", () => {
+    expect(apiErrorMessage(refusal({ error: "Password is incorrect" }))).toBe("Password is incorrect");
+  });
+
+  it("reads the plural `errors` array — the account-deletion shape", () => {
+    expect(apiErrorMessage(refusal({ errors: ["Could not delete the account"] }))).toBe(
+      "Could not delete the account",
+    );
+  });
+
+  it("joins several `errors`, one per line", () => {
+    expect(apiErrorMessage(refusal({ errors: ["Name is too long", "Email is invalid"] }))).toBe(
+      "Name is too long\nEmail is invalid",
+    );
+  });
+
+  it("reads a field → messages map", () => {
+    expect(apiErrorMessage(refusal({ errors: { email: ["has already been taken"] } }))).toBe(
+      "has already been taken",
+    );
+  });
+
+  it("reads JSON:API `{ detail }` objects, the sign-up shape", () => {
+    expect(
+      apiErrorMessage(refusal({ errors: [{ detail: "has already been taken", source: { pointer: "/data/attributes/email" } }] })),
+    ).toBe("has already been taken");
+  });
+
+  it("says nothing rather than something empty", () => {
+    expect(apiErrorMessage(refusal({ errors: [] }))).toBeNull();
+    expect(apiErrorMessage(refusal({ error: "" }))).toBeNull();
+    expect(apiErrorMessage(refusal("<html>"))).toBeNull();
   });
 });

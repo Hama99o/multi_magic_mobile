@@ -216,6 +216,12 @@ export const en = {
   },
 
   files: {
+    sizeBytes: "{{n}} B",
+    sizeKb: "{{n}} KB",
+    sizeMb: "{{n}} MB",
+    reading: "Reading…",
+    unreadable: "The assistant could not read this file.",
+    slow: "Still reading — this is taking longer than usual.",
     fromYourFiles: "From your files",
     openFullSize: "Open full size",
     openFile: "Open file",

@@ -20,7 +20,7 @@ jest.mock("@/hooks/useConversation", () => ({
 }));
 
 /* eslint-disable import/first */
-import Chat from "../chat";
+import Chat, { DOC_POLL_DEADLINE_MS, docPoll } from "../chat";
 import { KEY_PROBLEMS, RETRYABLE_KEY_PROBLEMS, aiApi, documentsApi, type ChatMessage } from "@/api/ai";
 import { __resetReachability, useReachability } from "@/stores/reachability.store";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -581,5 +581,28 @@ describe("in French, every failure state", () => {
     const en = await collect(state, "en");
     expect(englishIn(fr, strip)).toEqual([]);
     expect(identicalIn(fr, en, strip)).toEqual([]);
+  });
+});
+
+// ── THE DOCUMENTS POLL HAS A DEADLINE (claims audit, 2026-09-24) ──────────
+// A document whose extraction job never runs stays "pending" for ever, and
+// this polled every 2.5 s for as long as the chat was open.
+describe("the documents poll", () => {
+  const pending = (id: number) => ({ id, status: "pending" });
+
+  it("polls while something is pending, and stops when nothing is", () => {
+    expect(docPoll([pending(1)], null, 0).interval).toBe(2_500);
+    expect(docPoll([{ id: 1, status: "ready" }], { ids: "1", at: 0 }, 5_000)).toEqual({ interval: false, since: null });
+  });
+
+  it("stops once the SAME pending set outlasts the deadline", () => {
+    const first = docPoll([pending(1)], null, 0);
+    expect(docPoll([pending(1)], first.since, DOC_POLL_DEADLINE_MS - 1).interval).toBe(2_500);
+    expect(docPoll([pending(1)], first.since, DOC_POLL_DEADLINE_MS).interval).toBe(false);
+  });
+
+  it("starts the clock again for a new upload", () => {
+    const stale = { ids: "1", at: 0 };
+    expect(docPoll([pending(1), pending(2)], stale, DOC_POLL_DEADLINE_MS * 2).interval).toBe(2_500);
   });
 });

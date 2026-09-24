@@ -2,6 +2,7 @@
  * What the picker will and will not accept — checked before the request, so a
  * person meets our sentence rather than the server's 422.
  */
+import i18n from "@/i18n";
 import { rejectionFor, describeSize } from "../useAttachments";
 import { ALLOWED_UPLOAD_EXTENSIONS, LIMITS } from "@/api/ai";
 
@@ -68,5 +69,18 @@ describe("describeSize", () => {
     expect(describeSize(512)).toBe("512 B");
     expect(describeSize(2048)).toBe("2 KB");
     expect(describeSize(3 * MB)).toBe("3.0 MB");
+  });
+
+  // French units and a French decimal comma, so the "too big" refusal no
+  // longer mixes "12.0 MB" into a sentence that says "10 Mo".
+  it("reads in French too", async () => {
+    await i18n.changeLanguage("fr");
+    try {
+      expect(describeSize(512)).toBe("512 o");
+      expect(describeSize(2048)).toBe("2 Ko");
+      expect(describeSize(3 * MB)).toBe("3,0 Mo");
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 });

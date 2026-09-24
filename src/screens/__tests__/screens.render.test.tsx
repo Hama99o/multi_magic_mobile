@@ -313,6 +313,8 @@ import Privacy from "../../../app/privacy";
 // auth store is in a signed-out state with no `signedOutReason`, which is the
 // state a stranger arrives in anyway.
 import SignIn from "../../../app/sign-in";
+import TwoFactor from "../../../app/two-factor";
+import { useAuthStore } from "@/stores/auth.store";
 import SignUp from "../../../app/sign-up";
 import ForgotPassword from "../../../app/forgot-password";
 
@@ -388,6 +390,16 @@ const SCREENS: {
   // it is one document, not a translated one -- so the screen's only French is
   // its title, and that is what this row now reads.
   { name: "privacy", element: () => <Privacy />, handles: ["privacy-title", "privacy-body"], french: "Confidentialité" },
+  // A pending sign-in first: without one the screen sends you back to sign-in.
+  {
+    name: "two-factor",
+    element: () => {
+      useAuthStore.setState({ pendingTwoFactor: "pre-auth-token" });
+      return <TwoFactor />;
+    },
+    handles: ["two-factor-code", "two-factor-submit", "two-factor-back"],
+    french: "Vérification en deux étapes",
+  },
   { name: "sign-in", element: () => <SignIn />, handles: ["sign-in-email", "sign-in-password", "sign-in-submit", "sign-in-forgot", "sign-in-create-account"], french: "Se connecter avec un e-mail" },
   { name: "sign-up", element: () => <SignUp />, handles: ["sign-up-firstname", "sign-up-lastname", "sign-up-email", "sign-up-password", "sign-up-submit", "sign-up-to-sign-in"], french: "Créer le compte" },
   { name: "forgot-password", element: () => <ForgotPassword />, handles: ["forgot-password-email", "forgot-password-submit"] /* -back and -sent belong to the sent state, not this one */, french: "Envoyer le lien" },
@@ -485,8 +497,11 @@ describe.each(SCREENS)("$name", ({ element, handles, french }) => {
  * loads of chats, notifications, calendar, AI keys and profile at the end of
  * this file.
  *
- * NOT SWEPT, so not claimed: two-factor; the assistant's and the thread's
- * failed states; every loading state; the empty branches; and a date only
+ * Two-factor is a row since 2026-09-24, in its code-entry state.
+ *
+ * NOT SWEPT, so not claimed: two-factor's "verified, trust this phone?"
+ * pane; every loading state (these render skeletons, which carry no text);
+ * the empty branches; and a date only
  * says "Aujourd’hui" when the fixture is from today, which is how
  * `DayDivider`'s English "Today" went unseen (now `dayLabel.test.ts`).
  */

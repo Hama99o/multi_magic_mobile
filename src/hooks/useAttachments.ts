@@ -23,7 +23,7 @@ import {
   type AiDocument,
 } from "@/api/ai";
 import { failureMessage } from "@/api/failure";
-import { t } from "@/i18n";
+import i18n, { t } from "@/i18n";
 
 export interface PendingFile {
   /** Local, and only for React's key — the server's id arrives on success. */
@@ -42,10 +42,19 @@ function extensionOf(name: string): string {
   return dot === -1 ? "" : name.slice(dot + 1).toLowerCase();
 }
 
+/**
+ * A size in the reader's language: "3.0 MB" in English, "3,0 Mo" in French.
+ * It was English in both until 2026-09-24, so the French "too big" refusal
+ * read "fait 12.0 MB … moins de 10 Mo", two units in one sentence. The
+ * number follows the app's language, not the phone's region (the rule, and
+ * why, is in `DayDivider.tsx`).
+ */
 export function describeSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`;
-  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
-  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  const n = (value: number, digits: number) =>
+    value.toLocaleString(i18n.language, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+  if (bytes < 1024) return t("files.sizeBytes", { n: n(bytes, 0) });
+  if (bytes < 1024 * 1024) return t("files.sizeKb", { n: n(Math.round(bytes / 1024), 0) });
+  return t("files.sizeMb", { n: n(bytes / (1024 * 1024), 1) });
 }
 
 /**

@@ -226,6 +226,12 @@ export const fr: Translations = {
   },
 
   files: {
+    sizeBytes: "{{n}} o",
+    sizeKb: "{{n}} Ko",
+    sizeMb: "{{n}} Mo",
+    reading: "Lecture…",
+    unreadable: "L’assistant n’a pas pu lire ce fichier.",
+    slow: "Toujours en lecture : cela prend plus longtemps que d’habitude.",
     fromYourFiles: "Depuis vos fichiers",
     openFullSize: "Ouvrir en grand",
     openFile: "Ouvrir le fichier",

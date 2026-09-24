@@ -133,6 +133,28 @@ interface FailedQuestion {
  */
 const RATE_LIMIT_WAIT_S = 60;
 
+/** How long one set of documents may stay "pending" before polling stops.
+ *  Chosen to match the reply's own deadline (`REPLY_TIMEOUT_MS`,
+ *  `useConversation.ts`): past it, something upstream is not running. */
+export const DOC_POLL_DEADLINE_MS = 180_000;
+
+/** The documents poll, as a pure function so its deadline can be tested:
+ *  every 2.5 s while something is pending, until the same pending set has
+ *  lasted DOC_POLL_DEADLINE_MS; a different set starts the clock again. */
+export function docPoll(
+  documents: { id: number; status: string }[],
+  since: { ids: string; at: number } | null,
+  now: number,
+): { interval: number | false; since: { ids: string; at: number } | null } {
+  const ids = documents
+    .filter((d) => d.status === "pending")
+    .map((d) => d.id)
+    .join(",");
+  if (!ids) return { interval: false, since: null };
+  const start = since?.ids === ids ? since : { ids, at: now };
+  return { interval: now - start.at < DOC_POLL_DEADLINE_MS ? 2_500 : false, since: start };
+}
+
 export default function Chat() {
   const colors = useColors();
   const metrics = useMetrics();
@@ -203,14 +225,46 @@ export default function Chat() {
    *
    * 2.5 s is the web's interval (`AI_ASSISTANT.md` §9). Polling STOPS once
    * nothing is pending, so an idle chat makes no requests.
+   *
+   * ── AND IT HAS A DEADLINE (2026-09-24) ─────────────────────────────────
+   * The extraction job marks a document failed when it throws, but a job
+   * that never RUNS (the queue down, a worker killed mid-file) leaves it
+   * pending for ever. This polled every 2.5 s for as long as the chat was
+   * open, and nothing said why. Now, once the same set of documents has been
+   * pending for DOC_POLL_DEADLINE_MS, polling stops and the chip says reading
+   * is taking longer than usual. The clock is the phone's alone (when IT
+   * first saw that set pending), never the server's `created_at`. A new
+   * upload changes the set and starts it again.
    */
+  const pendingSince = useRef<{ ids: string; at: number } | null>(null);
+  const [readingSlow, setReadingSlow] = useState(false);
   const { data: uploaded = [] } = useQuery({
     queryKey: ["ai", "documents", conversationId],
     queryFn: () => documentsApi.list(conversationId as number),
     enabled: conversationId != null,
-    refetchInterval: (query) =>
-      (query.state.data ?? []).some((d) => d.status === "pending") ? 2_500 : false,
+    refetchInterval: (query) => {
+      const next = docPoll(query.state.data ?? [], pendingSince.current, Date.now());
+      pendingSince.current = next.since;
+      return next.interval;
+    },
   });
+  const serverStatus = useMemo(
+    () => Object.fromEntries(uploaded.map((d) => [d.id, d.status])) as Record<number, (typeof uploaded)[number]["status"]>,
+    [uploaded],
+  );
+  // "Slow" on the same deadline, by its own timer: set in an effect, never
+  // from inside the query's options, which can run while rendering. A new
+  // pending set, or none, starts it over.
+  const pendingIds = uploaded
+    .filter((d) => d.status === "pending")
+    .map((d) => d.id)
+    .join(",");
+  useEffect(() => {
+    setReadingSlow(false);
+    if (!pendingIds) return;
+    const timer = setTimeout(() => setReadingSlow(true), DOC_POLL_DEADLINE_MS);
+    return () => clearTimeout(timer);
+  }, [pendingIds]);
 
   // Derived from what this user actually has — never a written list.
   const { prompts } = useStarterPrompts(conversationId);
@@ -660,7 +714,12 @@ export default function Chat() {
             paddingBottom: metrics.space.sm,
           }}
         >
-          <PendingFiles files={attachments.pending} onRemove={attachments.remove} />
+          <PendingFiles
+            files={attachments.pending}
+            onRemove={attachments.remove}
+            serverStatus={serverStatus}
+            slow={readingSlow}
+          />
 
           {attachments.error ? (
             <Text variant="caption" tone="danger" testID="attach-error">

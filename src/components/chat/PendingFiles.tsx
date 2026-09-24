@@ -20,20 +20,37 @@ import { X } from "@/components/icons";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import type { AiDocument } from "@/api/ai";
 import { describeSize, type PendingFile } from "@/hooks/useAttachments";
 
 export function PendingFiles({
   files,
   onRemove,
+  serverStatus = {},
+  slow = false,
 }: {
   files: PendingFile[];
   onRemove: (key: string) => void;
+  /**
+   * What the SERVER made of each uploaded document, by id. Until 2026-09-24 an
+   * uploaded chip showed its name and size whatever happened next, so a file
+   * the server could not read ("No readable text in this file") looked
+   * exactly like one the assistant could use, and a person asked about a
+   * document the assistant could not see, with nothing on screen to say so.
+   */
+  serverStatus?: Record<number, AiDocument["status"]>;
+  /** Reading has outlasted the poll's deadline: say so rather than spin. */
+  slow?: boolean;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
 
   const [expanded, setExpanded] = useState(false);
+  /** The server's word on an uploaded file, newest first: the poll's answer,
+   *  else what the upload itself returned. Undefined before the upload ends. */
+  const readState = (file: PendingFile): AiDocument["status"] | undefined =>
+    file.document ? (serverStatus[file.document.id] ?? file.document.status) : undefined;
 
   if (files.length === 0) return null;
 
@@ -59,22 +76,31 @@ export function PendingFiles({
             paddingHorizontal: metrics.space.md,
             borderRadius: metrics.radius.pill,
             borderWidth: 1,
-            borderColor: file.status === "failed" ? colors.danger : colors.border,
+            borderColor: file.status === "failed" || readState(file) === "failed" ? colors.danger : colors.border,
             backgroundColor: colors.surface,
           }}
-          testID={`pending-file-${file.status}`}
+          testID={`pending-file-${readState(file) ?? file.status}`}
         >
           {file.status === "uploading" ? <ActivityIndicator size="small" color={colors.accent} /> : null}
           <View style={{ maxWidth: 180 }}>
             <Text variant="caption" numberOfLines={1}>
               {file.name}
             </Text>
-            <Text variant="caption" tone={file.status === "failed" ? "danger" : "muted"}>
+            <Text
+              variant="caption"
+              tone={file.status === "failed" || readState(file) === "failed" ? "danger" : "muted"}
+            >
               {file.status === "failed"
                 ? (file.error ?? t("files.didNotUpload"))
                 : file.status === "uploading"
                   ? t("files.uploading")
-                  : describeSize(file.size)}
+                  : readState(file) === "failed"
+                    ? t("files.unreadable")
+                    : readState(file) === "pending"
+                      ? slow
+                        ? t("files.slow")
+                        : t("files.reading")
+                      : describeSize(file.size)}
             </Text>
           </View>
           {/* 16 dp icon in a Pressable with no box of its own: 32 x 32 with

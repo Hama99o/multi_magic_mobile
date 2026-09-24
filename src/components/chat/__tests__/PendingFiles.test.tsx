@@ -110,3 +110,34 @@ describe("files queued onto a question that has not been sent", () => {
     expect(screen.getByTestId("pending-file-remove-a")).toHaveAccessibleName("Remove lease.pdf");
   });
 });
+
+// ── WHAT THE SERVER MADE OF IT (claims audit, 2026-09-24) ─────────────────
+// An uploaded chip used to show its name and size whatever happened next,
+// so a file the server could not read looked exactly like one the assistant
+// could use.
+describe("after the upload, the server's reading of the file", () => {
+  const uploaded = (status: "pending" | "ready" | "failed") =>
+    file({ document: { id: 9, filename: "lease.pdf", contentType: "application/pdf", byteSize: 1024, status } });
+
+  it("says it is being read while the server is still reading", () => {
+    render(<PendingFiles files={[uploaded("pending")]} onRemove={jest.fn()} />);
+    expect(screen.getByText("Reading…")).toBeTruthy();
+    expect(screen.getByTestId("pending-file-pending")).toBeTruthy();
+  });
+
+  it("follows the POLL, not the upload's first answer", () => {
+    render(<PendingFiles files={[uploaded("pending")]} onRemove={jest.fn()} serverStatus={{ 9: "failed" }} />);
+    expect(screen.getByText("The assistant could not read this file.")).toBeTruthy();
+    expect(screen.getByTestId("pending-file-failed")).toBeTruthy();
+  });
+
+  it("says reading is slow once the deadline passes, rather than spinning", () => {
+    render(<PendingFiles files={[uploaded("pending")]} onRemove={jest.fn()} slow />);
+    expect(screen.getByText("Still reading — this is taking longer than usual.")).toBeTruthy();
+  });
+
+  it("shows the size once it is ready", () => {
+    render(<PendingFiles files={[uploaded("pending")]} onRemove={jest.fn()} serverStatus={{ 9: "ready" }} />);
+    expect(screen.getByText("1.0 MB")).toBeTruthy();
+  });
+});

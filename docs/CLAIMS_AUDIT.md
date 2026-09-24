@@ -118,16 +118,16 @@ means it reaches the phone through the assistant with no app work.
 |---|---|---|
 | Replies in the reader's language (`4c6b728`, `4a39266`, `1f62871`, `dad9e8b`, `a5f7245`) | Signed in: yes, via `users.lang`. **Before sign-in: NO**, because the phone sent no `Accept-Language` | **FIXED here**: `http.ts` sends the app's language on every request. Sign-in, sign-up, reset and two-factor errors were English for a French reader |
 | Morning brief in the bell (`55ca44c`, `3523c7e`) | Shown, but the body was cut to one line | **FIXED here**: `NotificationRow` shows a brief in full. A tap composes a question, so nothing else on the phone showed the rest |
-| Morning brief switch (`users.ai_morning_brief`, `55ca44c`, `61442d3`) | **No surface** | **A gap, not a decision**: he cannot turn it on from the phone, only on the web's AI keys page. Needs a switch; raised with Hamma9901 |
+| Morning brief switch (`users.ai_morning_brief`, `55ca44c`, `61442d3`) | **Now, yes**: `MorningBriefRow` on the AI keys screen | **BUILT here**. It appears only once the server sends the field; production does not yet |
 | Error codes (`wrong_current_password`; 403 `forbidden`, `a5f7245`) | Password code: yes (`3f7ec45`). `forbidden`: waits for deploy | Nothing today. `isPolicyText` is dead code until then |
 | Lent key resets (`resets_at`, `key_resets_at`, `c9a4fca`) | Not yet; the phone infers the UTC month, correct today | Nothing today; read the field once it deploys |
 | `key_problem` codes (`6670dcd`) | Yes (`9f320ef`) | Nothing |
 | Borrower's monthly limit (`9a5a3cb`) | Yes (`BorrowedKeyRow`) | Nothing |
-| LENDING a key and setting its limit (`ba8457c`) | No: the phone lists keys lent TO you only (`app/ai-keys.tsx` says so) | **A decision, to confirm**: managing who holds your key is web-only |
-| Spend others ran on your lent key (`5554524`, `f7e1f8c`) | No: the phone has no usage screen at all | **A decision**: usage is a web screen |
+| LENDING a key and setting its limit (`ba8457c`) | No: the phone lists keys lent TO you only (`app/ai-keys.tsx` says so) | **A decision, confirmed by Hamma9901**: the borrower's side is built because that is what strands someone mid-conversation; the lender's side is post-release |
+| Spend others ran on your lent key (`5554524`, `f7e1f8c`) | No: the phone has no usage screen at all | **A decision, confirmed**: usage is a web screen |
 | Per-chat memory (`0a96216`) | Yes (`f29cd12`) | Nothing |
 | Thumbs and their reason (`357dd7a`, `622c25b`, `e867e38`) | Yes (`d50ac0c`, `27fb70b`) | Nothing |
-| "Cancel that" undoes the last write (`578e888`) | Server-only; the phone already has an Undo button | INFERRED: after an undo done by asking, the old reply's Undo button stays until the next reload. Minor, not verified |
+| "Cancel that" undoes the last write (`578e888`) | Server-only; the phone already has an Undo button | INFERRED: after an undo done by asking, the old reply's Undo button stays until the next reload. Minor and not verified, so left alone on purpose: a fix for something unseen could make it wrong |
 | Presence reads the latest activity (`1dd2379`) | Shown as it is | Nothing, once deployed |
 | Assistant behaviour: dates, SafeZone PIN, `find_records`, no double booking, family, memory, messaging someone, Flow, keeping a document | Server-only | Nothing |
 | Account-deletion fixes (`30dce44`, `3adca92`, `bd19a55`, `1835543`) | The error shapes, yes | Nothing |

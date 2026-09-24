@@ -378,6 +378,11 @@ export const en = {
   },
 
   aiKeys: {
+    briefTitle: "Morning brief",
+    briefHint:
+      "A notification at 8:00 your time: today’s events, birthdays this week, loans past due, cards expiring and any spending well above your usual. Nothing on a quiet day.",
+    briefOn: "Morning brief on. The first one comes at 8:00.",
+    briefFailed: "Could not change the morning brief.",
     title: "Your AI key",
     intro:
       "Add a key of your own and the assistant runs on your account, with your provider, at your cost. The key is checked with the provider before it is saved, and it is never shown again afterwards.",

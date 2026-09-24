@@ -259,3 +259,28 @@ container with a name acquires a control inside it again.
 Was `IN PROGRESS`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
 
 `13-profile` and `14-change-password` both pass. `14` holds the assertion it exists for: a wrong current password returns 422 against the field and **does not sign you out**.
+
+## The morning brief switch, on the AI keys screen: 2026-09-24
+
+`users.ai_morning_brief` (multi_magic `55ca44c`) is one notification at 08:00
+in his own time zone, off by default. Until today it could be turned on only
+from the web's AI keys page. **Rule Zero:** WHOOP, Craft, ABY Journal and
+Abode (`mobbin.com/screens/8d1cac1c-1775-420d-b89b-abd42680158d`,
+`…/9948aee5-fe4c-42c7-a97a-2fa0ad8a3dc2`,
+`…/6041b16c-eb04-4329-9d34-56cfb35053e0`,
+`…/2a487fa1-c8ef-47ba-a543-b91879b2acc4`) each use a titled switch with one
+line; Craft and ABY Journal name the time. **TAKE:** say what arrives and at
+8:00. **REJECT:** a time picker, since the server sends at 08:00 only. All
+four put it under a notifications screen this app does not have, so it sits
+beside the keys, as on the web: the same place on either device (decided by
+Hamma9901). The hint also names the spending line (`3523c7e`), which the
+web's hint does not yet.
+
+**How we code it:** `src/components/settings/MorningBriefRow.tsx`, rendered
+in `app/ai-keys.tsx`. It shows the SERVER's value from `connected_user`, and
+renders nothing when the field is absent (a server that predates it), never
+"off". It writes a real boolean, puts the switch back with the reason if the
+server refuses, and says when the first brief comes. Tests:
+`MorningBriefRow.test.tsx`, three plants red. **NOT MEASURED on a device**,
+and production does not have the field yet (nothing after multi_magic
+`4a39266` is deployed), so until the deploy the switch does not appear there.

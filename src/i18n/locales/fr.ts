@@ -394,6 +394,11 @@ export const fr: Translations = {
   },
 
   aiKeys: {
+    briefTitle: "Point du matin",
+    briefHint:
+      "Une notification à 8 h, heure locale : les événements du jour, les anniversaires de la semaine, les prêts en retard, les cartes qui expirent et toute dépense bien au-dessus de l’habitude. Rien les jours calmes.",
+    briefOn: "Point du matin activé. Le premier arrive à 8 h.",
+    briefFailed: "Impossible de modifier le point du matin.",
     title: "Votre clé IA",
     intro:
       "Ajoutez votre propre clé et l’assistant tourne sur votre compte, chez votre fournisseur, à vos frais. La clé est vérifiée auprès du fournisseur avant d’être enregistrée, et elle n’est plus jamais affichée ensuite.",

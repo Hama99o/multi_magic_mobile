@@ -40,6 +40,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { KeyRefused, aiKeysApi, type AiKey, type AiKeyPayload } from "@/api/aiKeys";
 import { failureMessage } from "@/api/failure";
 import { BorrowedKeyRow } from "@/components/settings/BorrowedKeyRow";
+import { MorningBriefRow } from "@/components/settings/MorningBriefRow";
 
 export default function AiKeys() {
   const colors = useColors();
@@ -268,6 +269,9 @@ export default function AiKeys() {
           </View>
         </View>
       ) : null}
+
+      {/* ── The morning brief, beside the keys as on the web ────────────── */}
+      <MorningBriefRow />
 
       {/* ── Adding or replacing one ────────────────────────────────────── */}
       <View style={{ marginTop: metrics.space.xl, gap: metrics.space.md }}>

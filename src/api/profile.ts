@@ -41,6 +41,13 @@ export interface Profile {
   username: string | null;
   about: string | null;
   phoneNumber: string | null;
+  /**
+   * The morning brief switch (`users.ai_morning_brief`, multi_magic 55ca44c):
+   * one notification at 08:00 in the person's own time zone, off by default.
+   * NULL when the server does not send the field at all, which is a server
+   * that predates it, and then the phone shows no switch rather than "off".
+   */
+  aiMorningBrief: boolean | null;
   /** Absolute by the time it leaves here — `<Image>` cannot use a bare path. */
   avatar: string | null;
   createdAt: string | null;
@@ -55,6 +62,9 @@ export interface ProfileChanges {
   phone_number?: string;
   /** `"en"` | `"fr"`. Written by the language row, not by the profile form. */
   lang?: string;
+  /** Written by the morning brief switch on the AI keys screen. A real
+   *  boolean, both ways: the server casts anything that is not false. */
+  ai_morning_brief?: boolean;
 }
 
 export function parseProfile(payload: unknown): Profile {
@@ -69,6 +79,7 @@ export function parseProfile(payload: unknown): Profile {
     username: optStr(record.username),
     about: optStr(record.about),
     phoneNumber: optStr(record.phone_number),
+    aiMorningBrief: typeof record.ai_morning_brief === "boolean" ? record.ai_morning_brief : null,
     avatar: absoluteUrl(optStr(record.avatar)),
     createdAt: optStr(record.created_at),
   };

@@ -17,7 +17,7 @@ beforeEach(() => {
   __resetLanguage();
   jest.spyOn(profileApi, "update").mockResolvedValue({
     id: 7, email: null, lang: "fr", firstName: null, lastName: null, fullName: null,
-    username: null, about: null, phoneNumber: null, avatar: null, createdAt: null,
+    username: null, about: null, phoneNumber: null, aiMorningBrief: null, avatar: null, createdAt: null,
   });
 });
 

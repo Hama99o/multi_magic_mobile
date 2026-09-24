@@ -227,6 +227,8 @@ jest.mock("@/api/profile", () => ({
       phoneNumber: null,
       avatar: null,
       createdAt: "2026-01-02T09:00:00Z",
+      // Off, as the server defaults it, so the AI keys row renders the switch.
+      aiMorningBrief: false,
     })),
     update: jest.fn(),
     uploadPhoto: jest.fn(),

@@ -27,6 +27,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { feedbackApi, undoApi, type ChatMessage, type Rating } from "@/api/ai";
 import { apiErrorMessage } from "@/api/http";
 import { ReadAloudButtons, ReadAloudNotice } from "./ReadAloud";
+import { FeedbackReasonDialog } from "./FeedbackReasonDialog";
 
 export function AnswerActions({
   message,
@@ -52,6 +53,10 @@ export function AnswerActions({
   const [rating, setRating] = useState<Rating | null>(message.rating ?? null);
   useEffect(() => setRating(message.rating ?? null), [message.rating]);
   const [undoing, setUndoing] = useState(false);
+  // The optional "what was wrong?" after a thumbs-DOWN — see the dialog.
+  const [asking, setAsking] = useState(false);
+  const [sendingReason, setSendingReason] = useState(false);
+  const [reasonSent, setReasonSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function copy() {
@@ -76,12 +81,33 @@ export function AnswerActions({
     const next = before === pressed ? null : pressed;
     void Haptics.selectionAsync();
     setRating(next);
+    // Asked at once, in parallel with the save, never INSTEAD of it: the
+    // thumb is recorded whether or not a reason follows.
+    if (next === "negative") {
+      setReasonSent(false);
+      setAsking(true);
+    }
     try {
       if (next) await feedbackApi.rate(message.id, next);
       else await feedbackApi.clear(message.id);
       onRated?.({ ...message, rating: next });
     } catch {
       setRating(before);
+    }
+  }
+
+  async function sendReason(reason: string) {
+    setSendingReason(true);
+    try {
+      await feedbackApi.rate(message.id, "negative", reason);
+      setAsking(false);
+      setReasonSent(true);
+      setTimeout(() => setReasonSent(false), 2500);
+    } catch {
+      // Stays open with the words still in it, so a failed send loses
+      // nothing and claims nothing. Skip is still there.
+    } finally {
+      setSendingReason(false);
     }
   }
 
@@ -168,6 +194,17 @@ export function AnswerActions({
           {t("answer.copied")}
         </Text>
       ) : null}
+      {reasonSent ? (
+        <Text variant="caption" tone="muted" testID="answer-reason-sent" accessibilityLiveRegion="polite">
+          {t("answer.whySent")}
+        </Text>
+      ) : null}
+      <FeedbackReasonDialog
+        visible={asking}
+        busy={sendingReason}
+        onSkip={() => setAsking(false)}
+        onSend={(reason) => void sendReason(reason)}
+      />
 
       <ReadAloudNotice message={message} />
 

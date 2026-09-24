@@ -161,7 +161,9 @@ one.** Nobody here can create that on his behalf, and nobody should.
 |---|---|---|
 | Release keystore | does not exist; only a debug key | **his** — EAS generates on first build, under his account |
 | Expo account session | not present in this environment | **his** |
-| Package-name decision | two names disagree, permanent after publish | **his**, before the first build |
+| Package-name decision | two names disagree, permanent after publish. **By branch, checked 2026-09-24:** `main` and the merge base say `co.byseven.multimagic`; `sdk-57` says `com.multimagics.mobile`, and the `e085289` merge kept `sdk-57`'s. Nobody has picked; the merge did not decide it | **his**, before the first build |
+| Splash in a BUILD | the light splash with a `dark` variant (`97b0c5c`) is in `main`'s top-level `splash`, `ios.splash` and `android.splash`, which is what **Expo Go** reads. A **build** reads the `expo-splash-screen` **plugin** entry, and that entry exists only on `sdk-57`, where it was `#102125`, dark, unconditional: a build would bring back the unreadable dark-on-dark launch screen. Hamma9901 gave it the same light + `dark` config on 2026-09-24, **UNCOMMITTED** beside the owner removal (`OWNER_REMOVED_FOR_PHONE.md` forbids committing `app.json` there). **Before any build from `sdk-57`: commit that plugin block** (light `#F7F9F9`, `dark` `#102125`), or the fix is lost with the working copy | whoever lands `sdk-57` |
+| Plugin entries only `sdk-57` has | `expo-splash-screen`, `expo-audio`, `expo-font`, `expo-image`, `expo-status-bar`, `expo-asset`; kept by the merge, not in `main` | checked at the SDK 57 landing |
 | `edgeToEdgeEnabled` removed | still in `main`'s `app.json`; **already removed on `sdk-57`** | done on the branch |
 | `extra.apiUrl` / `extra.wsUrl` | both `{}` — a missing variable hands `[object Object]` to a URL (`STORE_READINESS` §8) | held for step 4 |
 | `RECORD_AUDIO` declared once | still twice, in two spellings, on **both** `main` and `sdk-57` (`STORE_READINESS` §5) | held for step 4 |

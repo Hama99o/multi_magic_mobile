@@ -135,6 +135,9 @@ export const fr: Translations = {
   },
 
   composer: {
+    length: "{{length}} / {{limit}}",
+    tooLongOne: "Trop long pour être envoyé : retirez {{over}} caractère.",
+    tooLongMany: "Trop long pour être envoyé : retirez {{over}} caractères.",
     placeholder: "Posez une question…",
     yourQuestion: "Votre question",
     send: "Envoyer",

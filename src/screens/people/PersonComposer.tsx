@@ -40,6 +40,7 @@ import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { LANGUAGES, useSpeechToText } from "@/hooks/useSpeechToText";
+import { LengthCounter, isTooLong } from "@/components/chat/LengthCounter";
 
 /** Long enough that a pause between words does not re-announce. */
 const TYPING_THROTTLE_MS = 3_000;
@@ -79,7 +80,7 @@ export function PersonComposer({
     onTyping();
   }, [value, onTyping]);
 
-  const canSend = value.trim().length > 0 && !disabled;
+  const canSend = value.trim().length > 0 && !disabled && !isTooLong(value);
 
   return (
     <View style={{ gap: metrics.space.xs }}>
@@ -242,6 +243,7 @@ export function PersonComposer({
         <ArrowUp size={20} color={canSend ? colors.onAccent : colors.inkMuted} />
       </Pressable>
     </View>
+      <LengthCounter length={value.length} />
     </View>
   );
 }

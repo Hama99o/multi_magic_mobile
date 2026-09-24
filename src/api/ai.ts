@@ -182,6 +182,9 @@ export const LIMITS = {
    */
   questionsPerMinute: 15,
   questionsPerHour: 200,
+  /** `Message` `validates :body, length: { maximum: 10_000 }` — a question
+   *  and a message to a person alike. */
+  messageLength: 10_000,
 } as const;
 
 /**

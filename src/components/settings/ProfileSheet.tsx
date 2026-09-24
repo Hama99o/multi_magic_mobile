@@ -136,7 +136,7 @@ export function ProfileSheet({
           accessibilityRole="button"
           accessibilityLabel={t("common.close")}
           onPress={close}
-          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" }}
+          style={{ ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.5)" }}
         />
         <View
           style={{

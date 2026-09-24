@@ -54,7 +54,7 @@ export function FilePreview({
           accessibilityRole="button"
           accessibilityLabel={t("common.close")}
           onPress={onClose}
-          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)" }}
+          style={{ ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.6)" }}
           testID="file-preview-scrim"
         />
         <View

@@ -22,7 +22,7 @@
  */
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, View } from "react-native";
-import { RotateCw } from "lucide-react-native";
+import { RotateCw } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { relativeTime } from "@/lib/relativeTime";

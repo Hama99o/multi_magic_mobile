@@ -28,7 +28,7 @@
 import { Pressable, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, Trash2 } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, Trash2 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";

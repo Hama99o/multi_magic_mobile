@@ -20,7 +20,7 @@
  * looks like a one-off is a small lie, and it is one icon.
  */
 import { Pressable, View } from "react-native";
-import { MapPin, Repeat } from "lucide-react-native";
+import { MapPin, Repeat } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { categoryColorFor } from "@/theme/tokens";

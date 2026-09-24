@@ -45,7 +45,7 @@ import { useCallback, useMemo, useState } from "react";
 import { FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft } from "lucide-react-native";
+import { ChevronLeft } from "@/components/icons";
 import { useQuery } from "@tanstack/react-query";
 import { RefreshButton, UpdatedLine } from "@/components/Freshness";
 import { CALENDAR_KEYS, useAssistantEcho } from "@/hooks/useAssistantEcho";

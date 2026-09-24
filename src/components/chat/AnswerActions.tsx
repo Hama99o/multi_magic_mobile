@@ -20,7 +20,7 @@ import { useEffect, useState } from "react";
 import * as Haptics from "expo-haptics";
 import { Pressable, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { Copy, ThumbsDown, ThumbsUp, Undo2 } from "lucide-react-native";
+import { Copy, ThumbsDown, ThumbsUp, Undo2 } from "@/components/icons";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";

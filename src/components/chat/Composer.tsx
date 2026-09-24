@@ -28,7 +28,7 @@
  */
 import { Pressable, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { ArrowUp, Mic, Plus, Square, X } from "lucide-react-native";
+import { ArrowUp, Mic, Plus, Square, X } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { LANGUAGES, useSpeechToText } from "@/hooks/useSpeechToText";

@@ -26,7 +26,7 @@ import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, Eye, EyeOff } from "lucide-react-native";
+import { ChevronLeft, Eye, EyeOff } from "@/components/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";

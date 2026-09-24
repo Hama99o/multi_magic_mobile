@@ -37,7 +37,7 @@ import { Modal, Pressable, ScrollView, View } from "react-native";
 import { FILL } from "@/theme/fill";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { ChevronLeft, ChevronRight, X } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, X } from "@/components/icons";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";

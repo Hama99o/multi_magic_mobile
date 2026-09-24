@@ -27,7 +27,7 @@ import { useState } from "react";
 import {
   KeyboardAvoidingView, Modal, Pressable, ScrollView, TextInput, View,
 } from "react-native";
-import { Check } from "lucide-react-native";
+import { Check } from "@/components/icons";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";

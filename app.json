@@ -17,6 +17,15 @@
         "NSPhotoLibraryUsageDescription": "Attach a photo or a scan to a conversation so the assistant can read it.",
         "NSCameraUsageDescription": "Take a photo of a document to attach it to a conversation.",
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "splash": {
+        "image": "./assets/splash-icon-512.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#F7F9F9",
+        "dark": {
+          "image": "./assets/splash-icon-512.png",
+          "backgroundColor": "#102125"
+        }
       }
     },
     "android": {
@@ -28,7 +37,16 @@
       "permissions": [
         "RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
-      ]
+      ],
+      "splash": {
+        "image": "./assets/splash-icon-512.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#F7F9F9",
+        "dark": {
+          "image": "./assets/splash-icon-512.png",
+          "backgroundColor": "#102125"
+        }
+      }
     },
     "plugins": [
       "expo-router",
@@ -51,7 +69,11 @@
         {
           "image": "./assets/splash-icon-512.png",
           "resizeMode": "contain",
-          "backgroundColor": "#102125"
+          "backgroundColor": "#F7F9F9",
+          "dark": {
+            "image": "./assets/splash-icon-512.png",
+            "backgroundColor": "#102125"
+          }
         }
       ],
       "expo-status-bar",
@@ -68,6 +90,11 @@
         "projectId": "6aae9901-e7f6-462f-96c1-da7d5ebe3e88"
       }
     },
-    "owner": "hama990"
+    "owner": "hama990",
+    "splash": {
+      "image": "./assets/splash-icon-512.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#F7F9F9"
+    }
   }
 }

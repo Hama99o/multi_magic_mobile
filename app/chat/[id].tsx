@@ -37,7 +37,7 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, View, type ViewStyle } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft } from "lucide-react-native";
+import { ChevronLeft } from "@/components/icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { useQuery, useQueryClient } from "@tanstack/react-query";

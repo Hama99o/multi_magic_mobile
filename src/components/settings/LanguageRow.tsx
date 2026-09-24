@@ -20,7 +20,7 @@
  * as a dated divergence note rather than by moving the pair.
  */
 import { Pressable, View } from "react-native";
-import { Check } from "lucide-react-native";
+import { Check } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { LANGUAGES } from "@/i18n";

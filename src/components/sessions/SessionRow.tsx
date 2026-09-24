@@ -13,7 +13,7 @@
  * top, which it does on every reply.
  */
 import { Pressable, View } from "react-native";
-import { Filter, MoreVertical, NotebookPen } from "lucide-react-native";
+import { Filter, MoreVertical, NotebookPen } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { categoryColorFor } from "@/theme/tokens";

@@ -26,7 +26,7 @@
 import { Modal, Pressable, View } from "react-native";
 import { FILL } from "@/theme/fill";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Copy, Pencil, Trash2 } from "lucide-react-native";
+import { Copy, Pencil, Trash2 } from "@/components/icons";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";

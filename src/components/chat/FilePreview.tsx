@@ -20,7 +20,7 @@
 import { Image, Linking, Modal, Pressable, ScrollView, View } from "react-native";
 import { FILL } from "@/theme/fill";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { X } from "lucide-react-native";
+import { X } from "@/components/icons";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";

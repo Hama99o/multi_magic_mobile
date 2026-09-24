@@ -11,9 +11,9 @@
  * (`src/__tests__/setup.ts`), so nothing here runs natively, and smoothness
  * is a device observation.
  */
-import { render, waitFor } from "@testing-library/react-native";
-import { AccessibilityInfo, Text } from "react-native";
-import { allNative, watchTimings } from "@/__tests__/animated";
+import { render, screen, waitFor } from "@testing-library/react-native";
+import { AccessibilityInfo, Animated, Text } from "react-native";
+import { allNative, boundValue, watchTimings } from "@/__tests__/animated";
 import { Arriving } from "../Arriving";
 import { ThinkingDots } from "../ThinkingDots";
 
@@ -31,6 +31,25 @@ it("the arriving fade starts, on the native driver", async () => {
   );
   await waitFor(() => expect(started.length).toBeGreaterThan(0));
   expect(allNative(started)).toBe(true);
+});
+
+// THE OUTCOME, not the call: the message is on screen at the end. A fade
+// started on the wrong value (or toward the wrong one) passes every check on
+// what started, and leaves the message invisible just the same.
+it("an arriving message ends fully visible", async () => {
+  jest.spyOn(AccessibilityInfo, "isReduceMotionEnabled").mockResolvedValue(false);
+  const { built } = watchTimings();
+  render(
+    <Arriving arriving>
+      <Text>new</Text>
+    </Arriving>,
+  );
+  const view = screen.UNSAFE_getByType(Animated.View);
+  // The view STARTS at 1 and drops to 0 only once Reduce Motion has answered,
+  // so asking before that passes for anything. The first version of this
+  // test did exactly that, and a fade on the wrong value stayed green.
+  await waitFor(() => expect(built.length).toBeGreaterThan(0));
+  await waitFor(() => expect(boundValue(view, "opacity")).toBe(1), { timeout: 2_000 });
 });
 
 it("the dots' loop starts, every step on the native driver", async () => {

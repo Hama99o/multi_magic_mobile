@@ -17,7 +17,8 @@
  * signed blob path works without a session; anything else is offered as a plain
  * open and says where it is going.
  */
-import { Image, Linking, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Image, Linking, Modal, Pressable, ScrollView, View } from "react-native";
+import { FILL } from "@/theme/fill";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
@@ -54,7 +55,7 @@ export function FilePreview({
           accessibilityRole="button"
           accessibilityLabel={t("common.close")}
           onPress={onClose}
-          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.6)" }}
+          style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.6)" }}
           testID="file-preview-scrim"
         />
         <View

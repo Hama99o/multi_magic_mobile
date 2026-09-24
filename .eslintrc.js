@@ -109,6 +109,28 @@ module.exports = {
           "require() needs a string LITERAL — Metro resolves requires statically and a variable makes the app unbundleable, while Node and Jest accept it. One try/catch per module with the name written out; see src/stores/readAloud.store.ts and docs/TESTING.md §1.",
       },
       /**
+       * `StyleSheet.absoluteFillObject` IS GONE IN THE NEXT SDK, SILENTLY.
+       *
+       * It exists in React Native 0.81 (SDK 54) and not in the version SDK 57
+       * ships. Spreading a missing property is `{ ...undefined }`, which is
+       * nothing, so every scrim written as `{ ...StyleSheet.absoluteFillObject,
+       * backgroundColor }` became a colour with no position and no size: a
+       * zero-pixel Pressable, and a sheet that no tap outside could close.
+       * Found by the owner on his phone (SDK 57 worktree) 2026-09-24, in the
+       * Conversations sheet; eight copies on main, all descended from one.
+       *
+       * `tsc` could not see it on SDK 54, where the name still exists, and
+       * the scrim tests pressed it by testID, which works on a zero-sized
+       * element because the test renderer lays nothing out.
+       * Use `FILL` from `src/theme/fill.ts`: a plain object, correct on both
+       * versions (spreading `StyleSheet.absoluteFill` is a type error on 54).
+       */
+      {
+        selector: "MemberExpression[object.name='StyleSheet'][property.name='absoluteFillObject']",
+        message:
+          "Use FILL from @/theme/fill. absoluteFillObject is removed in the React Native SDK 57 ships, and spreading the missing name leaves a scrim with no size (a sheet that no tap outside can close).",
+      },
+      /**
        * AN ACCESSIBILITY STRING IS A USER-FACING STRING.
        *
        * `docs/LANGUAGES.md` says this app is English and French. Two hint

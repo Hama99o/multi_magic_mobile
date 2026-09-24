@@ -11,7 +11,8 @@
  * refuse. Refusal is not an error state either: the sheet simply closes, and
  * the photo stays what it was.
  */
-import { Modal, Pressable, StyleSheet, View } from "react-native";
+import { Modal, Pressable, View } from "react-native";
+import { FILL } from "@/theme/fill";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import { Camera, Images, Trash2 } from "lucide-react-native";
@@ -110,7 +111,7 @@ export function PhotoSheet({
           onPress={onClose}
           accessibilityRole="button"
           accessibilityLabel={t("common.close")}
-          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "#00000088" }}
+          style={{ ...FILL, backgroundColor: "#00000088" }}
         />
         {/* A sibling scrim cannot be reached through the content, so nothing
             needs to swallow a press here any more — and a plain View is not

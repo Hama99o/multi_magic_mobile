@@ -10,7 +10,8 @@
  * than only at the point of refusal — "17 of 20 files" is information; meeting
  * the limit with no warning is a surprise.
  */
-import { Modal, Pressable, StyleSheet, View } from "react-native";
+import { Modal, Pressable, View } from "react-native";
+import { FILL } from "@/theme/fill";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { Camera, FileText, Image as ImageIcon } from "lucide-react-native";
@@ -63,7 +64,7 @@ export function AttachSheet({
           accessibilityRole="button"
           accessibilityLabel={t("common.close")}
           onPress={onClose}
-          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" }}
+          style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.5)" }}
         />
         <View
           style={{

@@ -1,7 +1,7 @@
 // EXPECTED TO PASS — the legitimate forms of everything the rules forbid.
 // A rule that fires on these is over-broad, which this test catches too.
 import { useState } from "react";
-import { Pressable, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 
 // A literal require of a name written out: the form the app actually uses.
 let audio: unknown = null;
@@ -43,6 +43,17 @@ export function TranslatedNames({ title, when }: { title: string; when: string }
       <Pressable accessibilityLabel={t("calendar.event", { title, when })} />
       <Pressable accessibilityLabel={`${title}, ${when}`} />
       <Pressable accessibilityLabel={title ?? ""} />
+    </View>
+  );
+}
+
+// Covering the parent, the forms that survive SDK 57.
+const FILL = { position: "absolute", top: 0, right: 0, bottom: 0, left: 0 } as const;
+export function Scrims() {
+  return (
+    <View>
+      <Pressable style={{ ...FILL, backgroundColor: "#0008" }} />
+      <View style={StyleSheet.absoluteFill} />
     </View>
   );
 }

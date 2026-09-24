@@ -15,7 +15,8 @@
  * once a month is read, while one they dismiss daily is not.
  */
 import { useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, View } from "react-native";
+import { FILL } from "@/theme/fill";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { X } from "lucide-react-native";
@@ -207,7 +208,7 @@ export function SessionsSheet({
           accessibilityRole="button"
           accessibilityLabel={t("common.close")}
           onPress={onClose}
-          style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" }}
+          style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.5)" }}
           testID="sessions-scrim"
         />
         <View
@@ -339,7 +340,7 @@ export function SessionsSheet({
               accessibilityRole="button"
               accessibilityLabel={t("common.close")}
               onPress={() => setPending(null)}
-              style={{ ...StyleSheet.absoluteFillObject, backgroundColor: "rgba(0,0,0,0.5)" }}
+              style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.5)" }}
             />
             <View
               style={{

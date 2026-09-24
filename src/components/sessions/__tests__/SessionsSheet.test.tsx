@@ -4,6 +4,7 @@
  * destructive confirm rare.
  */
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { testQueryClient } from "@/__tests__/queryClient";
 import { SessionsSheet } from "../SessionsSheet";
@@ -53,7 +54,13 @@ describe("outside the sheet", () => {
   it("closes it", async () => {
     const onClose = jest.fn();
     renderSheet({ onClose });
-    fireEvent.press(await screen.findByTestId("sessions-scrim"));
+    const scrim = await screen.findByTestId("sessions-scrim");
+    // COVERS the screen, not merely exists: a zero-sized scrim still presses
+    // by testID, which is how one with no size shipped (`src/theme/fill.ts`).
+    expect(StyleSheet.flatten(scrim.props.style)).toMatchObject({
+      position: "absolute", top: 0, right: 0, bottom: 0, left: 0,
+    });
+    fireEvent.press(scrim);
     expect(onClose).toHaveBeenCalledTimes(1);
   });
 });

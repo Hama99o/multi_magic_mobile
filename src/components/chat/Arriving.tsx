@@ -45,13 +45,18 @@
  * to, because a message that is already on screen should not fade because a
  * setting changed while it sat there.
  *
- * ── RN `Animated`, NOT REANIMATED, AND THAT IS MEASURED ──────────────────
- * `ThinkingDots` is the existing precedent and its comment says why:
- * `useNativeDriver: false`, because the native driver resolves a real view at
- * start and under react-test-renderer there is none — it throws "Unable to
- * locate attached view in the native tree" and takes the whole screen's test
- * with it. `react-native-reanimated` is in `package.json` and has no babel
- * plugin configured, so its worklets would not run here anyway.
+ * ── RN `Animated`, ON THE NATIVE DRIVER ──────────────────────────────────
+ * It was `useNativeDriver: false` so the tests could run it. Measured
+ * 2026-09-24 on `qa_phone4`, that cost the animation itself: a 180 ms fade
+ * took 754-1086 ms whenever the JS thread stalled after a send, which is
+ * exactly when a new message fades in. On the native driver the fade runs
+ * off the JS thread and a stall cannot stretch it. The tests keep working
+ * because `src/__tests__/setup.ts` refuses the driver under Jest only.
+ * (This used to say Reanimated's worklets "would not run here" for want of a
+ * babel plugin. Wrong, checked 2026-09-24: `babel-preset-expo` adds the
+ * worklets / Reanimated plugin automatically when the package is installed,
+ * `babel-preset-expo/build/index.js:284`. Plain `Animated` is still enough
+ * for a fade.)
  */
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { AccessibilityInfo, Animated } from "react-native";
@@ -77,7 +82,7 @@ export function Arriving({ arriving, children }: { arriving: boolean; children: 
         Animated.timing(opacity, {
           toValue: 1,
           duration: FADE_MS,
-          useNativeDriver: false,
+          useNativeDriver: true,
         }).start();
       })
       .catch(() => {

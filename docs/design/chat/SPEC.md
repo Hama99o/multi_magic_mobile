@@ -340,3 +340,42 @@ container with a name acquires a control inside it again.
 Was `SPECIFIED`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
 
 `01-ask`, `03-dictation` and `09-keyboard` all carry dated passes; `ours/` holds 360, 411 and 800 in both modes plus French at 360. **Two coverage gaps are named rather than hidden:** this account's assistant cites no sources, so `source-chips` and the `source-sheet` handles are unreachable from any flow; and `answer-read*` cannot render until the rebuild, because the installed binary predates read-aloud and the modules are native.
+
+
+## Keyboard smoothness — RESEARCH, 2026-09-24, NOT BUILT
+
+Ranked first for smoothness: in a chat the keyboard opens on every message,
+and on Android it is where jank lives.
+
+**What the app does today.** `Screen avoidKeyboard` is React Native's
+`KeyboardAvoidingView` (`behavior="padding"`), over an inverted list since
+`915c54b`. RN's KAV learns the keyboard's height from keyboard EVENTS and
+applies the padding in a step; it does not follow the keyboard frame by frame.
+So the composer and the newest message move as a jump, or trail the keyboard,
+rather than riding on top of it. That is reasoning from how RN's KAV works,
+not a recording. The recording is the first job of the next device slot.
+
+**What the good chat apps do.** The composer rides the keyboard: it tracks the
+IME animation frame by frame (Android 11+ `WindowInsetsAnimation`, iOS's
+keyboard curve), so nothing jumps. On Mobbin this is motion, which a still
+cannot show, so the references are behavioural: WhatsApp, Telegram and
+iMessage all move the composer with the keyboard.
+
+**The standard way to get that in RN** is `react-native-keyboard-controller`
+(`KeyboardAvoidingView` / `KeyboardStickyView`, driven off the UI thread
+with Reanimated worklets). Facts checked:
+- it is listed in `expo/bundledNativeModules.json` for both SDKs (1.18.5 on
+  54, 1.21.9 on 57), which means version-compatible with the SDK. It does
+  NOT prove Expo Go ships it. **Whether the owner's Expo Go has it is
+  unmeasured, and it decides everything**: if it doesn't, the library can't
+  run on his phone until a real build.
+- Reanimated's babel plugin IS active: `babel-preset-expo` adds it
+  automatically (`index.js:284`). `Arriving.tsx` said otherwise; corrected.
+- a native module means a dev-client rebuild on the emulator (`gradlew`), a
+  disk and time cost to clear with Hamma9901 first.
+
+**Plan for the device slot, in order:** (1) record the keyboard opening and
+closing on the current build at 60 fps and measure whether the composer steps
+or tracks; (2) find out whether Expo Go SDK 57 has keyboard-controller
+(import it behind a guard and log); (3) only then decide between the library
+and tuning what exists. Nothing is changed until (1) says there is a problem.

@@ -9,70 +9,205 @@
 #      all mock the cable.
 #
 # If only one flow ever exists in this repo, it is this one.
+#
+# ── IT ASKS IN A CONVERSATION OF ITS OWN, AND DELETES IT ─────────────────
+# Until 2026-09-24 this typed one constant question into the QA account's
+# standing conversation and removed nothing, so every run added a question and
+# a real AI answer to it, for ever (`qa/FLOW_REGISTER.md`, "What run 9 would
+# need", item 3). That was not only untidy — it made two of the three
+# assertions above HOLLOW, because the flow's verdict depended on its own
+# history (`qa/QA_HANDBOOK.md`, "A flow that writes and never cleans up"):
+#
+#   - `visible: "Do I owe anyone money?"` matched the bubble from ANY earlier
+#     run, so step 1 could pass before this run's question had rendered;
+#   - `assistant-answer` was on screen from every earlier run, and
+#     `notVisible: thinking` is satisfied at once if the dots have not appeared
+#     yet — so step 3 could pass with no answer arriving at all.
+#
+# The handbook's fork, and this flow takes BOTH halves:
+#
+#   - UNIQUE: the question carries a run id stamped by `evalScript`, and every
+#     later step addresses it by that id. The conversation is new and empty
+#     (`chat-empty`), so an `assistant-answer` in it can only be this run's.
+#   - REMOVED: the server titles a conversation from its first question
+#     (`Ai::Sessions.autotitle`, multi_magic `app/services/ai/sessions.rb`), so
+#     the row is "QA ask <id>: …" and its menu "Options for QA ask <id>: …".
+#     This run deletes its own row by that name, and first sweeps any
+#     `QA ask …` row a killed run left behind — bounded, the way `15` is.
+#
+# Deleting a conversation that has produced a usage event failed until
+# multi_magic `6923905` (`has_many :ai_usage_events, dependent: :nullify`).
+# Against a backend without that commit the cleanup below fails, and that is
+# the defect, not this flow.
+#
+# The question has no `?` on purpose: Maestro matches text as a regex, and the
+# row's selector below is an exact label in which a `?` would be a quantifier.
+# Nothing in it is a database id.
 appId: ${APP_ID}
 tags:
   - smoke
 ---
 - runFlow: login.yaml
-- takeScreenshot: reports/02-chat-before-asking
 
-# TYPED, not tapped from the empty state. Two reasons, both learned the hard
-# way: the QA account's conversation accumulates messages across runs, so the
-# empty state is not there after the first pass; and the starter prompts are
-# DERIVED now, so an account with nothing to derive from legitimately offers
-# none. A flow that depends on either is asserting the fixture, not the product.
+# The run id. Seconds, stringified, because a bare number from the JS engine
+# can print as `1.7E9` inside an interpolation.
+- evalScript: ${output.askId = String(Math.floor(Date.now() / 1000))}
+
 - tapOn:
-    id: "composer-input"
-- inputText: "Do I owe anyone money?"
-
-# NO `hideKeyboard` HERE, and that one step was the whole of the mystery.
-#
-# Proved by bisection: after `inputText`, `composer-send` asserts VISIBLE; after
-# `hideKeyboard`, the same assertion FAILS. The button is enabled either way —
-# `composer-clear` renders only when the field has a value, and it is present,
-# so React state updated and `canSend` is true.
-#
-# Dismissing the keyboard relayouts the composer through KeyboardAvoidingView,
-# and Maestro's tree snapshot catches it mid-transition. "Element not found" was
-# never about the selector: testID and label both failed, because the node was
-# genuinely absent for that instant.
-#
-# A user taps send with the keyboard still up, which is also what this now does.
-- tapOn:
-    id: "composer-send"
-
-# 1. The question appears before any answer exists.
-#
-# A short WAIT, not an instant assert: the text moves out of the composer and
-# into a bubble on the next render, so an assertion fired the same millisecond
-# as the tap catches neither. This is still "immediately" in the sense that
-# matters — it is drawn from the 202's own id, long before any answer.
-- extendedWaitUntil:
-    visible: "Do I owe anyone money?"
-    timeout: 20000
-- takeScreenshot: reports/03-question-posted
-
-# 2. Dots where the answer will be — OPTIONAL, and honestly so.
-#
-# lint: optional-ok — a RACE, not a weak assertion. The step that is the point
-# of this flow is the answer arriving, and that one is hard.
-#
-# The indicator is load-bearing in the product and a race in a flow: on a fast
-# turn the answer can land before the assertion runs, and failing then would
-# report a bug for the app being quick. Its behaviour is covered by unit test
-# (it appears on pending, and its 45-second copy change); what this flow is for
-# is the ANSWER ARRIVING, which is the assertion below and cannot be raced.
+    id: "chat-open-sessions"
 - assertVisible:
-    id: "thinking"
-    optional: true
+    id: "sessions-sheet"
 
-# 3. The answer lands. Generous, because a RAG turn plus a provider call is
-#    genuinely slow — but far short of the composer's own 3-minute release, so
-#    a timeout here means "it did not arrive", not "we were impatient".
-- extendedWaitUntil:
-    notVisible:
-      id: "thinking"
-    timeout: 120000
+# ── SWEEP WHAT A KILLED RUN LEFT, WITH THE SHEET ALREADY OPEN ────────────
+# Only rows called `QA ask …` exist because this flow made them. Bounded at
+# four rather than looped on a condition, so a delete that silently stops
+# working ends the flow instead of spinning (`15-sessions-switch`, same shape).
+- repeat:
+    times: 4
+    commands:
+      - runFlow:
+          when:
+            visible: "Options for QA ask .*"
+          commands:
+            - tapOn: "Options for QA ask .*"
+            - tapOn:
+                id: "session-menu-delete"
+            - tapOn:
+                id: "delete-conversation-yes"
+            - extendedWaitUntil:
+                notVisible:
+                  id: "delete-conversation-confirm"
+                timeout: 20000
+            - waitForAnimationToEnd:
+                timeout: 5000
+# Positive first, or the absence below is toothless (`15`, the covered sheet).
 - assertVisible:
-    id: "assistant-answer"
-- takeScreenshot: reports/04-answer-arrived
+    id: "sessions-new"
+- assertNotVisible: "Options for QA ask .*"
+
+# At the cap there is nothing to create: NOT MEASURED past here, which is a
+# different fact from passed. Delete a conversation by hand and re-run.
+- runFlow:
+    when:
+      visible:
+        id: "sessions-at-limit"
+    commands:
+      - assertVisible: "You have 50 conversations, which is the most MultiMagic keeps.*"
+      - takeScreenshot: reports/02-ask-at-limit-NOT-MEASURED
+
+- runFlow:
+    when:
+      notVisible:
+        id: "sessions-at-limit"
+    commands:
+      # A new conversation, and its emptiness is what makes step 3 mean
+      # anything: no `assistant-answer` exists here until this run's arrives.
+      # (`sessions-new` may hand back an existing UNTITLED empty rather than
+      # make a second one — `SessionsSheet.tsx` — which is just as empty.)
+      - tapOn:
+          id: "sessions-new"
+      - extendedWaitUntil:
+          visible:
+            id: "chat-empty"
+          timeout: 30000
+      - assertNotVisible:
+          id: "assistant-answer"
+      - takeScreenshot: reports/02-chat-before-asking
+
+      # TYPED, not tapped from the empty state: the starter prompts are
+      # DERIVED, so an account with nothing to derive from legitimately offers
+      # none. A flow that depends on them is asserting the fixture.
+      - tapOn:
+          id: "composer-input"
+      - inputText: "QA ask ${output.askId}: do I owe anyone money"
+
+      # NO `hideKeyboard` HERE, and that one step was the whole of the mystery.
+      #
+      # Proved by bisection: after `inputText`, `composer-send` asserts VISIBLE;
+      # after `hideKeyboard`, the same assertion FAILS. The button is enabled
+      # either way — `composer-clear` renders only when the field has a value,
+      # and it is present, so React state updated and `canSend` is true.
+      #
+      # Dismissing the keyboard relayouts the composer through
+      # KeyboardAvoidingView, and Maestro's tree snapshot catches it
+      # mid-transition. "Element not found" was never about the selector:
+      # testID and label both failed, because the node was genuinely absent
+      # for that instant.
+      #
+      # A user taps send with the keyboard still up, which is also what this
+      # now does.
+      - tapOn:
+          id: "composer-send"
+
+      # 1. The question appears before any answer exists — THIS run's question.
+      #
+      # A short WAIT, not an instant assert: the text moves out of the composer
+      # and into a bubble on the next render, so an assertion fired the same
+      # millisecond as the tap catches neither. This is still "immediately" in
+      # the sense that matters — it is drawn from the 202's own id, long before
+      # any answer.
+      - extendedWaitUntil:
+          visible: "QA ask ${output.askId}: do I owe anyone money"
+          timeout: 20000
+      - takeScreenshot: reports/03-question-posted
+
+      # 2. Dots where the answer will be — OPTIONAL, and honestly so.
+      #
+      # lint: optional-ok — a RACE, not a weak assertion. The step that is the
+      # point of this flow is the answer arriving, and that one is hard.
+      #
+      # The indicator is load-bearing in the product and a race in a flow: on
+      # a fast turn the answer can land before the assertion runs, and failing
+      # then would report a bug for the app being quick. Its behaviour is
+      # covered by unit test (it appears on pending, and its 45-second copy
+      # change); what this flow is for is the ANSWER ARRIVING, which is the
+      # assertion below and cannot be raced.
+      - assertVisible:
+          id: "thinking"
+          optional: true
+
+      # 3. The answer lands. WAIT FOR THE ANSWER, not for the dots to go:
+      #    `notVisible: thinking` is true before the dots appear, and in an
+      #    empty conversation `assistant-answer` can only be this run's.
+      #    Generous, because a RAG turn plus a provider call is genuinely slow
+      #    — but far short of the composer's own 3-minute release, so a timeout
+      #    here means "it did not arrive", not "we were impatient".
+      - extendedWaitUntil:
+          visible:
+            id: "assistant-answer"
+          timeout: 120000
+      - extendedWaitUntil:
+          notVisible:
+            id: "thinking"
+          timeout: 20000
+      - takeScreenshot: reports/04-answer-arrived
+
+      # ── And delete it, because this flow made it ─────────────────────
+      # The row is found by the title the first question gave it, which is
+      # also the only assertion anywhere in the suite that autotitle happened.
+      # The sheet refetches on open (`enabled: visible`, staleTime 0), so the
+      # title may arrive a moment after the sheet does — hence a wait.
+      - tapOn:
+          id: "chat-open-sessions"
+      - extendedWaitUntil:
+          visible: "Options for QA ask ${output.askId}: do I owe anyone money"
+          timeout: 20000
+      - tapOn: "Options for QA ask ${output.askId}: do I owe anyone money"
+      - tapOn:
+          id: "session-menu-delete"
+      - assertVisible:
+          id: "delete-conversation-confirm"
+      - tapOn:
+          id: "delete-conversation-yes"
+      - extendedWaitUntil:
+          notVisible:
+            id: "delete-conversation-confirm"
+          timeout: 20000
+      - assertVisible:
+          id: "sessions-sheet"
+      - assertNotVisible: "Options for QA ask ${output.askId}: do I owe anyone money"
+      - takeScreenshot: reports/05-ask-cleaned-up
+      - tapOn:
+          id: "sessions-close"
+      - assertVisible:
+          id: "composer-input"

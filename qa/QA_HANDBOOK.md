@@ -376,8 +376,11 @@ the shape of the rest is the useful part.
 **Accumulates, no cleanup at all — the defect above:**
 
 - `06-people-chat` — a constant message, sent. **Confirmed breaking the flow.**
-- `01-ask` — sends `Do I owe anyone money?` to **the QA account's** standing
-  conversation and never removes it: one question and one real AI answer per
+- `01-ask` — **fixed 2026-09-24**: it now asks a run-stamped question in a
+  new conversation and deletes that conversation by its autotitle, sweeping
+  any `QA ask …` row a killed run left. What follows is what it *did*.
+  It sent `Do I owe anyone money?` to **the QA account's** standing
+  conversation and never removed it: one question and one real AI answer per
   run, without bound. Not his account — `run.sh` and `qa.sh` export `EMAIL`
   from `QA_EMAIL`, and the standing rule holds. Saying "his" here, as an
   earlier draft of this line did, was one relay from reaching his board as

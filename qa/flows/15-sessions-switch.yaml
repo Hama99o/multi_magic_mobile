@@ -18,9 +18,11 @@
 #
 # ── THE PROOF OF A SWITCH ────────────────────────────────────────────────
 # Two proofs, because each alone can be fooled. A brand-new conversation is
-# EMPTY — `chat-empty` — and the QA account's standing conversation is not
-# (every `01-ask` run adds to it), so the empty state appearing after "New
-# conversation" proves the screen moved to the new one. And after switching
+# EMPTY — `chat-empty` — and the QA account's standing conversation is not,
+# so the empty state appearing after "New conversation" proves the screen moved
+# to the new one. (That non-emptiness is RESIDUE: old `01-ask` runs put it
+# there, and since 2026-09-24 `01` asks in a conversation of its own and deletes
+# it, so nothing replenishes it. It still holds today; it is not guaranteed.) And after switching
 # back by title, the sheet marks that row `selected`, which is `activeId` and
 # nothing else.
 #

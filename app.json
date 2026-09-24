@@ -11,7 +11,7 @@
     "splash": {
       "image": "./assets/splash-icon-512.png",
       "resizeMode": "contain",
-      "backgroundColor": "#102125"
+      "backgroundColor": "#F7F9F9"
     },
     "ios": {
       "supportsTablet": true,
@@ -23,6 +23,15 @@
         "NSPhotoLibraryUsageDescription": "Attach a photo or a scan to a conversation so the assistant can read it.",
         "NSCameraUsageDescription": "Take a photo of a document to attach it to a conversation.",
         "ITSAppUsesNonExemptEncryption": false
+      },
+      "splash": {
+        "image": "./assets/splash-icon-512.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#F7F9F9",
+        "dark": {
+          "image": "./assets/splash-icon-512.png",
+          "backgroundColor": "#102125"
+        }
       }
     },
     "android": {
@@ -35,7 +44,16 @@
         "RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ],
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "splash": {
+        "image": "./assets/splash-icon-512.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#F7F9F9",
+        "dark": {
+          "image": "./assets/splash-icon-512.png",
+          "backgroundColor": "#102125"
+        }
+      }
     },
     "plugins": [
       "expo-router",

@@ -626,6 +626,10 @@ export default function Chat() {
           // composer wrapping and a reply growing all keep it in place with no
           // scroll issued from here. `useNewestAnchor` has the measurements.
           inverted
+          // A drag on the thread puts the keyboard away, so reading back up
+          // does not need Back, which on Android may leave the screen
+          // (`docs/design/chat/SPEC.md`, "the keyboard goes away").
+          keyboardDismissMode="on-drag"
           data={newestFirst}
           keyExtractor={keyOf}
           maintainVisibleContentPosition={maintainVisibleContentPosition}

@@ -101,6 +101,16 @@ afterEach(() => {
   jest.restoreAllMocks();
 });
 
+// A decision, not a platform fact: see `docs/design/chat/SPEC.md`, "the
+// keyboard goes away". This proves the prop; that the gesture feels right
+// against `KeyboardPadding`'s fall is a device recording.
+it("a drag on the thread puts the keyboard away", async () => {
+  renderChat();
+  await waitForSession();
+  const list = screen.UNSAFE_getByProps({ inverted: true });
+  expect(list.props.keyboardDismissMode).toBe("on-drag");
+});
+
 describe("the empty state", () => {
   it("says what the assistant answers FROM, without inventing a question", async () => {
     renderChat();

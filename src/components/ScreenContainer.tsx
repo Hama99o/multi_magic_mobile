@@ -50,7 +50,8 @@
  * gap. `docs/TESTING.md` §6.
  */
 import type { ReactNode } from "react";
-import { KeyboardAvoidingView, ScrollView, View } from "react-native";
+import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { KeyboardLift } from "./KeyboardLift";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors, useMetrics } from "@/hooks/useColors";
 
@@ -102,12 +103,17 @@ export function Screen({
     inner
   );
 
-  const content = avoidKeyboard ? (
+  // Android lifts with `KeyboardLift`, which starts moving with the keyboard
+  // instead of after it (its header has the source lines); iOS keeps RN's
+  // `KeyboardAvoidingView`, which already rides `keyboardWillShow`.
+  const content = !avoidKeyboard ? (
+    body
+  ) : Platform.OS === "android" ? (
+    <KeyboardLift>{body}</KeyboardLift>
+  ) : (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior="padding">
       {body}
     </KeyboardAvoidingView>
-  ) : (
-    body
   );
 
   return (

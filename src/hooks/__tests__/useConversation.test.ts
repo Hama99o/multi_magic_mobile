@@ -156,6 +156,89 @@ describe("waiting for an answer", () => {
     expect(result.current.messages.map((m) => m.body)).toContain("Husna owes you 200.");
   });
 
+  // ── THE QUESTION IS DRAWN BEFORE THE POST ANSWERS ────────────────────────
+  //
+  // Measured 2026-09-24 on `qa_phone4`: drawn only after the 202, the question
+  // was on screen nowhere for ~1.4 s and the thread dropped back and jumped up.
+  const draft = (body: string): Omit<ChatMessage, "id"> => {
+    const { id: _id, ...rest } = message(0, "user", body);
+    return rest;
+  };
+
+  it("draws an optimistic question at once, LAST in the thread, and waits", async () => {
+    const { result } = render();
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    act(() => void result.current.addOptimistic(draft("And Husna?")));
+
+    expect(result.current.messages.at(-1)?.body).toBe("And Husna?");
+    expect(result.current.awaitingReply).toBe(true);
+  });
+
+  it("swaps the local id for the server's when the POST answers — one copy", async () => {
+    const { result } = render();
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    let localId = 0;
+    act(() => { localId = result.current.addOptimistic(draft("And Husna?")); });
+
+    act(() => result.current.confirmPending(localId, 7));
+
+    expect(result.current.messages.map((m) => m.id)).toEqual([1, 7]);
+  });
+
+  it("keeps the row's KEY across the swap, so it does not remount and re-fade", async () => {
+    const { result } = render();
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    let localId = 0;
+    act(() => { localId = result.current.addOptimistic(draft("And Husna?")); });
+    const before = result.current.keyOf(result.current.messages.at(-1)!);
+
+    act(() => result.current.confirmPending(localId, 7));
+
+    expect(result.current.keyOf(result.current.messages.at(-1)!)).toBe(before);
+  });
+
+  it("does not show the question twice when the socket echo beats the POST", async () => {
+    const { result } = render();
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    let localId = 0;
+    act(() => { localId = result.current.addOptimistic(draft("And Husna?")); });
+
+    await act(async () => {
+      listener().onData({ message: rawMessage(7, "user", "And Husna?") });
+    });
+    expect(result.current.messages.map((m) => m.id)).toEqual([1, 7]);
+
+    act(() => result.current.confirmPending(localId, 7));
+    expect(result.current.messages.map((m) => m.id)).toEqual([1, 7]);
+  });
+
+  it("takes the question back off the screen when the POST fails", async () => {
+    const { result } = render();
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    let localId = 0;
+    act(() => { localId = result.current.addOptimistic(draft("And Husna?")); });
+
+    act(() => result.current.dropPending(localId));
+
+    expect(result.current.messages.map((m) => m.body)).toEqual(["Do I owe anyone?"]);
+    expect(result.current.awaitingReply).toBe(false);
+  });
+
+  it("stops waiting when the answer to an optimistic question lands", async () => {
+    const { result } = render();
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    let localId = 0;
+    act(() => { localId = result.current.addOptimistic(draft("And Husna?")); });
+    act(() => result.current.confirmPending(localId, 7));
+
+    await act(async () => {
+      listener().onData({ message: rawMessage(8, "assistant", "Husna owes you 200.") });
+    });
+
+    expect(result.current.awaitingReply).toBe(false);
+  });
+
   // ── "ARRIVES, OR SAYS IT DID NOT" ─────────────────────────────────────────
   //
   // The server already broadcasts `aiError`. Without this branch a failed

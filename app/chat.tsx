@@ -182,7 +182,7 @@ export default function Chat() {
     },
     [user?.id],
   );
-  const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addPending, mergeMessage, resync } =
+  const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addOptimistic, confirmPending, dropPending, keyOf, mergeMessage, resync } =
     useConversation({ conversationId, channel: "MessageChannel" });
 
   const { draft, setDraft, clear } = useDraft(conversationId);
@@ -291,32 +291,36 @@ export default function Chat() {
 
       setFailedQuestion(null);
       setPosting(true);
+      // Drawn NOW, in the same render that empties the composer, so the thread
+      // makes one move rather than dropping back and jumping up a beat later
+      // (`useConversation`, `addOptimistic`).
+      const localId = addOptimistic({
+        conversationId,
+        role: "user",
+        body: question,
+        createdAt: new Date().toISOString(),
+        deleted: false,
+        userId: user?.id ?? null,
+        sentByMe: true,
+        editedAt: null,
+        readAt: null,
+        reactions: [],
+        links: [],
+        sources: [],
+        undoable: false,
+        undoneAt: null,
+      });
       clear();
 
       try {
         const { userMessageId } = await aiApi.ask({ conversationId, body: question });
-        // Drawn immediately from the server's OWN id, so when the socket echoes
+        // The server's OWN id replaces the local one, so when the socket echoes
         // the same message it merges rather than appearing twice.
-        addPending({
-          id: userMessageId,
-          conversationId,
-          role: "user",
-          body: question,
-          createdAt: new Date().toISOString(),
-          deleted: false,
-          userId: user?.id ?? null,
-          sentByMe: true,
-          editedAt: null,
-          readAt: null,
-          reactions: [],
-          links: [],
-          sources: [],
-          undoable: false,
-          undoneAt: null,
-        });
+        confirmPending(localId, userMessageId);
       } catch (e) {
         // The question comes BACK, into the composer and onto the screen. The
         // one thing this must never do is swallow it.
+        dropPending(localId);
         setDraft(question);
         if (isRateLimited(e)) {
           // A wait, not a failure — see `waitUntil`.
@@ -333,7 +337,7 @@ export default function Chat() {
         setPosting(false);
       }
     },
-    [conversationId, posting, clear, addPending, setDraft, user, t],
+    [conversationId, posting, clear, addOptimistic, confirmPending, dropPending, setDraft, user, t],
   );
 
   // A question of theirs is a request to be at the bottom, whatever they were
@@ -456,7 +460,7 @@ export default function Chat() {
         <FlatList
           ref={listRef}
           data={messages}
-          keyExtractor={(m) => String(m.id)}
+          keyExtractor={keyOf}
           renderItem={({ item, index }) => (
             // Only the newest row fades — see `Arriving`. A FlatList mounts
             // rows as they scroll into view, so animating every mount would

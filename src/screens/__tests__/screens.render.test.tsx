@@ -91,7 +91,7 @@ jest.mock("@/hooks/useConversation", () => ({
     awaitingReply: false,
     hasOlder: false,
     loadOlder: jest.fn(),
-    addPending: jest.fn(),
+    addPending: jest.fn(), addOptimistic: jest.fn(() => 9e15), confirmPending: jest.fn(), dropPending: jest.fn(), keyOf: (m: { id: number }) => String(m.id),
     mergeMessage: jest.fn(),
     failed: false,
     resync: jest.fn(),

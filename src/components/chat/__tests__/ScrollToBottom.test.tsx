@@ -226,6 +226,25 @@ describe("once the reader has taken over", () => {
     expect(list.jumps).toHaveLength(1);
   });
 
+  // ── SENDING WHILE ALREADY AT THE BOTTOM ──────────────────────────────────
+  //
+  // Measured 2026-09-24 on `qa_phone4`: send called `toBottom` (animated) in
+  // the same instant the new question's height arrived (unanimated follow),
+  // and the two scrolls in flight shook the thread +81 / -81 / +81 px.
+  it("does not animate when already at the bottom — the follow makes the one move", () => {
+    const list = fakeList();
+    const { result } = renderHook(() => useAwayFromBottom(list.ref));
+    act(() => result.current.onScroll(at(2600, 3000)));
+    list.clear();
+
+    act(() => result.current.toBottom());
+    expect(list.jumps.filter((j) => j.animated)).toHaveLength(0);
+
+    act(() => result.current.onContentSizeChange(0, 3100));
+    expect(list.jumps.every((j) => !j.animated)).toBe(true);
+    expect(list.jumps.length).toBeGreaterThan(0);
+  });
+
   it("the button returns them, animated, and following resumes", () => {
     const list = fakeList();
     const { result } = renderHook(() => useAwayFromBottom(list.ref));

@@ -312,6 +312,15 @@ export function useAwayFromBottom(listRef: RefObject<Scrollable | null>) {
   /** The button, and anywhere the app itself should return to the newest. */
   const toBottom = useCallback(() => {
     pinned.current = true;
+    // ALREADY THERE: re-pin and stop. The content that is about to arrive (a
+    // question just sent) is followed by `onContentSizeChange` with one
+    // unanimated jump. Animating here as well put two scrolls to the same
+    // place in flight at once — measured 2026-09-24 on `qa_phone4` as the
+    // thread shaking +81 / -81 / +81 px across four frames right after send.
+    if (fromBottom() <= AWAY) {
+      setAway(false);
+      return;
+    }
     chasesLeft.current = CHASE_RETRIES;
     scheduleSettle();
     setAway(false);

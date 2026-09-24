@@ -52,6 +52,14 @@ const REPLY_TIMEOUT_MS = 180_000;
 
 export type ConversationStatus = "loading" | "ready" | "failed";
 
+/**
+ * Ids at or above this are LOCAL — a question drawn before the server has
+ * given it an id. Far above any database id, so it sorts last, where a new
+ * question belongs; `merge` orders by id.
+ */
+const OPTIMISTIC_BASE = Number.MAX_SAFE_INTEGER - 1_000_000;
+export const isOptimisticId = (id: number) => id >= OPTIMISTIC_BASE;
+
 export interface UseConversationOptions {
   conversationId: number | null;
   /** `MessageChannel` for the assistant, `ConversationChannel` for people. */
@@ -71,6 +79,25 @@ export interface UseConversationResult {
    * Only for a turn that expects an assistant reply.
    */
   addPending: (message: ChatMessage) => void;
+  /**
+   * Show a question THE MOMENT it is sent, before the server has answered the
+   * POST — returns the local id to confirm or drop it by.
+   *
+   * Measured 2026-09-24 on `qa_phone4`: waiting for the 202 before drawing the
+   * bubble left the question on screen NOWHERE for ~1.4 s, while the emptied
+   * composer let the thread drop back to older messages; then the bubble
+   * arrived and the thread jumped up. Down, pause, up — the blink he reported.
+   */
+  addOptimistic: (message: Omit<ChatMessage, "id">) => number;
+  /** The POST answered: the local question becomes the server's message. */
+  confirmPending: (localId: number, serverId: number) => void;
+  /** The POST failed: take the local question back off the screen. */
+  dropPending: (localId: number) => void;
+  /**
+   * A list key that SURVIVES the local id becoming the server's. Keyed on the
+   * raw id, the row remounts at the swap and replays its entry fade.
+   */
+  keyOf: (message: ChatMessage) => string;
   /**
    * Merge a message in WITHOUT claiming a reply is coming.
    *
@@ -102,7 +129,16 @@ interface SocketPayload {
  */
 function merge(existing: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] {
   const byId = new Map<number, ChatMessage>();
-  for (const message of existing) byId.set(message.id, message);
+  // A local question is superseded by the server's copy of it, whichever path
+  // brings that copy — the 202, the socket echo, or a resync. Matched on role
+  // and body because the local copy has no id the server knows.
+  const arrived = new Set(
+    incoming.filter((m) => !isOptimisticId(m.id) && m.role === "user").map((m) => m.body),
+  );
+  for (const message of existing) {
+    if (isOptimisticId(message.id) && arrived.has(message.body)) continue;
+    byId.set(message.id, message);
+  }
   for (const message of incoming) byId.set(message.id, message);
   return [...byId.values()].sort((a, b) => a.id - b.id);
 }
@@ -185,8 +221,47 @@ export function useConversation({
     [mergeMessage],
   );
 
+  const nextLocalId = useRef(OPTIMISTIC_BASE);
+  /** server id → the local id it was drawn under, for `keyOf`. */
+  const drawnAs = useRef(new Map<number, number>());
+  const keyOf = useCallback(
+    (message: ChatMessage) => String(drawnAs.current.get(message.id) ?? message.id),
+    [],
+  );
+
+  const addOptimistic = useCallback((draft: Omit<ChatMessage, "id">) => {
+    const localId = nextLocalId.current++;
+    setMessages((current) => {
+      // The answer is whatever assistant message is newer than everything we
+      // have now; the question's own id is not known yet.
+      const newest = current.reduce((max, m) => (isOptimisticId(m.id) ? max : Math.max(max, m.id)), 0);
+      askedAfterIdRef.current = newest;
+      return merge(current, [{ ...draft, id: localId }]);
+    });
+    setAwaitingReply(true);
+    setFailed(false);
+    return localId;
+  }, []);
+
+  const confirmPending = useCallback((localId: number, serverId: number) => {
+    setMessages((current) => {
+      const local = current.find((m) => m.id === localId);
+      const rest = current.filter((m) => m.id !== localId);
+      // Already superseded by an echo that beat the 202: nothing to swap.
+      if (local) drawnAs.current.set(serverId, localId);
+      return local ? merge(rest, [{ ...local, id: serverId }]) : rest;
+    });
+    askedAfterIdRef.current = Math.max(askedAfterIdRef.current, serverId);
+  }, []);
+
+  const dropPending = useCallback((localId: number) => {
+    setMessages((current) => current.filter((m) => m.id !== localId));
+    setAwaitingReply(false);
+  }, []);
+
   // Opening a different conversation starts over.
   useEffect(() => {
+    drawnAs.current.clear();
     setMessages([]);
     setStatus(conversationId == null ? "loading" : "loading");
     setAwaitingReply(false);
@@ -294,6 +369,6 @@ export function useConversation({
 
   return {
     messages, status, awaitingReply, hasOlder, loadOlder,
-    addPending, mergeMessage, failed, resync,
+    addPending, addOptimistic, confirmPending, dropPending, keyOf, mergeMessage, failed, resync,
   };
 }

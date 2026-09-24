@@ -79,7 +79,7 @@ beforeEach(async () => {
   });
   mockUseConversation.mockReturnValue({
     messages: [], status: "ready", awaitingReply: false, failed: false,
-    hasOlder: false, loadOlder: jest.fn(), addPending: jest.fn(),
+    hasOlder: false, loadOlder: jest.fn(), addPending: jest.fn(), addOptimistic: jest.fn(() => 9e15), confirmPending: jest.fn(), dropPending: jest.fn(), keyOf: (m: { id: number }) => String(m.id),
     mergeMessage: jest.fn(), resync: jest.fn(),
   });
   jest.spyOn(aiApi, "currentSessionId").mockResolvedValue(4);

@@ -22,10 +22,12 @@ jest.mock("@/hooks/useConversation", () => ({
 /* eslint-disable import/first */
 import Chat from "../chat";
 import { KEY_PROBLEMS, RETRYABLE_KEY_PROBLEMS, aiApi, documentsApi, type ChatMessage } from "@/api/ai";
-import { useReachability } from "@/stores/reachability.store";
+import { __resetReachability, useReachability } from "@/stores/reachability.store";
 import { type QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { testQueryClient } from "@/__tests__/queryClient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import i18n from "@/i18n";
+import { englishIn, fixtureStripper, identicalIn, renderedStrings } from "@/__tests__/i18nSweep";
 
 function message(id: number, role: "user" | "assistant", body: string, sources: unknown[] = []) {
   return {
@@ -97,7 +99,8 @@ beforeEach(async () => {
 afterEach(() => {
   client?.clear();
   client = null;
-  useReachability.setState({ reachable: true, unreachableSince: null });
+  // The seam, not setState: it also stops the probe timer (see the sweep below).
+  __resetReachability();
   jest.restoreAllMocks();
 });
 
@@ -466,5 +469,117 @@ describe("when the transcript cannot be read", () => {
 
     await waitFor(() => expect(screen.getByTestId("chat-load-failed")).toBeTruthy());
     expect(screen.queryByTestId("chat-empty")).toBeNull();
+  });
+});
+
+// ── EVERY STATE THE ASSISTANT CAN FAIL IN, SWEPT IN FRENCH ────────────────
+// The screen where a wrong claim costs most (2026-09-24 claims audit). Each
+// state is built fresh for the French render and again for the English one,
+// then both checks from `src/__tests__/i18nSweep.ts` run on what rendered.
+// The key-problem notices carry the SERVER's sentence as their body: a
+// French one here, so an English wrapper added by the app would show up.
+// Not swept: the loading skeleton, which renders no text at all.
+describe("in French, every failure state", () => {
+  const strip = fixtureStripper(__filename);
+
+  const send = async (text: string) => {
+    fireEvent.changeText(screen.getByTestId("composer-input"), text);
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("composer-send"));
+    });
+  };
+
+  const STATES: { name: string; setup: () => void; act?: () => Promise<void>; ready: string }[] = [
+    { name: "the transcript did not load", setup: () => { conversation.status = "failed"; }, ready: "chat-load-failed" },
+    {
+      name: "the answer never came",
+      setup: () => {
+        conversation.failed = true;
+        conversation.messages = [message(1, "user", "Est-ce que je dois de l’argent ?")];
+      },
+      ready: "chat-answer-failed",
+    },
+    {
+      name: "still thinking",
+      setup: () => {
+        conversation.awaitingReply = true;
+        conversation.messages = [message(1, "user", "Est-ce que je dois de l’argent ?")];
+      },
+      ready: "thinking",
+    },
+    {
+      name: "the send failed on the server",
+      setup: () => { (aiApi.ask as jest.Mock).mockRejectedValue({ response: { status: 500 }, isAxiosError: true }); },
+      act: () => send("Bonjour"),
+      ready: "chat-send-failed",
+    },
+    {
+      name: "the send failed with no network",
+      setup: () => { (aiApi.ask as jest.Mock).mockRejectedValue({ isAxiosError: true }); },
+      act: () => send("Bonjour"),
+      ready: "chat-send-failed",
+    },
+    {
+      name: "the rate limit",
+      setup: () => { (aiApi.ask as jest.Mock).mockRejectedValue({ response: { status: 429 }, isAxiosError: true }); },
+      act: () => send("Bonjour"),
+      ready: "chat-rate-limited",
+    },
+    ...KEY_PROBLEMS.map((code) => ({
+      name: `the ${code} notice`,
+      setup: () => {
+        conversation.messages = [
+          message(1, "user", "Est-ce que je dois de l’argent ?"),
+          { ...message(2, "assistant", "Votre clé a atteint sa limite ce mois-ci."), keyProblem: code },
+        ];
+      },
+      ready: "composer-input",
+    })),
+  ];
+
+  const collect = async (state: (typeof STATES)[number], language: "fr" | "en") => {
+    await i18n.changeLanguage(language);
+    // Reset between the two renders, and through the store's own seam, which
+    // also STOPS the probe. `setState` alone left the 5 s probe running
+    // (reachability.store.ts); in Jest its `GET /up` always fails, so at a
+    // random moment it flipped the app offline, the composer would not send,
+    // and "send failed with no network" was red one run in three.
+    __resetReachability();
+    // And the first render's failed send put the question back in the SAVED
+    // draft, which then hydrates into the second render while it is sending.
+    await AsyncStorage.clear();
+    // THE ACTUAL CAUSE of this sweep's flakiness. `waitForSession` waits for a
+    // CALL with conversation 4, and the first render's calls were still on
+    // the mock, so for the second render it returned at once, before that
+    // render had its session. The press then landed on a screen with no
+    // conversation to send to, and nothing failed because nothing was sent.
+    // Timing-dependent, so red one run in two to three (the reachability
+    // probe above was a wrong first guess, kept because it is still right).
+    mockUseConversation.mockClear();
+    state.setup();
+    const view = renderChat();
+    await waitForSession();
+    if (state.act) await state.act();
+    // Five seconds, not the default one: this is the second full render of
+    // the screen in one test, on a box that runs three sessions' suites.
+    await screen.findByTestId(state.ready, {}, { timeout: 5_000 });
+    const strings = renderedStrings();
+    view.unmount();
+    return strings;
+  };
+
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it.each(STATES)("$name", async (state) => {
+    const fr = await collect(state, "fr");
+    // Fresh state for the English render: the first render mutated it.
+    conversation.status = "ready";
+    conversation.failed = false;
+    conversation.awaitingReply = false;
+    const en = await collect(state, "en");
+    expect(englishIn(fr, strip)).toEqual([]);
+    expect(identicalIn(fr, en, strip)).toEqual([]);
   });
 });

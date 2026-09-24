@@ -84,7 +84,17 @@ export function renderedStrings(exceptTestID?: string): string[] {
 export function fixtureStripper(testFile: string): (text: string) => string {
   const code = readFileSync(testFile, "utf8")
     .replace(/\/\*[\s\S]*?\*\//g, "")
-    .replace(/^\s*\/\/.*$/gm, "");
+    .replace(/^\s*\/\/.*$/gm, "")
+    // Nor the strings a test ASSERTS or NAMES: they are what the test looks
+    // for, not data it feeds in. Found 2026-09-24: `chat.test.tsx` titles a
+    // test "Ask again re-sends the last question" and asserts
+    // getByText("Ask again"), so a hard-coded English "Ask again" was cut out
+    // as fixture data and the sweep stayed green. The limit: a string passed
+    // any other way is still treated as data.
+    .replace(
+      /(\b(?:it|test|describe)(?:\.each\([^)]*\))?\s*\(|\b(?:get|find|query)(?:All)?By(?:Text|LabelText|PlaceholderText|DisplayValue|Hint)\s*\(|\.(?:toBe|toEqual|toContain|toMatch|toHaveBeenCalledWith)\s*\()\s*"(?:[^"\\\n]|\\.)*"/g,
+      "$1",
+    );
   // EVERY literal is matched, and the short ones dropped AFTER. Requiring four
   // characters inside the regex desynchronised the quote pairing: past a
   // `"Qa"` it matched `", lastName: "` as a string and never saw
@@ -100,7 +110,22 @@ export function englishIn(strings: string[], strip: (s: string) => string): stri
   return strings.filter((s) => ENGLISH_ONLY.test(strip(s)));
 }
 
+/**
+ * A string identical in both renders that is made ONLY of fixture data and
+ * same-in-both words is legitimate: the assistant's spoken label is
+ * "Assistant. <the server's sentence>" in either language. So the allowed
+ * words are cut out of what is left after the fixtures, as whole words, and
+ * only a residue with letters in it is a finding.
+ */
+const ALLOWED_WORDS = [...SAME_IN_BOTH].map(
+  (w) => new RegExp(`(^|[^A-Za-zÀ-ÿ])${w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![A-Za-zÀ-ÿ])`, "g"),
+);
+
 export function identicalIn(fr: string[], en: string[], strip: (s: string) => string): string[] {
   const english = new Set(en);
-  return fr.filter((s) => english.has(s) && /[A-Za-zÀ-ÿ]{2,}/.test(strip(s)) && !SAME_IN_BOTH.has(s));
+  return fr.filter((s) => {
+    if (!english.has(s)) return false;
+    const residue = ALLOWED_WORDS.reduce((rest, word) => rest.replace(word, "$1 "), strip(s));
+    return /[A-Za-zÀ-ÿ]{2,}/.test(residue);
+  });
 }

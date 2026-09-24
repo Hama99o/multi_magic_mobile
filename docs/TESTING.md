@@ -1426,3 +1426,32 @@ that hole gets.** It was found only by planting AGAIN after the fix and
 noticing green. It now reads code only, comments stripped. Anyone building an
 allowlist by scanning a file is one comment away from the same thing: scan
 the structure you mean (literals in code, keys in a map), never the text.
+
+**The same hole twice more, the same night.** The fixture stripper's regex
+required four characters inside it, so past a short literal like `"Qa"` the
+quote pairing slipped and it matched `", lastName: "` as a string. It cried
+wolf; the same defect could as easily have swallowed a real string. Then,
+once comments were excluded, TEST TITLES and ASSERTED strings still counted
+as data: `chat.test.tsx` names a test "Ask again re-sends the last
+question" and asserts `getByText("Ask again")`, so a hard-coded English
+"Ask again" was cut out and the sweep stayed green. **A scanner's own
+parsing is part of what it measures.** Decide what a string IS (data fed in,
+text asserted, a name, a comment) before deciding whether it excuses
+anything. The stripper now matches every literal and drops the short ones
+afterwards, and skips titles, queries and matcher arguments. A string
+passed any other way still counts as data, and that limit is written in
+`src/__tests__/i18nSweep.ts`.
+
+**A wait on a mock's call HISTORY passes on the previous render's calls.**
+Found 2026-09-24 in the assistant sweep (`app/__tests__/chat.test.tsx`),
+which renders the screen twice in one test. `waitForSession()` waits for
+`toHaveBeenCalledWith({ conversationId: 4 })`. In the second render the
+first render's call was still on the mock, so it returned at once, before
+that render had its session. The send then landed on a screen with no
+conversation to send to, and "send failed" never appeared, because nothing
+was sent. It was red one run in two to three. My first diagnosis, the
+reachability probe left running, was wrong; it was fixed anyway, because a
+leaked timer is wrong on its own. The real fix clears the mock before each
+render. **A wait is only evidence about the state it was waiting for if the
+thing it reads could not already have been true.** That is §19's starting
+state again, in time rather than in content.

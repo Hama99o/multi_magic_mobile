@@ -72,6 +72,10 @@ const AWAY = 160;
  * non-inverted list: anyone tempted to un-invert should read that hook's
  * header at `915c54b` first, because each of them cost a commit to learn.
  */
+/** One object for the life of the app: a fresh literal per render would be a
+ *  new prop every render, and `FlatList` is a PureComponent. */
+const KEEP_POSITION = { minIndexForVisible: 0, autoscrollToTopThreshold: AWAY } as const;
+
 export function useNewestAnchor<T>(listRef: RefObject<FlatList<T> | null>) {
   const [awayFromBottom, setAway] = useState(false);
   const away = useRef(false);
@@ -100,7 +104,7 @@ export function useNewestAnchor<T>(listRef: RefObject<FlatList<T> | null>) {
     awayFromBottom,
     onScroll,
     toBottom,
-    maintainVisibleContentPosition: { minIndexForVisible: 0, autoscrollToTopThreshold: AWAY },
+    maintainVisibleContentPosition: KEEP_POSITION,
   };
 }
 

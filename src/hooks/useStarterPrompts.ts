@@ -32,6 +32,7 @@
  * 3. If nothing can be derived, return NONE. An empty composer under one plain
  *    sentence is honest; three guesses are not.
  */
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { documentsApi } from "@/api/ai";
 import { calendarApi } from "@/api/calendar";
@@ -111,13 +112,13 @@ export function useStarterPrompts(conversationId: number | null): {
   prompts: StarterPrompt[];
   loading: boolean;
 } {
-  const { data: files = [], isLoading: filesLoading } = useQuery({
+  const { data: files, isLoading: filesLoading } = useQuery({
     queryKey: ["ai", "documents", conversationId],
     queryFn: () => documentsApi.list(conversationId as number),
     enabled: conversationId != null,
   });
 
-  const { data: events = [], isLoading: eventsLoading } = useQuery({
+  const { data: events, isLoading: eventsLoading } = useQuery({
     queryKey: ["calendar", "upcoming", 7],
     queryFn: () => calendarApi.upcoming(7),
     // A failure here means no calendar suggestion, never a broken empty state.
@@ -132,13 +133,24 @@ export function useStarterPrompts(conversationId: number | null): {
     retry: false,
   });
 
+  // MEMOISED on the query data. Rebuilt per render, this was a new array on
+  // every keystroke, which gave the chat list a new `ListEmptyComponent` and
+  // re-rendered it while typing (`app/chat.tsx`, found by the "typing" test,
+  // 2026-09-24). The `= []` defaults moved inside for the same reason: a
+  // default parameter is a fresh array each render.
+  const prompts = useMemo(
+    () =>
+      buildPrompts(
+        files ?? [],
+        // An Occurrence wraps the event; the title lives on the event itself.
+        (events ?? []).map((o) => ({ title: o.event.title })),
+        summary?.stocked ?? [],
+      ),
+    [files, events, summary],
+  );
+
   return {
-    // An Occurrence wraps the event; the title lives on the event itself.
-    prompts: buildPrompts(
-      files,
-      events.map((o) => ({ title: o.event.title })),
-      summary?.stocked ?? [],
-    ),
+    prompts,
     loading: filesLoading || eventsLoading || summaryLoading,
   };
 }

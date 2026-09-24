@@ -162,6 +162,34 @@ describe("the thread", () => {
   });
 });
 
+// ── TYPING MUST NOT RE-RENDER THE LIST ───────────────────────────────────
+//
+// Measured 2026-09-24 on `qa_phone4` with React.Profiler: with inline list
+// props every keystroke re-rendered every visible row and re-parsed its
+// markdown, 212–382 ms a commit. `FlatList` is a PureComponent, so the proof
+// is that none of its props changes identity across a keystroke.
+describe("typing", () => {
+  it("hands the list the SAME props before and after a keystroke", async () => {
+    conversation.messages = [message(1, "user", "First?"), message(2, "assistant", "Newest.")];
+    renderChat();
+    await waitForSession();
+    // Let the queries the screen starts on mount (session, starter prompts)
+    // land first: their data arriving is a real change, not a keystroke's.
+    fireEvent.changeText(screen.getByTestId("composer-input"), "D");
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+    const before = { ...screen.UNSAFE_getByType(FlatList).props };
+
+    fireEvent.changeText(screen.getByTestId("composer-input"), "Do I");
+
+    // IDENTITY ONLY — never `toEqual` here. A deep compare walks the list's
+    // ref and React elements, and on 2026-09-24 it exhausted the Jest worker's
+    // heap (FATAL: heap out of memory), in a tree other sessions run too.
+    const after = screen.UNSAFE_getByType(FlatList).props;
+    const changed = Object.keys(before).filter((key) => after[key] !== before[key]);
+    expect(changed).toEqual([]);
+  });
+});
+
 describe("posting a question", () => {
   // ── DRAWN BEFORE THE POST ANSWERS, THEN GIVEN THE SERVER'S ID ────────────
   //

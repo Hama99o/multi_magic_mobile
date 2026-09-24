@@ -39,3 +39,25 @@ export function watchTimings() {
 export function allNative(started: TimingConfig[]): boolean {
   return started.length > 0 && started.every((c) => c.useNativeDriver === true);
 }
+
+/**
+ * WHERE A VIEW'S ANIMATED STYLE ENDED UP: the outcome, not the call.
+ *
+ * Checked 2026-09-24: under the test renderer an animation never reaches the
+ * rendered props. A view animated from 0 to 1 still reads `{ opacity: 0 }`
+ * afterwards, native driver or not, because Animated updates the view
+ * directly and not through React. But the `Animated.View` itself is handed
+ * the `Animated.Value`, so its current value is readable here. That catches
+ * both a fade that never started and one started on some OTHER value, which
+ * every check on `started` passes.
+ */
+export function boundValue(view: { props: { style?: unknown } }, key: string): number {
+  const style = view.props.style as Record<string, unknown> | undefined;
+  const value = style?.[key];
+  if (!(value instanceof Animated.Value)) {
+    throw new Error(`style.${key} is not an Animated.Value on this view`);
+  }
+  // `__getValue` is Animated's own read of the current value; there is no
+  // public getter.
+  return (value as unknown as { __getValue(): number }).__getValue();
+}

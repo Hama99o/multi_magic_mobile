@@ -1391,5 +1391,26 @@ Closed as a class rather than four times:
   everywhere except that helper. The next test to watch an animation cannot
   make the old mistake without being told.
 
-It does not cover `jest.mock` of the whole module, or a started animation
-that is the wrong one.
+It does not cover `jest.mock` of the whole module.
+
+**And "started" is not "the right thing moved".** A fade started on some
+other `Animated.Value` passes every check on what started. The obvious
+outcome check does not work here: under the test renderer an animation never
+reaches the rendered props. A view animated 0 → 1 still reads
+`{ opacity: 0 }`, native driver or not (probed 2026-09-24), because Animated
+updates the view directly and not through React. So a test on
+`props.style` reads the first frame for ever. `boundValue()` in the same
+helper reads the `Animated.Value` the view was actually handed, which is the
+subject. `Arriving` and `KeyboardPadding` now assert where their view ended
+up: fully visible, and the spacer at the overlap and back at 0. A fade on the
+wrong value is red in both.
+
+The first version of the `Arriving` outcome test was toothless too, for a
+new reason. The view starts at opacity 1 and drops to 0 only after Reduce
+Motion answers, so asserting "ends at 1" before the fade exists passes for
+anything. It now waits for the fade to be built first. **An outcome
+assertion that holds at the starting state proves nothing.** Make sure the
+state you are checking had to be reached.
+
+Not covered: the dots and the skeleton loop for ever and have no end state,
+so they keep the "started, natively" check only.

@@ -276,8 +276,8 @@ const config = {
        * ones that STARTED. That file is the only place allowed to spy.
        *
        * DOES NOT COVER: a spy reached through a renamed import, or
-       * `jest.mock` of the whole module. It also cannot see whether an
-       * animation that started was the RIGHT one.
+       * `jest.mock` of the whole module. Whether the RIGHT value moved is
+       * `boundValue()` in the same helper, and only where a suite uses it.
        */
       {
         id: "animated-spy",

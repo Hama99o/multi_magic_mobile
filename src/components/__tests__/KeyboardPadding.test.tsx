@@ -5,9 +5,9 @@
  * easing tracks the keyboard, or that the JS thread is free to run it. That is
  * a recording.
  */
-import { act, fireEvent, render, screen } from "@testing-library/react-native";
-import { Keyboard, Text, type KeyboardEvent } from "react-native";
-import { watchTimings } from "@/__tests__/animated";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { Animated, Keyboard, Text, type KeyboardEvent } from "react-native";
+import { boundValue, watchTimings } from "@/__tests__/animated";
 import { KeyboardPadding, RISE_MS, FALL_MS } from "../KeyboardPadding";
 
 afterEach(() => jest.restoreAllMocks());
@@ -71,4 +71,15 @@ it("does not restart for a repeat of the same keyboard", () => {
   show(576);
   show(576);
   expect(steps()).toHaveLength(1);
+});
+
+// THE OUTCOME: the spacer the layout actually uses ends at the overlap. The
+// checks above read what started; this reads where it arrived.
+it("the spacer ends at the keyboard's overlap, and back at 0", async () => {
+  const { show, hide } = mount();
+  const height = () => boundValue(screen.UNSAFE_getByType(Animated.View), "height");
+  show(576);
+  await waitFor(() => expect(height()).toBe(264), { timeout: 2_000 });
+  hide();
+  await waitFor(() => expect(height()).toBe(0), { timeout: 2_000 });
 });

@@ -25,7 +25,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { categoryColorFor } from "@/theme/tokens";
 import type { Occurrence } from "@/api/calendar";
-import { t } from "@/i18n";
+import i18n, { t } from "@/i18n";
 
 function timeLabel(occurrence: Occurrence): string {
   if (occurrence.allDay || !occurrence.startsAt) return t("calendar.allDay");
@@ -45,7 +45,8 @@ function timeLabel(occurrence: Occurrence): string {
   // "Unknown" rather than a fuller sentence because the column is 62 dp and
   // "Time unknown" wraps in it.
   if (Number.isNaN(at.getTime())) return t("calendar.timeUnknown");
-  return at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+// The app's LANGUAGE, not the phone's region: see `DayDivider.tsx`, `dayLabel`.
+  return at.toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" });
 }
 
 /** "1 h", "45 min" — only when the end is known and after the start. */

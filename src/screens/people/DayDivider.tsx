@@ -13,7 +13,7 @@ import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import type { TFunction } from "i18next";
-import { t as translate } from "@/i18n";
+import i18n, { t as translate } from "@/i18n";
 
 /** `Today`, `Yesterday`, or a short date. */
 export function dayLabel(iso: string, now: Date = new Date(), t: TFunction = translate): string {
@@ -36,7 +36,15 @@ export function dayLabel(iso: string, now: Date = new Date(), t: TFunction = tra
   // The year only when it is not this one — "12 Sep 2024" on a thread from last
   // year, "12 Sep" on one from March.
   const sameYear = then.getFullYear() === now.getFullYear();
-  return then.toLocaleDateString(undefined, {
+  // THE APP'S LANGUAGE, NOT THE PHONE'S REGION, and this is the one place the
+  // reason is written; every other date and time in the app points here.
+  // The language is CHOSEN (Settings → Language, stored on `users.lang`), and
+  // a date is text. `undefined` asked the phone's region instead, so a French
+  // UI on an English-region phone read "Sep 18" above a French thread, found
+  // by the two-language render sweep (2026-09-24). Passing the language gives
+  // its month names and its clock together. Decided by Hamma9901: one rule,
+  // everywhere.
+  return then.toLocaleDateString(i18n.language, {
     day: "numeric",
     month: "short",
     ...(sameYear ? {} : { year: "numeric" }),

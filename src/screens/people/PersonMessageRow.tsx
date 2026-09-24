@@ -46,6 +46,7 @@
  */
 import { Pressable, View } from "react-native";
 import { useTranslation } from "react-i18next";
+import i18n from "@/i18n";
 import { Check, CheckCheck, RefreshCw } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -54,7 +55,8 @@ import type { ChatMessage } from "@/api/ai";
 function timeOf(iso: string): string {
   const at = new Date(iso);
   if (Number.isNaN(at.getTime())) return "";
-  return at.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
+// The app's LANGUAGE, not the phone's region: see `DayDivider.tsx`, `dayLabel`.
+  return at.toLocaleTimeString(i18n.language, { hour: "2-digit", minute: "2-digit" });
 }
 
 export function PersonMessageRow({

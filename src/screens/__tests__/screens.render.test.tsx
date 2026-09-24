@@ -516,10 +516,10 @@ function renderedStrings(): string[] {
  * It needs no vocabulary, so it does not lag the copy (Hamma9901's design).
  *
  * Its first run found something no word list could: event times read
- * "11:30 AM" in the French UI, because `toLocaleTimeString(undefined, …)`
- * follows the PHONE's region, not the app's language, while dates elsewhere
- * follow the language. That is left as an open question (see CLOCK) rather
- * than fixed, because which is right is a choice.
+ * "11:30 AM" and the thread's divider "Sep 18" in the French UI, because
+ * `toLocale*String(undefined, …)` followed the PHONE's region. Every date and
+ * time now follows the app's language (`DayDivider.tsx` says why), so this
+ * check needs no exclusion for them.
  *
  * The allowlist: strings that are genuinely the same word in both languages.
  */
@@ -534,20 +534,17 @@ const SAME_IN_BOTH = new Set([
   // SAME_IN_BOTH, the same word in French.
   "Message",
 ]);
-/** A clock time or a short date, which the phone's REGION formats
- *  (`toLocaleTimeString(undefined, …)` / `toLocaleDateString(undefined, …)`
- *  in `EventRow`, `PersonMessageRow` and `DayDivider`), not the app's
- *  language. Under Jest the region is English, so "11:30 AM" and "Sep 18"
- *  render identically in both runs. OPEN QUESTION, raised 2026-09-24: should
- *  they follow the app's language, as `BorrowedKeyRow`'s date already does?
- *  Until it is answered, these are not counted as untranslated text. */
-const CLOCK = /\b\d{1,2}:\d{2}(\s?[AP]M)?\b|\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{1,2}\b/g;
 
 const THIS_FILE = require("fs").readFileSync(__filename, "utf8") as string;
 /** Every double-quoted literal of four characters or more in this file: the
  *  fixture data. A rendered string often WRAPS one ("Non lu : <his title>"),
  *  so each is cut out of the string before the check, not matched whole. */
-const FIXTURE_TEXT = [...THIS_FILE.matchAll(/"((?:[^"\\\n]|\\.){4,})"/g)]
+// CODE ONLY, not comments. The first version read the whole file, so this
+// file's own comments, which QUOTE the bugs they describe ("11:30 AM",
+// "Sep 18"), exempted those bugs: a planted region-formatted time stayed
+// green. Writing a bug down must not excuse it.
+const FIXTURE_CODE = THIS_FILE.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
+const FIXTURE_TEXT = [...FIXTURE_CODE.matchAll(/"((?:[^"\\\n]|\\.){4,})"/g)]
   .map((m) => m[1])
   .sort((a, b) => b.length - a.length);
 const withoutFixtures = (text: string) =>
@@ -589,7 +586,7 @@ describe.each(SCREENS)("$name, swept in French", ({ element, handles, french, se
     const fr = await collect("fr");
     const en = new Set(await collect("en"));
     const same = fr.filter(
-      (s) => en.has(s) && /[A-Za-zÀ-ÿ]{2,}/.test(withoutFixtures(s).replace(CLOCK, " ")) && !SAME_IN_BOTH.has(s),
+      (s) => en.has(s) && /[A-Za-zÀ-ÿ]{2,}/.test(withoutFixtures(s)) && !SAME_IN_BOTH.has(s),
     );
     expect(same).toEqual([]);
   });

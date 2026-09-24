@@ -8,7 +8,7 @@
  *
  * Absolute dates past a week: "37 days ago" is arithmetic nobody asked for.
  */
-import { t } from "@/i18n";
+import i18n, { t } from "@/i18n";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -30,7 +30,8 @@ export function relativeTime(iso: string, now: Date = new Date()): string {
   if (daysBack < 1) return t("common.yesterday");
   if (daysBack < 6) return t("common.daysAgo", { count: daysBack + 1 });
 
-  return then.toLocaleDateString(undefined, { day: "numeric", month: "short" });
+// The app's LANGUAGE, not the phone's region: see `DayDivider.tsx`, `dayLabel`.
+  return then.toLocaleDateString(i18n.language, { day: "numeric", month: "short" });
 }
 
 /** Today / Earlier — Notion's grouping, reduced to the two that carry meaning. */

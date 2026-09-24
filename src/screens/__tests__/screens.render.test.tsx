@@ -246,6 +246,8 @@ jest.mock("@/api/aiKeys", () => ({
 }));
 
 jest.mock("@/api/ai", () => ({
+  // The real limits: the composers read them while rendering.
+  LIMITS: jest.requireActual("@/api/ai").LIMITS,
   aiApi: { currentSessionId: jest.fn(async () => 265) },
   messagesApi: { parseOne: (m: unknown) => m, latest: jest.fn(), before: jest.fn() },
 }));

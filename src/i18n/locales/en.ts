@@ -117,6 +117,9 @@ export const en = {
   },
 
   composer: {
+    length: "{{length}} / {{limit}}",
+    tooLongOne: "Too long to send: remove {{over}} character.",
+    tooLongMany: "Too long to send: remove {{over}} characters.",
     placeholder: "Ask anything…",
     yourQuestion: "Your question",
     send: "Send",

@@ -32,6 +32,7 @@ import { ArrowUp, Mic, Plus, Square, X } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { LANGUAGES, useSpeechToText } from "@/hooks/useSpeechToText";
+import { LengthCounter, isTooLong } from "@/components/chat/LengthCounter";
 
 export function Composer({
   value,
@@ -61,7 +62,7 @@ export function Composer({
     onChange(value ? `${value.trim()} ${final}` : final);
   });
 
-  const canSend = value.trim().length > 0 && !busy && !offline;
+  const canSend = value.trim().length > 0 && !busy && !offline && !isTooLong(value);
   // A file cannot be uploaded to a server that is not answering either.
   const canAttach = Boolean(onAttach) && !offline;
 
@@ -244,6 +245,7 @@ export function Composer({
         <ArrowUp size={20} color={canSend ? colors.onAccent : colors.inkMuted} />
       </Pressable>
     </View>
+      <LengthCounter length={value.length} />
     </View>
   );
 }

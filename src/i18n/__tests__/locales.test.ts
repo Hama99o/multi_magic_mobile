@@ -37,6 +37,9 @@ const FRENCH = flatten(fr);
  * because it was checked, not because it looked foreign.
  */
 const SAME_IN_BOTH = new Set([
+  // Only an interpolation: "9 120 / 10 000" — the numbers are localised by
+  // toLocaleString, the slash is the same in both.
+  "composer.length",
   // Words French took whole, and one product name.
   "chat.title", // "Assistant"
   "chat.assistantSpeaker", // "Assistant" — spoken, and the same word as chat.title

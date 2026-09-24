@@ -452,12 +452,16 @@ over two openings (the first with nothing remembered, the second after):
   RN's own source, where the original premise came from, describes the older
   one. **What would overturn "no library, no rebuild"**: an older Android, or
   a real phone, where the composer is covered for ≥ 100 ms while the keyboard
-  opens. The conclusion holds for this device and no further.
+  opens. The conclusion holds for this device and no further. *(This n = 1 still stands after the KAV source finding below. That
+  finding explains the jump. It says nothing about when `keyboardDidShow`
+  fires relative to the slide, which is what this conclusion rests on.)*
 - **What is still wrong, and survives the revert:** the content jumps ~694 px
-  (~264 dp) in a SINGLE frame as the composer rises. RN's KAV smooths through
+  (~264 dp) in a SINGLE frame as the composer rises. ~~RN's KAV smooths through
   the same `LayoutAnimation` that did not animate, so the snap is there either
-  way. The fix must not depend on `LayoutAnimation`. That is the remaining
-  keyboard issue.
+  way.~~ **Superseded the same day, see the correction below:** KAV never
+  animates on Android (`duration: 0`), so the jump is framework behaviour on
+  every Android screen with a field, not this device's reading. Fixed by
+  `KeyboardPadding` (`9b56a2e`), not yet measured.
 
 **Correction, 2026-09-24, from the framework source rather than the device:**
 the sentence above has the cause wrong for KAV. On Android, KAV does not

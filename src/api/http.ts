@@ -250,14 +250,45 @@ export async function authHeaders(): Promise<Record<string, string>> {
   return headers;
 }
 
-/** The server's error sentence, when it sent one. */
+/**
+ * The server's error sentence, when it sent one.
+ *
+ * ── BOTH `error` AND `errors`, because the API speaks both ────────────────
+ * Most refusals are `{ error: "…" }`, singular. Model validation is
+ * `{ errors: user.errors.full_messages }`, PLURAL, an array: account
+ * deletion (`users_controller.rb:116`), profile updates, contacts, todos.
+ * This read only the singular, so every plural refusal fell through to the
+ * screen's generic fallback, and the delete-account screen could never say
+ * WHY the server refused. Found 2026-09-24 by comparing the two shapes.
+ * A Devise-style `{ errors: { field: [..] } }` map is read too.
+ */
 export function apiErrorMessage(error: unknown): string | null {
   const data = (error as AxiosError | undefined)?.response?.data;
   if (typeof data !== "object" || data === null) return null;
-  const record = data as { error?: unknown; message?: unknown };
-  if (typeof record.error === "string") return record.error;
-  if (typeof record.message === "string") return record.message;
-  return null;
+  const record = data as { error?: unknown; message?: unknown; errors?: unknown };
+  if (typeof record.error === "string" && record.error.trim()) return record.error;
+  if (typeof record.message === "string" && record.message.trim()) return record.message;
+  const lines = errorLines(record.errors);
+  return lines.length > 0 ? lines.join("\n") : null;
+}
+
+/**
+ * `errors` as sentences: a string, an array of them, a field → [..] map, or
+ * JSON:API `{ detail }` objects (what Devise answers sign-up with).
+ */
+function errorLines(errors: unknown): string[] {
+  if (typeof errors === "string") return errors.trim() ? [errors] : [];
+  if (Array.isArray(errors)) {
+    return errors.flatMap((e) => {
+      if (typeof e === "string") return e.trim() ? [e] : [];
+      const detail = (e as { detail?: unknown } | null)?.detail;
+      return typeof detail === "string" && detail.trim() ? [detail] : [];
+    });
+  }
+  if (typeof errors === "object" && errors !== null) {
+    return Object.values(errors).flatMap((v) => errorLines(v));
+  }
+  return [];
 }
 
 /**

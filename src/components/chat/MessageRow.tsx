@@ -37,14 +37,15 @@ export const MessageRow = memo(function MessageRow({
   message,
   onOpenSource,
   showUndo = false,
-  onUndone,
+  onChange,
   onOpenLink,
 }: {
   message: ChatMessage;
   onOpenSource: (source: MessageLink) => void;
   /** True only for the NEWEST undoable reply — see AnswerActions. */
   showUndo?: boolean;
-  onUndone?: (updated: ChatMessage) => void;
+  /** The message changed (undone, rated): merge the updated copy. */
+  onChange?: (updated: ChatMessage) => void;
   /** A link inside the answer — usually a file the assistant found. */
   onOpenLink?: (link: AnswerLink) => void;
 }) {
@@ -123,7 +124,8 @@ export const MessageRow = memo(function MessageRow({
       <AnswerActions
         message={message}
         showUndo={showUndo}
-        onUndone={(updated) => onUndone?.(updated)}
+        onUndone={(updated) => onChange?.(updated)}
+        onRated={(updated) => onChange?.(updated)}
       />
     </View>
   );

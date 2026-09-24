@@ -185,6 +185,66 @@ describe("copying an answer out", () => {
  * contradict it — which is why it is worth a test even though the feature is
  * small.
  */
+// ── A TOGGLE, ONE THUMB AT A TIME, AND IT REMEMBERS ───────────────────────
+//
+// The owner, 2026-09-24: "when we click it should work toggle style, you
+// can't click both." And a rating that vanished on remount looked like the
+// press had done nothing.
+describe("the thumbs", () => {
+  const lit = (id: string) => screen.getByTestId(id).props.accessibilityState.selected;
+
+  it("start from the rating the server holds, not from nothing", () => {
+    render(<AnswerActions message={answer({ rating: "negative" })} onUndone={jest.fn()} showUndo={false} />);
+    expect(lit("answer-down")).toBe(true);
+    expect(lit("answer-up")).toBe(false);
+  });
+
+  it("pressing the other thumb REPLACES the rating — never both", async () => {
+    const rate = jest.spyOn(feedbackApi, "rate").mockResolvedValue(undefined as never);
+    render(<AnswerActions message={answer({ rating: "positive" })} onUndone={jest.fn()} showUndo={false} />);
+
+    fireEvent.press(screen.getByTestId("answer-down"));
+
+    await waitFor(() => expect(lit("answer-down")).toBe(true));
+    expect(lit("answer-up")).toBe(false);
+    expect(rate).toHaveBeenCalledWith(4120, "negative");
+  });
+
+  it("pressing the LIT thumb clears it, so a mis-tap is not permanent", async () => {
+    const clear = jest.spyOn(feedbackApi, "clear").mockResolvedValue(undefined as never);
+    const onRated = jest.fn();
+    render(
+      <AnswerActions message={answer({ rating: "positive" })} onUndone={jest.fn()} onRated={onRated} showUndo={false} />,
+    );
+
+    fireEvent.press(screen.getByTestId("answer-up"));
+
+    await waitFor(() => expect(lit("answer-up")).toBe(false));
+    expect(clear).toHaveBeenCalledWith(4120);
+    // Merged back, so the next mount starts unrated too.
+    expect(onRated).toHaveBeenCalledWith(expect.objectContaining({ id: 4120, rating: null }));
+  });
+
+  it("a failed CLEAR puts the thumb back as it was, not to unrated", async () => {
+    jest.spyOn(feedbackApi, "clear").mockRejectedValue(new Error("network"));
+    render(<AnswerActions message={answer({ rating: "positive" })} onUndone={jest.fn()} showUndo={false} />);
+
+    fireEvent.press(screen.getByTestId("answer-up"));
+
+    await waitFor(() => expect(lit("answer-up")).toBe(true));
+  });
+
+  it("hands the new rating back so it survives a remount", async () => {
+    jest.spyOn(feedbackApi, "rate").mockResolvedValue(undefined as never);
+    const onRated = jest.fn();
+    render(<AnswerActions message={answer()} onUndone={jest.fn()} onRated={onRated} showUndo={false} />);
+
+    fireEvent.press(screen.getByTestId("answer-up"));
+
+    await waitFor(() => expect(onRated).toHaveBeenCalledWith(expect.objectContaining({ rating: "positive" })));
+  });
+});
+
 describe("a rating that the server refuses", () => {
   it("lights the thumb immediately, because waiting for a round trip to show a press is worse", async () => {
     jest.spyOn(feedbackApi, "rate").mockResolvedValue(undefined as never);

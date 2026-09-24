@@ -121,6 +121,24 @@ describe("the message parser", () => {
     expect(m.reactions).toEqual([{ emoji: "👍", count: 2, mine: true }]);
   });
 
+  // `MessageSerializer` exposes THIS user's own thumb (docs/AI_ASSISTANT.md
+  // §12a). A serializer that predates the field is "not rated", not an error.
+  it("reads this user's own rating, and treats its absence as unrated", async () => {
+    mock.onGet("/api/v1/conversations/4/messages").reply(200, {
+      messages: [
+        message(6, "assistant", "rated", { rating: "negative" }),
+        message(7, "assistant", "not rated"),
+        message(8, "assistant", "garbage", { rating: "meh" }),
+      ],
+      meta: { pagy: { pages: 1 } },
+    });
+
+    const ms = (await messagesApi.latest(4)).messages;
+
+    const byId = Object.fromEntries(ms.map((m) => [m.id, m.rating]));
+    expect(byId).toEqual({ 6: "negative", 7: null, 8: null });
+  });
+
   it("parses the SOURCES already on the wire", async () => {
     mock.onGet("/api/v1/conversations/4/messages").reply(200, {
       messages: [

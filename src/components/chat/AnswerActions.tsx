@@ -16,14 +16,15 @@
  *
  * A reply that has already been undone says so instead of offering again.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import * as Haptics from "expo-haptics";
 import { Pressable, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { Copy, ThumbsDown, ThumbsUp, Undo2 } from "lucide-react-native";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { feedbackApi, undoApi, type ChatMessage } from "@/api/ai";
+import { feedbackApi, undoApi, type ChatMessage, type Rating } from "@/api/ai";
 import { apiErrorMessage } from "@/api/http";
 import { ReadAloudButtons, ReadAloudNotice } from "./ReadAloud";
 
@@ -31,17 +32,25 @@ export function AnswerActions({
   message,
   showUndo,
   onUndone,
+  onRated,
 }: {
   message: ChatMessage;
   /** True only for the newest undoable reply — see the header. */
   showUndo: boolean;
   onUndone: (updated: ChatMessage) => void;
+  /** The rating the server now holds, merged back into the transcript so the
+   *  thumb is still lit after a scroll, a reload or a new session. */
+  onRated?: (updated: ChatMessage) => void;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
-  const [rating, setRating] = useState<"positive" | "negative" | null>(null);
+  // STARTS FROM THE SERVER'S ANSWER, not from null. It used to be local state
+  // starting at null, so a rating vanished on every remount and the owner,
+  // pressing a thumb and coming back, saw nothing had happened (2026-09-24).
+  const [rating, setRating] = useState<Rating | null>(message.rating ?? null);
+  useEffect(() => setRating(message.rating ?? null), [message.rating]);
   const [undoing, setUndoing] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -52,15 +61,27 @@ export function AnswerActions({
     setTimeout(() => setCopied(false), 1500);
   }
 
-  async function rate(next: "positive" | "negative") {
-    // Optimistic: a thumb is upserted server-side, so pressing again replaces
-    // rather than duplicating, and a failed rating is not worth interrupting
-    // somebody to report.
+  /**
+   * A TOGGLE, AND ONLY ONE THUMB AT A TIME — the owner's words: "when we
+   * click it should work toggle style, you can't click both."
+   *
+   * Pressing the other thumb replaces (the server upserts on message + user).
+   * Pressing the lit one clears it: a toggle that only goes one way turns a
+   * mis-tap into a permanent rating. Optimistic, and on failure the thumb goes
+   * back to what it WAS, not to null: with a rating that persists, snapping to
+   * null would claim a change the server never made.
+   */
+  async function toggle(pressed: Rating) {
+    const before = rating;
+    const next = before === pressed ? null : pressed;
+    void Haptics.selectionAsync();
     setRating(next);
     try {
-      await feedbackApi.rate(message.id, next);
+      if (next) await feedbackApi.rate(message.id, next);
+      else await feedbackApi.clear(message.id);
+      onRated?.({ ...message, rating: next });
     } catch {
-      setRating(null);
+      setRating(before);
     }
   }
 
@@ -102,8 +123,8 @@ export function AnswerActions({
     <View style={{ gap: metrics.space.xs }} testID="answer-actions">
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
         {iconButton("copy", copied ? t("answer.copied") : t("answer.copy"), Copy, () => void copy())}
-        {iconButton("up", t("answer.good"), ThumbsUp, () => void rate("positive"), rating === "positive")}
-        {iconButton("down", t("answer.bad"), ThumbsDown, () => void rate("negative"), rating === "negative")}
+        {iconButton("up", t("answer.good"), ThumbsUp, () => void toggle("positive"), rating === "positive")}
+        {iconButton("down", t("answer.bad"), ThumbsDown, () => void toggle("negative"), rating === "negative")}
 
         {/* Read aloud — behind READ_ALOUD_ENABLED; renders nothing until it
             flips. See ReadAloud.tsx. */}

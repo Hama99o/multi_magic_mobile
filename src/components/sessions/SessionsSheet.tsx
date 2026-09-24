@@ -15,7 +15,7 @@
  * once a month is read, while one they dismiss daily is not.
  */
 import { useState } from "react";
-import { ActivityIndicator, Modal, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, ScrollView, Switch, View } from "react-native";
 import { FILL } from "@/theme/fill";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -141,6 +141,31 @@ export function SessionsSheet({
       setPending(null);
     },
     onError: (e) => setError(apiErrorMessage(e) ?? t("sessions.scopeFailed")),
+  });
+
+  /**
+   * THE PER-CHAT MEMORY SWITCH. Per conversation, never app-wide: it gates the
+   * `remember_this` tool for THIS chat only (`rag_chat.rb#offered_tools`), so
+   * presenting it as a global setting would misstate what it does.
+   *
+   * Optimistic, reverted on failure, and ALWAYS a real boolean both ways: the
+   * server casts anything that is not `false` to true (`ai/sessions.rb:80`).
+   */
+  const setRemember = useMutation({
+    mutationFn: ({ id, remember }: { id: number; remember: boolean }) =>
+      sessionsApi.update(id, { remember }),
+    onMutate: ({ remember }) => {
+      setError(null);
+      setPending((p) => (p?.kind === "menu" ? { ...p, session: { ...p.session, remember } } : p));
+    },
+    onSuccess: (updated) => {
+      void refresh();
+      setPending((p) => (p?.kind === "menu" && p.session.id === updated.id ? { ...p, session: updated } : p));
+    },
+    onError: (e, { remember }) => {
+      setPending((p) => (p?.kind === "menu" ? { ...p, session: { ...p.session, remember: !remember } } : p));
+      setError(apiErrorMessage(e) ?? t("sessions.rememberFailed"));
+    },
   });
 
   const clear = useMutation({
@@ -392,6 +417,32 @@ export function SessionsSheet({
                     : t("sessions.someApps", { count: pending.session.apps.length })}
                 </Text>
               </Pressable>
+
+              {/* Remember things from this chat. Rule Zero (Mobbin, 2026-09-24):
+                  Claude "Generate memory from chat history", ChatGPT "Reference
+                  saved memories", Booking.com "Allow us to save and use AI
+                  memories", Perplexity's project-scoped memory switch. TAKE: the
+                  verb and its object in the label, where it goes and what OFF
+                  changes in the line under it, the scope stated. REJECT
+                  ChatGPT's "save AND use": off here stops saving, not using. */}
+              <View
+                style={{ minHeight: metrics.touch, flexDirection: "row", alignItems: "center", gap: metrics.space.md }}
+              >
+                <View style={{ flex: 1 }}>
+                  <Text>{t("sessions.rememberTitle")}</Text>
+                  <Text variant="caption" tone="muted" testID="session-menu-remember-hint">
+                    {pending.session.remember ? t("sessions.rememberOn") : t("sessions.rememberOff")}
+                  </Text>
+                </View>
+                <Switch
+                  value={pending.session.remember}
+                  onValueChange={(remember) => setRemember.mutate({ id: pending.session.id, remember })}
+                  disabled={setRemember.isPending}
+                  accessibilityLabel={t("sessions.rememberTitle")}
+                  trackColor={{ true: colors.accent, false: colors.border }}
+                  testID="session-menu-remember"
+                />
+              </View>
 
               <Pressable
                 accessibilityRole="button"

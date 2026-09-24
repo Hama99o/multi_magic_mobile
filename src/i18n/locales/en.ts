@@ -32,6 +32,7 @@ export const en = {
     rateLimited: "Too many requests just now. Give it a minute.",
     sessionEnded: "Your session ended. Sign in again.",
     checkConnection: "Could not reach MultiMagic. Check your connection.",
+    notAllowed: "You’re not allowed to do that here.",
   },
 
   session: {
@@ -239,6 +240,12 @@ export const en = {
   },
 
   sessions: {
+    rememberTitle: "Remember things from this chat",
+    rememberOn:
+      "On: the assistant may note lasting facts you mention here, like a name or a preference, in your note “What the assistant remembers”. You can read and edit that note.",
+    rememberOff:
+      "Off: nothing from this chat is added to that note. What it already remembers from other chats is still used.",
+    rememberFailed: "That setting was not saved.",
     title: "Conversations",
     today: "Today",
     earlier: "Earlier",
@@ -435,6 +442,7 @@ export const en = {
     emptyTitle: "No conversations yet",
     emptyBody: "Chats you start on MultiMagic appear here.",
     loadFailed: "Could not load your chats.",
+    untitled: "Conversation",
   },
 
   thread: {
@@ -457,6 +465,8 @@ export const en = {
     unread: "Unread",
     deleted: "This message was deleted.",
     notSent: "Not sent. Tap to retry.",
+    editFailed: "That edit was not saved. Your text is back in the box.",
+    deleteFailed: "That message could not be deleted.",
     edited: "edited",
     // The tick is a SHAPE and nothing else. Spoken, it needs words.
     sent: "Sent",
@@ -467,6 +477,7 @@ export const en = {
     title: "Notifications",
     refresh: "Refresh notifications",
     markAllRead: "Mark all as read",
+    actionFailed: "That did not go through. Nothing was changed.",
     clearRead: "Clear read notifications",
     empty: "You're all caught up.",
     loadFailed: "Could not load your notifications.",

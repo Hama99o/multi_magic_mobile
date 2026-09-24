@@ -14,7 +14,7 @@ function session(over: Partial<AiSession> = {}): AiSession {
   return {
     id: 4, title: "Money", messageCount: 12, documentCount: 3,
     createdAt: "2026-09-01T09:00:00Z", updatedAt: new Date().toISOString(),
-    instructions: null, apps: [], ...over,
+    instructions: null, apps: [], remember: true, ...over,
   };
 }
 
@@ -62,6 +62,50 @@ describe("outside the sheet", () => {
     });
     fireEvent.press(scrim);
     expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
+
+// ── REMEMBER THINGS FROM THIS CHAT ────────────────────────────────────────
+// Per conversation. The server casts anything that is not `false` to TRUE
+// (ai/sessions.rb:80) and leaves an omitted key alone, so the value must be a
+// real boolean, both ways — pinned here, like the rating clear.
+describe("the per-chat memory switch", () => {
+  const openMenu = async () => {
+    fireEvent.press(await screen.findByLabelText("Options for Money"));
+    return screen.findByTestId("session-menu-remember");
+  };
+
+  it("shows the session's real state, and says what OFF changes", async () => {
+    jest.spyOn(sessionsApi, "list").mockResolvedValue([session({ remember: false })]);
+    renderSheet();
+    const toggle = await openMenu();
+    expect(toggle.props.value).toBe(false);
+    expect(screen.getByTestId("session-menu-remember-hint").props.children).toMatch(/^Off: nothing from this chat/);
+  });
+
+  it("sends `remember: false` as a real boolean when switched off", async () => {
+    const update = jest.spyOn(sessionsApi, "update").mockResolvedValue(session({ remember: false }));
+    renderSheet();
+    fireEvent(await openMenu(), "valueChange", false);
+    await waitFor(() => expect(update).toHaveBeenCalledWith(4, { remember: false }));
+    expect(update.mock.calls[0][1].remember).toBe(false);
+  });
+
+  it("sends `remember: true` as a real boolean when switched back on", async () => {
+    jest.spyOn(sessionsApi, "list").mockResolvedValue([session({ remember: false })]);
+    const update = jest.spyOn(sessionsApi, "update").mockResolvedValue(session({ remember: true }));
+    renderSheet();
+    fireEvent(await openMenu(), "valueChange", true);
+    await waitFor(() => expect(update).toHaveBeenCalledWith(4, { remember: true }));
+  });
+
+  it("puts the switch back and says so when the save fails", async () => {
+    jest.spyOn(sessionsApi, "update").mockRejectedValue(new Error("network"));
+    renderSheet();
+    const toggle = await openMenu();
+    fireEvent(toggle, "valueChange", false);
+    await waitFor(() => expect(screen.getByTestId("session-menu-remember").props.value).toBe(true));
+    expect(screen.getByText("That setting was not saved.")).toBeTruthy();
   });
 });
 

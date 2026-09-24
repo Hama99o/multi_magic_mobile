@@ -52,6 +52,7 @@ import {
   type ConversationEvent,
 } from "@/api/conversations";
 import type { ChatMessage } from "@/api/ai";
+import { failureMessage, refusalReason } from "@/api/failure";
 import { Avatar } from "@/screens/people/Avatar";
 import { PersonMessageRow } from "@/screens/people/PersonMessageRow";
 import { ScrollToBottom, useNewestAnchor } from "@/components/chat/ScrollToBottom";
@@ -69,6 +70,12 @@ interface Outgoing {
   key: string;
   body: string;
   failed: boolean;
+  /**
+   * The SERVER's reason, when it refused rather than was unreachable: a body
+   * over `validates :body, length: { maximum: 10_000 }` is a 422 saying
+   * exactly that, and "Tap to retry" alone would retry it for ever.
+   */
+  reason?: string | null;
 }
 
 type Row =
@@ -90,7 +97,11 @@ function sameRow(a: Row, b: Row): boolean {
     return a.message === b.message && a.isLastSent === b.isLastSent;
   }
   if (a.kind === "outgoing" && b.kind === "outgoing") {
-    return a.outgoing.body === b.outgoing.body && a.outgoing.failed === b.outgoing.failed;
+    return (
+      a.outgoing.body === b.outgoing.body &&
+      a.outgoing.failed === b.outgoing.failed &&
+      a.outgoing.reason === b.outgoing.reason
+    );
   }
   return true;
 }
@@ -145,6 +156,7 @@ const ThreadRow = memo(
           }}
           pending={!row.outgoing.failed}
           failed={row.outgoing.failed}
+          failureReason={row.outgoing.reason ?? null}
           onRetry={() => onRetry(row.outgoing)}
         />
       );
@@ -207,6 +219,8 @@ export default function PersonThread() {
   const [outbox, setOutbox] = useState<Outgoing[]>([]);
   const [sheetFor, setSheetFor] = useState<ChatMessage | null>(null);
   const [editing, setEditing] = useState<ChatMessage | null>(null);
+  /** A failed edit or delete, said once above the composer until the next try. */
+  const [threadError, setThreadError] = useState<string | null>(null);
   const [typingName, setTypingName] = useState<string | null>(null);
   const listRef = useRef<FlatList<Row>>(null);
   // Inverted, like the assistant's thread — `useNewestAnchor` has why.
@@ -292,6 +306,7 @@ export default function PersonThread() {
   const send = useCallback(async () => {
     const body = draft.trim();
     if (!body || !Number.isFinite(conversationId)) return;
+    setThreadError(null);
 
     // Editing is a different verb on the same field.
     if (editing) {
@@ -300,10 +315,12 @@ export default function PersonThread() {
       setDraft("");
       try {
         mergeMessage(await threadApi.edit(conversationId, target.id, body));
-      } catch {
-        // Put it back in the composer rather than losing the words.
+      } catch (e) {
+        // Put it back in the composer rather than losing the words, AND say
+        // so: the text silently reappearing read as the tap not working.
         setDraft(body);
         setEditing(target);
+        setThreadError(failureMessage(e, t("thread.editFailed")));
       }
       return;
     }
@@ -319,14 +336,18 @@ export default function PersonThread() {
       mergeMessage(saved);
       setOutbox((current) => current.filter((item) => item.key !== key));
       void queryClient.invalidateQueries({ queryKey: ["conversations"] });
-    } catch {
+    } catch (e) {
       // It STAYS ON SCREEN. `BRIEF.md` §5 — a message arrives or says it did
-      // not; it never disappears into an optimistic bubble.
+      // not; it never disappears into an optimistic bubble. With the server's
+      // reason when it refused, so a retry that cannot work is not the only
+      // thing on offer.
       setOutbox((current) =>
-        current.map((item) => (item.key === key ? { ...item, failed: true } : item)),
+        current.map((item) =>
+          item.key === key ? { ...item, failed: true, reason: refusalReason(e) } : item,
+        ),
       );
     }
-  }, [draft, conversationId, editing, mergeMessage, queryClient]);
+  }, [draft, conversationId, editing, mergeMessage, queryClient, t]);
 
   const retry = useCallback(
     async (item: Outgoing) => {
@@ -336,9 +357,11 @@ export default function PersonThread() {
       try {
         mergeMessage(await threadApi.send(conversationId, item.body));
         setOutbox((current) => current.filter((row) => row.key !== item.key));
-      } catch {
+      } catch (e) {
         setOutbox((current) =>
-          current.map((row) => (row.key === item.key ? { ...row, failed: true } : row)),
+          current.map((row) =>
+            row.key === item.key ? { ...row, failed: true, reason: refusalReason(e) } : row,
+          ),
         );
       }
     },
@@ -371,10 +394,12 @@ export default function PersonThread() {
       // Comes back `deleted: true` with `body: null` — the row keeps its place,
       // because "a hole in the thread reads as a bug".
       mergeMessage(await threadApi.remove(conversationId, target.id));
-    } catch {
-      // Nothing changes on screen, which is the truth.
+    } catch (e) {
+      // The message stays, which is the truth, and now it says why: the
+      // sheet closing with nothing changed read as a missed tap.
+      setThreadError(failureMessage(e, t("thread.deleteFailed")));
     }
-  }, [sheetFor, conversationId, mergeMessage]);
+  }, [sheetFor, conversationId, mergeMessage, t]);
 
   /**
    * The message the UNREAD divider sits above, fixed on first load.
@@ -603,6 +628,11 @@ export default function PersonThread() {
         <ScrollToBottom visible={awayFromBottom} onPress={toBottom} />
       </View>
 
+      {threadError ? (
+        <Text variant="caption" tone="danger" testID="thread-error" accessibilityLiveRegion="polite">
+          {threadError}
+        </Text>
+      ) : null}
       {editing ? (
         <Pressable
           onPress={() => {

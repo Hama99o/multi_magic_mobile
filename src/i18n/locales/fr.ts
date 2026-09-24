@@ -49,6 +49,7 @@ export const fr: Translations = {
     rateLimited: "Trop de requêtes pour le moment. Patientez une minute.",
     sessionEnded: "Votre session est terminée. Reconnectez-vous.",
     checkConnection: "Impossible de joindre MultiMagic. Vérifiez votre connexion.",
+    notAllowed: "Vous n’êtes pas autorisé à faire cela ici.",
   },
 
   session: {
@@ -253,6 +254,12 @@ export const fr: Translations = {
   },
 
   sessions: {
+    rememberTitle: "Retenir des choses de cette conversation",
+    rememberOn:
+      "Activé : l’assistant peut noter des faits durables que vous mentionnez ici, comme un nom ou une préférence, dans votre note « What the assistant remembers ». Vous pouvez lire et modifier cette note.",
+    rememberOff:
+      "Désactivé : rien de cette conversation n’est ajouté à cette note. Ce qu’il a déjà retenu d’autres conversations reste utilisé.",
+    rememberFailed: "Ce réglage n’a pas été enregistré.",
     title: "Discussions",
     today: "Aujourd’hui",
     earlier: "Avant",
@@ -452,6 +459,7 @@ export const fr: Translations = {
     emptyTitle: "Pas encore de discussion",
     emptyBody: "Les discussions que vous commencez sur MultiMagic apparaissent ici.",
     loadFailed: "Impossible de charger vos discussions.",
+    untitled: "Conversation sans nom",
   },
 
   thread: {
@@ -474,6 +482,8 @@ export const fr: Translations = {
     unread: "Non lus",
     deleted: "Ce message a été supprimé.",
     notSent: "Non envoyé. Touchez pour réessayer.",
+    editFailed: "Cette modification n’a pas été enregistrée. Votre texte est revenu dans le champ.",
+    deleteFailed: "Ce message n’a pas pu être supprimé.",
     edited: "modifié",
     sent: "Envoyé",
     read: "Lu par tout le monde",
@@ -483,6 +493,7 @@ export const fr: Translations = {
     title: "Notifications",
     refresh: "Actualiser les notifications",
     markAllRead: "Tout marquer comme lu",
+    actionFailed: "Cela n’a pas abouti. Rien n’a été modifié.",
     clearRead: "Effacer les notifications lues",
     empty: "Vous êtes à jour.",
     loadFailed: "Impossible de charger vos notifications.",

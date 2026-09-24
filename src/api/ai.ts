@@ -140,6 +140,14 @@ export interface AiSession {
    * narrow nothing.
    */
   apps: string[];
+  /**
+   * Whether the assistant may WRITE lasting facts from this chat into the
+   * note "What the assistant remembers" (the `remember_this` tool). Off, the
+   * tool is not offered in this chat at all (`rag_chat.rb#offered_tools`).
+   * Off does NOT stop it reading what that note already holds. Default true;
+   * absent from an older server reads as true, which is that default.
+   */
+  remember: boolean;
 }
 
 export interface AiDocument {
@@ -281,6 +289,7 @@ function parseSession(payload: unknown): AiSession {
     updatedAt: str(record.updated_at, "session.updated_at"),
     instructions: optStr(record.instructions),
     apps: optArr(record.apps).filter((a): a is string => typeof a === "string"),
+    remember: record.remember !== false,
   };
 }
 
@@ -355,10 +364,14 @@ export const undoApi = {
 export const feedbackApi = {
   /** A thumb on an answer. Upserted server-side, so pressing again replaces. */
   rate: async (messageId: number, rating: Rating, comment?: string): Promise<void> => {
-    // `comment` goes only when there is one: the server stores
-    // `params[:comment].presence`, so an absent key and a blank one are the
-    // same, and a thumbs-up never carries one. It reaches the model in the
-    // rating turn (multi_magic `rag_chat_job.rb`, "Why: …", 300 chars).
+    // `comment` goes only when there is one. The server's rule (multi_magic
+    // `622c25b`, "a reason belongs to the thumb it was written about"):
+    //   - comment SENT (even blank): sets the reason; blank clears it;
+    //   - comment ABSENT, rating UNCHANGED: the existing reason is kept;
+    //   - comment ABSENT, rating CHANGED: the reason is dropped.
+    // So the thumb-then-reason pair of calls (both "negative") keeps the
+    // reason, and switching to a thumbs-up drops it. It reaches the model in
+    // the rating turn (`rag_chat_job.rb`, "Why: …", 300 chars).
     const reason = comment?.trim();
     await http.post("/api/v1/ai/feedbacks", {
       message_id: messageId,
@@ -472,7 +485,10 @@ export const sessionsApi = {
    */
   update: async (
     sessionId: number,
-    changes: { title?: string; instructions?: string; apps?: string[] },
+    // `remember` must be a REAL boolean: the server checks `params.key?` and
+    // casts anything that is not `false` (null, "", "false") to TRUE, so a
+    // badly formed value would switch memory back on. Omitted is unchanged.
+    changes: { title?: string; instructions?: string; apps?: string[]; remember?: boolean },
   ): Promise<AiSession> => {
     const res = await http.patch(`/api/v1/ai/sessions/${sessionId}`, changes);
     return parseSession(obj(res.data, "session").session);

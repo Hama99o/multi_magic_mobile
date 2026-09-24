@@ -272,8 +272,23 @@ export function apiErrorMessage(error: unknown): string | null {
   // reading `error` first would drop every reason after the first.
   if (lines.length > 1) return lines.join("\n");
   if (typeof record.error === "string" && record.error.trim()) return record.error;
-  if (typeof record.message === "string" && record.message.trim()) return record.message;
+  if (typeof record.message === "string" && record.message.trim() && !isPolicyText(record.message)) {
+    return record.message;
+  }
   return lines[0] ?? null;
+}
+
+/**
+ * PUNDIT'S OWN SENTENCE IS NOT FOR A PERSON.
+ *
+ * `ApplicationController` answers every policy refusal with
+ * `{ message: e.to_s }`, and Pundit's default `to_s` is developer text:
+ * "not allowed to create? this Message". Read as the server's reason, it
+ * reached the screen verbatim. Ignored here, so the caller's own sentence, or
+ * `failure.notAllowed`, is shown instead.
+ */
+function isPolicyText(message: string): boolean {
+  return /^not allowed to \S+\?/i.test(message.trim());
 }
 
 /**

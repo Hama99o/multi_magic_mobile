@@ -278,6 +278,7 @@ jest.mock("@/api/me", () => ({
 
 /* eslint-disable import/first */
 import { useThemeStore } from "@/stores/theme.store";
+import { englishIn, fixtureStripper, identicalIn, renderedStrings } from "@/__tests__/i18nSweep";
 import Assistant from "../../../app/chat";
 import i18n from "@/i18n";
 import Chats from "../../../app/chats";
@@ -486,69 +487,8 @@ describe.each(SCREENS)("$name", ({ element, handles, french }) => {
  * says "Aujourd’hui" when the fixture is from today, which is how
  * `DayDivider`'s English "Today" went unseen (now `dayLabel.test.ts`).
  */
-const ENGLISH_ONLY = /\b(the|you|your|yours|is|are|was|were|what|when|where|which|who|how|with|this|that|these|and|from|have|has|not|yet|will|can|could|would|should|about|there|their|of|to|for|it|its|no|loading|delete|deleted|cancel|save|saved|back|send|retry|unread|search|settings|sign|account|password|edit|remove|close|done|error|failed|untitled|today|yesterday|online|typing|someone|upcoming|nothing|something|try|again|chat|chats|keys?|key)\b/i;
+const withoutFixtures = fixtureStripper(__filename);
 
-function renderedStrings(): string[] {
-  const out: string[] = [];
-  const insidePrivacy = (node: { parent: unknown; props: { testID?: string } } | null): boolean => {
-    for (let n = node; n; n = n.parent as typeof node) if (n.props?.testID === "privacy-body") return true;
-    return false;
-  };
-  for (const node of screen.UNSAFE_root.findAll(() => true, { deep: true })) {
-    if (typeof node.type !== "string") continue;
-    if (insidePrivacy(node as never)) continue;
-    const { children, accessibilityLabel, accessibilityHint, placeholder } = node.props as Record<string, unknown>;
-    if (node.type === "Text") {
-      const text = ([] as unknown[]).concat(children).filter((c) => typeof c === "string" || typeof c === "number").join("");
-      if (text.trim()) out.push(text.trim());
-    }
-    for (const v of [accessibilityLabel, accessibilityHint, placeholder]) {
-      if (typeof v === "string" && v.trim()) out.push(v.trim());
-    }
-  }
-  return [...new Set(out)];
-}
-
-/**
- * THE STRUCTURAL CHECK, beside the word list: render each screen in English
- * AND French and fail on any string byte-identical in both. A string that
- * went through `t()` differs by construction; one that never did is the same.
- * It needs no vocabulary, so it does not lag the copy (Hamma9901's design).
- *
- * Its first run found something no word list could: event times read
- * "11:30 AM" and the thread's divider "Sep 18" in the French UI, because
- * `toLocale*String(undefined, …)` followed the PHONE's region. Every date and
- * time now follows the app's language (`DayDivider.tsx` says why), so this
- * check needs no exclusion for them.
- *
- * The allowlist: strings that are genuinely the same word in both languages.
- */
-const SAME_IN_BOTH = new Set([
-  // French uses the same word, and `locales.test.ts` SAME_IN_BOTH already
-  // lists these keys for the same reason.
-  "Assistant",
-  "Notifications",
-  // "min" is the French abbreviation too.
-  "30 min",
-  // The composer's placeholder: `thread.message` is in `locales.test.ts`
-  // SAME_IN_BOTH, the same word in French.
-  "Message",
-]);
-
-const THIS_FILE = require("fs").readFileSync(__filename, "utf8") as string;
-/** Every double-quoted literal of four characters or more in this file: the
- *  fixture data. A rendered string often WRAPS one ("Non lu : <his title>"),
- *  so each is cut out of the string before the check, not matched whole. */
-// CODE ONLY, not comments. The first version read the whole file, so this
-// file's own comments, which QUOTE the bugs they describe ("11:30 AM",
-// "Sep 18"), exempted those bugs: a planted region-formatted time stayed
-// green. Writing a bug down must not excuse it.
-const FIXTURE_CODE = THIS_FILE.replace(/\/\*[\s\S]*?\*\//g, "").replace(/^\s*\/\/.*$/gm, "");
-const FIXTURE_TEXT = [...FIXTURE_CODE.matchAll(/"((?:[^"\\\n]|\\.){4,})"/g)]
-  .map((m) => m[1])
-  .sort((a, b) => b.length - a.length);
-const withoutFixtures = (text: string) =>
-  FIXTURE_TEXT.reduce((rest, literal) => rest.split(literal).join(" "), text);
 
 describe.each(SCREENS)("$name, swept in French", ({ element, handles, french, settled }) => {
   it("renders no English prose", async () => {
@@ -563,12 +503,11 @@ describe.each(SCREENS)("$name, swept in French", ({ element, handles, french, se
     await screen.findAllByText(french, { exact: false, includeHiddenElements: true });
     for (const text of settled ?? []) await screen.findAllByText(text, { exact: false });
 
-    const strings = renderedStrings();
+    const strings = renderedStrings("privacy-body");
     // A sweep that collected nothing would pass for every screen. Two is the
     // floor because privacy's only non-policy strings are its title and Back.
     expect(strings.length).toBeGreaterThanOrEqual(2);
-    const english = strings.filter((s) => ENGLISH_ONLY.test(withoutFixtures(s)));
-    expect(english).toEqual([]);
+    expect(englishIn(strings, withoutFixtures)).toEqual([]);
   });
 
   it("renders nothing byte-identical in English and French, beyond the allowlist", async () => {
@@ -579,16 +518,13 @@ describe.each(SCREENS)("$name, swept in French", ({ element, handles, french, se
       for (const handle of handles) await screen.findByTestId(handle);
       for (const text of settled ?? []) await screen.findAllByText(text, { exact: false });
       if (language === "fr") await screen.findAllByText(french, { exact: false, includeHiddenElements: true });
-      const out = renderedStrings();
+      const out = renderedStrings("privacy-body");
       view.unmount();
       return out;
     };
     const fr = await collect("fr");
-    const en = new Set(await collect("en"));
-    const same = fr.filter(
-      (s) => en.has(s) && /[A-Za-zÀ-ÿ]{2,}/.test(withoutFixtures(s)) && !SAME_IN_BOTH.has(s),
-    );
-    expect(same).toEqual([]);
+    const en = await collect("en");
+    expect(identicalIn(fr, en, withoutFixtures)).toEqual([]);
   });
 });
 

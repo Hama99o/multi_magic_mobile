@@ -1414,3 +1414,15 @@ state you are checking had to be reached.
 
 Not covered: the dots and the skeleton loop for ever and have no end state,
 so they keep the "started, natively" check only.
+
+**An exemption that matches TEXT cannot tell code from commentary.** Found
+2026-09-24 in the French render sweep (`screens.render.test.tsx`). To excuse
+fixture data, the English words the test feeds in, it exempted every
+double-quoted string in the test file. That file's comments QUOTE the bugs
+the sweep exists to find ("11:30 AM", "Sep 18"), so writing a bug down made
+the sweep blind to it. With the region-formatted time planted back, the
+sweep stayed green. **The more carefully a check is documented, the wider
+that hole gets.** It was found only by planting AGAIN after the fix and
+noticing green. It now reads code only, comments stripped. Anyone building an
+allowlist by scanning a file is one comment away from the same thing: scan
+the structure you mean (literals in code, keys in a map), never the text.

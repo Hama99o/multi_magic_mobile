@@ -260,7 +260,7 @@ export const fr: Translations = {
     loadFailed: "Impossible de charger vos conversations.",
     rememberTitle: "Retenir des choses de cette conversation",
     rememberOn:
-      "Activé : l’assistant peut noter des faits durables que vous mentionnez ici, comme un nom ou une préférence, dans votre note « What the assistant remembers ». Vous pouvez lire et modifier cette note.",
+      "Activé : l’assistant peut noter des faits durables que vous mentionnez ici, comme un nom ou une préférence, dans votre note « Ce que l’assistant retient ». Vous pouvez lire et modifier cette note.",
     rememberOff:
       "Désactivé : rien de cette conversation n’est ajouté à cette note. Ce qu’il a déjà retenu d’autres conversations reste utilisé.",
     rememberFailed: "Ce réglage n’a pas été enregistré.",

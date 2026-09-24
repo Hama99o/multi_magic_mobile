@@ -33,7 +33,8 @@
  * left by dismissing the whole sheet loses the place you came from.
  */
 import { useState } from "react";
-import { Modal, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { Modal, Pressable, ScrollView, View } from "react-native";
+import { FILL } from "@/theme/fill";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { ChevronLeft, ChevronRight, X } from "lucide-react-native";
@@ -136,7 +137,8 @@ export function ProfileSheet({
           accessibilityRole="button"
           accessibilityLabel={t("common.close")}
           onPress={close}
-          style={{ ...StyleSheet.absoluteFill, backgroundColor: "rgba(0,0,0,0.5)" }}
+          style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.5)" }}
+          testID="profile-scrim"
         />
         <View
           style={{

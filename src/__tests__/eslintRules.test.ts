@@ -67,6 +67,12 @@ const CASES: Case[] = [
     times: 1,
   },
   {
+    rule: "StyleSheet.absoluteFillObject, which SDK 57 removed",
+    fixture: "absolute-fill-object.tsx",
+    says: /absoluteFillObject is removed/,
+    times: 1,
+  },
+  {
     rule: "a selectable Text under a long press",
     fixture: "selectable-under-longpress.tsx",
     says: /eats the long press/i,
@@ -115,7 +121,7 @@ describe("every custom rule can actually fire", () => {
     expect(restricted(fixture).filter((hit) => says.test(hit.message))).toHaveLength(times);
   });
 
-  it("flags nothing in the legitimate forms of all four", () => {
+  it("flags nothing in the legitimate forms of all five", () => {
     expect(restricted("clean.tsx").map((hit) => `${hit.line}: ${hit.message}`)).toEqual([]);
   });
 

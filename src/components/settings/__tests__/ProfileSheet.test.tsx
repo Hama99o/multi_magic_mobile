@@ -13,6 +13,7 @@
  * works changed.
  */
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ router: { push: (...a: unknown[]) => mockPush(...a) } }));
@@ -22,6 +23,16 @@ import { ProfileSheet } from "../ProfileSheet";
 import { useAuthStore } from "@/stores/auth.store";
 
 const noop = () => {};
+
+/** The scrim must COVER the screen, not merely exist. Pressing by testID works
+ *  on a zero-sized element, which is exactly how a scrim with no size shipped
+ *  (`src/theme/fill.ts`), so the geometry is asserted too. */
+function expectCovers(node: { props: { style: unknown } }) {
+  expect(StyleSheet.flatten(node.props.style as never)).toMatchObject({
+    position: "absolute", top: 0, right: 0, bottom: 0, left: 0,
+  });
+}
+
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -41,6 +52,20 @@ beforeEach(() => {
 
 const open = () =>
   render(<ProfileSheet visible onClose={noop} onSignOut={noop} userId={7} />);
+
+// ── A TAP ON THE CONVERSATION BEHIND THE SHEET CLOSES IT ─────────────────
+// Owner, 2026-09-24: tapping outside the Conversations or profile sheet, on
+// the conversation still showing behind it, must close it.
+describe("outside the sheet", () => {
+  it("covers the screen and closes on a tap", () => {
+    const onClose = jest.fn();
+    render(<ProfileSheet visible onClose={onClose} onSignOut={noop} userId={7} />);
+    const scrim = screen.getByTestId("profile-scrim");
+    expectCovers(scrim);
+    fireEvent.press(scrim);
+    expect(onClose).toHaveBeenCalledTimes(1);
+  });
+});
 
 describe("what is behind the photo", () => {
   it("offers all four things he named, and nothing else has to be hunted for", () => {

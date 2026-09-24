@@ -41,7 +41,7 @@
  */
 import { http } from "./http";
 import { messagesApi, type ChatMessage } from "./ai";
-import { arr, id, num, obj, optStr, str } from "./parse";
+import { arr, id, num, obj, optStr, readable, str } from "./parse";
 import { t } from "@/i18n";
 
 /** One member of a thread, as the list and the header draw them. */
@@ -177,9 +177,9 @@ function parseConversation(payload: unknown): Conversation {
     isGroup: typeof record.is_group === "boolean" ? record.is_group : false,
     isOnline: typeof user.is_online === "boolean" ? user.is_online : false,
     avatar: absoluteUrl(optStr(user.avatar)),
-    participants: (Array.isArray(record.participants) ? record.participants : []).map(
-      parseParticipant,
-    ),
+    // Item by item: one malformed participant must not cost the conversation,
+    // and through it the chats list (`readable`, parse.ts).
+    participants: readable(Array.isArray(record.participants) ? record.participants : [], parseParticipant),
     // `null` is the ordinary case for a thread nobody has written in yet.
     lastMessage: record.last_message ? messagesApi.parseOne(record.last_message) : null,
     unreadMessages: typeof record.unread_messages_count === "number"

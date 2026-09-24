@@ -23,7 +23,7 @@
  * `message_count`, and the mapping to camelCase happens once, here, explicitly.
  */
 import { http } from "./http";
-import { arr, bool, id, num, obj, optStr, str } from "./parse";
+import { arr, bool, id, num, obj, optStr, readable, str } from "./parse";
 
 export type MessageRole = "user" | "assistant" | "system";
 
@@ -296,9 +296,11 @@ function parseMessage(payload: unknown): ChatMessage {
     rating: record.rating === "positive" || record.rating === "negative" ? record.rating : null,
     keyProblem: optStr(record.key_problem),
     readAt: optStr(record.read_at),
-    reactions: optArr(record.reactions).map(parseReaction),
-    links: optArr(record.links).map(parseLink),
-    sources: optArr(record.sources).map(parseLink),
+    // Item by item: a malformed reaction or source must not cost the message,
+    // and through it the whole thread (`readable`, parse.ts).
+    reactions: readable(optArr(record.reactions), parseReaction),
+    links: readable(optArr(record.links), parseLink),
+    sources: readable(optArr(record.sources), parseLink),
     undoable: typeof record.undoable === "boolean" ? record.undoable : false,
     undoneAt: optStr(record.undone_at),
   };

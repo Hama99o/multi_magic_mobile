@@ -32,7 +32,7 @@
  */
 import { http } from "./http";
 import { absoluteUrl } from "./conversations";
-import { arr, id, num, obj, optStr, str } from "./parse";
+import { arr, id, num, obj, optStr, readable, str } from "./parse";
 
 export interface NotificationActor {
   id: number;
@@ -96,7 +96,9 @@ function parseNotification(payload: unknown): AppNotification {
     createdAt: str(record.created_at, "notification.created_at"),
     subjectType: optStr(record.subject_type),
     subjectId: typeof record.subject_id === "number" ? record.subject_id : null,
-    actor: parseActor(record.actor),
+    // An unreadable actor costs the avatar, not the notification, and through
+    // it the list (`readable`, parse.ts).
+    actor: readable([record.actor], parseActor)[0] ?? null,
   };
 }
 

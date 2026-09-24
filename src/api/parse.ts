@@ -71,3 +71,25 @@ export function bool(value: unknown, field: string): boolean {
   if (typeof value !== "boolean") throw new ApiShapeError(field, value);
   return value;
 }
+
+/**
+ * A list of DECORATIONS, read item by item: an unreadable item is dropped,
+ * not allowed to fail what it decorates. Only for parts a row can do without
+ * (a reaction, a source chip, a link), never for the rows themselves.
+ *
+ * The parsers audit, 2026-09-24: one malformed reaction threw for its whole
+ * message, the message threw for its page, and the page for the thread, so
+ * a thumbs-up the server got wrong cost the person their transcript. Only
+ * ApiShapeError is swallowed; anything else is a bug and still throws.
+ */
+export function readable<T>(items: unknown[], parse: (item: unknown) => T): T[] {
+  const out: T[] = [];
+  for (const item of items) {
+    try {
+      out.push(parse(item));
+    } catch (e) {
+      if (!(e instanceof ApiShapeError)) throw e;
+    }
+  }
+  return out;
+}

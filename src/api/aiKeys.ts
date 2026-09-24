@@ -28,7 +28,7 @@
  * response, and a caller that caches one caches a complete one.
  */
 import { http } from "./http";
-import { arr, id as parseId, obj, optStr, str } from "./parse";
+import { arr, id as parseId, obj, optStr, readable, str } from "./parse";
 
 export interface AiKey {
   id: number;
@@ -103,7 +103,9 @@ export function parseKeyPayload(payload: unknown): AiKeyPayload {
     providers: (Array.isArray(record.providers) ? record.providers : []).filter(
       (p): p is string => typeof p === "string",
     ),
-    borrowed: (Array.isArray(record.borrowed) ? record.borrowed : []).map(parseBorrowed),
+    // Item by item: a malformed lent key must not cost the screen your OWN
+    // keys are on (`readable`, parse.ts).
+    borrowed: readable(Array.isArray(record.borrowed) ? record.borrowed : [], parseBorrowed),
   };
 }
 

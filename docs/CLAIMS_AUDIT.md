@@ -133,6 +133,26 @@ means it reaches the phone through the assistant with no app work.
 | Account-deletion fixes (`30dce44`, `3adca92`, `bd19a55`, `1835543`) | The error shapes, yes | Nothing |
 | Web and CI only (`f95fcfb`, `f28a945`, schema checks) | Not applicable | Nothing |
 
+## With a lot of data: what breaks under volume (2026-09-24)
+
+Every check before this ran on a handful of rows. His data is months deep.
+Found by READING the client against the server's page sizes, and fixed
+where it was a fixture question. Nothing measured on his data or a device.
+
+| Surface | What volume does | Status |
+|---|---|---|
+| **People chats list** | Paged at 15 (`conversations_controller.rb`). The screen read page 1 only, so **a sixteenth conversation could not be reached** | **FIXED**: every page, loaded near the end, de-duplicated by id; `app/__tests__/chats.test.tsx` |
+| **Notifications** | Paged at 20. The API file argued paging was unneeded because the scope stops at 90 days, but that bounds TIME, not count, and a daily brief is ninety. **Only the newest 20 could be read** | **FIXED**: every page; the unread count is page one's server total, not a row count; `notifications.test.tsx` |
+| A long people thread | 25 a page by cursor (`messages_controller.rb`), older pages on scroll-back only; `merge` is one pass and a sort over what is loaded | Fine by reading. A thousand messages is 40 pages, if scrolled all the way |
+| The assistant's thread | The same cursor paging (`loadOlder`) | Fine by reading |
+| Conversations sheet | At most 50 (`LIMITS.maxSessions`), one request | Fine by construction |
+| A very long answer | `AnswerMarkdown` parses on render; `MessageRow`'s memo stops an unchanged answer re-parsing | Fine by reading. **How a 10,000-character answer scrolls is a device question** |
+| What the phone holds | React Query drops unused queries after the 5-minute default; drafts are deleted when empty (`useDraft`) | Nothing grows without bound, by reading |
+
+**On the device, with his real account** (beside run 9): scroll a long
+chats list to its end, and the notifications past twenty; scroll a
+thousand-message thread back; open the longest answer he has.
+
 ## What I would do next, in order
 
 1. **Run 9 on a device, the moment the disk frees.** More changed today than

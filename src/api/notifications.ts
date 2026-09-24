@@ -24,8 +24,11 @@
  *
  * ── AND THE SCOPE HAS A FLOOR ─────────────────────────────────────────────
  * `notification.rb:46` — `scope :recent, ->(since = 90.days.ago)`. Nothing
- * older than 90 days is served at all, so "Earlier" is bounded and there is no
- * infinite history to build paging for beyond the page size.
+ * older than 90 days is served at all, so "Earlier" is bounded. **Bounded in
+ * TIME, not in count**: this line used to conclude that no paging was needed
+ * beyond the page size, and so only the newest 20 could ever be read. A daily
+ * morning brief alone is ninety in that window. The screen reads every page
+ * now (`app/notifications.tsx`, 2026-09-24).
  */
 import { http } from "./http";
 import { absoluteUrl } from "./conversations";

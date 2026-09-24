@@ -18,12 +18,12 @@
  * button with no room behind it. Runna's empty inbox has that button; we
  * rejected it by name in the SPEC.
  */
-import { useCallback, useEffect } from "react";
-import { FlatList, Pressable, RefreshControl, View } from "react-native";
+import { useCallback, useEffect, useMemo } from "react";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "@/components/icons";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -39,10 +39,21 @@ export default function Chats() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error, refetch, isRefetching } = useQuery({
-    queryKey: ["conversations"],
-    queryFn: () => conversationsApi.list(),
-  });
+  /**
+   * EVERY PAGE, not the first. The server pages at 15 (`conversations_controller.rb`),
+   * and until 2026-09-24 this read page 1 only, so a sixteenth conversation
+   * could not be reached from the phone at all (the volume audit). Pages load
+   * as the reader nears the end. The key stays under ["conversations"], so the
+   * thread's and the socket's invalidations still refetch it; a refetch
+   * re-reads every page that is loaded.
+   */
+  const { data, isLoading, error, refetch, isRefetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery({
+      queryKey: ["conversations", "list"],
+      queryFn: ({ pageParam }) => conversationsApi.list(pageParam),
+      initialPageParam: 1,
+      getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
+    });
 
   const reload = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: ["conversations"] });
@@ -82,7 +93,14 @@ export default function Chats() {
     });
   }, []);
 
-  const conversations = data?.conversations ?? [];
+  // By id, first seen: the list is ordered by latest activity, so a row can
+  // move from page 2 to page 1 between two requests and arrive twice.
+  const conversations = useMemo(() => {
+    const seen = new Set<number>();
+    return (data?.pages ?? [])
+      .flatMap((page) => page.conversations)
+      .filter((c) => (seen.has(c.id) ? false : (seen.add(c.id), true)));
+  }, [data]);
 
   return (
     <Screen measure>
@@ -153,6 +171,15 @@ export default function Chats() {
               <Text tone="muted">{t("chats.emptyBody")}</Text>
             </View>
           )
+        }
+        onEndReached={() => {
+          if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <ActivityIndicator testID="chats-more" color={colors.inkMuted} style={{ paddingVertical: metrics.space.lg }} />
+          ) : null
         }
         contentContainerStyle={{ paddingBottom: metrics.space.xl }}
         showsVerticalScrollIndicator={false}

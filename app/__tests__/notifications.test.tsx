@@ -61,3 +61,38 @@ it("says nothing when there is nothing wrong", async () => {
 
   expect(screen.queryByTestId("notifications-action-failed")).toBeNull();
 });
+
+// ── EVERY PAGE (the volume audit, 2026-09-24) ─────────────────────────────
+// Only the newest 20 could be read: the screen asked for page 1 and never
+// another, on the reasoning that the server's 90-day window is "bounded".
+// Bounded in time is not bounded in count.
+describe("more than one page", () => {
+  const row = (id: number) => ({ ...read, id, title: `Notice ${id}` }) as AppNotification;
+
+  it("loads the next page at the end of the list, once per row", async () => {
+    const list = jest.spyOn(notificationsApi, "list").mockImplementation(async (page = 1) =>
+      page === 1
+        ? { notifications: [row(1), row(2)], unreadCount: 7, hasMore: true }
+        : { notifications: [row(2), row(3)], unreadCount: 7, hasMore: false },
+    );
+    renderScreen();
+    await screen.findByText("Notice 1");
+    await act(async () => {
+      fireEvent(screen.getByTestId("notifications-list"), "endReached");
+    });
+    expect(await screen.findByText("Notice 3")).toBeTruthy();
+    expect(list).toHaveBeenCalledWith(2);
+    // Row 2 arrived on both pages and is drawn once.
+    expect(screen.getAllByText("Notice 2")).toHaveLength(1);
+  });
+
+  it("does not ask past the last page", async () => {
+    const list = jest.spyOn(notificationsApi, "list").mockResolvedValue({ notifications: [row(1)], unreadCount: 0, hasMore: false });
+    renderScreen();
+    await screen.findByText("Notice 1");
+    await act(async () => {
+      fireEvent(screen.getByTestId("notifications-list"), "endReached");
+    });
+    expect(list).toHaveBeenCalledTimes(1);
+  });
+});

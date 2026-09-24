@@ -28,11 +28,11 @@
  * last true.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, CheckCheck, Trash2 } from "@/components/icons";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -60,10 +60,20 @@ export default function Notifications() {
   const queryClient = useQueryClient();
   const [composed, setComposed] = useState<string | null>(null);
 
-  const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt } = useQuery({
-    queryKey: ["notifications"],
-    queryFn: () => notificationsApi.list(),
-  });
+  /**
+   * EVERY PAGE, not the first. Paged at 20 (`notifications_controller.rb`).
+   * `notifications.ts` argued no paging was needed because the scope stops at
+   * 90 days, but 90 days bounds TIME, not count: a daily morning brief alone
+   * is ninety in that window. Until 2026-09-24 only the newest 20 could be
+   * read (the volume audit). Pages load as the reader nears the end.
+   */
+  const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useInfiniteQuery({
+      queryKey: ["notifications", "list"],
+      queryFn: ({ pageParam }) => notificationsApi.list(pageParam),
+      initialPageParam: 1,
+      getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
+    });
 
   /**
    * Which session the composed question lands in — the same one the assistant
@@ -195,7 +205,12 @@ export default function Notifications() {
   /** `Today` and `Earlier` — two groups, because the scope has a 90-day floor
    *  (`notification.rb:46`) and the relative time on each row carries the rest. */
   const rows = useMemo<Row[]>(() => {
-    const all = data?.notifications ?? [];
+    // By id, first seen: a new notification shifts every page by one, so a
+    // row can arrive on two of them.
+    const seen = new Set<number>();
+    const all = (data?.pages ?? [])
+      .flatMap((page) => page.notifications)
+      .filter((n) => (seen.has(n.id) ? false : (seen.add(n.id), true)));
     const today = all.filter((n) => isToday(n.createdAt));
     const earlier = all.filter((n) => !isToday(n.createdAt));
 
@@ -211,7 +226,8 @@ export default function Notifications() {
     return out;
   }, [data, t]);
 
-  const unread = data?.unreadCount ?? 0;
+  // The FIRST page's count: it is the server's total, not a count of rows.
+  const unread = data?.pages[0]?.unreadCount ?? 0;
 
   return (
     <Screen measure>
@@ -336,6 +352,15 @@ export default function Notifications() {
               <Text tone="muted">{t("notifications.empty")}</Text>
             </View>
           )
+        }
+        onEndReached={() => {
+          if (hasNextPage && !isFetchingNextPage) void fetchNextPage();
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={
+          isFetchingNextPage ? (
+            <ActivityIndicator testID="notifications-more" color={colors.inkMuted} style={{ paddingVertical: metrics.space.lg }} />
+          ) : null
         }
         contentContainerStyle={{ paddingBottom: metrics.space.xl }}
         showsVerticalScrollIndicator={false}

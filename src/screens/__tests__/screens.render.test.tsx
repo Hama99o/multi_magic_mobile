@@ -410,6 +410,29 @@ describe.each(SCREENS)("$name", ({ element, handles, french }) => {
 });
 
 /**
+ * THE PEOPLE THREAD IS INVERTED, NEWEST FIRST — the same anchor as the
+ * assistant's (`useNewestAnchor`, 2026-09-24). Inverted alone would open on
+ * the oldest; reversed alone would read upside down. And the day divider must
+ * come AFTER its messages in the data, which is ABOVE them on screen.
+ */
+describe("the people thread", () => {
+  it("is an inverted list, newest first, with its day divider above", async () => {
+    setWidth(411);
+    await i18n.changeLanguage("en");
+    renderScreen(<Thread />);
+    await screen.findByTestId("thread-list");
+
+    const list = screen.getByTestId("thread-list");
+    expect(list.props.inverted).toBe(true);
+    const data = screen.UNSAFE_getByProps({ testID: "thread-list", inverted: true }).props.data as {
+      kind: string;
+    }[];
+    expect(data[0].kind).not.toBe("day");
+    expect(data.at(-1)?.kind).toBe("day");
+  });
+});
+
+/**
  * The claim the table above is really making, stated once so it cannot be read
  * as an accident of the loop: the set of handles is the SAME at every width.
  */

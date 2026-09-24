@@ -54,7 +54,7 @@ import {
 import type { ChatMessage } from "@/api/ai";
 import { Avatar } from "@/screens/people/Avatar";
 import { PersonMessageRow } from "@/screens/people/PersonMessageRow";
-import { ScrollToBottom, useAwayFromBottom } from "@/components/chat/ScrollToBottom";
+import { ScrollToBottom, useNewestAnchor } from "@/components/chat/ScrollToBottom";
 import { PersonComposer } from "@/screens/people/PersonComposer";
 import { ReactionSheet } from "@/screens/people/ReactionSheet";
 import { DayDivider, UnreadDivider, dayLabel } from "@/screens/people/DayDivider";
@@ -118,8 +118,9 @@ export default function PersonThread() {
   const [editing, setEditing] = useState<ChatMessage | null>(null);
   const [typingName, setTypingName] = useState<string | null>(null);
   const listRef = useRef<FlatList<Row>>(null);
-  const { awayFromBottom, settled, onScroll, onScrollBeginDrag, onContentSizeChange, onListLayout, toBottom } =
-    useAwayFromBottom(listRef);
+  // Inverted, like the assistant's thread — `useNewestAnchor` has why.
+  const { awayFromBottom, onScroll, toBottom, maintainVisibleContentPosition } =
+    useNewestAnchor(listRef);
 
   /**
    * The unread count as it was BEFORE the thread was opened.
@@ -344,6 +345,7 @@ export default function PersonThread() {
     }
     return out;
   }, [messages, outbox, unreadAnchorId, lastSentId]);
+  const newestFirst = useMemo(() => [...rows].reverse(), [rows]);
 
   /**
    * The thread itself — for the header's AVATAR and presence, and for naming
@@ -426,8 +428,12 @@ export default function PersonThread() {
       <FlatList
         testID="thread-list"
         ref={listRef}
-        data={rows}
+        // INVERTED, newest first. Reversing the whole `rows` array keeps each
+        // day and unread divider visually ABOVE the messages it heads.
+        inverted
+        data={newestFirst}
         keyExtractor={(row) => row.key}
+        maintainVisibleContentPosition={maintainVisibleContentPosition}
         renderItem={({ item }) => {
           if (item.kind === "day") return <DayDivider label={item.label} />;
           if (item.kind === "unread") return <UnreadDivider />;
@@ -474,21 +480,12 @@ export default function PersonThread() {
         }}
         onScroll={onScroll}
         scrollEventThrottle={64}
-        // A finger here means the position is theirs — see `useAwayFromBottom`.
-        onScrollBeginDrag={onScrollBeginDrag}
-        // Chased only while still pinned to the newest — a message arriving
-        // must not yank somebody out of the history they scrolled up to read.
-        onContentSizeChange={onContentSizeChange}
-        // History by cursor as the reader reaches the top — an id cursor cannot
-        // skip a message that arrived while they were scrolling, which is what
-        // page numbers did (`messages_controller.rb:19-23`).
-        // NOT UNTIL THE FIRST LANDING IS DONE. A list opens at offset 0, which is
-        // the top, so this used to fire on mount and prepend an older page above
-        // somebody who had not gone looking for one — moving the bottom we were
-        // trying to reach. `settled` is the hook's word for "the opening scroll
-        // has finished".
-        onStartReached={hasOlder && settled ? () => void loadOlder() : undefined}
-        onStartReachedThreshold={0.3}
+        // History by cursor as the reader reaches the OLDEST end — the list's
+        // end, inverted. An id cursor cannot skip a message that arrived while
+        // they were scrolling, which is what page numbers did
+        // (`messages_controller.rb:19-23`).
+        onEndReached={hasOlder ? () => void loadOlder() : undefined}
+        onEndReachedThreshold={0.3}
         showsVerticalScrollIndicator={false}
         // IDENTITY.md §8: at 800 dp the conversation takes a measure and
         // centres rather than stretching — the same treatment the assistant's
@@ -502,12 +499,9 @@ export default function PersonThread() {
           // Was `space.md`, which left the newest message almost touching the
           // composer. Same value as the assistant's chat so the two threads
           // feel like one app.
-          paddingBottom: metrics.space.xl,
+          // `paddingTop` because the list is inverted: top and bottom swap.
+          paddingTop: metrics.space.xl,
         }}
-        // Same reason as the assistant's chat: the keyboard changes this
-        // list's height without changing its offset, leaving the newest
-        // message behind the keyboard.
-        onLayout={onListLayout}
         ListEmptyComponent={
           status === "loading" ? null : status === "failed" ? (
             <View style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>

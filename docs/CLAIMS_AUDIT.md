@@ -182,6 +182,33 @@ state.
 - **what TalkBack actually says**: the sweep proves a name exists, not that
   it is the right one.
 
+## What survives a sign-out (2026-09-25)
+
+Everything the app caches or persists, what is in it, and what clears it.
+
+| Store | Holds | Cleared on sign-out? |
+|---|---|---|
+| **React Query cache** (memory) | conversations, messages, profile, AI keys, notifications, the current session id | **It was NOT.** A sign-out followed by another account signing in, in the same process, opened every screen on the previous account's data, and pointed the assistant at their conversation. **FIXED** (`forgetSession` in `auth.store.ts`): cleared on sign-out, on a forced sign-out, and again when any account signs in (sign-in, two-factor, sign-up), so a switch starts clean. Planted red. |
+| Token (`expo-secure-store`) | the JWT | Yes: `setToken(null)` deletes it; the in-memory cache is reset with it |
+| Session email (secure store) | the address | Yes |
+| Trusted-device token (secure store) | "this phone is known" | **Kept, by design** (`auth.ts`): bound to the fingerprint, and checked against the owner on every use |
+| Device fingerprint (secure store) | an install id | **Kept, by design** (`lib/fingerprint.ts`): clearing it causes a re-auth cycle |
+| The socket | an authenticated connection | Yes (`resetCable`) |
+| Read-aloud | audio of a message | Now stopped on sign-out |
+| Remembered session (`mm:aiSession:v1:<userId>`) | a session NUMBER, per user | Kept, and harmless: keyed by user, no content |
+| **Drafts** (`mm-draft:<conversationId>`, AsyncStorage) | half-written assistant questions | **Kept. An open question** for Hamma9901: see below |
+| Theme, language, dictation language | device preferences | Kept; no personal content |
+
+**The draft question.** Drafts are kept only for the assistant (the people
+thread's composer is in memory). Assistant conversation ids belong to one
+account, so another account's screens never reach them: his half-questions
+stay on disk, unreachable, not visible. Keeping them across his own re-login
+is arguably right. **Recommendation:** key them by user as well
+(`mm-draft:<userId>:<conversationId>`), as the remembered session already
+is. That keeps his, and guarantees nobody else's screen could ever match
+one. Or clear them on sign-out, if a deliberate sign-out should leave
+nothing.
+
 ## What I would do next, in order
 
 1. **Run 9 on a device, the moment the disk frees.** More changed today than

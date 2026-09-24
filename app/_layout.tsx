@@ -15,7 +15,8 @@ import { useCallback, useEffect, useState } from "react";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { queryClient } from "@/lib/queryClient";
 import * as SplashScreen from "expo-splash-screen";
 import { wireAuthStore, useAuthStore } from "@/stores/auth.store";
 import { wireReachability } from "@/stores/reachability.store";
@@ -29,17 +30,6 @@ import { OpeningAnimation } from "@/components/OpeningAnimation";
 
 void SplashScreen.preventAutoHideAsync();
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      // The assistant's data changes because the user changed it, not because
-      // time passed. Refetching on every focus would re-read a transcript the
-      // socket is already keeping current.
-      refetchOnWindowFocus: false,
-      retry: 1,
-    },
-  },
-});
 
 wireAuthStore();
 wireReachability();

@@ -16,7 +16,29 @@ import {
 } from "@/api/auth";
 import { setUnauthorizedHandler, type SessionEndReason } from "@/api/http";
 import { resetCable } from "@/lib/cable";
+import { queryClient } from "@/lib/queryClient";
+import { useReadAloud } from "@/stores/readAloud.store";
+
 import { t } from "@/i18n";
+
+/**
+ * EVERYTHING THIS SESSION CACHED, GONE (2026-09-24, the sign-out audit).
+ *
+ * The query cache held his conversations, messages, profile, AI keys and
+ * notifications, and nothing cleared it: a sign-out followed by another
+ * account signing in, in the same process, opened every screen on the
+ * previous account's data until each re-fetch landed, and pointed the
+ * assistant at the previous account's conversation. The socket carries the
+ * token in its URL, so it goes too, and an answer being read aloud stops.
+ *
+ * Called when a session ENDS and again when one BEGINS, so an account switch
+ * that somehow skipped the sign-out still starts clean.
+ */
+export function forgetSession(): void {
+  queryClient.clear();
+  resetCable();
+  void useReadAloud.getState().stop();
+}
 
 /**
  * What the sign-in screen says after a FORCED sign-out — one sentence per
@@ -64,6 +86,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   signIn: async (params) => {
     try {
       const user = await apiSignIn(params);
+      forgetSession();
       set({ user, status: "signedIn", signedOutReason: null, pendingTwoFactor: null });
     } catch (e) {
       // The code is already in his inbox by the time this throws, so the token
@@ -80,6 +103,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     const pending = useAuthStore.getState().pendingTwoFactor;
     if (!pending) throw new Error("No pending two-factor session");
     const user = await apiVerifyTwoFactor({ preAuthToken: pending, code });
+    forgetSession();
     set({ user, status: "signedIn", signedOutReason: null, pendingTwoFactor: null });
   },
 
@@ -87,14 +111,14 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   signOut: async () => {
     await apiSignOut();
-    // The socket carries the token in its URL, so it must go too — otherwise it
-    // stays open authenticated as the person who just left.
-    resetCable();
+    // The socket (its URL carries the token), the query cache and any audio:
+    // see `forgetSession`.
+    forgetSession();
     set({ user: null, status: "signedOut", signedOutReason: null, pendingTwoFactor: null });
   },
 
   forceSignOut: (reason) => {
-    resetCable();
+    forgetSession();
     set({ user: null, status: "signedOut", signedOutReason: reason, pendingTwoFactor: null });
   },
 }));

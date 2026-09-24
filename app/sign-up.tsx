@@ -33,7 +33,7 @@ import { Button } from "@/components/reusables/button";
 import { Input } from "@/components/reusables/input";
 import { useMetrics } from "@/hooks/useColors";
 import { signUp } from "@/api/auth";
-import { useAuthStore } from "@/stores/auth.store";
+import { useAuthStore, forgetSession } from "@/stores/auth.store";
 import { apiErrorMessage, isNetworkFailure } from "@/api/http";
 import { t as translate } from "@/i18n";
 
@@ -159,6 +159,8 @@ export default function SignUp() {
       });
       // Devise signs the new account in, so this lands in the app rather than
       // back at a login the user has just proved they can pass.
+      // A clean start, as every sign-in has (`forgetSession`, auth.store.ts).
+      forgetSession();
       useAuthStore.setState({ user, status: "signedIn", signedOutReason: null });
       router.replace("/chat");
     } catch (e) {

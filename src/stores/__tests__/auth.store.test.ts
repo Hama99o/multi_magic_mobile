@@ -15,6 +15,7 @@ jest.mock("@/api/auth", () => ({
 import { sessionEndSentence, useAuthStore, wireAuthStore } from "../auth.store";
 import { __resetTokenCache, http, setToken, setUnauthorizedHandler } from "@/api/http";
 import { resetCable } from "@/lib/cable";
+import { queryClient } from "@/lib/queryClient";
 
 let mock: MockAdapter;
 
@@ -98,5 +99,38 @@ describe("the sentences", () => {
     expect(sessionEndSentence("expired")).toMatch(/expired/i);
     expect(sessionEndSentence("revoked")).toMatch(/device/i);
     expect(sessionEndSentence("revoked")).not.toBe(sessionEndSentence("expired"));
+  });
+});
+
+// ── WHAT SURVIVES A SIGN-OUT (the sign-out audit, 2026-09-24) ─────────────
+// The query cache held his conversations, profile, keys and notifications,
+// and nothing cleared it, so the next account's screens opened on the
+// previous account's data. Cleared when a session ends AND when one begins.
+describe("a session's cached data", () => {
+  const seed = () => {
+    queryClient.setQueryData(["profile"], { id: 1, fullName: "A B" });
+    queryClient.setQueryData(["conversations", "list"], { pages: [{ conversations: [{ id: 266 }] }] });
+    queryClient.setQueryData(["ai", "currentSession"], 265);
+  };
+  const cached = () => queryClient.getQueryCache().getAll().length;
+
+  it("is gone after signing out", async () => {
+    seed();
+    expect(cached()).toBeGreaterThan(0);
+    await useAuthStore.getState().signOut();
+    expect(cached()).toBe(0);
+  });
+
+  it("is gone after being signed out by the server", () => {
+    seed();
+    useAuthStore.getState().forceSignOut("expired");
+    expect(cached()).toBe(0);
+  });
+
+  it("is gone when an account signs in, so a switch starts clean", async () => {
+    seed();
+    await useAuthStore.getState().signIn({ email: "someone@example.com", password: "secret1" });
+    expect(queryClient.getQueryData(["ai", "currentSession"])).toBeUndefined();
+    expect(cached()).toBe(0);
   });
 });

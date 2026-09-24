@@ -897,6 +897,57 @@ run (the tree order in `docs/ACCESSIBILITY.md` D5 was read from
 which answers 500 on every request (unresolved conflicts in `multi_magic`
 after a stray `git stash pop`, 2026-09-24 ~17:00; the owner's reset).
 
+## Run 9's running order — by what most likely BROKE, written 2026-09-24
+
+Ranked before the device is free, so the first hour of a slot goes to the
+flows most likely to find something. **The ranking is a PREDICTION, from git,
+not a verdict.** It reads which commits since each flow's last pass touch the
+code that flow walks through. It cannot say that anything broke.
+
+Method: each flow's `id:` selectors → the files defining them → commits since
+its last pass (run 8, 2026-09-21 23:35; or run 9, 2026-09-24 ~12:35). Raw
+counts mislead, because `chat.tsx` and `Composer.tsx` are the entrance to
+almost every flow. So the order below weighs the SHARED changes that a testID
+map cannot see. Each is named with its commit.
+
+1. **`login`**. Every run starts here, so it gates the rest. Since its pass:
+   the opening cover over the first screen (`ecf140a`, `pointerEvents="none"`
+   and hidden from accessibility, but a full-screen view on top for ~0.45 s),
+   and the Android keyboard lift on the sign-in form (`9b56a2e`).
+2. **`01-ask`**. Its run-9 pass (12:14) predates nearly all of the chat work
+   on 2026-09-24: the optimistic send (`85585e8`, 12:42), the inverted list
+   (`915c54b`), the memoised rows (`6384982`), the skeleton (`35816b9`), the
+   thumbs toggle (`d50ac0c`), key_problem notices (`9f320ef`) and the lift.
+   It walks the app's core, and it is the most changed.
+3. **`09-keyboard`**. `KeyboardPadding` (`9b56a2e`) replaced KAV on Android
+   and is NOT MEASURED. This flow asserts the composer above the keyboard,
+   exactly what the change could break. Record it at 60 fps in the same
+   slot (`docs/design/chat/SPEC.md`).
+4. **`19-session-options`, `15-sessions-switch`, `04-delete-conversation`**.
+   Run 9 passed all three before `SessionsSheet` got a full-screen scrim
+   (`c5258b7`, `c371648`) and a new row-menu item, the memory switch
+   (`f29cd12`). `19` opens that exact menu.
+5. **`signed-out`, then `set-language`**. The cheap probe for everything
+   behind the photo. `ProfileSheet` got the same full-screen scrim
+   (`c371648`), and every settings flow enters through it. If a row in the
+   sheet still takes its tap above the scrim, 6 is worth running; if not,
+   six flows fail at the same step, and one of them says so faster.
+6. **`12-account`, `13-profile`, `14-change-password`, `16-ai-keys`,
+   `17-privacy`, `18-delete-account`**. Behind 5. 13, 14, 16 and 18 also have
+   form fields, so they get the new lift too.
+7. **`07-notifications`, `08-calendar`, `20-refresh`**. Their own screens
+   changed little (1–2 commits each, icons and the error sweep). The skeleton
+   commit does not touch them (checked `35816b9`). They are still
+   empty-state passes on this account.
+8. **`05-upload`** (the `AttachSheet` scrim) and **`03-dictation`** (the
+   length counter lives in the composer's row).
+9. **`02-sign-in`, `10-sign-up`, `11-forgot-password`**. Zero commits to
+   their own screens since run 8. The only shared change is the lift.
+- **`06-people-chat`** is not in the order: it waits on the rig fix above,
+  not on a run.
+- **`99-screens`** goes last. It takes pictures, and the pictures are only
+  worth taking once the flows above have said the screens work.
+
 ## What run 9 would need — written 2026-09-22 23:55, before anybody asks for a sweep
 
 Run 8 was 23 PASS, 1 PARTIAL, 4 NOT MEASURED. Two of those four are now closed

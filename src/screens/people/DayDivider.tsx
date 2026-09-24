@@ -12,9 +12,11 @@ import { View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import type { TFunction } from "i18next";
+import { t as translate } from "@/i18n";
 
 /** `Today`, `Yesterday`, or a short date. */
-export function dayLabel(iso: string, now: Date = new Date()): string {
+export function dayLabel(iso: string, now: Date = new Date(), t: TFunction = translate): string {
   const then = new Date(iso);
   if (Number.isNaN(then.getTime())) return "";
 
@@ -23,10 +25,13 @@ export function dayLabel(iso: string, now: Date = new Date()): string {
     a.getMonth() === b.getMonth() &&
     a.getDate() === b.getDate();
 
-  if (sameDay(then, now)) return "Today";
+  // Were English literals until 2026-09-24. The French render sweep found them
+  // only by accident: its fixture message is not from today, so it never drew
+  // these two. A `dayLabel.test.ts` case in French now does.
+  if (sameDay(then, now)) return t("thread.today");
 
   const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
-  if (sameDay(then, yesterday)) return "Yesterday";
+  if (sameDay(then, yesterday)) return t("common.yesterday");
 
   // The year only when it is not this one — "12 Sep 2024" on a thread from last
   // year, "12 Sep" on one from March.

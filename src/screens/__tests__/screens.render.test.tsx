@@ -89,19 +89,30 @@ const MESSAGE = {
 // per call made every list prop look new on each render, which the typing
 // test below would read as the screen's fault.
 jest.mock("@/hooks/useConversation", () => {
-  let value: unknown;
+  const byConversation = new Map<string, unknown>();
   return {
-    useConversation: () => (value ??= ({
-    messages: [MESSAGE],
-    status: "ready",
-    awaitingReply: false,
-    hasOlder: false,
-    loadOlder: jest.fn(),
-    addPending: jest.fn(), addOptimistic: jest.fn(() => 9e15), confirmPending: jest.fn(), dropPending: jest.fn(), keyOf: (m: { id: number }) => String(m.id),
-    mergeMessage: jest.fn(),
-    failed: false,
-    resync: jest.fn(),
-  })),
+    useConversation: ({ conversationId }: { conversationId: number | null }) => {
+      // The PEOPLE thread (266) has its message. The ASSISTANT's session (265,
+      // or null before it resolves) is EMPTY, so it renders its suggested
+      // questions: they exist only in the empty state, and they SEND when
+      // tapped, which made them the costliest English in the app (claims
+      // audit, 2026-09-24). One object per conversation, for the reason above.
+      const key = String(conversationId);
+      if (!byConversation.has(key)) {
+        byConversation.set(key, {
+          messages: conversationId === 266 ? [MESSAGE] : [],
+          status: "ready",
+          awaitingReply: false,
+          hasOlder: false,
+          loadOlder: jest.fn(),
+          addPending: jest.fn(), addOptimistic: jest.fn(() => 9e15), confirmPending: jest.fn(), dropPending: jest.fn(), keyOf: (m: { id: number }) => String(m.id),
+          mergeMessage: jest.fn(),
+          failed: false,
+          resync: jest.fn(),
+        });
+      }
+      return byConversation.get(key);
+    },
   };
 });
 
@@ -109,6 +120,8 @@ jest.mock("@/api/conversations", () => ({
   REACTION_EMOJI: [{ emoji: "👍", id: "thumbs-up" }],
   absoluteUrl: (p: string | null) => p,
   conversationsApi: {
+    // The chat header's chats badge: THREADS with something unread.
+    unreadCount: jest.fn(async () => ({ unreadConversations: 1, unreadMessagesTotal: 2 })),
     list: jest.fn(async () => ({
       conversations: [
         {
@@ -148,6 +161,8 @@ jest.mock("@/api/conversations", () => ({
 
 jest.mock("@/api/notifications", () => ({
   notificationsApi: {
+    // The chat header's bell badge.
+    unreadCount: jest.fn(async () => 1),
     list: jest.fn(async () => ({
       notifications: [
         {
@@ -246,14 +261,24 @@ jest.mock("@/api/aiKeys", () => ({
 }));
 
 jest.mock("@/api/ai", () => ({
-  // The real limits: the composers read them while rendering.
-  LIMITS: jest.requireActual("@/api/ai").LIMITS,
+  // The real module's constants (LIMITS, KEY_PROBLEMS…): the screens read them
+  // while rendering. Only the calls are replaced.
+  ...jest.requireActual("@/api/ai"),
   aiApi: { currentSessionId: jest.fn(async () => 265) },
+  // One READY file, so the assistant offers its file question.
+  documentsApi: { list: jest.fn(async () => [{ id: 1, filename: "facture-mars.pdf", status: "ready" }]) },
   messagesApi: { parseOne: (m: unknown) => m, latest: jest.fn(), before: jest.fn() },
+}));
+
+// One stocked app, so the assistant offers its app question too.
+jest.mock("@/api/me", () => ({
+  ...jest.requireActual("@/api/me"),
+  meApi: { summary: jest.fn(async () => ({ counts: { notes: 4 }, stocked: ["notes"] })) },
 }));
 
 /* eslint-disable import/first */
 import { useThemeStore } from "@/stores/theme.store";
+import Assistant from "../../../app/chat";
 import i18n from "@/i18n";
 import Chats from "../../../app/chats";
 import Thread from "../../../app/chat/[id]";
@@ -338,7 +363,14 @@ const SCREENS: {
   handles: string[];
   /** A sentence that can only be on screen if this screen reads French. */
   french: string;
+  /** Texts that arrive on their OWN request and must be on screen before the
+   *  French sweep reads it. Without them the sweep reads a half-loaded
+   *  screen: planted English in the file suggestion stayed green, because
+   *  the notes suggestion arrived first and the documents had not. */
+  settled?: string[];
 }[] = [
+  // The empty conversation: the suggested questions are the French sentence.
+  { name: "assistant", element: () => <Assistant />, handles: ["chat-empty", "composer-input"], french: "Qu’y a-t-il dans mes notes ?", settled: ["facture-mars.pdf"] },
   { name: "chats", element: () => <Chats />, handles: ["chats-list", "chat-row-266", "chat-unread-266"], french: "Discussions" },
   { name: "thread", element: () => <Thread />, handles: ["thread-list", "thread-title", "msg-mine-2311", "people-composer-input", "people-composer-send"], french: "En ligne" },
   { name: "notifications", element: () => <Notifications />, handles: ["notifications-list", "notification-row-9", "notification-unread-9", "notifications-refresh", "notifications-updated"], french: "Aujourd’hui" },
@@ -445,12 +477,14 @@ describe.each(SCREENS)("$name", ({ element, handles, french }) => {
  * English label held in a variable on the account screen are both red here.
  * Lint passed the second.
  *
- * NOT SWEPT, so not claimed: the assistant screen (not in `SCREENS`, so its
- * suggested questions are covered by `useStarterPrompts.test.ts` only), the
- * sheets (conversations, profile, sources), two-factor, and every state
- * other than the one these fixtures produce: empty, failed and loading
- * branches render other strings. An English word outside the list is also
- * missed; the list is a net, not a dictionary.
+ * The assistant screen is swept since 2026-09-24, in its EMPTY state, which
+ * is where its suggested questions render (and they SEND when tapped).
+ *
+ * NOT SWEPT, so not claimed: the sheets (conversations, profile, sources),
+ * two-factor, and every state other than the one these fixtures produce:
+ * empty, failed and loading branches render other strings, and a date only
+ * says "Aujourd’hui" when the fixture is from today, which is how
+ * `DayDivider`'s English "Today" went unseen (now `dayLabel.test.ts`).
  */
 const ENGLISH_ONLY = /\b(the|you|your|yours|is|are|was|were|what|when|where|which|who|how|with|this|that|these|and|from|have|has|not|yet|will|can|could|would|should|about|there|their|of|to|for|it|its|no|loading|delete|deleted|cancel|save|saved|back|send|retry|unread|search|settings|sign|account|password|edit|remove|close|done|error|failed|untitled|today|yesterday|online|typing|someone|upcoming|nothing|something|try|again|chat|chats|keys?|key)\b/i;
 
@@ -475,6 +509,40 @@ function renderedStrings(): string[] {
   return [...new Set(out)];
 }
 
+/**
+ * THE STRUCTURAL CHECK, beside the word list: render each screen in English
+ * AND French and fail on any string byte-identical in both. A string that
+ * went through `t()` differs by construction; one that never did is the same.
+ * It needs no vocabulary, so it does not lag the copy (Hamma9901's design).
+ *
+ * Its first run found something no word list could: event times read
+ * "11:30 AM" in the French UI, because `toLocaleTimeString(undefined, …)`
+ * follows the PHONE's region, not the app's language, while dates elsewhere
+ * follow the language. That is left as an open question (see CLOCK) rather
+ * than fixed, because which is right is a choice.
+ *
+ * The allowlist: strings that are genuinely the same word in both languages.
+ */
+const SAME_IN_BOTH = new Set([
+  // French uses the same word, and `locales.test.ts` SAME_IN_BOTH already
+  // lists these keys for the same reason.
+  "Assistant",
+  "Notifications",
+  // "min" is the French abbreviation too.
+  "30 min",
+  // The composer's placeholder: `thread.message` is in `locales.test.ts`
+  // SAME_IN_BOTH, the same word in French.
+  "Message",
+]);
+/** A clock time or a short date, which the phone's REGION formats
+ *  (`toLocaleTimeString(undefined, …)` / `toLocaleDateString(undefined, …)`
+ *  in `EventRow`, `PersonMessageRow` and `DayDivider`), not the app's
+ *  language. Under Jest the region is English, so "11:30 AM" and "Sep 18"
+ *  render identically in both runs. OPEN QUESTION, raised 2026-09-24: should
+ *  they follow the app's language, as `BorrowedKeyRow`'s date already does?
+ *  Until it is answered, these are not counted as untranslated text. */
+const CLOCK = /\b\d{1,2}:\d{2}(\s?[AP]M)?\b|\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec) \d{1,2}\b/g;
+
 const THIS_FILE = require("fs").readFileSync(__filename, "utf8") as string;
 /** Every double-quoted literal of four characters or more in this file: the
  *  fixture data. A rendered string often WRAPS one ("Non lu : <his title>"),
@@ -485,7 +553,7 @@ const FIXTURE_TEXT = [...THIS_FILE.matchAll(/"((?:[^"\\\n]|\\.){4,})"/g)]
 const withoutFixtures = (text: string) =>
   FIXTURE_TEXT.reduce((rest, literal) => rest.split(literal).join(" "), text);
 
-describe.each(SCREENS)("$name, swept in French", ({ element, handles, french }) => {
+describe.each(SCREENS)("$name, swept in French", ({ element, handles, french, settled }) => {
   it("renders no English prose", async () => {
     setWidth(360);
     await i18n.changeLanguage("fr");
@@ -496,6 +564,7 @@ describe.each(SCREENS)("$name, swept in French", ({ element, handles, french }) 
     // starting state, which is green for anything (TESTING.md §19).
     for (const handle of handles) await screen.findByTestId(handle);
     await screen.findAllByText(french, { exact: false, includeHiddenElements: true });
+    for (const text of settled ?? []) await screen.findAllByText(text, { exact: false });
 
     const strings = renderedStrings();
     // A sweep that collected nothing would pass for every screen. Two is the
@@ -503,6 +572,26 @@ describe.each(SCREENS)("$name, swept in French", ({ element, handles, french }) 
     expect(strings.length).toBeGreaterThanOrEqual(2);
     const english = strings.filter((s) => ENGLISH_ONLY.test(withoutFixtures(s)));
     expect(english).toEqual([]);
+  });
+
+  it("renders nothing byte-identical in English and French, beyond the allowlist", async () => {
+    const collect = async (language: "fr" | "en") => {
+      setWidth(360);
+      await i18n.changeLanguage(language);
+      const view = renderScreen(element());
+      for (const handle of handles) await screen.findByTestId(handle);
+      for (const text of settled ?? []) await screen.findAllByText(text, { exact: false });
+      if (language === "fr") await screen.findAllByText(french, { exact: false, includeHiddenElements: true });
+      const out = renderedStrings();
+      view.unmount();
+      return out;
+    };
+    const fr = await collect("fr");
+    const en = new Set(await collect("en"));
+    const same = fr.filter(
+      (s) => en.has(s) && /[A-Za-zÀ-ÿ]{2,}/.test(withoutFixtures(s).replace(CLOCK, " ")) && !SAME_IN_BOTH.has(s),
+    );
+    expect(same).toEqual([]);
   });
 });
 

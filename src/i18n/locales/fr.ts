@@ -486,6 +486,7 @@ export const fr: Translations = {
   },
 
   thread: {
+    today: "Aujourd’hui",
     typing: "écrit…",
     someoneTyping: "{{name}} écrit…",
     someone: "Quelqu’un",

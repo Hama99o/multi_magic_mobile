@@ -440,7 +440,7 @@ export default function PersonThread() {
     let lastDay = "";
 
     for (const message of messages) {
-      const label = dayLabel(message.createdAt);
+      const label = dayLabel(message.createdAt, undefined, t);
       if (label && label !== lastDay) {
         out.push({ kind: "day", key: `day-${label}-${message.id}`, label });
         lastDay = label;
@@ -460,7 +460,9 @@ export default function PersonThread() {
       out.push({ kind: "outgoing", key: item.key, outgoing: item });
     }
     return out;
-  }, [messages, outbox, unreadAnchorId, lastSentId]);
+    // `t` is passed to `dayLabel` because the day labels are words
+    // ("Aujourd’hui"), so a language switch re-derives them.
+  }, [messages, outbox, unreadAnchorId, lastSentId, t]);
   const newestFirst = useMemo(() => [...rows].reverse(), [rows]);
 
   /**

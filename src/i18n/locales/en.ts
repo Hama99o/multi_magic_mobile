@@ -469,6 +469,7 @@ export const en = {
   },
 
   thread: {
+    today: "Today",
     typing: "typing…",
     someoneTyping: "{{name}} is typing…",
     someone: "Someone",

@@ -391,12 +391,26 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
         interimResults: true,
         continuous: true,
         addsPunctuation: true,
-        // NSSpeechRecognitionUsageDescription promises the user that speech
-        // becomes text "on this device". Without this flag iOS may send the
-        // audio to Apple, which made that sentence false -- the app knew the
-        // audio could leave and told the user the opposite in the one sentence
-        // they actually read (docs/STORE_READINESS.md section 4).
-        requiresOnDeviceRecognition: true,
+        /**
+         * `requiresOnDeviceRecognition` is NOT set, and that is a decision
+         * rather than an omission.
+         *
+         * It was set true on 2026-09-21 so that
+         * NSSpeechRecognitionUsageDescription's "on this device" was true.
+         * The flag maps to Apple's
+         * `SFSpeechAudioBufferRecognitionRequest.requiresOnDeviceRecognition`
+         * (`ExpoSpeechRecognizer.swift:589`), and on-device locales are a
+         * SUBSET of the server-backed ones, each needing its pack installed.
+         * So it can only ever shrink the set of languages that work -- which
+         * collides with offering Pashto at all.
+         *
+         * His call, 2026-09-24: the language choice wins. The permission
+         * string in `app.json` was reworded in the same commit to say that
+         * Apple may process the audio, so the promise still matches the code.
+         * Making the sentence vaguer to close the gap is what
+         * `docs/STORE_READINESS.md` section 4 forbids; this changes both
+         * sides together instead.
+         */
       });
     } catch {
       setListening(false);

@@ -55,18 +55,29 @@ export function DictationRow({
       <View style={{ gap: metrics.space.sm, paddingHorizontal: metrics.space.sm }}>
         {LANGUAGES.map((option) => {
           const selected = option.code === lang;
-          const supported = isLocaleSupported(option.code, locales);
+          /**
+           * NOTHING IS BLOCKED HERE, deliberately — 2026-09-24, his call:
+           * "no blocage which lang we want".
+           *
+           * This used to disable an option `getSupportedLocales()` did not
+           * list. The argument against is in this file already: that API is
+           * not a reliable oracle. Android 12 and below return an empty array
+           * rather than an error, a service can refuse the question, and a
+           * recogniser can list less than it can actually do. Blocking on it
+           * greys out a language that would have worked, and the user has no
+           * way to find out otherwise.
+           *
+           * So every language is selectable and the phone gets to answer at
+           * the microphone instead, where `problemSentence` turns a real
+           * `language-not-supported` into a sentence. A refusal that happens
+           * is worth more than a refusal that is predicted.
+           */
           return (
             <Pressable
               key={option.code}
               accessibilityRole="radio"
-              accessibilityState={{ selected, disabled: !supported }}
-              accessibilityLabel={
-                supported
-                  ? option.label
-                  : t("dictation.languageNotSupported", { language: option.label })
-              }
-              disabled={!supported}
+              accessibilityState={{ selected }}
+              accessibilityLabel={option.label}
               onPress={() => onChange(option.code)}
               style={{
                 flexDirection: "row",
@@ -78,10 +89,6 @@ export function DictationRow({
                 borderWidth: 1,
                 borderColor: selected ? colors.accent : colors.border,
                 backgroundColor: selected ? colors.accent : "transparent",
-                // Not hidden. He asked for Pashto, and a phone that cannot
-                // hear it should say so rather than look like the request was
-                // ignored.
-                opacity: supported ? 1 : 0.5,
               }}
               testID={`dictation-${option.code}`}
             >
@@ -94,7 +101,8 @@ export function DictationRow({
         })}
       </View>
 
-      {/* One line, and only when this phone actually answered the question. */}
+      {/* Advisory, not a gate: one line, and only when this phone actually
+          answered the question and left something out. */}
       {locales !== null && LANGUAGES.some((l) => !isLocaleSupported(l.code, locales)) ? (
         <Text
           variant="caption"

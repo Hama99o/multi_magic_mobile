@@ -287,6 +287,11 @@ export function apiErrorMessage(error: unknown): string | null {
  * reached the screen verbatim. Ignored here, so the caller's own sentence, or
  * `failure.notAllowed`, is shown instead.
  */
+// DEAD CODE as of 2026-09-24, kept on a condition. multi_magic `4a39266`
+// (live) already replaced Pundit's developer text with real sentences, so this
+// matches nothing a production server sends. Every 403 will carry
+// `code: "forbidden"` (`a5f7245`, not yet deployed). When it is, recognise the
+// refusal by that code and delete this function (docs/CLAIMS_AUDIT.md).
 function isPolicyText(message: string): boolean {
   return /^not allowed to \S+\?/i.test(message.trim());
 }

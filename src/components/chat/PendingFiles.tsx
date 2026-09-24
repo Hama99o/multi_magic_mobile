@@ -82,6 +82,9 @@ export function PendingFiles({
           testID={`pending-file-${readState(file) ?? file.status}`}
         >
           {file.status === "uploading" ? <ActivityIndicator size="small" color={colors.accent} /> : null}
+          {/* 180 dp: about 28 characters of caption a line. The status strings
+              (`files.*`) are kept within that in BOTH languages; the first
+              French "slow" string was 63 characters, six lines in a chip. */}
           <View style={{ maxWidth: 180 }}>
             <Text variant="caption" numberOfLines={1}>
               {file.name}

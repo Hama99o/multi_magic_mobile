@@ -220,8 +220,9 @@ export const en = {
     sizeKb: "{{n}} KB",
     sizeMb: "{{n}} MB",
     reading: "Reading…",
-    unreadable: "The assistant could not read this file.",
-    slow: "Still reading — this is taking longer than usual.",
+    // ≤ 28 characters: these sit in a chip capped at 180 dp (PendingFiles).
+    unreadable: "The assistant can’t read it",
+    slow: "Still reading…",
     fromYourFiles: "From your files",
     openFullSize: "Open full size",
     openFile: "Open file",

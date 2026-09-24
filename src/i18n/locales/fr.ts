@@ -230,8 +230,9 @@ export const fr: Translations = {
     sizeKb: "{{n}} Ko",
     sizeMb: "{{n}} Mo",
     reading: "Lecture…",
-    unreadable: "L’assistant n’a pas pu lire ce fichier.",
-    slow: "Toujours en lecture : cela prend plus longtemps que d’habitude.",
+    // ≤ 28 caractères : dans une puce limitée à 180 dp (PendingFiles).
+    unreadable: "Illisible pour l’assistant",
+    slow: "Lecture toujours en cours…",
     fromYourFiles: "Depuis vos fichiers",
     openFullSize: "Ouvrir en grand",
     openFile: "Ouvrir le fichier",

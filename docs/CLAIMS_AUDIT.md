@@ -59,13 +59,55 @@ the SERVER sends is in the reader's language.
   - The web's French `rememberHint` named the English note: fixed LOCALLY
     (`26c57fa`), with a spec that fails if web and server titles diverge.
   - Pundit's developer text is already GONE in production (`4a39266`), so
-    mobile's `isPolicyText` matches nothing live. Every 403 will carry
-    `code: "forbidden"` (`a5f7245`, local). When that deploys, match on the
-    code and delete the regex.
+    mobile's `isPolicyText` (`src/api/http.ts`) is **dead code**: it guards
+    against a response that no longer exists. Kept only until every 403
+    carries `code: "forbidden"` (`a5f7245`, local). **When that deploys,
+    match `isForbidden` on the code and delete `isPolicyText` with its
+    test.**
   - The wrong-current-password `code` (`3f7ec45` here) keeps its English
     fallback until the backend says it is live.
 - **Everything on a device**: the rebuilt opening, the Android keyboard lift,
   drag-to-dismiss, run 9 (`qa/FLOW_REGISTER.md` has the running order).
+
+## Does French FIT? What the desk can and cannot say (2026-09-24)
+
+**It cannot be measured here.** Jest's test renderer has no layout: no width,
+no line breaks, nothing clipped. Nothing below is a measurement. It is what
+the CODE says can happen, plus length estimates, and each is labelled.
+
+**What the code settles, read from source:**
+- **No button can truncate.** `Button` (`src/components/reusables/button.tsx`)
+  has `minHeight: 48`, not a height, and its label (14 px semibold) has no
+  `numberOfLines`. A long label wraps and the button grows. The longest
+  French block labels are "Faire confiance à ce téléphone" (30 chars,
+  two-factor) and "Se connecter avec un e-mail" (27, sign-in). By estimate
+  (~7.5 dp a character, ~290 dp of label at 360 dp) both fit one line.
+  INFERRED, not measured.
+- **Text with a fixed width:** only two boxes hold words.
+  - The file chip's status (`maxWidth: 180`, about 28 characters a line).
+    FIXED 2026-09-24: its French "slow" string was 63 characters, about six
+    lines in a chip meant to sit in a row. Every status is now ≤ 28 in both
+    languages, pinned by `PendingFiles.test.tsx` as a length budget, which is
+    honest only because the width is fixed.
+  - The calendar's time column (`width: 62`, `EventRow.tsx`): "Toute la
+    journée" wraps to two lines where "All day" takes one. It wraps and does
+    not clip (no `numberOfLines`); the row grows. Left as it is.
+- **The 12 `numberOfLines={1}` sites** hold DATA (names, titles, source
+  labels, live dictation), where cutting is by design. None holds a
+  translated sentence.
+
+**On the device, at 360 dp in French, in order of cost:**
+1. **The two longest block buttons** above: one line, or two? Either is
+   usable. Confirm, and photograph.
+2. **The confirmation sentences** a person must read before tapping:
+   delete account's disclosure (`delete-what-goes`) and the delete-conversation
+   confirm. Do their buttons stay on screen at 360 × 640?
+3. **Labels:** the calendar column's two-line "Toute la journée"; the password
+   field labels ("Répéter le nouveau mot de passe", 31 chars); the profile
+   menu's "Confidentialité et compte".
+4. **`wm size`/`wm density` changes need a force-stop and relaunch** before
+   judging anything (`qa/QA_HANDBOOK.md`), or the phantom 360 dp overflow
+   is the rig's.
 
 ## What I would do next, in order
 

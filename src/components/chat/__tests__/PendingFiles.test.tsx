@@ -127,17 +127,33 @@ describe("after the upload, the server's reading of the file", () => {
 
   it("follows the POLL, not the upload's first answer", () => {
     render(<PendingFiles files={[uploaded("pending")]} onRemove={jest.fn()} serverStatus={{ 9: "failed" }} />);
-    expect(screen.getByText("The assistant could not read this file.")).toBeTruthy();
+    expect(screen.getByText("The assistant can’t read it")).toBeTruthy();
     expect(screen.getByTestId("pending-file-failed")).toBeTruthy();
   });
 
   it("says reading is slow once the deadline passes, rather than spinning", () => {
     render(<PendingFiles files={[uploaded("pending")]} onRemove={jest.fn()} slow />);
-    expect(screen.getByText("Still reading — this is taking longer than usual.")).toBeTruthy();
+    expect(screen.getByText("Still reading…")).toBeTruthy();
   });
 
   it("shows the size once it is ready", () => {
     render(<PendingFiles files={[uploaded("pending")]} onRemove={jest.fn()} serverStatus={{ 9: "ready" }} />);
     expect(screen.getByText("1.0 MB")).toBeTruthy();
   });
+});
+
+// ── THE CHIP IS 180 dp WIDE, SO ITS WORDS HAVE A BUDGET ───────────────────
+// A LENGTH proxy, and honest only because this box has a FIXED width: about
+// 28 characters of caption a line (PendingFiles.tsx). Jest lays nothing out,
+// so this cannot say the text fits; it says no status string was written too
+// long to. The first French "slow" string was 63 characters, six lines in a
+// chip meant to sit in a row. The device confirms the rest.
+it("keeps every status within the chip's line, in both languages", () => {
+  const { en } = jest.requireActual("@/i18n/locales/en");
+  const { fr } = jest.requireActual("@/i18n/locales/fr");
+  const keys = ["uploading", "didNotUpload", "reading", "unreadable", "slow"] as const;
+  const over = [en, fr].flatMap((locale) =>
+    keys.map((k) => locale.files[k] as string).filter((text) => text.length > 28),
+  );
+  expect(over).toEqual([]);
 });

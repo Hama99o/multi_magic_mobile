@@ -440,10 +440,21 @@ over two openings (the first with nothing remembered, the second after):
 - the premise above was WRONG on this device: here `keyboardDidShow` fires
   at the START of the slide. The source said "after"; the device said
   otherwise. That is why the frames came first.
-- so `KeyboardLift` (`b68894a`) measured the same as RN's own KAV: the first
-  opening, with nothing remembered, behaved like the second. It was reverted
-  as complexity that bought nothing.
-- **What is still wrong:** the content jumps ~694 px (~264 dp) in a SINGLE
-  frame as the composer rises. A `LayoutAnimation` did not animate it on
-  this build. That snap is the remaining keyboard issue, and the next thing
-  to try.
+- `KeyboardLift` (`b68894a`) was reverted, and **not because anticipation
+  was shown to be useless**: its animation never ran. The `LayoutAnimation`
+  it relied on did not animate on this build (the content moved in one
+  frame), so whether starting the lift on focus helps **could not be
+  evaluated**. The first opening, with nothing remembered, looked like the
+  second, which is consistent with that. Code that measurably did nothing was
+  removed; that is a finding about `LayoutAnimation` here, not about keyboards.
+- **n = 1.** One Android 15 emulator with edge-to-edge. The "start of the
+  slide" timing is platform behaviour that has changed across versions, and
+  RN's own source, where the original premise came from, describes the older
+  one. **What would overturn "no library, no rebuild"**: an older Android, or
+  a real phone, where the composer is covered for ≥ 100 ms while the keyboard
+  opens. The conclusion holds for this device and no further.
+- **What is still wrong, and survives the revert:** the content jumps ~694 px
+  (~264 dp) in a SINGLE frame as the composer rises. RN's KAV smooths through
+  the same `LayoutAnimation` that did not animate, so the snap is there either
+  way. The fix must not depend on `LayoutAnimation`. That is the remaining
+  keyboard issue.

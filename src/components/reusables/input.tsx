@@ -13,7 +13,7 @@ import { forwardRef, useState } from "react";
 import {
   Pressable, TextInput, View, type TextInputProps,
 } from "react-native";
-import { Eye, EyeOff } from "lucide-react-native";
+import { Eye, EyeOff } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { Text } from "./text";
 import { useTranslation } from "react-i18next";

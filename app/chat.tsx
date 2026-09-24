@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, FlatList, Pressable, View, type ViewStyle } from "react-native";
-import { Bell, CalendarDays, MessageSquareText, Users } from "lucide-react-native";
+import { Bell, CalendarDays, MessageSquareText, Users } from "@/components/icons";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";

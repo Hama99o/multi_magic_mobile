@@ -109,6 +109,21 @@ module.exports = {
           "require() needs a string LITERAL — Metro resolves requires statically and a variable makes the app unbundleable, while Node and Jest accept it. One try/catch per module with the name written out; see src/stores/readAloud.store.ts and docs/TESTING.md §1.",
       },
       /**
+       * THE ICON LIBRARY'S INDEX SHIPS EVERY ICON IT HAS.
+       *
+       * Measured 2026-09-24: importing from `lucide-react-native` put all
+       * 1,556 icons in the bundle (3.36 MB of 13.6 MB) for the 41 the app
+       * draws, because Metro does not drop unused exports. Expo Go downloads
+       * that on every cold open. Icons come from `src/components/icons.ts`,
+       * which imports each from its own file. A TYPE import from the index is
+       * fine: it is erased and costs nothing.
+       */
+      {
+        selector: "ImportDeclaration[source.value='lucide-react-native'][importKind!='type']",
+        message:
+          "Import icons from @/components/icons, not lucide-react-native — the index ships all 1,556 icons (3.36 MB) into the bundle. Add a missing icon to src/components/icons.ts.",
+      },
+      /**
        * `StyleSheet.absoluteFillObject` IS GONE IN THE NEXT SDK, SILENTLY.
        *
        * It exists in React Native 0.81 (SDK 54) and not in the version SDK 57

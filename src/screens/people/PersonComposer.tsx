@@ -35,7 +35,7 @@
  */
 import { useEffect, useRef } from "react";
 import { Pressable, TextInput, View } from "react-native";
-import { ArrowUp, Mic, Square, X } from "lucide-react-native";
+import { ArrowUp, Mic, Square, X } from "@/components/icons";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";

@@ -26,7 +26,7 @@ import {
   type NativeScrollEvent,
   type NativeSyntheticEvent,
 } from "react-native";
-import { ChevronDown } from "lucide-react-native";
+import { ChevronDown } from "@/components/icons";
 import { useCallback, useRef, useState, type RefObject } from "react";
 import { useTranslation } from "react-i18next";
 import { useColors, useMetrics } from "@/hooks/useColors";

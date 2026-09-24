@@ -46,7 +46,7 @@
  */
 import { Pressable, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { Check, CheckCheck, RefreshCw } from "lucide-react-native";
+import { Check, CheckCheck, RefreshCw } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import type { ChatMessage } from "@/api/ai";

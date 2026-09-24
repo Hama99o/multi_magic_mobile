@@ -14,7 +14,7 @@ import { Modal, Pressable, View } from "react-native";
 import { FILL } from "@/theme/fill";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { Camera, FileText, Image as ImageIcon } from "lucide-react-native";
+import { Camera, FileText, Image as ImageIcon } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { ALLOWED_UPLOAD_EXTENSIONS, LIMITS } from "@/api/ai";

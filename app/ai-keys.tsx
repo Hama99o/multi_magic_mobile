@@ -32,7 +32,7 @@ import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Check, ChevronLeft, KeyRound, Trash2 } from "lucide-react-native";
+import { Check, ChevronLeft, KeyRound, Trash2 } from "@/components/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";

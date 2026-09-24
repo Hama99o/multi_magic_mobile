@@ -13,7 +13,7 @@
  * that is exactly what it means: whichever the phone is.
  */
 import { Pressable, View } from "react-native";
-import { Check } from "lucide-react-native";
+import { Check } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { TOKENS } from "@/theme/tokens";

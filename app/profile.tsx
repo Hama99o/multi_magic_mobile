@@ -26,7 +26,7 @@ import { useEffect, useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, ExternalLink, Pencil } from "lucide-react-native";
+import { ChevronLeft, ChevronRight, ExternalLink, Pencil } from "@/components/icons";
 import * as Linking from "expo-linking";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";

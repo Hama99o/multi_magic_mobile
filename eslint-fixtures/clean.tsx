@@ -57,3 +57,7 @@ export function Scrims() {
     </View>
   );
 }
+
+// Icons: a TYPE import from the index is erased, so it is allowed.
+import type { LucideIcon } from "lucide-react-native";
+export type AnyIcon = LucideIcon;

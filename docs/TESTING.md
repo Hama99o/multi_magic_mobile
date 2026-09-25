@@ -1483,6 +1483,7 @@ for a reason unrelated to the claim.**
 | 6 | "Qa Mobile" is fixture data | a regex's quote-pairing slipped (false positive; could as easily hide) |
 | 7 | "Ask again" is translated | the test's title and assertion, containing it, excused it |
 | 8 | a radio announces its state | the framework adds an empty state object |
+| 9 | a stale profile read cannot flip the morning-brief switch back (2026-09-25) | blind TWICE with the fix already right: the tap came before the refetch had started, so there was nothing in flight to cancel; then React Query delivered the stale result on a later tick, after the assertion. Red on the plant only after waiting for the second `me()` call and settling 30 ms inside `act` |
 
 And one more in time rather than content: a wait on a mock's call history
 passed on the previous render's calls. The general form, for the next

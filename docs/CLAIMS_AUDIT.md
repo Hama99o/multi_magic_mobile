@@ -209,6 +209,36 @@ is. That keeps his, and guarantees nobody else's screen could ever match
 one. Or clear them on sign-out, if a deliberate sign-out should leave
 nothing.
 
+## What the app costs in DATA, measured (2026-09-25)
+
+Measured against the LOCAL backend as the QA account, read-only. **These are
+dev-server figures, and they carry to production**: responses are
+compressed by `Rack::Deflater`, inserted in `config/application.rb` (every
+environment, and middleware rather than a proxy, so there is no Thruster
+difference to trip on). The app accepts gzip through the platform's
+networking.
+
+| What | Measured | Per realistic hour |
+|---|---|---|
+| **First open** (12 requests: profile, session, sessions, the assistant's last 25 messages, documents, summary, calendar, badges, chats, notifications, keys) | **4.2 KB** on the wire, 24 KB decoded; the message page is 1.9 KB of it (19 KB decoded) | once |
+| **Idle socket**, no subscription, 30 s | 1 welcome + 10 pings (every 3 s), **378 B** of payload; no WebSocket compression offered | ≈ **45 KB** of payload; with TCP/IP headers and ACKs per ping, **≈150–180 KB** (INFERRED, not measured) |
+| **Asking a question** | the POST, then the latest page every 3 s while the answer is pending (≈1.9 KB each here), then the answer over the socket (uncompressed JSON, a few KB) | at 20 questions answered in ~10 s: **≈100–200 KB** (estimate from the measured page) |
+| Upload | the file itself, once (≤10 MB) | inherent |
+| File chips | name and size only, no thumbnail fetched (read in `PendingFiles.tsx`) | 0 |
+
+**A realistic hour is well under 1 MB.** The biggest single line is the
+idle socket's pings, and those are the server's ActionCable setting, not
+the app's. They are also what detects a dead connection in seconds, so
+halving them trades one cost for another.
+
+**Not measured:** avatars and images, since the QA account has none;
+his real threads, whose pages are larger; the TCP overhead above.
+
+**Proposed: nothing.** No measurement here justifies a change. A smaller or
+conditional re-read while waiting would save about 2 KB a poll. If data
+ever matters, the one lever worth weighing is the server's ping interval,
+and that is a server decision.
+
 ## What I would do next, in order
 
 1. **Run 9 on a device, the moment the disk frees.** More changed today than

@@ -1513,3 +1513,53 @@ new draft test went red for a reason that had nothing to do with it. The
 fix restores the real implementation before each test. The general rule:
 **whatever a test replaces, the next test inherits unless something puts it
 back**, and `clearAllMocks` clears calls, not implementations.
+
+## 20 · Isolation is not neutral: it deletes the interactions
+
+**2026-09-25, found on a device, invisible to every gate.** `df9b1f2`
+changed the calendar screen to store a page, `{ occurrences, unreadable }`,
+under `["calendar","upcoming",7]`. The assistant's suggestions read the same
+key as a bare array. So calendar → back rendered
+`(events ?? []).flatMap is not a function` over the whole assistant. It
+was fixed in `9a6d5fc`.
+
+Every screen test here gives its screen its own QueryClient. That is
+textbook isolation, and right for a unit test. It also makes a whole class
+of bug structurally impossible to see, because the bug exists only when two
+screens share one cache. **Isolation buys independence by deleting the
+interactions.** A device found it in its first minute of use.
+
+Two instruments now cover the class. Each was planted with the exact bug.
+
+- **`src/__tests__/queryKeys.test.ts`: one key, one shape, statically.**
+  - The TypeScript compiler resolves the stored type at every cache access
+    in `app/` and `src/`:
+    - `useQuery` and `useInfiniteQuery`: the awaited `queryFn` return;
+    - `setQueryData`: its type argument, else the value's type;
+    - `getQueryData`: its type argument.
+  - Any two accesses whose keys can be equal must hold mutually assignable
+    types. A literal, or a const resolving to one, is itself; anything else
+    in a key is a wildcard.
+  - It counts accesses a second, dumber way, with a regex, and the two
+    counts must agree. So a new kind of access fails there rather than
+    passing unread.
+  - Plants: the suggestions back on the array-returning function turned it
+    red, naming both lines and both shapes. So did a wrong-shaped
+    `setQueryData` into `["profile"]`.
+- **`src/__tests__/journey.tsx` with `src/screens/__tests__/journeys.test.tsx`:
+  behaviour, on one client, in the order a person moves.**
+  - `j.visit(<Calendar />)` then `j.visit(<Assistant />)`, against the
+    captured fixtures at the HTTP layer.
+  - Plant: the bug back failed two journeys with the device's exact
+    `TypeError`.
+  - **The harness was blind once, and I claimed otherwise.** I wrote that
+    the test default `gcTime: 0` would empty the cache between screens and
+    blind the journey. When measured, it caught the bug anyway, because
+    `visit` mounts the next screen in the same tick, before collection runs.
+  - The harness's own check now waits a real tick after `leave()`. With
+    `gcTime: 0` that check fails. It guards a journey that pauses between
+    screens.
+
+**The general form: when a bug needs two things to meet, a test that
+isolates them cannot see it however many you write.** Put the meeting in the
+test on purpose.

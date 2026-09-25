@@ -53,7 +53,14 @@ interface SocketFrame {
  */
 export function useAssistantEcho(keys: readonly string[], onChanged: () => void): void {
   const changed = useRef(onChanged);
-  changed.current = onChanged;
+  // Written in an EFFECT, not during render: the React Compiler (SDK 57)
+  // rejects a ref assignment in a render body, and it is right that this is
+  // the safer shape — every read below happens inside a callback or a socket
+  // frame, never during a render, so "after commit" is soon enough and
+  // "during render" was never needed.
+  useEffect(() => {
+    changed.current = onChanged;
+  });
 
   // A primitive the effect can depend on: `keys` is a literal at every call
   // site, so its identity changes every render.

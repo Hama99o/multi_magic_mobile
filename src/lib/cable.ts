@@ -40,11 +40,15 @@ installActionCableShim();
 
 // Required AFTER the shim. `require` rather than a top-level `import` so the
 // order is a fact of execution rather than a convention a bundler may reorder.
-/* eslint-disable @typescript-eslint/no-var-requires */
+// SDK 57 renamed the rule: `no-var-requires` became `no-require-imports`, so
+// the old disable had stopped naming anything and this line had quietly become
+// a warning. The ARGUMENT is a literal, so `.eslintrc.js`'s own require rule —
+// the one that cost seven hours — is satisfied and stays on.
+/* eslint-disable @typescript-eslint/no-require-imports */
 const { createConsumer } = require("@rails/actioncable") as {
   createConsumer: (url: string) => CableConsumer;
 };
-/* eslint-enable @typescript-eslint/no-var-requires */
+/* eslint-enable @typescript-eslint/no-require-imports */
 
 interface CableSubscription {
   unsubscribe: () => void;

@@ -61,7 +61,12 @@ export function renderedStrings(exceptTestID?: string): string[] {
     if (typeof node.type !== "string") continue;
     if (excluded(node as never)) continue;
     const { children, accessibilityLabel, accessibilityHint, placeholder } = node.props as Record<string, unknown>;
-    if (node.type === "Text") {
+    // `as string`: SDK 57's React types narrowed the host-element union to
+    // the lowercase intrinsic names, so comparing it with "Text" is reported
+    // as having no overlap. The value IS "Text" at runtime — the guard three
+    // lines up already established `typeof node.type === "string"` — so this
+    // widens the comparison rather than changing what it asks.
+    if ((node.type as string) === "Text") {
       const text = ([] as unknown[])
         .concat(children)
         .filter((c) => typeof c === "string" || typeof c === "number")

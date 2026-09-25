@@ -80,7 +80,22 @@ if [ ! -f "$(dirname "${BASH_SOURCE[0]}")/../$DEV_BUILD_APK" ] && [ -f "$HOME/qa
   DEV_BUILD_APK="$HOME/qa-apk-keep/app-debug-sdk54-known-good.apk"
   DEV_BUILD_APK_NOTE="android/ has none, so this is the kept known-good APK"
 fi
-DEV_BUILD_ID="${DEV_BUILD_ID:-co.byseven.multimagic}"
+# RENAMED 2026-09-21 with `app.json`, and these two must move together.
+# If the manifest changes and this does not, the rig launches a package that
+# no longer exists and EVERY flow fails on "sign-in-email is not visible" —
+# an assertion pointing squarely at our screen. A package name living in two
+# places is the shape that ships.
+#
+# `co.byseven.multimagic` until the sdk-57 merge on 2026-09-25. Hamma9900:
+# "byseven is my job domain, do not touch it" — it is his EMPLOYER'S domain
+# and does not belong on a personal app, and a package name is permanent once
+# a store accepts an upload. Nothing is on Play yet, so this was the last free
+# moment to change it.
+#
+# NOTE for the next rig run: the kept fallback APK above was built under the
+# OLD name, so it no longer matches this id. The SDK 57 rebuild replaces it;
+# until then `qa.sh install` will install a package the rig does not launch.
+DEV_BUILD_ID="${DEV_BUILD_ID:-com.multimagics.mobile}"
 
 # `USE_DEV_BUILD=1` drives our own app; anything else falls back to Expo Go, so
 # the rig still runs on a machine where nobody has built one.

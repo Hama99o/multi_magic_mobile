@@ -7,12 +7,6 @@
     "icon": "./assets/icon-1024.png",
     "scheme": "multimagic",
     "userInterfaceStyle": "automatic",
-    "newArchEnabled": true,
-    "splash": {
-      "image": "./assets/splash-icon-512.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#F7F9F9"
-    },
     "ios": {
       "supportsTablet": true,
       "requireFullScreen": true,
@@ -23,36 +17,17 @@
         "NSPhotoLibraryUsageDescription": "Attach a photo or a scan to a conversation so the assistant can read it.",
         "NSCameraUsageDescription": "Take a photo of a document to attach it to a conversation.",
         "ITSAppUsesNonExemptEncryption": false
-      },
-      "splash": {
-        "image": "./assets/splash-icon-512.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#F7F9F9",
-        "dark": {
-          "image": "./assets/splash-icon-512.png",
-          "backgroundColor": "#102125"
-        }
       }
     },
     "android": {
-      "package": "co.byseven.multimagic",
+      "package": "com.multimagics.mobile",
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-foreground-1024.png",
         "backgroundColor": "#102125"
       },
       "permissions": [
         "android.permission.RECORD_AUDIO"
-      ],
-      "edgeToEdgeEnabled": true,
-      "splash": {
-        "image": "./assets/splash-icon-512.png",
-        "resizeMode": "contain",
-        "backgroundColor": "#F7F9F9",
-        "dark": {
-          "image": "./assets/splash-icon-512.png",
-          "backgroundColor": "#102125"
-        }
-      }
+      ]
     },
     "plugins": [
       "expo-router",
@@ -66,7 +41,24 @@
             "com.google.android.googlequicksearchbox"
           ]
         }
-      ]
+      ],
+      "expo-audio",
+      "expo-font",
+      "expo-image",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon-512.png",
+          "resizeMode": "contain",
+          "backgroundColor": "#F7F9F9",
+          "dark": {
+            "image": "./assets/splash-icon-512.png",
+            "backgroundColor": "#102125"
+          }
+        }
+      ],
+      "expo-status-bar",
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true

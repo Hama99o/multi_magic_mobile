@@ -71,10 +71,45 @@ later build is non-interactive:
 
     ./scripts/eas-build.sh -p android --profile preview --non-interactive --no-wait
 
-produces an APK (`buildType: apk`) installable from the build page. The
-Android package is still `co.byseven.multimagic`; align it with the iOS id
-the next time `android/` is regenerated (`npx expo prebuild --clean`), not
-before — the QA rig's dev build is installed under the old name.
+produces an APK (`buildType: apk`) installable from the build page.
+
+### The package name was renamed on 2026-09-21, and the earlier instruction was reversed
+
+**This file used to say:** the Android package is `co.byseven.multimagic`;
+align it with the iOS id the next time `android/` is regenerated, **not
+before** — the QA rig's dev build is installed under the old name.
+
+**That was correct, and it stopped being correct.** It was written while the
+rig's debug build was the *only* consumer of the name, and under that
+condition renaming early buys nothing and costs a reinstall. It became wrong at
+the first release build, because **an Android package name is permanent once
+Play accepts an upload**: changing it afterwards is a new listing, a new
+install base, and no upgrade path for anybody who installed the first one.
+Free now, impossible later.
+
+Hamma9900's decision, in his own words — *"it should be the same for iOS and
+Android"*. So `android.package` is now **`com.multimagics.mobile`**, matching
+`ios.bundleIdentifier` and his own domain.
+
+**The reversal is recorded rather than the line corrected**, because an
+instruction that flipped tells you the condition it depended on, and a tidied
+line tells you nothing. The condition was: *is the rig the only consumer?*
+
+**Two places, changed together.** `app.json`'s `android.package` and
+`qa/qa.config.sh`'s `DEV_BUILD_ID`. If the manifest moves and the rig's launch
+id does not, every flow fails on `sign-in-email is not visible` — an assertion
+pointing at our screen for a package that no longer exists. A package name
+living in two places is the shape that ships.
+
+**Checked for others rather than assumed:** no `google-services.json`, no
+`GoogleService-Info.plist`, no `intentFilters`, no `associatedDomains`. The
+scheme is `multimagic` and is independent of the package. `main` carries a
+generated `android/` tree with the old name baked in — that is the rig's
+installed debug build, and the rebuild replaces it.
+
+**On `sdk-57` only.** `main`'s `app.json` is the one the installed debug build
+was made against, and its `edgeToEdgeEnabled` is invalid under 57 anyway. The
+first release build comes from this branch.
 
 ## Can a release Android build actually be produced today? — read, not run
 

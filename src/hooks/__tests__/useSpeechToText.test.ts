@@ -217,3 +217,33 @@ describe("the transcript", () => {
     expect(native.abort).toHaveBeenCalled();
   });
 });
+
+// ── THE LATEST CALLBACK, NOT THE FIRST ───────────────────────────────────────
+//
+// The composer re-renders on every keystroke and passes `onFinal` inline, so
+// the hook keeps it in a ref rather than rebuilding its subscriptions. Under
+// SDK 57 that ref moved from a render-body assignment into an effect, because
+// the React Compiler rejects writing a ref during render.
+//
+// Nothing here covered it. Deleting the update entirely — so the hook calls
+// whatever callback it was given on its FIRST render, for the rest of the
+// session — left all 22 tests in this file green. A dictated sentence would
+// have been appended to a draft belonging to a conversation the person had
+// already left.
+describe("the callback it calls", () => {
+  it("is the one from the latest render, not the one from the first", async () => {
+    const first = jest.fn();
+    const second = jest.fn();
+    const { rerender } = renderHook(({ cb }: { cb: (t: string) => void }) => useSpeechToText(cb), {
+      initialProps: { cb: first as (t: string) => void },
+    });
+    await settle(native.isRecognitionAvailable);
+
+    rerender({ cb: second as (t: string) => void });
+    act(() => handlers.result({ isFinal: true, results: [{ transcript: "la banque" }] }));
+
+    expect(second).toHaveBeenCalledWith("la banque");
+    expect(first).not.toHaveBeenCalled();
+  });
+});
+

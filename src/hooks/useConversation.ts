@@ -226,10 +226,21 @@ export function useConversation({
    * subscription down and back up on every render.
    */
   const conversationRef = useRef(conversationId);
-  conversationRef.current = conversationId;
   /** What is on screen, for a resync to know where its gap starts. */
   const messagesRef = useRef<ChatMessage[]>([]);
-  messagesRef.current = messages;
+  // BOTH refs are written in an EFFECT, not during render: the React Compiler
+  // (SDK 57) rejects a ref assignment in a render body, and it is the safer
+  // shape anyway — every read below happens inside a callback or a socket
+  // frame, never during a render, so "after commit" is soon enough and
+  // "during render" was never needed.
+  //
+  // `messagesRef` arrived on main for the reconnect gap fill and was written
+  // during render; it moves in here with `conversationRef` rather than being
+  // left behind as the one write the compiler would still reject.
+  useEffect(() => {
+    conversationRef.current = conversationId;
+    messagesRef.current = messages;
+  });
 
   /**
    * The id of the question we are waiting on an answer to.
@@ -365,8 +376,11 @@ export function useConversation({
     drawnAs.current.clear();
     // Not [] for the conversation it was opened with: the seed stays on screen
     // until the first read merges into it (the mount effect runs on open too).
+    // main's feature; sdk-57 had `setMessages([])` here because it predates it.
     setMessages(seedOf(conversationId));
-    setStatus(conversationId == null ? "loading" : "loading");
+    // Was `conversationId == null ? "loading" : "loading"` — both branches the
+    // same value, so the ternary said nothing and read as though it did.
+    setStatus("loading");
     setAwaitingReply(false);
     setFailed(false);
     if (conversationId != null) void resync();

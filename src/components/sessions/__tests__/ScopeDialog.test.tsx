@@ -116,4 +116,35 @@ describe("choosing what a conversation searches", () => {
 
     expect(screen.getByText("Only 1 of 7 apps.")).toBeTruthy();
   });
+
+  // ── THE BRANCH THE `key` EXISTS FOR, AND A QUESTION ABOUT IT ────────────
+  //
+  // The comment above describes the pre-SDK-57 shape: state plus an effect
+  // resyncing on `[visible, initial]`. That effect is gone — the dialog's
+  // state now lives only while the dialog does, and a `key` on the seed
+  // covers the second half of that dependency array.
+  //
+  // Nothing watched that half. Deleting the `key` left all ten tests green,
+  // so this asserts it: a seed that changes WHILE the dialog is open starts
+  // it over, which is exactly what `[visible, initial]` did.
+  //
+  // Whether it SHOULD is a product question nobody has been asked. It throws
+  // away an edit somebody is in the middle of, and it fires when the sessions
+  // query refetches and the server's `apps` differ. Preserved here because
+  // this is a migration and changing behaviour under cover of one is how
+  // behaviour changes without anybody deciding.
+  it("starts over when the seed itself changes under an open dialog", () => {
+    const { rerender } = render(
+      <ScopeDialog visible initial={["notes"]} onCancel={jest.fn()} onSave={jest.fn()} />,
+    );
+    fireEvent.press(screen.getByTestId("scope-todos"));
+    expect(screen.getByText("Only 2 of 7 apps.")).toBeTruthy();
+
+    // Never closed — only the seed moved.
+    rerender(
+      <ScopeDialog visible initial={["notes", "money", "contacts"]} onCancel={jest.fn()} onSave={jest.fn()} />,
+    );
+
+    expect(screen.getByText("Only 3 of 7 apps.")).toBeTruthy();
+  });
 });

@@ -20,6 +20,7 @@
  * "unreachable" and Docusign marks one "Failed to sync"; the words here are
  * the ruling's, recorded as such.
  */
+import { useState } from "react";
 import { Pressable, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
@@ -56,11 +57,12 @@ export function LoadFailure({
 }) {
   const metrics = useMetrics();
   const { t } = useTranslation();
+  const [now] = useState(() => Date.now());
   if (!error) return null;
 
   let sentence: string;
   if (hasData && updatedAt) {
-    const age = Date.now() - updatedAt;
+    const age = now - updatedAt;
     const freshness =
       age < MINUTE ? t("failure.showingRecent") : t("failure.showingFrom", { when: relativeTime(new Date(updatedAt).toISOString()) });
     sentence = `${failureMessage(error, t("failure.couldNotRefresh"))} ${freshness}`;

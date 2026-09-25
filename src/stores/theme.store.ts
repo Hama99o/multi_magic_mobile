@@ -48,7 +48,10 @@ const KEY = "mm-theme";
  */
 function applyToNativeWindow(choice: ThemeChoice): void {
   if (Platform.OS !== "ios") return;
-  Appearance.setColorScheme(choice === "system" ? null : choice);
+  // SDK 57 / RN 0.86: `ColorSchemeName` is `'light' | 'dark' | 'unspecified'`
+  // and `null` is gone — "follow the system" has a word of its own now
+  // instead of an absence. Same behaviour, said out loud.
+  Appearance.setColorScheme(choice === "system" ? "unspecified" : choice);
 }
 
 interface ThemeState {

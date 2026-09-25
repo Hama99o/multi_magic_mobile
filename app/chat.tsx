@@ -181,13 +181,21 @@ export default function Chat() {
   const conversationId = chosenId ?? sessionId ?? null;
   const [sessionsOpen, setSessionsOpen] = useState(false);
 
+  // Read once into a plain local rather than depending on `user?.id` in two
+  // places. The React Compiler (SDK 57) skipped this whole component with
+  // "existing memoization could not be preserved": it cannot follow an
+  // optional chain through a dependency array, so it declines to compile
+  // rather than risk changing when the callback is rebuilt. A narrowed local
+  // is the same value, visibly.
+  const userId = user?.id;
+
   // Restore this device's choice once, before the server's default is used.
   useEffect(() => {
-    if (!user?.id) return;
-    void loadRememberedSession(user.id).then((id) => {
+    if (!userId) return;
+    void loadRememberedSession(userId).then((id) => {
       if (id) setChosenId(id);
     });
-  }, [user?.id]);
+  }, [userId]);
 
   const chooseSession = useCallback(
     (id: number) => {
@@ -205,10 +213,16 @@ export default function Chat() {
       // local choice has already held, and interrupting somebody who just
       // switched chats to report a background sync failure is worse than the
       // stale default it prevents.
-      if (user?.id) void rememberSession(user.id, id);
+      //
+      // `userId` rather than `user?.id` is this branch's half of the merge:
+      // the React Compiler skipped this whole component because it cannot
+      // follow an optional chain through a dependency array. Same value, read
+      // once above. Both halves are kept deliberately — neither change knew
+      // about the other, and a merge is the wrong place to drop either.
+      if (userId) void rememberSession(userId, id);
       void sessionsApi.activate(id).catch(() => undefined);
     },
-    [user?.id],
+    [userId],
   );
   const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addOptimistic, confirmPending, dropPending, keyOf, mergeMessage, resync, unreadable, loadError } =
     useConversation({ conversationId, channel: "MessageChannel" });

@@ -1614,3 +1614,36 @@ own shape:
 The verdicts, each seen on a real run: BITES, DEAD, TARGET GONE (the planted
 text is gone from the file), BASELINE (the reason shows on a clean tree),
 NOT MEASURED (the check fails on a clean tree).
+
+### Second run, and two findings closed — 2026-09-25, at `ef1481a`
+
+**Thirteen plants, thirteen BITES.** Added: the i18n sweep, the journey
+harness, the vocabulary pairs, the contract fixtures, `flow_lint` (never
+proved before), the release guard (against a fixture `package.json`), and
+the western run.
+
+**Finding 1, closed: the accessibility walk's blind spot.** The rule is "a
+name that is only sometimes there is not a name": text reached only through
+`?:`, `&&`, `||` or `??` no longer counts (`d9f62c9`). It flagged nothing in
+today's code, and the `HeaderIcon` plant flipped from DEAD to BITES. Still
+unseen: a name present but EMPTY at runtime.
+
+**Finding 2, closed: the western run had never been shown to catch a
+west-only bug.** Its original proof, the old `resetDate`, fails in Paris too.
+- The first western plant (UTC day comparison) came back **NOT SPECIFIC**:
+  the Paris control caught it as well. That verdict exists because a plant
+  every run catches proves the date suites, not the western run.
+- The second, a calendar heading parsing its date-only string as UTC
+  midnight (the day before in New York), came back **DEAD**: nothing in the
+  western suites looked at a heading.
+- `app/__tests__/calendarHeading.test.ts` now does, and runs in `test:west`.
+  The plant BITES with the Paris control green (`601a58c`).
+
+**Not in the manifest, and why:** the fault flow (`qa/faults.sh`) needs a
+booted device, and this runner is desk-only. Its plants are the three in the
+register row, run by hand.
+
+**Caution, from Hamma9901: a TARGET GONE is a finding about the MANIFEST.**
+A plant is exact text in an exact file, and it rots the way a runbook does.
+When one reports TARGET GONE, record what moved and why before rewriting
+the plant, or the runner ends up reporting on code that no longer exists.

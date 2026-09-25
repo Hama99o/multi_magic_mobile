@@ -20,7 +20,9 @@ check, which must FAIL giving that reason; revert.
                  stopped being able to, or it never could. A FINDING, not
                  something to fix quietly: say which, and why
     TARGET GONE  the planted text is no longer in the file; the plant needs
-                 rewriting, and until then the instrument is unproved
+                 rewriting, and until then the instrument is unproved. A
+                 finding about the MANIFEST: record what moved and why before
+                 rewriting it, never edit it away quietly
     BASELINE     the reason already shows on a clean tree, so the plant
                  proves nothing
     NOT SPECIFIC red, but the plant's CONTROL (a command that must stay green

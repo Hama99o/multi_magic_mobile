@@ -652,3 +652,41 @@ bold around a link is valid markdown.
 used the file and cite no sources; the file travels as an inline link
 instead. If "cites the records it used" is meant to cover files, that is a
 gap. If files are inline on purpose, it is fine. Theirs to say.
+
+## When the provider fails — checked on the phone, 2026-09-25
+
+multi_magic `3598c4a` saves a new reply for four provider failures: an
+interrupted turn (after a write), a cut-off answer, a refusal, and an empty
+completion. It also saves `data.cut_off` and `data.interrupted`.
+
+**The flags never reach the phone.** `MessageSerializer` exposes named
+fields only (links, sources, key_problem, key_resets_*, undoable, rating,
+undone_at), and neither flag is one of them. The phone gets the sentence
+and nothing else. So a reply cannot be dropped over the flags today, and if
+they are ever serialized, `failureReplies.test.tsx` proves a message
+carrying them still parses. It is planted in `qa/plants/plants.json`: a
+strict parser turns it red.
+
+**Built, not captured.** Their fault injection (`ai:faults`) runs on their
+own eval database, so the eight replies (four cases, two languages) are
+built from `reply_body` and their locale files. `failureReplies.json` says
+so in its `_source`. Every one renders whole, as sentences.
+
+**On the device** (`qa_phone4`, 360 dp, the French replies served by the
+fault proxy): the cut-off answer and its "(Ma réponse a été coupée ici…)"
+notice fit and read as their own paragraph, and so does the interrupted
+reply.
+
+**Finding for the backend, read from their source and seen on the
+screen:** the interrupted reply begins with the action summary, and
+`create_records.rb`'s `summary` is hard-coded English. So a French reader
+sees "Created 1 note: Boiler. Ensuite, le fournisseur d'IA a cessé de
+répondre…": English and French in one reply. The same summaries are the
+whole reply when a turn wrote something and produced no prose
+(`fallback_body`). Theirs to localise.
+
+**What the phone should do with the flags: nothing.** The sentence already
+says what happened, in the reply, after a reload. An "interrupted" badge
+would repeat it, and a "continue" button for a cut-off answer would do what
+the sentence already asks the person to type. If a flag has no reader,
+serializing it would only add a field.

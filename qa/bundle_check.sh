@@ -32,21 +32,8 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/qa.config.sh"
 REPO="$(cd "$DIR/.." && pwd)"
 
-# Expo 54's Metro config calls Array.prototype.toReversed, which is Node 20+.
-# On Node 18 `expo start` dies with "configs.toReversed is not a function",
-# which reads like a broken metro.config.js and is not one. `.nvmrc` pins the
-# version; the box default does not have to match it.
-NODEV="$(node --version 2>/dev/null | sed 's/^v//' | cut -d. -f1)"
-if [ -z "$NODEV" ] || [ "$NODEV" -lt 20 ]; then
-  want="$(tr -d 'v \n' < "$REPO/.nvmrc" 2>/dev/null)"
-  if [ -n "$want" ] && [ -x "$HOME/.nvm/versions/node/v$want/bin/node" ]; then
-    export PATH="$HOME/.nvm/versions/node/v$want/bin:$PATH"
-    echo "  node $(node --version) (from .nvmrc; the box default was v${NODEV:-none})"
-  else
-    echo "  NOT MEASURED: node is v${NODEV:-none}, Expo 54 needs 20+ and .nvmrc's is not installed"
-    exit 3
-  fi
-fi
+# Node 20+ for Metro, switched to or refused by name (`ensure_node`, qa.config.sh).
+ensure_node
 
 started=0
 if ! curl -s --max-time 3 "http://localhost:$METRO_PORT/status" 2>/dev/null | grep -qi packager; then

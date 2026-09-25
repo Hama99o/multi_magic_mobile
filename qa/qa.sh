@@ -26,6 +26,7 @@ require_rig() { "$DIR/preflight.sh"; }
 case "${1:-all}" in
   doctor) require_rig; exit $?;;
   up)
+    ensure_node
     # ── HARDWARE GPU WHEN THERE IS ONE. THIS IS THE SYSTEMUI ANR. ───────────
     #
     # This line said `-gpu swiftshader_indirect` unconditionally, and software

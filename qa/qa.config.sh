@@ -221,3 +221,42 @@ QA_SEED_CMD=""
 [ -f "$(dirname "${BASH_SOURCE[0]}")/../.env" ] && {
   set -a; . "$(dirname "${BASH_SOURCE[0]}")/../.env"; set +a
 }
+
+# ── THE NODE THAT STARTS METRO, NAMED ───────────────────────────────────────
+# Expo 54's Metro config calls Array.prototype.toReversed, which is Node 20+.
+# On this box's default Node 18, `expo start` dies with "configs.toReversed
+# is not a function", and a rig that backgrounds Metro never shows even that:
+# on 2026-09-25 a `qa.sh up` from a shell without `nvm use` left no Metro, and
+# a wait loop hung past 600 s saying nothing. Same shape as the Expo Go slip:
+# the thing being driven was not the thing assumed, and nothing said so.
+# So every Metro starter calls this. It switches to `.nvmrc`'s Node when that
+# is installed, SAYING so, and otherwise refuses by name (exit 3: nothing has
+# been measured). One copy; `bundle_check.sh` had the first.
+ensure_node() {
+  local repo want have
+  repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+  want="$(tr -d 'v \n' < "$repo/.nvmrc" 2>/dev/null)"
+  have="$(node --version 2>/dev/null | sed 's/^v//')"
+  if [ -n "$have" ] && [ "${have%%.*}" -ge 20 ]; then
+    return 0
+  fi
+  if [ -n "$want" ] && [ -x "$HOME/.nvm/versions/node/v$want/bin/node" ]; then
+    export PATH="$HOME/.nvm/versions/node/v$want/bin:$PATH"
+    echo "  node: switched to v$want from .nvmrc (this shell had v${have:-none}, and Metro needs 20+)"
+    return 0
+  fi
+  echo "NOT MEASURED: node is v${have:-none}; Metro needs 20+ and .nvmrc's v${want:-?} is not installed (nvm install)"
+  exit 3
+}
+
+# ── OPEN THE DEV BUILD ON *THIS* METRO ──────────────────────────────────────
+# On a fresh boot the dev build opens its LAUNCHER for a bare `multimagic://`,
+# listing every Metro it has seen, including other sessions' (another repo's
+# :8081 was on the list on 2026-09-25). A flow then fails at sign-in for a
+# reason that has nothing to do with sign-in. So open it through the
+# dev-client URL for this repo's Metro, reversed to the emulator's localhost.
+open_dev_build() {
+  adb -s "$SERIAL" reverse "tcp:$METRO_PORT" "tcp:$METRO_PORT" >/dev/null
+  adb -s "$SERIAL" shell am start -a android.intent.action.VIEW \
+    -d "multimagic://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A$METRO_PORT" "$DEV_BUILD_ID" >/dev/null 2>&1
+}

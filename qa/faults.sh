@@ -41,6 +41,7 @@ PROXY_LOG="$DIR/reports/fault-proxy-$(date +%Y%m%d-%H%M%S).log"
 mkdir -p "$DIR/reports"
 
 not_measured() { echo "NOT MEASURED: $*"; exit 3; }
+ensure_node
 
 # ── what must already be true ────────────────────────────────────────────
 [ "$(adb -s "$SERIAL" get-state 2>/dev/null)" = device ] || not_measured "no device on $SERIAL (boot and claim it: ./qa/qa.sh up)"
@@ -134,7 +135,7 @@ adb -s "$SERIAL" shell am force-stop "$APP_ID" >/dev/null 2>&1
 # Warm the app on the new bundle, as run.sh does. Without it the first taps
 # land while the dev client is still loading and are silently ignored: on
 # 2026-09-25 two header taps "COMPLETED" and opened nothing.
-adb -s "$SERIAL" shell am start -a android.intent.action.VIEW -d "$DEEP_LINK" "$APP_ID" >/dev/null 2>&1
+open_dev_build
 in_child sleep 30
 # NAME what is in front, rather than let a missing microphone say it: the
 # rig once ran four times against Expo Go and reported nothing wrong.

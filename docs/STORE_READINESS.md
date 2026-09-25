@@ -6,7 +6,23 @@ fix below is an edit to `app.json` or `eas.json`, and those belong with the
 SDK 57 rebuild rather than with a branch that is waiting to merge.
 
 Findings, each with its fix and what it costs. The device half — icons,
-listing screenshots, declarations in the console — is e0's.
+listing screenshots, declarations in the console — was e0's. **e0 is closed**;
+the screenshots and icons are picked up in `docs/store/README.md`
+(2026-09-25), and the console declarations are Hamma9900's.
+
+**Status re-read against the tree, 2026-09-25**, before trusting any line
+below:
+- **§1 FIXED**: `ios.requireFullScreen: true` is in `app.json`.
+- **§2 OPEN**: no `NSAllowsLocalNetworking` anywhere; dev builds only.
+- **§3 FIXED**: approved, and the banner came off in `362279c`
+  (`PRIVACY_IS_DRAFT = false`).
+- **§4 FIXED**: the speech string now says Apple may process the audio.
+- **§5 OPEN**: `RECORD_AUDIO` is still declared twice.
+- **§6** still correct; leave it.
+- **§8 OPEN**: `extra.apiUrl` and `extra.wsUrl` are still `{}`.
+- **§9 MOVED**: iOS submission is now wired (`ascAppId`, `appleTeamId`);
+  Android still is not, and the merged manifest still needs a rebuild to
+  read.
 
 ---
 

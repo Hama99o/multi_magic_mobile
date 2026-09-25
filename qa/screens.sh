@@ -52,7 +52,33 @@ DL="multimagic://expo-development-client/?url=http%3A%2F%2F127.0.0.1%3A${METRO_P
 # happens on the happy path is not tidying. So the restore moves into the EXIT
 # trap, which fires on a kill as well as on a return.
 LANG_TOUCHED=0
+# ── A STORE SHOT'S STATUS BAR IS PART OF THE LISTING ─────────────────────
+# Play (answer/9866151, read 2026-09-25): "Do not show service providers or
+# notifications". Every device shot of 2026-09-25 carried notification icons
+# and Maestro's own driver icon. Android's SystemUI demo mode fixes the bar:
+# 12:00, full battery, full signal, no notification icons. Restored in the
+# trap, like everything else this script changes.
+DEMO_ON=0
+demo() { adb -s "$SERIAL" shell am broadcast -a com.android.systemui.demo -e command "$@" >/dev/null 2>&1; }
+demo_status_bar() {
+  adb -s "$SERIAL" shell settings put global sysui_demo_allowed 1 >/dev/null 2>&1
+  demo enter
+  demo clock -e hhmm 1200
+  demo battery -e level 100 -e plugged false
+  # Verified on qa_phone4 2026-09-25. The first attempt (mobile shown, one
+  # `level` for both) drew Wi-Fi with a "!" and a stray "3G"; `fully true`
+  # and hiding mobile give a clean bar.
+  demo network -e wifi show -e level 4 -e fully true
+  demo network -e mobile hide
+  demo notifications -e visible false
+  DEMO_ON=1
+}
 reset_device() {
+  if [ "$DEMO_ON" = 1 ]; then
+    demo exit
+    adb -s "$SERIAL" shell settings put global sysui_demo_allowed 0 >/dev/null 2>&1
+    DEMO_ON=0
+  fi
   adb -s "$SERIAL" shell wm size reset >/dev/null 2>&1
   adb -s "$SERIAL" shell wm density reset >/dev/null 2>&1
   adb -s "$SERIAL" shell cmd uimode night no >/dev/null 2>&1
@@ -113,7 +139,8 @@ set_width() {
     # conventional 9:16 phone listing size. Density stays 420, so the layout
     # is the 411 dp one the design pictures already prove.
     store) adb -s "$SERIAL" shell wm size 1080x1920 >/dev/null 2>&1
-           adb -s "$SERIAL" shell wm density 420 >/dev/null 2>&1 ;;
+           adb -s "$SERIAL" shell wm density 420 >/dev/null 2>&1
+           demo_status_bar ;;
   esac
 }
 

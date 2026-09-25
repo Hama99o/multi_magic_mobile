@@ -401,3 +401,34 @@ both threads got the same change. `qa/flows/06-people-chat.yaml` swipes
 Was `SPECIFIED`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
 
 `06-people-chat` passes end to end after two real defects it found — the composer under the keyboard, and Android's text selection taking the long press so reacting was impossible on every build up to `67f698b`. **Not covered:** a message from another person rendering left, the double tick, and the unread divider all need a second signed-in account.
+
+## Opening a thread with what the app already knows — 2026-09-25
+
+Recorded frame by frame on `qa_phone4`: a thread opened onto its bubble
+skeleton for about a second, while the chats list already held its last
+message.
+
+**Now it opens with that message** (`lastKnownMessages` in
+`app/chat/[id].tsx`, passed to `useConversation` as `seed`).
+
+Conditions, and how each is held:
+- **Same shape.** The list's `lastMessage` comes from the same
+  `messagesApi.parseOne` as the thread's own page. The key-and-shape gate
+  reads this `getQueryState<InfiniteData<ConversationList>>` and compares it
+  with the page type (`src/__tests__/queryKeys.test.ts`).
+- **Nothing changes under the reader.**
+  - Only a list copy under 60 s old seeds.
+  - The first read merges by id and keeps the bubble.
+  - The unread divider waits for the server's page.
+  - A later edit over the socket changes the bubble as on any open thread.
+- **Measured, not asserted.** `journeys.test.tsx` holds the thread's read
+  and proves the bubble is there, with no skeleton, before the server
+  answers, and once after it. It also proves the divider still comes, and
+  that a stale list seeds nothing.
+- **Claimed:** the behaviour. **Not claimed:** the milliseconds, which an
+  emulator exaggerates.
+
+Rule Zero: Mobbin's threads (Messages, corner, LinkedIn) show content and an
+unread divider, which is the target state. A still cannot show the opening
+moment, so the design half is supported and the motion half is not answered
+by it.

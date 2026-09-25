@@ -1,0 +1,11 @@
+{
+  "_source": "BUILT, not captured: multi_magic rag_chat_job.rb reply_body + config/locales/user_facing.{en,fr}.yml, at 3598c4a (2026-09-25). Provider fault injection is their tool (ai:faults, on their eval database); these are the strings their code would save for each case.",
+  "interrupted-en": "Created 1 note: Boiler. Then the AI provider stopped responding, so I could not finish. What is listed above was done — check it before asking again.",
+  "interrupted-fr-today": "Created 1 note: Boiler. Ensuite, le fournisseur d'IA a cessé de répondre et je n'ai pas pu terminer. Ce qui est indiqué ci-dessus a bien été fait — vérifiez-le avant de redemander.",
+  "cut-off-en": "Here is everything in your notes about the boiler. The service was booked for March, the engineer replaced the pressure valve, and the warranty runs until next year. You also noted the model number and that the annual check is due in the autumn\n\n(My answer was cut off here. Ask me to continue, or ask about a narrower part.)",
+  "cut-off-fr": "Voici tout ce que vos notes disent de la chaudière. L'entretien était prévu en mars, le technicien a remplacé la soupape de pression, et la garantie court jusqu'à l'an prochain. Vous avez aussi noté le numéro de modèle et que la visite annuelle est prévue à l'automne\n\n(Ma réponse a été coupée ici. Demandez-moi de continuer, ou posez une question plus précise.)",
+  "declined-en": "The AI provider declined to answer that, so I have nothing to show you. You could try asking it differently.",
+  "declined-fr": "Le fournisseur d'IA a refusé de répondre à cette demande, je n'ai donc rien à vous montrer. Vous pouvez essayer de la formuler autrement.",
+  "blank-en": "I could not put an answer together that time. Please ask again, perhaps in other words.",
+  "blank-fr": "Je n'ai pas réussi à formuler une réponse cette fois. Redemandez-moi, peut-être en d'autres termes."
+}

@@ -131,5 +131,15 @@
     "expect": "FAIL app/__tests__/calendarHeading\\.test\\.ts",
     "why": "UTC midnight is the same local day in Paris and the day BEFORE in New York: a bug only the western run can see. The control is the same suites in Paris, which must stay green",
     "control": "npx jest src/screens/people src/lib src/components/settings src/api/__tests__/calendar.test.ts src/screens/__tests__/screens.render.test.tsx app/__tests__/calendarHeading.test.ts"
+  },
+  {
+    "instrument": "flag-tolerant parse",
+    "check": "npx jest src/components/chat/__tests__/failureReplies.test.tsx",
+    "plant": "the message parser refuses a message carrying the new interrupted flag",
+    "file": "src/api/ai.ts",
+    "old": "  const role = optStr(record.role) ?? \"user\";",
+    "new": "  if ((record as Record<string, unknown>).interrupted) str(undefined, \"message.interrupted is not a string\");\n  const role = optStr(record.role) ?? \"user\";",
+    "expect": "✕ still parses, every row read",
+    "why": "a reply the parser refuses is dropped silently: the one failure here that would be total"
   }
 ]

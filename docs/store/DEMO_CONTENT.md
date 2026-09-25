@@ -1,5 +1,17 @@
 # The words in the store pictures — FOR HAMMA9900 TO APPROVE OR CHANGE
 
+> **`multi_magic_mobile` is a PUBLIC repository.** This file and everything in
+> `qa/demo/` are permanent and world-readable the moment they are pushed. That is
+> why the builder's last pass nulls any value left from a capture, and why
+> `src/api/__tests__/demo.test.ts` fails on any QA string or real date: so nobody
+> adds a convenient real value to a fixture. Invented values only, always.
+
+> **A question for you, not a decision:** the cast (Maya Brooks, Sam Carter, Nora
+> Lind) sounds English, and the money is in euros. That reads naturally in the
+> English listing. In the French one an English-sounding cast is a small oddness;
+> whether it matters depends on who you think is looking. Say the word and the
+> French set gets French names.
+
 Rendered from `qa/demo/content.py` by `qa/demo/build_demo.py`; edit there, never here.
 
 These pictures go to the whole world and stay there. Every name, amount, place and

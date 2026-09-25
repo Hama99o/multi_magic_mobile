@@ -70,17 +70,37 @@ that show the product doing its job.
   notification icons, restored by the trap. Verified on `qa_phone4`. The
   first attempt drew Wi-Fi with a "!" and a stray "3G", and was corrected.
 
-**What only he can decide: what the pictures show.** The QA account cannot
-supply it, and his own account must never be driven. Three ways, each
-needing his word:
-1. **A demo account**, signed up in his local database, holding a few notes,
-   an event and a conversation written for the listing. This writes new rows
-   to the only copy of his data, which is why it is his decision.
-2. **The fault proxy serving a curated demo set** (`qa/fault_proxy.py` gains
-   a "serve these files" mode). Nothing is written anywhere. The content is
-   sample data written for the listing, so its words need his approval.
-3. **Content-free screens only**: sign-in, the empty calendar, privacy.
-   Nothing to approve, and weak as a listing.
+**What the pictures show: ONE approval, not a choice.**
+
+- **Ruled out: a demo account in his database.** It conflicts with his
+  standing instruction never to seed or reset `multi_magic_development`
+  (CLAUDE.md, "Never seed"; `qa/RIG_CONTRACT.md` §3). A volume on this
+  machine is the only copy of his data. Do not re-propose it.
+- **Rejected: content-free screens.** An app whose whole claim is answering
+  from your own things, shown with nothing in it, tells a reader nothing.
+- **Built: the fault proxy serving invented data.** Nothing is written
+  anywhere and it is fully reversible (`qa/fault_proxy.py`, serve mode).
+  In serve mode it answers only the demo's routes and REFUSES everything
+  else, the socket included, never forwarding. So a picture cannot show one
+  real row, not the QA account's and not his. The test proves the real
+  upstream is never contacted.
+
+**The one thing asked of him: the words, in `DEMO_CONTENT.md`.** Every name,
+amount, place and date is invented (Maya Brooks, Sam Carter, Nora Lind, a book
+club), in English and French. Edit `qa/demo/content.py`, then run
+`python3 qa/demo/build_demo.py`; never edit the rendered files.
+`src/api/__tests__/demo.test.ts` runs the app's real parsers over every
+rendered file, and fails on one unreadable row or on any QA leftover.
+
+**The moment he says yes** (about three minutes a language):
+1. `FAULT_PROXY_SERVE=qa/demo/en python3 qa/fault_proxy.py` (French:
+   `qa/demo/fr`).
+2. Start Metro baked to it, then STOP it afterwards (the value is inlined):
+   `EXPO_PUBLIC_API_URL=http://10.0.2.2:3031 npx expo start --port 3029`
+   (`ensure_node` picks the right Node).
+3. `./qa/screens.sh` store combos: 1080x1920, with the demo status bar.
+4. Keep at most 8 per device type, then `python3 qa/store_check.py` and a
+   human look at every picture.
 
 **Also his:** the feature graphic (1024x500, a design asset), the Play
 console forms (age rating, data safety), and Apple's screenshots, which need

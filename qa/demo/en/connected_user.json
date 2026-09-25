@@ -1,0 +1,31 @@
+{
+  "user": {
+    "about": "",
+    "ai_morning_brief": true,
+    "applications": null,
+    "avatar": null,
+    "birth_date": null,
+    "country_code": null,
+    "cover_photo": null,
+    "created_at": "{{ago:1440}}",
+    "email": "maya@example.com",
+    "firstname": "Maya",
+    "followers_count": 0,
+    "following_count": 0,
+    "fullname": "Maya Brooks",
+    "gender": "",
+    "id": 7001,
+    "is_online": true,
+    "lang": "en",
+    "last_sign_in_at": null,
+    "lastname": "Brooks",
+    "note_index_type": "card_list",
+    "phone_number": null,
+    "safezone_pin_enabled": false,
+    "status": "active",
+    "theme": "dark",
+    "two_factor_enabled": false,
+    "updated_at": "{{ago:1440}}",
+    "username": "maya"
+  }
+}

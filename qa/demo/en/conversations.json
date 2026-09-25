@@ -1,0 +1,346 @@
+{
+  "conversations": [
+    {
+      "can_delete": true,
+      "created_at": "{{ago:43203}}",
+      "id": 9101,
+      "is_admin": false,
+      "is_group": false,
+      "last_message": {
+        "body": "See you at 6, I'll bring the keys.",
+        "conversation_id": 9101,
+        "created_at": "{{ago:3}}",
+        "deleted": false,
+        "edited_at": null,
+        "id": 90101,
+        "key_problem": null,
+        "key_resets_at": null,
+        "key_resets_on": null,
+        "links": [],
+        "rating": null,
+        "reactions": [],
+        "read_at": null,
+        "role": null,
+        "sent_by_me": false,
+        "sources": [],
+        "undoable": false,
+        "undone_at": null,
+        "user": {
+          "about": "",
+          "avatar": null,
+          "email": "sam@example.com",
+          "firstname": "Sam",
+          "fullname": "Sam Carter",
+          "id": 7002,
+          "is_following": null,
+          "is_online": true,
+          "lastname": "Carter",
+          "updated_at": "{{ago:1440}}",
+          "username": "sam"
+        },
+        "user_id": 7002
+      },
+      "participants": [
+        {
+          "is_admin": false,
+          "last_read_at": "{{ago:3}}",
+          "user": {
+            "about": "",
+            "avatar": null,
+            "email": "maya@example.com",
+            "firstname": "Maya",
+            "fullname": "Maya Brooks",
+            "id": 7001,
+            "is_following": false,
+            "is_online": true,
+            "lastname": "Brooks",
+            "updated_at": "{{ago:1440}}",
+            "username": "maya"
+          }
+        },
+        {
+          "is_admin": false,
+          "last_read_at": "{{ago:3}}",
+          "user": {
+            "about": "",
+            "avatar": null,
+            "email": "sam@example.com",
+            "firstname": "Sam",
+            "fullname": "Sam Carter",
+            "id": 7002,
+            "is_following": false,
+            "is_online": true,
+            "lastname": "Carter",
+            "updated_at": "{{ago:1440}}",
+            "username": "sam"
+          }
+        }
+      ],
+      "title": null,
+      "unread_messages_count": 1,
+      "updated_at": "{{ago:3}}",
+      "user": {
+        "about": "",
+        "avatar": null,
+        "email": "sam@example.com",
+        "firstname": "Sam",
+        "fullname": "Sam Carter",
+        "id": 7002,
+        "is_following": false,
+        "is_online": true,
+        "lastname": "Carter",
+        "updated_at": "{{ago:1440}}",
+        "username": "sam"
+      }
+    },
+    {
+      "can_delete": true,
+      "created_at": "{{ago:43295}}",
+      "id": 9102,
+      "is_admin": false,
+      "is_group": false,
+      "last_message": {
+        "body": "Can't wait for Saturday! 🎉",
+        "conversation_id": 9102,
+        "created_at": "{{ago:95}}",
+        "deleted": false,
+        "edited_at": null,
+        "id": 90102,
+        "key_problem": null,
+        "key_resets_at": null,
+        "key_resets_on": null,
+        "links": [],
+        "rating": null,
+        "reactions": [],
+        "read_at": null,
+        "role": null,
+        "sent_by_me": false,
+        "sources": [],
+        "undoable": false,
+        "undone_at": null,
+        "user": {
+          "about": "",
+          "avatar": null,
+          "email": "nora@example.com",
+          "firstname": "Nora",
+          "fullname": "Nora Lind",
+          "id": 7003,
+          "is_following": null,
+          "is_online": true,
+          "lastname": "Lind",
+          "updated_at": "{{ago:1440}}",
+          "username": "nora"
+        },
+        "user_id": 7003
+      },
+      "participants": [
+        {
+          "is_admin": false,
+          "last_read_at": "{{ago:95}}",
+          "user": {
+            "about": "",
+            "avatar": null,
+            "email": "maya@example.com",
+            "firstname": "Maya",
+            "fullname": "Maya Brooks",
+            "id": 7001,
+            "is_following": false,
+            "is_online": true,
+            "lastname": "Brooks",
+            "updated_at": "{{ago:1440}}",
+            "username": "maya"
+          }
+        },
+        {
+          "is_admin": false,
+          "last_read_at": "{{ago:95}}",
+          "user": {
+            "about": "",
+            "avatar": null,
+            "email": "nora@example.com",
+            "firstname": "Nora",
+            "fullname": "Nora Lind",
+            "id": 7003,
+            "is_following": false,
+            "is_online": true,
+            "lastname": "Lind",
+            "updated_at": "{{ago:1440}}",
+            "username": "nora"
+          }
+        }
+      ],
+      "title": null,
+      "unread_messages_count": 0,
+      "updated_at": "{{ago:95}}",
+      "user": {
+        "about": "",
+        "avatar": null,
+        "email": "nora@example.com",
+        "firstname": "Nora",
+        "fullname": "Nora Lind",
+        "id": 7003,
+        "is_following": false,
+        "is_online": true,
+        "lastname": "Lind",
+        "updated_at": "{{ago:1440}}",
+        "username": "nora"
+      }
+    },
+    {
+      "can_delete": true,
+      "created_at": "{{ago:44400}}",
+      "id": 9103,
+      "is_admin": false,
+      "is_group": true,
+      "last_message": {
+        "body": "Next pick: The Remains of the Day",
+        "conversation_id": 9103,
+        "created_at": "{{ago:1200}}",
+        "deleted": false,
+        "edited_at": null,
+        "id": 90103,
+        "key_problem": null,
+        "key_resets_at": null,
+        "key_resets_on": null,
+        "links": [],
+        "rating": null,
+        "reactions": [],
+        "read_at": null,
+        "role": null,
+        "sent_by_me": false,
+        "sources": [],
+        "undoable": false,
+        "undone_at": null,
+        "user": {
+          "about": "",
+          "avatar": null,
+          "email": "theo@example.com",
+          "firstname": "Theo",
+          "fullname": "Theo Marsh",
+          "id": 7004,
+          "is_following": null,
+          "is_online": true,
+          "lastname": "Marsh",
+          "updated_at": "{{ago:1440}}",
+          "username": "theo"
+        },
+        "user_id": 7004
+      },
+      "participants": [
+        {
+          "is_admin": false,
+          "last_read_at": "{{ago:1200}}",
+          "user": {
+            "about": "",
+            "avatar": null,
+            "email": "maya@example.com",
+            "firstname": "Maya",
+            "fullname": "Maya Brooks",
+            "id": 7001,
+            "is_following": false,
+            "is_online": true,
+            "lastname": "Brooks",
+            "updated_at": "{{ago:1440}}",
+            "username": "maya"
+          }
+        },
+        {
+          "is_admin": false,
+          "last_read_at": "{{ago:1200}}",
+          "user": {
+            "about": "",
+            "avatar": null,
+            "email": "theo@example.com",
+            "firstname": "Theo",
+            "fullname": "Theo Marsh",
+            "id": 7004,
+            "is_following": false,
+            "is_online": true,
+            "lastname": "Marsh",
+            "updated_at": "{{ago:1440}}",
+            "username": "theo"
+          }
+        }
+      ],
+      "title": "Book club",
+      "unread_messages_count": 0,
+      "updated_at": "{{ago:1200}}",
+      "user": {
+        "about": "",
+        "avatar": null,
+        "email": "theo@example.com",
+        "firstname": "Theo",
+        "fullname": "Theo Marsh",
+        "id": 7004,
+        "is_following": false,
+        "is_online": true,
+        "lastname": "Marsh",
+        "updated_at": "{{ago:1440}}",
+        "username": "theo"
+      }
+    }
+  ],
+  "meta": {
+    "pagy": {
+      "count": 0,
+      "first_url": "/api/v1/notifications?page=1",
+      "from": 0,
+      "in": 0,
+      "last": 1,
+      "last_url": "/api/v1/notifications?page=1",
+      "limit": 20,
+      "next": null,
+      "next_url": "/api/v1/notifications?page=",
+      "page": 1,
+      "page_url": "/api/v1/notifications?page=1",
+      "pages": 1,
+      "prev": null,
+      "prev_url": "/api/v1/notifications?page=",
+      "scaffold_url": "/api/v1/notifications?page=__pagy_page__",
+      "series": [
+        "1"
+      ],
+      "to": 0,
+      "vars": {
+        "count": 0,
+        "count_args": [
+          "all"
+        ],
+        "ends": true,
+        "headers": {
+          "count": "total-count",
+          "limit": "page-items",
+          "page": "current-page",
+          "pages": "total-pages"
+        },
+        "limit": 20,
+        "metadata": [
+          "scaffold_url",
+          "first_url",
+          "prev_url",
+          "page_url",
+          "next_url",
+          "last_url",
+          "count",
+          "page",
+          "limit",
+          "vars",
+          "pages",
+          "last",
+          "in",
+          "from",
+          "to",
+          "prev",
+          "next",
+          "series"
+        ],
+        "outset": 0,
+        "page": "1",
+        "page_param": "page",
+        "size": 7
+      }
+    },
+    "total_count": 0,
+    "unread_count": 0
+  }
+}

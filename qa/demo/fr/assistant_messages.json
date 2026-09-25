@@ -1,0 +1,220 @@
+{
+  "messages": [
+    {
+      "body": "**212,40 €** sur 9 dépenses ce mois-ci, environ 30 € de moins que le mois dernier. La plus grosse : **48,90 €** au marché du samedi.",
+      "conversation_id": 9001,
+      "created_at": "{{ago:2}}",
+      "deleted": false,
+      "edited_at": null,
+      "id": 80004,
+      "key_problem": null,
+      "key_resets_at": null,
+      "key_resets_on": null,
+      "links": [],
+      "rating": null,
+      "reactions": [],
+      "read_at": null,
+      "role": "assistant",
+      "sent_by_me": true,
+      "sources": [
+        {
+          "key": "expense",
+          "label": "Courses · ce mois-ci",
+          "path": null
+        }
+      ],
+      "undoable": false,
+      "undone_at": null,
+      "user": {
+        "about": "",
+        "avatar": null,
+        "email": "maya@example.com",
+        "firstname": "Maya",
+        "fullname": "Maya Brooks",
+        "id": 7001,
+        "is_following": null,
+        "is_online": true,
+        "lastname": "Brooks",
+        "updated_at": "{{ago:1440}}",
+        "username": "maya"
+      },
+      "user_id": 7001
+    },
+    {
+      "body": "Combien j'ai dépensé en courses ce mois-ci ?",
+      "conversation_id": 9001,
+      "created_at": "{{ago:2}}",
+      "deleted": false,
+      "edited_at": null,
+      "id": 80003,
+      "key_problem": null,
+      "key_resets_at": null,
+      "key_resets_on": null,
+      "links": [],
+      "rating": null,
+      "reactions": [],
+      "read_at": null,
+      "role": "user",
+      "sent_by_me": true,
+      "sources": [],
+      "undoable": false,
+      "undone_at": null,
+      "user": {
+        "about": "",
+        "avatar": null,
+        "email": "maya@example.com",
+        "firstname": "Maya",
+        "fullname": "Maya Brooks",
+        "id": 7001,
+        "is_following": null,
+        "is_online": true,
+        "lastname": "Brooks",
+        "updated_at": "{{ago:1440}}",
+        "username": "maya"
+      },
+      "user_id": 7001
+    },
+    {
+      "body": "L'anniversaire de Nora est **samedi**. Dans votre note *Idées cadeaux*, vous avez écrit qu'elle voudrait un **appareil photo argentique** : l'Olympus vu à la brocante était à **85 €**.",
+      "conversation_id": 9001,
+      "created_at": "{{ago:6}}",
+      "deleted": false,
+      "edited_at": null,
+      "id": 80002,
+      "key_problem": null,
+      "key_resets_at": null,
+      "key_resets_on": null,
+      "links": [],
+      "rating": null,
+      "reactions": [],
+      "read_at": null,
+      "role": "assistant",
+      "sent_by_me": true,
+      "sources": [
+        {
+          "key": "note",
+          "label": "Idées cadeaux",
+          "path": null
+        },
+        {
+          "key": "calendar_event",
+          "label": "Anniversaire de Nora",
+          "path": null
+        }
+      ],
+      "undoable": false,
+      "undone_at": null,
+      "user": {
+        "about": "",
+        "avatar": null,
+        "email": "maya@example.com",
+        "firstname": "Maya",
+        "fullname": "Maya Brooks",
+        "id": 7001,
+        "is_following": null,
+        "is_online": true,
+        "lastname": "Brooks",
+        "updated_at": "{{ago:1440}}",
+        "username": "maya"
+      },
+      "user_id": 7001
+    },
+    {
+      "body": "C'est quand l'anniversaire de Nora, et j'avais noté une idée de cadeau ?",
+      "conversation_id": 9001,
+      "created_at": "{{ago:6}}",
+      "deleted": false,
+      "edited_at": null,
+      "id": 80001,
+      "key_problem": null,
+      "key_resets_at": null,
+      "key_resets_on": null,
+      "links": [],
+      "rating": null,
+      "reactions": [],
+      "read_at": null,
+      "role": "user",
+      "sent_by_me": true,
+      "sources": [],
+      "undoable": false,
+      "undone_at": null,
+      "user": {
+        "about": "",
+        "avatar": null,
+        "email": "maya@example.com",
+        "firstname": "Maya",
+        "fullname": "Maya Brooks",
+        "id": 7001,
+        "is_following": null,
+        "is_online": true,
+        "lastname": "Brooks",
+        "updated_at": "{{ago:1440}}",
+        "username": "maya"
+      },
+      "user_id": 7001
+    }
+  ],
+  "meta": {
+    "pagy": {
+      "count": 4,
+      "first_url": "/api/v1/conversations/9001/messages?page=1",
+      "from": 1,
+      "in": 25,
+      "last": 1,
+      "last_url": "/api/v1/conversations/9001/messages?page=2",
+      "limit": 25,
+      "next": null,
+      "next_url": "/api/v1/conversations/9001/messages?page=2",
+      "page": 1,
+      "page_url": "/api/v1/conversations/9001/messages?page=1",
+      "pages": 1,
+      "prev": null,
+      "prev_url": "/api/v1/conversations/9001/messages?page=",
+      "scaffold_url": "/api/v1/conversations/9001/messages?page=__pagy_page__",
+      "series": [
+        "1",
+        2
+      ],
+      "to": 25,
+      "vars": {
+        "count": 26,
+        "count_args": [
+          "all"
+        ],
+        "ends": true,
+        "headers": {
+          "count": "total-count",
+          "limit": "page-items",
+          "page": "current-page",
+          "pages": "total-pages"
+        },
+        "limit": 25,
+        "metadata": [
+          "scaffold_url",
+          "first_url",
+          "prev_url",
+          "page_url",
+          "next_url",
+          "last_url",
+          "count",
+          "page",
+          "limit",
+          "vars",
+          "pages",
+          "last",
+          "in",
+          "from",
+          "to",
+          "prev",
+          "next",
+          "series"
+        ],
+        "outset": 0,
+        "page": 1,
+        "page_param": "page",
+        "size": 7
+      }
+    },
+    "total_count": 26
+  }
+}

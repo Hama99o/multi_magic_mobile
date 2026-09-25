@@ -1,0 +1,82 @@
+[
+  {
+    "method": "GET",
+    "path": "^/up$",
+    "file": null
+  },
+  {
+    "method": "GET",
+    "path": "^/api/v1/users/connected_user$",
+    "file": "connected_user"
+  },
+  {
+    "method": "GET",
+    "path": "^/api/v1/ai/conversation$",
+    "file": "ai_conversation"
+  },
+  {
+    "method": "GET",
+    "path": "^/api/v1/ai/sessions$",
+    "file": "sessions"
+  },
+  {
+    "method": "GET",
+    "path": "^/api/v1/ai/sessions/\\d+/documents",
+    "file": "documents"
+  },
+  {
+    "method": "GET",
+    "path": "^/api/v1/conversations/9001/messages",
+    "file": "assistant_messages"
+  },
+  {
+    "method": "GET",
+    "path": "^/api/v1/conversations/9101/messages",
+    "file": "thread_messages"
+  },
+  {
+    "method": "GET",
+    "path": "^/api/v1/conversations/unread_messages_count$",
+    "file": "conversations_unread"
+  },
+  {
+    "method": "GET",
+    "path": "^/api/v1/conversations/9101$",
+    "file": "thread_detail"
+  },
+  {
+    "method": "POST",
+    "path": "^/api/v1/conversations/9101/mark_read$",
+    "file": "thread_detail"
+  },
+  {
+    "method": "GET",
+    "path": "^/api/v1/conversations$",
+    "file": "conversations"
+  },
+  {
+    "method": "GET",
+    "path": "^/api/v1/notifications/unread_count$",
+    "file": "notifications_unread"
+  },
+  {
+    "method": "GET",
+    "path": "^/api/v1/notifications$",
+    "file": "notifications"
+  },
+  {
+    "method": "GET",
+    "path": "^/api/v1/calendar_app/events/upcoming$",
+    "file": "calendar"
+  },
+  {
+    "method": "GET",
+    "path": "^/api/v1/me/summary$",
+    "file": "me_summary"
+  },
+  {
+    "method": "GET",
+    "path": "^/api/v1/ai_keys$",
+    "file": "ai_keys"
+  }
+]

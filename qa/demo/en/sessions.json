@@ -1,0 +1,48 @@
+{
+  "sessions": [
+    {
+      "apps": [],
+      "created_at": "{{ago:7}}",
+      "document_count": 0,
+      "id": 9001,
+      "instructions": null,
+      "message_count": 4,
+      "remember": true,
+      "title": "Nora's birthday and groceries",
+      "updated_at": "{{ago:2}}"
+    },
+    {
+      "apps": [],
+      "created_at": "{{ago:1565}}",
+      "document_count": 0,
+      "id": 9002,
+      "instructions": null,
+      "message_count": 6,
+      "remember": true,
+      "title": "What's booked for Lisbon?",
+      "updated_at": "{{ago:1560}}"
+    },
+    {
+      "apps": [],
+      "created_at": "{{ago:3005}}",
+      "document_count": 0,
+      "id": 9003,
+      "instructions": null,
+      "message_count": 2,
+      "remember": true,
+      "title": "Who lent me the tent?",
+      "updated_at": "{{ago:3000}}"
+    },
+    {
+      "apps": [],
+      "created_at": "{{ago:5765}}",
+      "document_count": 0,
+      "id": 9004,
+      "instructions": null,
+      "message_count": 8,
+      "remember": true,
+      "title": "Summarise my week",
+      "updated_at": "{{ago:5760}}"
+    }
+  ]
+}

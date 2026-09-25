@@ -45,6 +45,14 @@ STORE = os.environ.get("STORE_DIR", os.path.join(ROOT, "docs", "store"))
 PLAY_PHONE = os.path.join(STORE, "play-phone")
 PLAY_ICON = os.path.join(STORE, "play-icon-512.png")
 PLAY_FEATURE = os.path.join(STORE, "play-feature-1024x500.png")
+# UNVERIFIED, AND THEREFORE A REFUSAL. On 2026-09-25 the fetch of Apple's
+# page returned the sizes clearly and garbled the one line saying WHICH
+# iPhone set is mandatory. A garbled fetch is not a source, so no Apple set
+# passes this gate until a person reads that line in App Store Connect and
+# records it here: the date, who read it, and what it says. Encoding a guess
+# would look authoritative and be wrong in the one place that matters.
+APPLE_MANDATORY_CONFIRMED = None  # e.g. "2026-10-02, Hamma9900: 6.9-inch set required"
+
 APPLE_SETS = {
     "apple-iphone-6.9": {(1320, 2868), (1290, 2796), (1260, 2736)},
     "apple-iphone-6.5": {(1284, 2778), (1242, 2688)},
@@ -119,6 +127,9 @@ def check_apple():
         path = os.path.join(STORE, folder)
         if not os.path.isdir(path):
             continue
+        if not APPLE_MANDATORY_CONFIRMED:
+            broken.append(f"{folder}: Apple's mandatory-size line is UNVERIFIED (a garbled fetch, 2026-09-25); "
+                          "confirm it in App Store Connect and set APPLE_MANDATORY_CONFIRMED before any Apple set passes")
         shots = images(path)
         if not 1 <= len(shots) <= 10:
             broken.append(f"{folder}: {len(shots)} screenshots; Apple takes 1 to 10")

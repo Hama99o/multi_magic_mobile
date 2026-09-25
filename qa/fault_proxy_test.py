@@ -26,6 +26,9 @@ def check(name, ok, detail=""):
         FAILS.append(name)
 
 
+UPSTREAM_HITS = [0]
+
+
 class Upstream(BaseHTTPRequestHandler):
     protocol_version = "HTTP/1.1"
 
@@ -33,6 +36,7 @@ class Upstream(BaseHTTPRequestHandler):
         pass
 
     def do_GET(self):
+        UPSTREAM_HITS[0] += 1
         if self.headers.get("Upgrade", "").lower() == "websocket":
             # Enough of a handshake to prove the bytes go both ways.
             self.connection.sendall(b"HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n")
@@ -67,6 +71,47 @@ def req(port, method, path, body=None, headers=None):
     c.request(method, path, body=body, headers=headers or {})
     r = c.getresponse()
     return r.status, dict(r.getheaders()), r.read()
+
+
+def serve_mode():
+    """The store-picture mode: the demo files, and nothing real, ever."""
+    from datetime import datetime, timedelta
+    demo = os.path.join(os.path.dirname(os.path.abspath(__file__)), "demo", "en")
+    proxy = fault_proxy.serve(0, "", serve_dir=demo)
+    port = start(proxy)
+    hits = UPSTREAM_HITS[0]
+
+    s, _, b = req(port, "GET", "/api/v1/conversations?page=1")
+    text = b.decode()
+    check("serve: a routed request gets its demo file", s == 200 and "Sam" in text and "Book club" in text, (s, text[:80]))
+    check("serve: no placeholder survives to the app", "{{" not in text, text[:120])
+    s, _, b = req(port, "GET", "/api/v1/users/connected_user")
+    check("serve: signed in as the invented person", s == 200 and json.loads(b)["user"]["firstname"] == "Maya", (s, b[:80]))
+    s, _, _ = req(port, "POST", "/api/v1/conversations/9101/mark_read")
+    check("serve: the thread's mark_read answers", s == 200, s)
+    s, _, _ = req(port, "GET", "/up")
+    check("serve: the reachability probe answers", s == 200, s)
+    s, _, b = req(port, "GET", "/api/v1/something/not/in/the/demo")
+    check("serve: anything else is REFUSED", s == 404, (s, b))
+    sock = socket.create_connection(("127.0.0.1", port), timeout=5)
+    sock.sendall(b"GET /cable HTTP/1.1\r\nHost: x\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n\r\n")
+    head = sock.recv(1024)
+    sock.close()
+    check("serve: the socket is refused, not tunnelled", head.startswith(b"HTTP/1.1 404"), head[:40])
+    check("serve: the real upstream was NEVER contacted", UPSTREAM_HITS[0] == hits, UPSTREAM_HITS[0] - hits)
+
+    # {{date:sat}}: the words say "Saturday", so it must be one, inside the
+    # calendar's seven-day window, whatever day the pictures are taken.
+    monday = datetime(2026, 9, 21, 10, 0).astimezone()
+    ok = True
+    for d in range(7):
+        now = monday + timedelta(days=d)
+        got = datetime.strptime(fault_proxy.fill("{{date:sat}}", now), "%Y-%m-%d")
+        ahead = (got.date() - now.date()).days
+        ok = ok and got.weekday() == 5 and 1 <= ahead <= 7
+    check("serve: {{date:sat}} is a Saturday 1 to 7 days ahead, every weekday", ok)
+    proxy.shutdown()
+    fault_proxy.SERVE_DIR = ""
 
 
 def main():
@@ -140,6 +185,7 @@ def main():
         check("a malformed FAULTS is refused at start", True)
 
     proxy.shutdown()
+    serve_mode()
     if FAILS:
         print(f"fault_proxy: {len(FAILS)} failed")
         return 1

@@ -1,0 +1,48 @@
+{
+  "sessions": [
+    {
+      "apps": [],
+      "created_at": "{{ago:7}}",
+      "document_count": 0,
+      "id": 9001,
+      "instructions": null,
+      "message_count": 4,
+      "remember": true,
+      "title": "Anniversaire de Nora et courses",
+      "updated_at": "{{ago:2}}"
+    },
+    {
+      "apps": [],
+      "created_at": "{{ago:1565}}",
+      "document_count": 0,
+      "id": 9002,
+      "instructions": null,
+      "message_count": 6,
+      "remember": true,
+      "title": "Qu'est-ce qui est réservé pour Lisbonne ?",
+      "updated_at": "{{ago:1560}}"
+    },
+    {
+      "apps": [],
+      "created_at": "{{ago:3005}}",
+      "document_count": 0,
+      "id": 9003,
+      "instructions": null,
+      "message_count": 2,
+      "remember": true,
+      "title": "Qui m'a prêté la tente ?",
+      "updated_at": "{{ago:3000}}"
+    },
+    {
+      "apps": [],
+      "created_at": "{{ago:5765}}",
+      "document_count": 0,
+      "id": 9004,
+      "instructions": null,
+      "message_count": 8,
+      "remember": true,
+      "title": "Résume ma semaine",
+      "updated_at": "{{ago:5760}}"
+    }
+  ]
+}

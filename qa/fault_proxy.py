@@ -30,8 +30,18 @@ Change faults while it runs, from the host only:
     curl -X DELETE localhost:3031/__fault         # clear all
     curl localhost:3031/__fault                   # list
 
+SERVE MODE (store pictures, 2026-09-25):
+    FAULT_PROXY_SERVE=qa/demo/en python3 qa/fault_proxy.py
+serves the files named in <dir>/routes.json (rendered by qa/demo/build_demo.py
+from the approved words) and REFUSES everything else with a 404, the socket
+included. It never forwards in this mode, so a picture cannot show one real
+row, not the QA account's and not his. Placeholders in the files are filled
+at serve time: {{ago:N}} minutes ago, {{date:D}}, {{at:D@HH:MM}} (D = days
+from today, or `sat` for the next Saturday within a week).
+
 RULES
-- A QA tool, never in the app. Nothing under src/ or app/ imports it, and it
+- A QA tool, never in the app. It is Python, outside src/ and app/, and
+  nothing the bundle can import. Do not "tidy" it into the app. Nothing under src/ or app/ imports it, and it
   is not in the bundle (it is Python).
 - It binds 127.0.0.1. The emulator reaches that as 10.0.2.2; nothing else
   on the network can reach the control route.
@@ -60,6 +70,9 @@ TOO_MANY = json.dumps({"error": "Too many requests"}).encode()
 KINDS = ("500", "429", "truncate", "refuse")
 QUIET = False
 
+SERVE_DIR = os.environ.get("FAULT_PROXY_SERVE", "")
+_routes: list = []  # [(method, compiled regex, file or None)]
+
 _lock = threading.Lock()
 _faults: list = []  # [(prefix, kind)], first match wins
 
@@ -84,6 +97,42 @@ def fault_for(path: str):
             if path.startswith(prefix):
                 return kind
     return None
+
+
+def load_routes(directory: str) -> list:
+    import re
+    with open(os.path.join(directory, "routes.json")) as f:
+        return [(r["method"], re.compile(r["path"]), r["file"]) for r in json.load(f)]
+
+
+def fill(text: str, now=None) -> str:
+    """The time placeholders, filled at the moment a picture is taken."""
+    import re
+    from datetime import datetime, timedelta, timezone
+    now = now or datetime.now().astimezone()
+
+    def days(d: str) -> int:
+        if d == "sat":
+            # The next Saturday, 1 to 7 days out, so it is inside the
+            # calendar's seven-day window and the words "Saturday" are true.
+            return (5 - now.weekday()) % 7 or 7
+        return int(d)
+
+    def ago(m):
+        t = now.astimezone(timezone.utc) - timedelta(minutes=int(m.group(1)))
+        return t.strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+    def date(m):
+        return (now + timedelta(days=days(m.group(1)))).strftime("%Y-%m-%d")
+
+    def at(m):
+        hh, mm = map(int, m.group(2).split(":"))
+        day = (now + timedelta(days=days(m.group(1)))).replace(hour=hh, minute=mm, second=0, microsecond=0)
+        return day.astimezone(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+
+    text = re.sub(r"\{\{ago:(\d+)\}\}", ago, text)
+    text = re.sub(r"\{\{date:(sat|\d+)\}\}", date, text)
+    return re.sub(r"\{\{at:(sat|\d+)@(\d\d:\d\d)\}\}", at, text)
 
 
 HOP = {"connection", "keep-alive", "proxy-connection", "transfer-encoding", "upgrade", "te", "trailer"}
@@ -127,9 +176,11 @@ class Proxy(BaseHTTPRequestHandler):
     def handle_any(self):
         if self.path.startswith("/__fault"):
             return self.control()
+        path = urllib.parse.urlparse(self.path).path
+        if SERVE_DIR:
+            return self.serve(path)
         if self.headers.get("Upgrade", "").lower() == "websocket":
             return self.tunnel()
-        path = urllib.parse.urlparse(self.path).path
         kind = fault_for(path)
         if kind == "refuse":
             self.close_connection = True
@@ -142,6 +193,29 @@ class Proxy(BaseHTTPRequestHandler):
         if kind and kind.startswith("slow:"):
             time.sleep(int(kind[5:]) / 1000)
         self.forward(truncate=kind == "truncate")
+
+    def serve(self, path):
+        """Serve mode: the routed file, or a refusal. Never a forward."""
+        length = int(self.headers.get("Content-Length") or 0)
+        if length:
+            self.rfile.read(length)
+        if self.headers.get("Upgrade", "").lower() == "websocket":
+            self.close_connection = True
+            return self.reply(404, json.dumps({"error": "demo: no socket"}).encode())
+        kind = fault_for(path)
+        if kind == "500":
+            return self.reply(500, RAILS_500)
+        if kind == "429":
+            return self.reply(429, TOO_MANY, {"Retry-After": "30"})
+        for method, pattern, name in _routes:
+            if method == self.command and pattern.search(path):
+                if name is None:
+                    return self.reply(200, b"{}")
+                with open(os.path.join(SERVE_DIR, f"{name}.json"), encoding="utf-8") as f:
+                    return self.reply(200, fill(f.read()).encode("utf-8"))
+        if not QUIET:
+            sys.stderr.write(f"  REFUSED (not in the demo) {self.command} {path}\n")
+        return self.reply(404, json.dumps({"error": "demo: not served"}).encode())
 
     def forward(self, truncate=False):
         length = int(self.headers.get("Content-Length") or 0)
@@ -200,7 +274,11 @@ class Proxy(BaseHTTPRequestHandler):
     do_GET = do_POST = do_PUT = do_PATCH = do_DELETE = do_HEAD = do_OPTIONS = handle_any
 
 
-def serve(port=PORT, faults=""):
+def serve(port=PORT, faults="", serve_dir=None):
+    global SERVE_DIR
+    if serve_dir is not None:
+        SERVE_DIR = serve_dir
+    _routes[:] = load_routes(SERVE_DIR) if SERVE_DIR else []
     with _lock:
         _faults[:] = parse_faults(faults)
     server = ThreadingHTTPServer(("127.0.0.1", port), Proxy)
@@ -213,7 +291,10 @@ def main():
         server = serve(PORT, os.environ.get("FAULTS", ""))
     except ValueError as e:
         sys.exit(str(e))
-    print(f"fault proxy :{PORT} → {UPSTREAM.geturl()}  faults: {_faults or 'none'}")
+    if SERVE_DIR:
+        print(f"fault proxy :{PORT} SERVING {SERVE_DIR} ({len(_routes)} routes); everything else REFUSED, nothing forwarded")
+    else:
+        print(f"fault proxy :{PORT} → {UPSTREAM.geturl()}  faults: {_faults or 'none'}")
     print(f"  Metro: EXPO_PUBLIC_API_URL=http://10.0.2.2:{PORT} npx expo start --port 3029  (stop it afterwards)")
     try:
         server.serve_forever()

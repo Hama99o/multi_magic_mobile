@@ -1,0 +1,95 @@
+{
+  "conversation": {
+    "can_delete": true,
+    "created_at": "{{ago:43203}}",
+    "id": 9101,
+    "is_admin": false,
+    "is_group": false,
+    "last_message": {
+      "body": "À 18 h, j'apporte les clés.",
+      "conversation_id": 9101,
+      "created_at": "{{ago:3}}",
+      "deleted": false,
+      "edited_at": null,
+      "id": 90101,
+      "key_problem": null,
+      "key_resets_at": null,
+      "key_resets_on": null,
+      "links": [],
+      "rating": null,
+      "reactions": [],
+      "read_at": null,
+      "role": null,
+      "sent_by_me": false,
+      "sources": [],
+      "undoable": false,
+      "undone_at": null,
+      "user": {
+        "about": "",
+        "avatar": null,
+        "email": "sam@example.com",
+        "firstname": "Sam",
+        "fullname": "Sam Carter",
+        "id": 7002,
+        "is_following": null,
+        "is_online": true,
+        "lastname": "Carter",
+        "updated_at": "{{ago:1440}}",
+        "username": "sam"
+      },
+      "user_id": 7002
+    },
+    "participants": [
+      {
+        "is_admin": false,
+        "last_read_at": "{{ago:3}}",
+        "user": {
+          "about": "",
+          "avatar": null,
+          "email": "maya@example.com",
+          "firstname": "Maya",
+          "fullname": "Maya Brooks",
+          "id": 7001,
+          "is_following": false,
+          "is_online": true,
+          "lastname": "Brooks",
+          "updated_at": "{{ago:1440}}",
+          "username": "maya"
+        }
+      },
+      {
+        "is_admin": false,
+        "last_read_at": "{{ago:3}}",
+        "user": {
+          "about": "",
+          "avatar": null,
+          "email": "sam@example.com",
+          "firstname": "Sam",
+          "fullname": "Sam Carter",
+          "id": 7002,
+          "is_following": false,
+          "is_online": true,
+          "lastname": "Carter",
+          "updated_at": "{{ago:1440}}",
+          "username": "sam"
+        }
+      }
+    ],
+    "title": null,
+    "unread_messages_count": 1,
+    "updated_at": "{{ago:3}}",
+    "user": {
+      "about": "",
+      "avatar": null,
+      "email": "sam@example.com",
+      "firstname": "Sam",
+      "fullname": "Sam Carter",
+      "id": 7002,
+      "is_following": false,
+      "is_online": true,
+      "lastname": "Carter",
+      "updated_at": "{{ago:1440}}",
+      "username": "sam"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "counts": {
+    "contacts": 24,
+    "documents": 3,
+    "events": 5,
+    "expenses": 9,
+    "incomes": 1,
+    "loans": 1,
+    "notes": 41,
+    "pages": 2,
+    "todos": 6
+  },
+  "stocked": [
+    "notes",
+    "events",
+    "expenses"
+  ]
+}

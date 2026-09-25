@@ -1,0 +1,89 @@
+{
+  "occurrences": [
+    {
+      "all_day": false,
+      "ends_at": "{{at:0@10:00}}",
+      "event": {
+        "all_day": false,
+        "color": null,
+        "description": null,
+        "id": 500,
+        "kind": "appointment",
+        "location": null,
+        "recurrence": null,
+        "title": "Dentist, Dr. Okafor"
+      },
+      "id": "500:{{date:0}}",
+      "on": "{{date:0}}",
+      "starts_at": "{{at:0@09:30}}"
+    },
+    {
+      "all_day": false,
+      "ends_at": "{{at:0@18:30}}",
+      "event": {
+        "all_day": false,
+        "color": null,
+        "description": null,
+        "id": 501,
+        "kind": "meeting",
+        "location": null,
+        "recurrence": null,
+        "title": "Call Sam about the flat"
+      },
+      "id": "501:{{date:0}}",
+      "on": "{{date:0}}",
+      "starts_at": "{{at:0@18:00}}"
+    },
+    {
+      "all_day": false,
+      "ends_at": "{{at:1@08:30}}",
+      "event": {
+        "all_day": false,
+        "color": null,
+        "description": null,
+        "id": 502,
+        "kind": "event",
+        "location": null,
+        "recurrence": null,
+        "title": "Yoga"
+      },
+      "id": "502:{{date:1}}",
+      "on": "{{date:1}}",
+      "starts_at": "{{at:1@07:30}}"
+    },
+    {
+      "all_day": false,
+      "ends_at": "{{at:2@13:00}}",
+      "event": {
+        "all_day": false,
+        "color": null,
+        "description": null,
+        "id": 503,
+        "kind": "task",
+        "location": null,
+        "recurrence": null,
+        "title": "Pick up the film camera"
+      },
+      "id": "503:{{date:2}}",
+      "on": "{{date:2}}",
+      "starts_at": "{{at:2@12:30}}"
+    },
+    {
+      "all_day": true,
+      "ends_at": null,
+      "event": {
+        "all_day": true,
+        "color": null,
+        "description": null,
+        "id": 504,
+        "kind": "birthday",
+        "location": null,
+        "recurrence": "yearly",
+        "title": "Nora's birthday"
+      },
+      "id": "504:{{date:sat}}",
+      "on": "{{date:sat}}",
+      "starts_at": null
+    }
+  ]
+}

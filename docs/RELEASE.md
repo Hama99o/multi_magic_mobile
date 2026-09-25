@@ -5,6 +5,12 @@ Builds run on EAS (Expo's cloud) under the Expo account `hama990`, project
 iOS cannot be built on this Linux box at all; Android can, but EAS is the
 one path that works for both, so use it for both.
 
+**Build through `./scripts/eas-build.sh`, never `eas build` directly**
+(2026-09-25). It runs `scripts/release_guard.js` on this machine first and
+stops before any upload if the tree cannot make a release (SDK below 57, or a
+native dependency missing). The same guard is the `eas-build-pre-install`
+hook, which is unverified as a stop; this wrapper is the certain one.
+
 ## Profiles (`eas.json`)
 
 | profile      | what it is                                        | API                          |
@@ -47,7 +53,7 @@ Creating the ad-hoc provisioning profile requires an Apple sign-in with
 terminal:
 
     cd ~/Apps/Personal/multi_magic_mobile
-    eas build -p ios --profile preview
+    ./scripts/eas-build.sh -p ios --profile preview
 
 It asks, in order: log in to Apple (yes) → Apple ID, password, 2FA code →
 distribution certificate (reuse the existing one) → generate provisioning
@@ -59,11 +65,11 @@ link and QR are on that page, opened from the iPhone.
 After that first run the credentials live on Expo's servers and every
 later build is non-interactive:
 
-    eas build -p ios --profile preview --non-interactive --no-wait
+    ./scripts/eas-build.sh -p ios --profile preview --non-interactive --no-wait
 
 ## Android
 
-    eas build -p android --profile preview --non-interactive --no-wait
+    ./scripts/eas-build.sh -p android --profile preview --non-interactive --no-wait
 
 produces an APK (`buildType: apk`) installable from the build page. The
 Android package is still `co.byseven.multimagic`; align it with the iOS id

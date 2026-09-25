@@ -181,7 +181,7 @@ so from any Expo project it needs no arguments.
 | Age rating | `PATCH /ageRatingDeclarations/{appInfoId}` — see below, it has sharp edges |
 | Pricing | `POST /appPriceSchedules` — see below |
 | Screenshots | `scripts/shots.py` — reserve, chunk-PUT, commit with the file's md5 |
-| Uploading a build | `eas build -p ios --profile production`, then `eas submit` |
+| Uploading a build | `./scripts/eas-build.sh -p ios --profile production`, then `eas submit` |
 
 ### Submitting for review, and the endpoint that is gone
 
@@ -378,7 +378,7 @@ password error on a password that is correct.
 
 4. `credentials.json` at the project root pointing at those two files, plus
    `"credentialsSource": "local"` on the build profile in `eas.json`. Then
-   `eas build -p ios --profile production --non-interactive` runs clean.
+   `./scripts/eas-build.sh -p ios --profile production --non-interactive` runs clean.
 
 **`credentials.json` contains the .p12 password**, so it is in `.gitignore` and
 the signing material itself lives outside the tree. `.gitignore` already covered
@@ -410,7 +410,7 @@ is reproducible, which is the only claim worth making about a build.
 
 No document and no script moves these:
 
-- **Apple sign-in and 2FA.** `eas build -p ios` asks for the Apple ID, the
+- **Apple sign-in and 2FA.** `./scripts/eas-build.sh -p ios` asks for the Apple ID, the
   password and a code from his phone. `RELEASE.md` has the prompt order.
 - **Agreements, tax and banking.** Paid or free, the agreements gate the
   listing and only the Account Holder can accept them.

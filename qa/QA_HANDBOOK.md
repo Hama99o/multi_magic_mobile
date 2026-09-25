@@ -163,6 +163,31 @@ public repo. Another **hid a session's finished work from the session chasing
 it** — the header icons existed for half an hour while being asked for twice,
 because they had been committed under somebody else's name.
 
+### A named path protects other FILES, not other CHANGES in that file — 2026-09-25
+
+`git commit -- app.json` builds the commit from the **working-tree** `app.json`,
+every change in it, whoever made them. On 2026-09-25 the release worktree
+`mm-sdk57` held an uncommitted edit for his phone (owner and projectId removed
+so Expo Go could scan it), and a schema fix had to land in the same file.
+Naming the path would have committed the phone edit.
+
+**When one file carries somebody else's uncommitted work, commit from the
+index, and diff both ways:**
+
+```sh
+git show HEAD:app.json > /tmp/x.json      # the committed version
+# ... apply ONLY your edits to /tmp/x.json, and the same edits to app.json ...
+git update-index --cacheinfo 100644,$(git hash-object -w /tmp/x.json),app.json
+git diff --cached app.json   # HEAD → commit: must be only YOUR edits
+git diff app.json            # commit → working tree: must be only THEIR edit
+git commit                   # no pathspec: the index is the commit
+```
+
+Check that nothing else is staged first (`git diff --cached --name-only`),
+and diff both ways again after committing. For JSON, a round trip that is
+byte-identical before any edit (`json.dumps(json.loads(t), indent=2) + "\n" ==
+t`) is what makes a parsed edit verifiable rather than merely careful.
+
 ## The device claim — and a claim is on the DEVICE, not on the AVD
 
 `./qa/qa.sh claim <session> [why]` · `release <session>` · `claims`

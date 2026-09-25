@@ -9,8 +9,10 @@
  * sentence, instead of producing a binary that installs and then fails.
  *
  * UNVERIFIED: that page does not say a non-zero exit FAILS the build. It is
- * what the exit code is for, and it has not been seen here. The first EAS
- * build from `main` would show it; until then, do not rely on this alone.
+ * what the exit code is for, and it has not been seen here. So it is not
+ * relied on alone: `scripts/eas-build.sh` runs this same guard on this
+ * machine before any upload, under `set -e`, and the documented build
+ * commands go through it. That layer is certain; this one is a second.
  * Verified locally: it refuses main (exit 1, naming both problems) and
  * passes sdk-57's package.json (exit 0).
  *

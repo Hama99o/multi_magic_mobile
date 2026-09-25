@@ -57,5 +57,78 @@
     "expect": "zz-plant\\.png: 1080x2400, ratio 2\\.22",
     "why": "every design shot is 1080x2400, and Play refuses a ratio over 2.0 (its check is red at baseline for a true reason: 18 old shots where Play takes 8)",
     "baseline_red": true
+  },
+  {
+    "instrument": "i18n sweep",
+    "check": "npx jest src/screens/__tests__/screens.render.test.tsx -t \"chats, when there is nothing\"",
+    "plant": "English written straight into a screen, as an expression the eslint JSX-text rule cannot see",
+    "file": "app/chats.tsx",
+    "old": "{t(\"chats.emptyTitle\")}",
+    "new": "{\"No chats yet\"}",
+    "expect": "✕ says so in French",
+    "why": "the French sweep is the only check that reads what a French phone shows"
+  },
+  {
+    "instrument": "journey harness",
+    "check": "npx jest src/screens/__tests__/journeys.test.tsx",
+    "plant": "the suggestions read the calendar key as an array again",
+    "file": "src/hooks/useStarterPrompts.ts",
+    "old": "queryFn: () => calendarApi.upcomingPage(7),",
+    "new": "queryFn: () => calendarApi.upcoming(7),",
+    "expect": "✕ calendar, then back to the assistant",
+    "why": "df9b1f2, the bug that lived between two screens"
+  },
+  {
+    "instrument": "vocabulary pairs",
+    "check": "python3 qa/vocabulary.py",
+    "env": {
+      "MULTI_MAGIC_DIR": "{ROOT}/../multi_magic"
+    },
+    "plant": "the app forgets a key_problem code the server sends",
+    "file": "src/api/ai.ts",
+    "old": "  \"missing_key\",\n",
+    "new": "",
+    "expect": "MISMATCH  key_problem codes",
+    "why": "an EXHAUSTIVE pair: every server value must be named by the app"
+  },
+  {
+    "instrument": "contract fixtures",
+    "check": "npx jest src/api/__tests__/contract.test.ts",
+    "plant": "the parser demands a role, which a person's message never has",
+    "file": "src/api/ai.ts",
+    "old": "  const role = optStr(record.role) ?? \"user\";",
+    "new": "  const role = str(record.role, \"message.role\");",
+    "expect": "✕ the people chats, page 1",
+    "why": "the fixtures carry the server's real role: null, which a hand-written fixture would not"
+  },
+  {
+    "instrument": "flow lint",
+    "check": "python3 qa/flow_lint.py",
+    "plant": "a flow asserts a testID that no longer exists",
+    "file": "qa/flows/20-refresh.yaml",
+    "old": "- assertVisible:\n    id: \"notifications-updated\"\n- takeScreenshot: reports/99-notifications-before-refresh",
+    "new": "- assertVisible:\n    id: \"notifications-updated-gone\"\n- takeScreenshot: reports/99-notifications-before-refresh",
+    "expect": "TESTID",
+    "why": "a selector that resolves to nothing fails on the device, an hour later"
+  },
+  {
+    "instrument": "release guard",
+    "check": "node scripts/release_guard.js qa/plants/fixtures/release-ok.json",
+    "plant": "a release tree without expo-asset",
+    "file": "qa/plants/fixtures/release-ok.json",
+    "old": "    \"expo-asset\": \"~57.0.18\",\n",
+    "new": "",
+    "expect": "expo-asset is not a dependency",
+    "why": "finding 4 of RELEASE_WALK: expo-audio may crash outside Expo Go without it"
+  },
+  {
+    "instrument": "western run",
+    "check": "npm run -s test:west",
+    "plant": "the day divider compares UTC days, not local ones",
+    "file": "src/screens/people/DayDivider.tsx",
+    "old": "    a.getDate() === b.getDate();",
+    "new": "    a.getUTCDate() === b.getUTCDate();",
+    "expect": "✕",
+    "why": "a zone bug the Paris-pinned run may not see; the reason it exists"
   }
 ]

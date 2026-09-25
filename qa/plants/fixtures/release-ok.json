@@ -1,0 +1,9 @@
+{
+  "name": "release-guard-fixture",
+  "private": true,
+  "dependencies": {
+    "expo": "~57.0.25",
+    "expo-asset": "~57.0.18",
+    "expo-audio": "~57.0.5"
+  }
+}

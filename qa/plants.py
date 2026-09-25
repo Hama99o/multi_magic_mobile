@@ -122,7 +122,11 @@ def main():
     unmeasured = 0
     for p in plants:
         name, expect = p["instrument"], re.compile(p["expect"])
-        rc0, base = sh(p["check"], WT, env)
+        # A check that reads a SIBLING checkout (vocabulary.py reads
+        # ../multi_magic) cannot find it from a worktree in /tmp: `env`
+        # passes paths through, `{ROOT}` meaning the real checkout's root.
+        env_p = dict(env, **{k: v.replace("{ROOT}", ROOT) for k, v in p.get("env", {}).items()})
+        rc0, base = sh(p["check"], WT, env_p)
         # A clean baseline must PASS (unless the plant says its check is red
         # at baseline for another reason). A crash here is the RIG failing,
         # and on 2026-09-25 this runner first reported exactly that as DEAD:
@@ -138,7 +142,7 @@ def main():
             findings += 1
             continue
         if "script" in p:
-            rc, out = sh(p["script"], WT, env)
+            rc, out = sh(p["script"], WT, env_p)
             if rc != 0:
                 print(f"  TARGET GONE  {name}: the plant script failed: {out.strip()[:200]}")
                 findings += 1
@@ -151,7 +155,7 @@ def main():
                 findings += 1
                 continue
             open(path, "w").write(text.replace(p["old"], p["new"], 1))
-        rc1, planted = sh(p["check"], WT, env)
+        rc1, planted = sh(p["check"], WT, env_p)
         # `-e node_modules`: the symlink is untracked, and a plain clean took it.
         sh("git checkout -- . && git clean -fdq -e node_modules", WT)
         if rc1 != 0 and expect.search(planted):
@@ -162,6 +166,7 @@ def main():
             tail = "\n".join(planted.strip().splitlines()[-6:])
             print("               last lines:\n               " + tail.replace("\n", "\n               "))
             findings += 1
+    print(f"proved at HEAD {head}: committed code only. Uncommitted edits in the working copy are NOT proved by this run.")
     if findings:
         return 1
     return 3 if unmeasured else 0

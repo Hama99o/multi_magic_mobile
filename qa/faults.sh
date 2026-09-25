@@ -136,6 +136,15 @@ adb -s "$SERIAL" shell am force-stop "$APP_ID" >/dev/null 2>&1
 # 2026-09-25 two header taps "COMPLETED" and opened nothing.
 adb -s "$SERIAL" shell am start -a android.intent.action.VIEW -d "$DEEP_LINK" "$APP_ID" >/dev/null 2>&1
 in_child sleep 30
+# NAME what is in front, rather than let a missing microphone say it: the
+# rig once ran four times against Expo Go and reported nothing wrong.
+front=$(adb -s "$SERIAL" shell dumpsys window 2>/dev/null | grep -m1 -E 'mCurrentFocus|mFocusedApp' | tr -d '\r')
+case "$front" in
+  # Expo Go FIRST, so pointing APP_ID at it cannot talk this check round.
+  *host.exp.exponent*) not_measured "the app in front is EXPO GO (host.exp.exponent), not the dev build $DEV_BUILD_ID";;
+  *"$APP_ID"*) echo "in front: $APP_ID (the dev build)";;
+  *) not_measured "the app in front is not $APP_ID: ${front:-nothing reported}";;
+esac
 
 export MAESTRO_QA_EMAIL="$QA_EMAIL"
 export MAESTRO_QA_PASSWORD="$QA_PASSWORD"

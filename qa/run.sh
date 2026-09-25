@@ -43,6 +43,15 @@ adb -s "$SERIAL" logcat > "$LOG" 2>/dev/null & LOGPID=$!
 trap 'kill $LOGPID >/dev/null 2>&1 || true' EXIT
 
 echo "Running flows on $SERIAL ($AVD) against $API_URL"
+# Say WHICH APP, in words. Expo Go is a legitimate fallback on a box with no
+# dev build, and it is also how a run answers a question nobody asked: header
+# taps complete and navigate nowhere, and the tell is a missing mic
+# (2026-09-25, qa/faults.sh). So it is never silent.
+if [ "$APP_ID" = "host.exp.exponent" ]; then
+  echo "  DRIVING EXPO GO (host.exp.exponent), NOT the dev build. USE_DEV_BUILD=1 drives our own app."
+else
+  echo "  driving the dev build: $APP_ID"
+fi
 set +e
 # ── THE PASSWORD DOES NOT GO ON THE COMMAND LINE ───────────────────────────
 # `-e PASSWORD=...` puts the QA account's password in the process table, where

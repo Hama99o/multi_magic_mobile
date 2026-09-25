@@ -1,0 +1,61 @@
+[
+  {
+    "instrument": "accessibility walk",
+    "check": "npx jest src/__tests__/a11y.test.tsx -t \"nameless Pressable\"",
+    "plant": "the header icon loses its name",
+    "file": "app/chat.tsx",
+    "old": "      accessibilityLabel={badge > 0 ? t(\"chat.unreadBadge\", { label, count: badge }) : label}\n",
+    "new": "",
+    "expect": "app/chat\\.tsx",
+    "why": "every header button is a HeaderIcon; a nameless one is the defect the walk exists for"
+  },
+  {
+    "instrument": "accessibility walk (plain control)",
+    "check": "npx jest src/__tests__/a11y.test.tsx -t \"nameless Pressable\"",
+    "plant": "the profile button loses its name",
+    "file": "app/chat.tsx",
+    "old": "              accessibilityLabel={t(\"profileMenu.openLabel\")}\n",
+    "new": "",
+    "expect": "app/chat\\.tsx:\\d+ <Pressable>",
+    "why": "a control with no text child and no label: the case the walk was built for"
+  },
+  {
+    "instrument": "states check",
+    "check": "npx jest src/screens/__tests__/cannotAsk.test.tsx -t \"assistant\"",
+    "plant": "the assistant ignores a failed session lookup",
+    "file": "app/chat.tsx",
+    "old": "const sessionUnknown = conversationId == null && sessionError != null;",
+    "new": "const sessionUnknown = false && sessionError != null;",
+    "expect": "✕ says why when it could not ask",
+    "why": "fe6717d: opened offline with no chat remembered, the skeleton ran for ever"
+  },
+  {
+    "instrument": "key-and-shape gate",
+    "check": "npx jest src/__tests__/queryKeys.test.ts",
+    "plant": "the suggestions read the calendar key as an array again",
+    "file": "src/hooks/useStarterPrompts.ts",
+    "old": "queryFn: () => calendarApi.upcomingPage(7),",
+    "new": "queryFn: () => calendarApi.upcoming(7),",
+    "expect": "useStarterPrompts\\.ts:\\d+ useQuery: ",
+    "why": "df9b1f2: calendar then back crashed the assistant"
+  },
+  {
+    "instrument": "render budgets",
+    "check": "npx jest src/screens/__tests__/renders.test.tsx",
+    "plant": "an inline function prop on MessageRow",
+    "file": "app/chat.tsx",
+    "old": "onOpenSource={openLink}",
+    "new": "onOpenSource={(link) => openLink(link)}",
+    "expect": "✕ a reply arriving renders only the new row",
+    "why": "the classic regression: every row re-renders when one message arrives"
+  },
+  {
+    "instrument": "store check",
+    "check": "python3 qa/store_check.py",
+    "plant": "a design-size screenshot among the listing shots",
+    "script": "python3 -c \"from PIL import Image; Image.new('RGB', (1080, 2400), 'white').save('docs/store/play-phone/zz-plant.png')\"",
+    "expect": "zz-plant\\.png: 1080x2400, ratio 2\\.22",
+    "why": "every design shot is 1080x2400, and Play refuses a ratio over 2.0 (its check is red at baseline for a true reason: 18 old shots where Play takes 8)",
+    "baseline_red": true
+  }
+]

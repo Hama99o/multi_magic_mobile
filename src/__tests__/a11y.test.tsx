@@ -27,6 +27,11 @@
  *    GROUPS its children into one. RNTL does not emulate that grouping, so a
  *    query here finds nested controls that VoiceOver would never reach. The
  *    two scrim-wrapped sheets are in the audit, not in this file.
+ *  - **It does not see a control whose only text is CONDITIONAL.** Found by
+ *    `qa/plants.py`, 2026-09-25: `rendersOwnText` counts any `<Text>` as a
+ *    name, so a `HeaderIcon` without its label passes on the strength of an
+ *    unread badge that is not drawn when the count is zero. docs/TESTING.md
+ *    §21.
  *  - **It does not mean anything is legible or big enough.** Jest has no layout
  *    engine. Touch targets are measured from the source in the audit and
  *    settled on a device.

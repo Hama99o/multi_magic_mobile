@@ -1563,3 +1563,54 @@ Two instruments now cover the class. Each was planted with the exact bug.
 **The general form: when a bug needs two things to meet, a test that
 isolates them cannot see it however many you write.** Put the meeting in the
 test on purpose.
+
+## 21 · Can the instruments still fail? `python3 qa/plants.py`
+
+Every instrument in this repo was proved able to fail the day it was
+written, and none was re-proved after. A check that could fail this morning
+may not be able to now, and the suite stays green either way. So each proving
+defect is recorded in `qa/plants/plants.json`: the file, the exact text, the
+replacement, the check that owns it, and the REASON it must give when red.
+`qa/plants.py` re-plants them on demand.
+
+**How it runs, and why.** Never in the shared working copy: planting there
+turns a sibling session's `npm test` red on files it does not own. Each run
+is a throwaway `git worktree` of HEAD, removed on exit, Ctrl-C and TERM, and
+each check runs in its own process group, so a signal stops Jest's workers
+too. Proved: a TERM with four of its processes inside the worktree left none
+behind and no worktree. It is not in `npm test` and not in CI. A person runs
+it.
+
+**First run, 2026-09-25, at `38af50f`:**
+
+| Instrument | Plant | Verdict |
+|---|---|---|
+| states check | the assistant ignores a failed session lookup | BITES |
+| key-and-shape gate | the suggestions read the calendar key as an array | BITES |
+| render budgets | an inline function prop on `MessageRow` | BITES |
+| store check | a design-size shot in the listing folder | BITES |
+| accessibility walk | a plain control (the profile button) loses its name | BITES |
+| accessibility walk | a `HeaderIcon` loses its name | **DEAD: a blind spot it always had** |
+
+**The finding.** `rendersOwnText` counts any `<Text>` in a control's JSX as
+its name, including one that renders only conditionally. `HeaderIcon`'s
+`<Text>` is its unread badge, drawn only when the count is above zero. So a
+header button with no unread items and no label would be NAMELESS to
+TalkBack, and the walk calls it named. This was not a check that stopped
+being able to fail. It never could, for this shape, and nothing had asked.
+Reported and not fixed on this pass. Until the walk is taught about
+conditional text, this plant keeps the run red, which is the honest state.
+
+**And the prover failed three ways before it was right**, each the family's
+own shape:
+- a `git clean` in the worktree took the untracked `node_modules` symlink,
+  and every later Jest run died, **reported as DEAD**. A crashed baseline is
+  now NOT MEASURED;
+- a Jest reason written as a test NAME matched a clean tree, because a
+  passing test prints its name too. Reasons are `✕ <test>` now;
+- a plant with `as never` printed `useQuery: never`, where the pattern
+  wanted `Occurrence[]`.
+
+The verdicts, each seen on a real run: BITES, DEAD, TARGET GONE (the planted
+text is gone from the file), BASELINE (the reason shows on a clean tree),
+NOT MEASURED (the check fails on a clean tree).

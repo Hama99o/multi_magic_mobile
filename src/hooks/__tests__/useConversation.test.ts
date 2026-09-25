@@ -613,3 +613,29 @@ describe("a conversation deleted on another device", () => {
     expect(result.current.status).toBe("ready");
   });
 });
+
+
+// The two cases where TEXT order and TIME order disagree; any other pair
+// passes a text comparison by accident, which is what this test's first
+// version did (planted, it stayed green).
+it("keeps a newer edit against an older one whose text sorts later", async () => {
+  latest.mockResolvedValue({ messages: [{ ...message(2, "user", "current"), editedAt: "2026-09-24T21:30:00Z" }], hasMore: false });
+  const { result } = render();
+  await waitFor(() => expect(result.current.messages).toHaveLength(1));
+  // 22:00 at +02:00 is 20:00 UTC: OLDER than 21:30 UTC, though "22:00" > "21:30".
+  await act(async () => {
+    listener().onData({ message: { ...rawMessage(2, "user", "stale"), edited_at: "2026-09-24T22:00:00+02:00" } });
+  });
+  expect(result.current.messages[0]).toMatchObject({ body: "current" });
+});
+
+it("takes a newer edit whose text sorts earlier", async () => {
+  latest.mockResolvedValue({ messages: [{ ...message(2, "user", "older"), editedAt: "2026-09-24T23:00:00+02:00" }], hasMore: false });
+  const { result } = render();
+  await waitFor(() => expect(result.current.messages).toHaveLength(1));
+  // 21:30 UTC is LATER than 23:00 at +02:00 (21:00 UTC), though "21:30" < "23:00".
+  await act(async () => {
+    listener().onData({ message: { ...rawMessage(2, "user", "newer"), edited_at: "2026-09-24T21:30:00Z" } });
+  });
+  expect(result.current.messages[0]).toMatchObject({ body: "newer" });
+});

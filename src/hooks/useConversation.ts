@@ -150,7 +150,10 @@ interface SocketPayload {
 function notOlder(had: ChatMessage, incoming: ChatMessage): ChatMessage {
   let next = incoming;
   if (had.deleted && !incoming.deleted) next = { ...next, deleted: true, body: had.body };
-  if (had.editedAt && (!incoming.editedAt || incoming.editedAt < had.editedAt)) {
+  // Compared as TIMES, not as text: two ISO strings for one instant can differ
+  // in offset ("…22:00:00Z" and "…00:00:00+02:00"), and a text comparison
+  // would call the later edit the older one (self-review, 2026-09-25).
+  if (had.editedAt && (!incoming.editedAt || Date.parse(incoming.editedAt) < Date.parse(had.editedAt))) {
     next = { ...next, body: had.body, editedAt: had.editedAt };
   }
   if (had.undoneAt && !incoming.undoneAt) next = { ...next, undoneAt: had.undoneAt, undoable: had.undoable };

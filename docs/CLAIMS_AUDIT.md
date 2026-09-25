@@ -239,6 +239,60 @@ conditional re-read while waiting would save about 2 KB a poll. If data
 ever matters, the one lever worth weighing is the server's ping interval,
 and that is a server decision.
 
+## Self-review of the night's work, read cold (2026-09-25)
+
+About forty commits, many after midnight, reviewed as if someone else had
+written them.
+
+**Settled in the review:**
+- The morning brief switch trusts its save's answer, and would vanish if
+  that answer lacked the field. Checked: `PATCH users/:id` renders the
+  `:private` view, which carries `ai_morning_brief`. Safe.
+- `notOlder` compared edit times as TEXT, which is right only while both
+  copies share one offset. Now `Date.parse`. **Its first test was green for
+  the wrong reason**: both of its cases sorted the same way as text and as
+  time. Planted, it stayed green; rewritten with the two cases where they
+  disagree, it goes red. That is §19's shape, in the review itself.
+- The reconnect gap fill uses ids that are global across conversations,
+  so "the page reaches what is on screen" cannot be read from ids alone.
+  Checked: it only fetches back when the newest page holds nothing already
+  known, which means more than 25 arrived, and it stops at the first page
+  that does. At worst one extra request per reconnect. Correct.
+
+**Solid, and I would defend them as they are:** the sign-out cache clear on
+both ends of a session; the per-user drafts with the in-memory tag; the
+socket's stale-snapshot guard; `readable`/`readableRows` and the notice;
+the renderer's flanking and parentheses rules and their property test; the
+paging of chats and notifications; the preflight step 8/9 functions and
+their shell tests; `Accept-Language`.
+
+**Where I would want a second opinion, most uncertain first:**
+1. **`KeyboardPadding` replaced RN's KAV on EVERY Android screen with a
+   field** (`9b56a2e`). The arithmetic is KAV's, and the tests prove the
+   spacer arrives where it should, but it runs on the JS thread and nobody
+   has watched it on a device. It touches sign-in and every form, not just
+   the chat. The dialogs (rename, instructions, feedback) still use KAV, so
+   Android now has two lift behaviours. If run 9 shows anything wrong,
+   reverting this one commit restores the old behaviour everywhere.
+2. **Pinning every test to Europe/Paris** (`jest.config.js`) made CI see a
+   zone bug that only shows east of UTC, and **it moved the blind spot, not
+   removed it**: a bug that only shows in UTC, or west of it, is now
+   invisible to every run. A second zone would close it, but that means
+   running the date suites twice.
+3. **Drafts written before `df9b1f2`** sit under the old key
+   (`mm-draft:<id>`) and are not migrated: one half-written question from
+   before this build will not come back, and the orphan stays on disk.
+   Small, and migrating would assign an unscoped draft to whoever is signed
+   in, which is the leak the change exists to prevent. Left as it is on
+   purpose.
+4. **The paged lists re-read EVERY loaded page on each live event.** Right
+   for correctness, and cheap at one or two pages. After a long scroll back
+   it is N requests per message.
+
+**Still INFERRED, not settleable at the desk:** the opening's size and
+timing, the keyboard lift's feel, drag-to-dismiss against the lift, the
+socket's TCP overhead, and every "fits at 360 dp" estimate.
+
 ## What I would do next, in order
 
 1. **Run 9 on a device, the moment the disk frees.** More changed today than

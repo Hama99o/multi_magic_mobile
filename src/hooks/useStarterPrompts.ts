@@ -140,9 +140,15 @@ export function useStarterPrompts(conversationId: number | null): {
     enabled: conversationId != null,
   });
 
-  const { data: events, isLoading: eventsLoading } = useQuery({
+  // THE SAME KEY AS THE CALENDAR SCREEN, SO THE SAME SHAPE: the page. A key
+  // is a promise about what is stored under it, and df9b1f2 broke that one
+  // by making the screen store a page while this read an array: open the
+  // calendar, go back, and the assistant crashed on `.flatMap`
+  // (cannotAsk.test.tsx, "one cache, two screens"). Reading the page here
+  // also means the two share one request.
+  const { data: eventsPage, isLoading: eventsLoading } = useQuery({
     queryKey: ["calendar", "upcoming", 7],
-    queryFn: () => calendarApi.upcoming(7),
+    queryFn: () => calendarApi.upcomingPage(7),
     // A failure here means no calendar suggestion, never a broken empty state.
     retry: false,
   });
@@ -171,11 +177,11 @@ export function useStarterPrompts(conversationId: number | null): {
         // An UNTITLED event is skipped: a suggestion must come from his data,
         // and until 2026-09-24 this one would have asked about "Untitled",
         // a word the parser substituted, not anything he wrote.
-        (events ?? []).flatMap((o) => (o.event.title ? [{ title: o.event.title }] : [])),
+        (eventsPage?.occurrences ?? []).flatMap((o) => (o.event.title ? [{ title: o.event.title }] : [])),
         summary?.stocked ?? [],
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the language is read through `t`
-    [files, events, summary, instance.language],
+    [files, eventsPage, summary, instance.language],
   );
 
   return {

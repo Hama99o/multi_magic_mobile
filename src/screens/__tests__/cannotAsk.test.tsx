@@ -262,3 +262,40 @@ describe.each(REFRESHES)("$name, when a refresh fails after a real answer", ({ e
     expect(screen.queryByTestId("calendar-nothing-today")).toBeNull();
   });
 });
+
+/**
+ * ONE CACHE, TWO SCREENS (2026-09-25). df9b1f2 made the calendar screen store
+ * a PAGE (`{ occurrences, unreadable }`) under `["calendar","upcoming",7]`,
+ * the key the assistant's starter prompts read as a bare ARRAY. Every test
+ * gave each screen its own client, so nothing here could see it. On a
+ * device, opening the calendar and going back crashed the assistant:
+ * "(events ?? []).flatMap is not a function". So the two screens share one
+ * client here, in the order a person uses them.
+ */
+it("the assistant survives the calendar having filled the shared cache", async () => {
+  const on = todayIso();
+  serveEmpty(mock, [
+    [
+      /\/calendar_app\/events\/upcoming/,
+      {
+        occurrences: [
+          {
+            id: `7:${on}`, on, starts_at: `${on}T09:00:00Z`, ends_at: `${on}T09:30:00Z`, all_day: false,
+            event: { id: 7, title: "Dentist", description: null, location: null, kind: "appointment", all_day: false, recurrence: null, color: null },
+          },
+        ],
+      },
+    ],
+  ]);
+  const client = testQueryClient({ queries: { gcTime: 60_000 } });
+  const calendar = renderScreen(<Calendar />, client);
+  await screen.findByText("Dentist");
+  calendar.unmount();
+
+  renderScreen(<Assistant />, client);
+  // The empty conversation builds its suggestions from the calendar: the
+  // event is offered as a question, and nothing throws on the way.
+  await screen.findByTestId("chat-empty", {}, { timeout: 3000 });
+  expect(screen.queryByText(/Dentist/)).not.toBeNull();
+  client.clear();
+});

@@ -1,5 +1,13 @@
 # Merging `sdk-57` into `main` — a plan, not a merge (2026-09-25)
 
+> **Never merge in `../mm-sdk57`, and never move the `sdk-57` branch while it
+> is checked out there, or that working copy silently stops matching its
+> HEAD.** That working copy is the one his phone builds from, and it holds
+> his uncommitted `app.json` edit, whose only backup is gone.
+>
+> **And a plain merge decides his Android package name** (see "What is his",
+> item 1). It has no undo after the first Play upload.
+
 Nothing here has been merged. Every number was measured today, most of them
 by a **dry run**: `main` merged into `sdk-57` in a throwaway detached
 worktree, with `sdk-57`'s own `node_modules`. That worktree was removed
@@ -67,13 +75,11 @@ decides something for him.
    upload**, and the rig's installed dev build is `co.byseven.multimagic`.
    Whichever he picks, the merge commit must carry that value on purpose,
    not by accident.
-2. **Expo Go scanning.** `../mm-sdk57` holds his uncommitted `app.json` edit
-   (owner and projectId removed so Expo Go can scan it,
-   `OWNER_REMOVED_FOR_PHONE.md`), and its `/tmp` backup is gone. The
-   committed file is intact. **Do not merge in that worktree, and do not
-   move the `sdk-57` branch while it is checked out there:** the working
-   copy would silently stop matching its HEAD. If he no longer needs
-   scanning: `git checkout -- app.json` there, then retire the worktree.
+2. **Expo Go scanning** (the caution at the top). `../mm-sdk57` holds his
+   uncommitted `app.json` edit (owner and projectId removed so Expo Go can
+   scan it, `OWNER_REMOVED_FOR_PHONE.md`), and its `/tmp` backup is gone.
+   The committed file is intact. If he no longer needs scanning:
+   `git checkout -- app.json` there, then retire the worktree.
 3. **The Pashto change.** `main`'s worktree has another session's
    uncommitted edit to `src/hooks/useSpeechToText.ts`, and `sdk-57` changed
    that file too. A merge in `main`'s worktree refuses until that edit is
@@ -97,9 +103,30 @@ decides something for him.
    on `main` (SDK 57 and `expo-asset`), and `./scripts/eas-build.sh`
    builds from `main`. The runbooks' "build from `sdk-57`" lines become
    stale on that commit, so correct them in it.
-6. **Rebuild the dev build** (about 8 GB; 16 GB free at 97% today), then QA
-   run 9, which needs the rebuild anyway. `docs/DEPLOY_RUNBOOK.md` §3a
-   keeps the SDK 54 APK at `~/qa-apk-keep/` as the way back.
+6. **Rebuild the dev build, only in this order**, then QA run 9, which needs
+   the rebuild anyway. The disk, measured 2026-09-25: **14 GB free at 97%**.
+   Hamma9901's raise line is 8 GB, and five sessions share the box.
+   - What the rebuild costs, both parts persistent until deleted and both
+     safe to delete afterwards:
+     - the Gradle cache, **5.3 GB** on 2026-09-21. There is none on the box
+       now (no `~/.gradle`, no `modules-2` anywhere under home), so it is
+       all downloaded again;
+     - `android/`, **3.0 GB** now, 2.6 GB of it `android/app/build`.
+   - No Android SDK download: NDK `27.1.12297006`, platform 36 and
+     build-tools 36.0.0, which SDK 57's React Native asks for, are
+     installed.
+   - The order that never goes under 8 GB:
+     1. delete the SDK 54 `android/` first (−3.0 GB used; the known-good
+        APK is at `~/qa-apk-keep/`), about 17 GB free;
+     2. build, **about 8.7 GB free at the peak**. That figure is INFERRED
+        from SDK 54's sizes, and SDK 57's may differ, so measure while
+        building and stop under 8;
+     3. install, then delete `~/.gradle` and `android/app/build` (keep the
+        APK), back to about 16.5 GB.
+   - The alternative with no local disk: build the development profile on
+     EAS, which spends HIS account and build quota, so it is his call.
+   - `docs/DEPLOY_RUNBOOK.md` §3a keeps the SDK 54 APK at `~/qa-apk-keep/`
+     as the way back.
 
 ## Why the plan and not the merge
 

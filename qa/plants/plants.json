@@ -141,5 +141,38 @@
     "new": "  if ((record as Record<string, unknown>).interrupted) str(undefined, \"message.interrupted is not a string\");\n  const role = optStr(record.role) ?? \"user\";",
     "expect": "✕ still parses, every row read",
     "why": "a reply the parser refuses is dropped silently: the one failure here that would be total"
+  },
+  {
+    "check": "python3 qa/board_check.py",
+    "file": "docs/design/README.md",
+    "baseline_red": true,
+    "instrument": "board check (under-claim, row 9's shape)",
+    "plant": "a built component marked SPECIFIED",
+    "old": "**`IN PROGRESS`** → [`chat/`](chat/SPEC.md): **built** (`SourceChips.tsx`",
+    "new": "**`SPECIFIED`** → [`chat/`](chat/SPEC.md): **built** (`SourceChips.tsx`",
+    "expect": "UNDER  row 9 ",
+    "why": "row 9 on 2026-09-25: SPECIFIED while SourceChips and SourceSheet were built and wired (its check is red at baseline for a true reason: row 17)"
+  },
+  {
+    "check": "python3 qa/board_check.py",
+    "file": "docs/design/README.md",
+    "baseline_red": true,
+    "instrument": "board check (behaviour claim)",
+    "plant": "a row claims the deletion gate is closed",
+    "old": "`ACCOUNT_DELETION_AVAILABLE = true`",
+    "new": "`ACCOUNT_DELETION_AVAILABLE = false`",
+    "expect": "CLAIM  row 14 ",
+    "why": "karwan-42's lesson: the lie is the words beside a real path"
+  },
+  {
+    "check": "python3 qa/board_check.py",
+    "file": "docs/design/README.md",
+    "baseline_red": true,
+    "instrument": "board check (path)",
+    "plant": "a row cites a line past the end of its file",
+    "old": "`MessageRow.tsx:121-122`",
+    "new": "`MessageRow.tsx:9121-9122`",
+    "expect": "PATH   row 9 ",
+    "why": "a line reference is a claim too"
   }
 ]

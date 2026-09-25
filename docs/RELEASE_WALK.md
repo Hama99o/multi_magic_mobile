@@ -144,3 +144,50 @@ These were not done on this pass, by instruction:
 - the runbooks' stale lines: the "21/21", "eighteen flows",
   "`submit.production` is `{}`", "e0 owns", the splash row, and §1's
   on-device claim.
+
+---
+
+## Second pass, 2026-09-25: what was fixed, and how
+
+Authorised by Hamma9901, with one hard constraint: **never `git checkout --
+app.json` in `mm-sdk57`**, since it carries his phone's owner/projectId
+removal and its backup is gone.
+
+- **Finding 1, the probe:** removed by Hamma9901, whose probe it was.
+  The owner/projectId removal is **untouched and still uncommitted**, as
+  required.
+- **Finding 2, fixed on `sdk-57` in `79000c0`, committed FROM THE INDEX.** The
+  three `splash` blocks, `RECORD_AUDIO` once, and the `{}` fallbacks were
+  applied to HEAD's `app.json` and written into the index with
+  `git update-index`, so the commit carries only those edits. The same edits
+  were applied to the working copy, which still differs from the commit by
+  exactly the owner and projectId lines (`git diff app.json` checked before
+  and after). `expo-doctor` 19/21 → 20/21; the one left is four patch
+  bumps, not taken, because changing dependencies on the release branch
+  was not in the brief. `npm run bundle` exit 0.
+- **Finding 3:** the §1 claim is struck and corrected in
+  `APP_STORE_CONNECT.md`, and the App Privacy "Audio" row is marked for him
+  to re-read. His to resolve, not ours.
+- **Finding 4:** `expo-asset` was NOT added to `main`, deliberately. An EAS
+  build from `main` now refuses by name in `eas-build-pre-install`
+  (`scripts/release_guard.js`): exit 1 on `main` naming SDK 54 and the
+  missing package, exit 0 on `sdk-57`'s `package.json`. **Unverified:** that
+  EAS fails the build on that exit (Expo's page says when the hook runs, not
+  what a failure does).
+- **`main`'s `app.json`:** `RECORD_AUDIO` once and the `{}` fallbacks
+  removed. The splash stays, because on SDK 54 it IS the splash. This makes
+  the rig's preflight ask for a rebuild (`app.json` is native config), which
+  run 9 needed anyway.
+- **Stale lines corrected in place, dated, the old claim struck:**
+  - DEPLOY_RUNBOOK: A, B, step 1 (mic and iPad), 3a (disk), step 4 (the
+    "21/21" proof and what is done), step 6 ("eighteen"), step 7 (e0, and
+    `submit.production`, plus the Android keystore);
+  - RELEASE.md: the Android-only "never run", the splash row, the extra and
+    RECORD_AUDIO rows, and the guard;
+  - STORE_READINESS §5 and §8, where §8 "never bit".
+
+**Still his, named:** Expo Go scanning (whether `mm-sdk57`'s `app.json` can
+go back to its committed state), the Android package name, the Android
+signing key (`credentialsSource: "local"` has nothing to sign Android with),
+exporting `ASC_KEY_ID` / `ASC_ISSUER_ID`, the backend deploy, read-aloud's
+voice, SafeZone and App Privacy.

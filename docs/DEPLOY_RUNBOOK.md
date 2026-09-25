@@ -3,6 +3,11 @@
 One page. Follow it top to bottom without reading anything else; every step
 says **who**, **what proves it worked**, and **when to stop**.
 
+> **Walked against the tree on 2026-09-25** (`docs/RELEASE_WALK.md`). Lines that
+> had gone stale are corrected in place, dated, with the old claim struck where
+> someone may have read it. Build releases from `sdk-57`: an EAS build from
+> `main` now refuses (`scripts/release_guard.js`).
+
 Nothing here is a rewrite of somebody else's document. Where the detail lives
 elsewhere it is linked, and where the work is not finished it says so rather
 than guessing.
@@ -16,8 +21,8 @@ missing**, and each has a lead time longer than the rest of this page.
 
 | | What | Why it blocks | Lead time |
 |---|---|---|---|
-| **A** | **Sign in to Apple** at a terminal, for the bundle id and provisioning. `docs/RELEASE.md` §"iOS, first time on a new bundle id" has the exact commands. | No iOS build of any kind without it — not TestFlight, not a dev build on his own phone. | Minutes, but it must be **him**; nobody else has the account. |
-| **B** | **Approve the privacy text.** `docs/PRIVACY.draft.md`, then update the document's title line. | `app/privacy.tsx` renders *"Draft — not yet approved"* until that line changes, and the screen is two taps from anywhere. Both stores have reviewers who open it. `docs/STORE_READINESS.md` §3. | Reading time. It is a legal statement about his users' data, not a formality. |
+| **A** | ~~**Sign in to Apple** at a terminal~~ **2026-09-25: superseded for BUILDS** by the App Store Connect API key (`docs/APP_STORE_CONNECT.md` §0, §2); a production build ran non-interactively on 2026-09-21. Still his for §3 of that file. Originally: sign in to Apple at a terminal, for the bundle id and provisioning. `docs/RELEASE.md` §"iOS, first time on a new bundle id" has the exact commands. | No iOS build of any kind without it — not TestFlight, not a dev build on his own phone. | Minutes, but it must be **him**; nobody else has the account. |
+| **B** | **DONE 2026-09-21** (`362279c`, `PRIVACY_IS_DRAFT = false`). **Approve the privacy text.** `docs/PRIVACY.draft.md`, then update the document's title line. | `app/privacy.tsx` renders *"Draft — not yet approved"* until that line changes, and the screen is two taps from anywhere. Both stores have reviewers who open it. `docs/STORE_READINESS.md` §3. | Reading time. It is a legal statement about his users' data, not a formality. |
 | **C** | **Deploy the backend.** His server, his credentials. | Everything from step 2 down is against a host that must already be answering. | Whatever his deploy takes. |
 
 **If any of the three is not done, stop here.** The rest of the run produces
@@ -30,12 +35,15 @@ artefacts that expire or get rebuilt.
 They are in `docs/STORE_READINESS.md` with costs, and **none of them has a
 right answer somebody else can pick**:
 
-- **The microphone sentence** (§4). The app tells a user speech becomes text
+- **DONE 2026-09-24, by rewording:** `app.json`'s speech string now says Apple
+  may process the audio. On-device recognition is **not** enforced in code
+  (0 matches for `requiresOnDeviceRecognition: true` on either branch).
+  Originally: **The microphone sentence** (§4). The app tells a user speech becomes text
   *"on this device"*, and the code does not request on-device recognition, so
   on iOS the audio may go to Apple. Make the sentence true — worse recognition,
   older hardware falls back — or change the sentence. **This one should be
   decided even if shipping slips.**
-- **iPad** (§1). `requireFullScreen: true` keeps portrait and is honest about
+- **DONE:** `requireFullScreen: true` is in `app.json`. Originally: **iPad** (§1). `requireFullScreen: true` keeps portrait and is honest about
   what has been tested; `supportsTablet: false` ships phone-only.
 - **Read-aloud's voice.** It is live and defaults to the server's voice with
   the phone's as a fallback that says so. He has not chosen the voice; it is
@@ -150,7 +158,7 @@ is what preceded the reboot.
 
 ### Disk is the constraint that will actually bite
 
-**24 GB free at 95%.** The `android/` tree is 3.0 GB and `~/.gradle` is 5.3 GB
+**24 GB free at 95%** (2026-09-21; **16 GB free at 97% on 2026-09-25**, re-measure before starting). The `android/` tree is 3.0 GB and `~/.gradle` is 5.3 GB
 — 8.3 GB already spent on the SDK 54 build, and `QA_HANDBOOK.md` records ~8 GB
 for a build. An SDK bump invalidates much of that cache rather than reusing it,
 so budget a second 8 GB, not a delta.
@@ -244,7 +252,14 @@ step 1), `NSAllowsLocalNetworking` scoped to the development profile only,
 removed so a missing variable fails loudly instead of handing
 `"[object Object]"` to a URL.
 
-**Proof:** `npx expo-doctor` at 21/21, and `npm run bundle` exit 0.
+**Proof:** `npx expo-doctor` with **no failing check**, and `npm run bundle` exit 0.
+~~at 21/21~~: the count depends on the SDK (18 checks on SDK 54, 21 on SDK 57),
+so read the failures, not a number (2026-09-25).
+
+**Done 2026-09-25:** `RECORD_AUDIO` declared once and the `{}` fallbacks removed
+on both branches (`sdk-57` `79000c0`). The fallbacks were never live, because
+`fromExtra` only accepts a non-empty string. The three `splash` blocks SDK 57's
+schema rejects were removed on `sdk-57`. **Still open:** `NSAllowsLocalNetworking`.
 
 ---
 
@@ -260,7 +275,9 @@ minors, six new config plugins, the new architecture now unconditional, and
 
 ## 6 · Re-run the flows against the new binary — e0
 
-All eighteen in `qa/flows/`, plus `99-screens`. `qa/FLOW_REGISTER.md` is the
+~~All eighteen~~ **Every flow in `qa/flows/`**: 24 files and 2 helpers on
+2026-09-25, through `qa/run.sh`, which excludes the `faults` and `drive` tags.
+Those two have their own runners, `qa/faults.sh` and `qa/gfxinfo.sh`. Plus `99-screens`. `qa/FLOW_REGISTER.md` is the
 record and `qa/QA_HANDBOOK.md` the method.
 
 Two that matter more than the rest after this particular rebuild:
@@ -280,12 +297,17 @@ before is a regression, not flakiness.
 ## 7 · The store half — e0, then Hamma9900
 
 Icons, listing screenshots, the data-safety and privacy declarations in both
-consoles. **e0 owns the device half of this and it is not written up here**
-— when it is, this step should point at it rather than describe it.
+consoles. ~~e0 owns the device half~~ **2026-09-25:** e0 is closed; the device
+half is in `docs/store/README.md` (a pre-upload gate, `qa/store_check.py`; the
+Play icon; the 18 old shots marked DO NOT UPLOAD; invented demo data awaiting
+his approval of the words, `docs/store/DEMO_CONTENT.md`).
 
-`eas.json`'s `submit.production` is `{}`: no App Store Connect or Play
-credentials are wired yet. That is the next thing after prerequisite **A**,
-and it is his account.
+~~`eas.json`'s `submit.production` is `{}`~~ **2026-09-25:** iOS submission is
+wired (`ascAppId`, `appleTeamId`); **Android is not**. And production uses
+`credentialsSource: "local"`, the iOS path, so an **Android production build
+has no keystore to sign with**. Whether EAS generates one is his decision, on
+his account. `ASC_KEY_ID` and `ASC_ISSUER_ID` must also be exported for
+`scripts/asc.py`; they were not on 2026-09-25.
 
 ---
 

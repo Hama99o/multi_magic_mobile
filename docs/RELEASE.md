@@ -79,7 +79,9 @@ that cannot be read from here says so.
 
 **The only Android artefact anybody here has ever produced is the debug dev
 build the rig installs.** Neither the `preview` nor the `production` profile
-has ever run.
+has ever run **for Android**. *(2026-09-25: iOS production HAS run: a
+non-interactive build on 2026-09-21, then build 3 submitted;
+`APP_STORE_CONNECT.md` §2.)*
 
 ### What is already in place
 
@@ -127,13 +129,19 @@ one.** Nobody here can create that on his behalf, and nobody should.
 | Release keystore | does not exist; only a debug key | **his** — EAS generates on first build, under his account |
 | Expo account session | not present in this environment | **his** |
 | Package-name decision | two names disagree, permanent after publish. **By branch, checked 2026-09-24:** `main` and the merge base say `co.byseven.multimagic`; `sdk-57` says `com.multimagics.mobile`, and the `e085289` merge kept `sdk-57`'s. Nobody has picked; the merge did not decide it | **his**, before the first build |
-| Splash in a BUILD | the light splash with a `dark` variant (`97b0c5c`) is in `main`'s top-level `splash`, `ios.splash` and `android.splash`, which is what **Expo Go** reads. A **build** reads the `expo-splash-screen` **plugin** entry, and that entry exists only on `sdk-57`, where it was `#102125`, dark, unconditional: a build would bring back the unreadable dark-on-dark launch screen. Hamma9901 gave it the same light + `dark` config on 2026-09-24, **UNCOMMITTED** beside the owner removal (`OWNER_REMOVED_FOR_PHONE.md` forbids committing `app.json` there). **Before any build from `sdk-57`: commit that plugin block** (light `#F7F9F9`, `dark` `#102125`), or the fix is lost with the working copy | whoever lands `sdk-57` |
+| Splash in a BUILD | **STALE 2026-09-25:** the plugin block IS committed on `sdk-57` (light `#F7F9F9`, dark `#102125`), and the three top-level `splash` keys the merge brought in, which SDK 57's schema rejects, were removed in `79000c0`. Originally: the light splash with a `dark` variant (`97b0c5c`) is in `main`'s top-level `splash`, `ios.splash` and `android.splash`, which is what **Expo Go** reads. A **build** reads the `expo-splash-screen` **plugin** entry, and that entry exists only on `sdk-57`, where it was `#102125`, dark, unconditional: a build would bring back the unreadable dark-on-dark launch screen. Hamma9901 gave it the same light + `dark` config on 2026-09-24, **UNCOMMITTED** beside the owner removal (`OWNER_REMOVED_FOR_PHONE.md` forbids committing `app.json` there). **Before any build from `sdk-57`: commit that plugin block** (light `#F7F9F9`, `dark` `#102125`), or the fix is lost with the working copy | whoever lands `sdk-57` |
 | Plugin entries only `sdk-57` has | `expo-splash-screen`, `expo-audio`, `expo-font`, `expo-image`, `expo-status-bar`, `expo-asset`; kept by the merge, not in `main` | checked at the SDK 57 landing |
 | `edgeToEdgeEnabled` removed | still in `main`'s `app.json`; **already removed on `sdk-57`** | done on the branch |
-| `extra.apiUrl` / `extra.wsUrl` | both `{}` — a missing variable hands `[object Object]` to a URL (`STORE_READINESS` §8) | held for step 4 |
-| `RECORD_AUDIO` declared once | still twice, in two spellings, on **both** `main` and `sdk-57` (`STORE_READINESS` §5) | held for step 4 |
+| `extra.apiUrl` / `extra.wsUrl` | **DONE 2026-09-25**, both branches. They were never live: `fromExtra` accepts only a non-empty string | done |
+| `RECORD_AUDIO` declared once | **DONE 2026-09-25**, both branches (`sdk-57` `79000c0`) | done |
 
 ### Build from `sdk-57`, not from `main`
+
+**Enforced 2026-09-25:** an EAS build from `main` refuses in its
+`eas-build-pre-install` hook (`scripts/release_guard.js`): SDK 54, and no
+`expo-asset`, which `expo-audio` needs outside Expo Go. That the hook's
+non-zero exit fails the build is not stated in Expo's docs and has not been
+seen yet.
 
 `main`'s `app.json` still carries `android.edgeToEdgeEnabled`, which SDK 57
 removed from the schema. The branch has already dropped it. So a release build

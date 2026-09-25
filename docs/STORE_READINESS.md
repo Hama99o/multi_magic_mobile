@@ -17,9 +17,9 @@ below:
 - **§3 FIXED**: approved, and the banner came off in `362279c`
   (`PRIVACY_IS_DRAFT = false`).
 - **§4 FIXED**: the speech string now says Apple may process the audio.
-- **§5 OPEN**: `RECORD_AUDIO` is still declared twice.
+- **§5 FIXED 2026-09-25**: declared once, both branches (`sdk-57` `79000c0`).
 - **§6** still correct; leave it.
-- **§8 OPEN**: `extra.apiUrl` and `extra.wsUrl` are still `{}`.
+- **§8 FIXED 2026-09-25**: keys removed; they were never live (`fromExtra` takes only a string).
 - **§9 MOVED**: iOS submission is now wired (`ascAppId`, `appleTeamId`);
   Android still is not, and the merged manifest still needs a rebuild to
   read.
@@ -171,6 +171,10 @@ where that would surface.
 `src/config/env.ts` reads `EXPO_PUBLIC_API_URL` first and falls back to
 `fromExtra("apiUrl")`. An empty object is **truthy**, so if the env var were
 ever absent the fallback would hand `{}` to a URL rather than failing.
+
+**Corrected 2026-09-25: it never bit.** `fromExtra` (`src/config/env.ts`)
+accepts only a non-empty string, so `{}` already read as absent, and a release
+build refuses as intended. The dead keys were removed on both branches.
 
 It does not bite today: both the preview and production profiles set
 `EXPO_PUBLIC_API_URL`. It bites the first time somebody builds a profile that

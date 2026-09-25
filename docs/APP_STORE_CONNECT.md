@@ -119,9 +119,12 @@ routes reachable without an account are `/login`, `/login/verify`, `/signup`,
   runs full-screen on iPad; only side-by-side multitasking is refused.
   **The iPad layout has still never been seen on an iPad** — this closes the
   reviewer's most likely route into it, not the underlying gap.
-- **On-device speech.** `requiresOnDeviceRecognition: true` at
+- ~~**On-device speech.** `requiresOnDeviceRecognition: true` at
   `useSpeechToText.ts`, so `NSSpeechRecognitionUsageDescription` becomes true
-  rather than being reworded. `STORE_READINESS.md` §4.
+  rather than being reworded.~~ **FALSE, found 2026-09-25:** it is not set on
+  `main` or on `sdk-57` (0 matches). The sentence was reworded instead:
+  `app.json` says Apple may process the audio, which matches the code.
+  `STORE_READINESS.md` §4.
 - **The app icon must be square and opaque.** `assets/icon-1024.png` is the SVG
   rendered *with* its `rx="58"` corners, so 4.49 % is transparent — and
   `@expo/prebuild-config`'s `withIosIcons.js` composites onto `#ffffff`
@@ -139,7 +142,7 @@ Functionality** only.
 | Contact info | Name, Email, **Phone** (`profile.ts` reads/writes `phone_number`) |
 | Financial info | Other financial info — expenses, incomes, loans, budgets |
 | Contacts | yes |
-| User content | messages, photos/videos, other content. **Audio: NO** — dictation is on-device and never reaches the server |
+| User content | messages, photos/videos, other content. **Audio: NO** — ~~dictation is on-device and~~ never reaches the server. **For Hamma9900 to re-read before the next submission (2026-09-25):** the answer may well be right, because MultiMagic's server never receives audio, but its stated reason, on-device dictation, is false (§1). A privacy declaration whose reason is wrong is his to resolve |
 | Identifiers | User ID, Device ID |
 | Health, location, browsing/search history, usage, diagnostics, purchases | none |
 

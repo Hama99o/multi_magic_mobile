@@ -41,7 +41,6 @@
         "backgroundColor": "#102125"
       },
       "permissions": [
-        "RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ],
       "edgeToEdgeEnabled": true,
@@ -73,8 +72,6 @@
       "typedRoutes": true
     },
     "extra": {
-      "apiUrl": {},
-      "wsUrl": {},
       "router": {},
       "eas": {
         "projectId": "6aae9901-e7f6-462f-96c1-da7d5ebe3e88"

@@ -46,6 +46,23 @@ ship, not from taste.
 `RESEARCHING` · `SPECIFIED` · `IN PROGRESS` · `BLOCKED` · `NEEDS HAMMA9900` ·
 `DONE`
 
+What each means ON THIS BOARD, written down 2026-09-25 from how the rows
+already used them, so a status can be checked (`qa/board_check.py`, in
+`npm test`):
+
+- `RESEARCHING`: references being read; nothing decided.
+- `SPECIFIED`: decided, **not built**. The row names what will be built;
+  one that names nothing is a wish (WISH), and one naming a file that
+  already exists is stale (UNDER).
+- `IN PROGRESS`: **built or decided, with one named item outstanding**, and
+  the row states that item. Rows 13 and 14 used it this way before it was
+  written down (13: built, release gate outstanding; 14: gate open, device
+  exercise owed), and so do 0, 9 and 17. It does not mean "someone is
+  typing".
+- `BLOCKED` / `NEEDS HAMMA9900`: waiting on something named.
+- `DONE`: rule 4 above, `ours/` at 360, 411 and
+  800 dp, the flows run, and the SPEC updated (FORM).
+
 ---
 
 ## The board — every screen, 0 → 100
@@ -93,7 +110,7 @@ forty.
 | 14 | **Delete account — everything** | `DELETE /api/v1/users/me` — **landed 2026-09-19** (`multi_magic@56559c4`), with `destroy` so the 57 dependents go with it; the password is re-sent in the body. *(Until then `users_controller.rb:134` was a commented-out attempt using `delete`, which would have orphaned all of them.)* | **`IN PROGRESS`** → [`account/`](account/SPEC.md) | the gate is open (`ACCOUNT_DELETION_AVAILABLE = true`, `f761470`) and the entry point is the sheet's `sessions-account` row; the confirm names what **goes** and what is **kept** (`ai_usage_events` is `:nullify`). To `DONE`: `ours/` at the three widths, and the deletion exercised **against a throwaway user, by hand** — `18-delete-account` asserts both states of the gate and never confirms (`RIG_CONTRACT.md` §3). **It must not look like the conversation delete two rows away**, which is safe by construction |
 | 15 | Error & empty states | every load | **`DONE`** → [`states/`](states/SPEC.md) | offline, 5xx and 429 are different sentences on all seven loading routes and no failure renders the empty state (`cannotAsk.test.tsx`, planted); every state shot on a device at 360/411/800 plus a partial outage; `21-faults` passes through `qa/faults.sh` and the fault proxy (2026-09-25). `aiError`, no recogniser and permission refused stay in `chat/` |
 | 16 | **Profile** — photo, details, password, your own AI key | `users/connected_user` · `PATCH users/:id` (photo is `user[photo]`) · `PUT :change_password` · `destroy_avatar` · `ai_keys` | **`DONE`** → [`profile/`](profile/SPEC.md) | his instruction, 18 Sept. **The email is shown and LOCKED** — the socket identifies the user by it, so changing it kills the cable silently. A wrong current password is a **422 and must not sign you out**; the server chose that status for this client |
-| 17 | **Transitions** between screens | none | `SPECIFIED` → [`transitions/`](transitions/SPEC.md) | **keep the platform defaults**: native on both OSes, Android 13+ gets the system's own 450 ms slide; Mobbin stills show presentation, not motion. Re-opened by a recording that stutters or flashes, or by his word |
+| 17 | **Transitions** between screens | none | **`IN PROGRESS`** → [`transitions/`](transitions/SPEC.md): **decided and in place**: the Stack in `app/_layout.tsx` sets no `animation`, so each OS uses its own. **Outstanding: no device recording yet** (corrected 2026-09-25; was `SPECIFIED`, a decision implemented by building nothing) | **keep the platform defaults**: native on both OSes, Android 13+ gets the system's own 450 ms slide; Mobbin stills show presentation, not motion. Re-opened by a recording that stutters or flashes, or by his word |
 
 **Not in this app, deliberately:** read-aloud, the actions UI (*"create a
 note"*), the global minimised window, page context. All exist on the web

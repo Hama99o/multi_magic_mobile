@@ -15,7 +15,7 @@
     "lint:flows": "python3 qa/flow_lint.py",
     "test:qa": "bash qa/app_checks_test.sh && python3 qa/fault_proxy_test.py",
     "lint:vocabulary": "python3 qa/vocabulary.py; s=$?; [ $s -eq 0 ] || [ $s -eq 3 ]",
-    "pretest": "npm run lint:flows && npm run test:qa && npm run lint:vocabulary",
+    "pretest": "npm run lint:flows && npm run test:qa && npm run lint:vocabulary && python3 qa/board_check.py",
     "test:west": "JEST_TZ=America/New_York jest src/components/settings/__tests__/BorrowedKeyRow.test.ts src/lib/__tests__/relativeTime.test.ts src/screens/people/__tests__/dayLabel.test.ts src/screens/people/__tests__/EventRow.test.tsx src/api/__tests__/calendar.test.ts src/screens/__tests__/screens.render.test.tsx app/__tests__/calendarHeading.test.ts",
     "posttest": "npm run test:west"
   },

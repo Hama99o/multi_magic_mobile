@@ -52,6 +52,11 @@ export const fr: Translations = {
     sessionEnded: "Votre session est terminée. Reconnectez-vous.",
     checkConnection: "Impossible de joindre MultiMagic. Vérifiez votre connexion.",
     notAllowed: "Vous n’êtes pas autorisé à faire cela ici.",
+    couldNotRefresh: "Actualisation impossible.",
+    showingRecent: "Voici ce que nous avions il y a un instant.",
+    // In brackets: `when` is "il y a 5 min", "hier" or "20 sept.", and no
+    // single French preposition fits all three.
+    showingFrom: "Voici ce que nous avions ({{when}}).",
   },
 
   session: {

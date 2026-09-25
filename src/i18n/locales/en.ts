@@ -35,6 +35,11 @@ export const en = {
     sessionEnded: "Your session ended. Sign in again.",
     checkConnection: "Could not reach MultiMagic. Check your connection.",
     notAllowed: "You’re not allowed to do that here.",
+    // A failed REFRESH over data the screen kept: one statement owning the
+    // cause and the age (`LoadFailure`).
+    couldNotRefresh: "Could not refresh.",
+    showingRecent: "Showing what we had a moment ago.",
+    showingFrom: "Showing what we had from {{when}}.",
   },
 
   session: {

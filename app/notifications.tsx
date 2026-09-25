@@ -41,6 +41,7 @@ import { subscribeToChannel } from "@/lib/cable";
 import { aiApi } from "@/api/ai";
 import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { failureMessage } from "@/api/failure";
+import { LoadFailure, isStale } from "@/components/LoadFailure";
 import {
   notificationsApi,
   type AppNotification,
@@ -285,7 +286,10 @@ export default function Notifications() {
         />
       </View>
 
-      <UpdatedLine at={dataUpdatedAt} refreshing={isRefetching} testID="notifications-updated" />
+      {/* One freshness claim at a time; see `LoadFailure`. */}
+      {isStale(error, Boolean(data)) ? null : (
+        <UpdatedLine at={dataUpdatedAt} refreshing={isRefetching} testID="notifications-updated" />
+      )}
 
       {/* Said once, where the question was composed — so a tap that navigated
           away is not silent about what it did. */}
@@ -309,16 +313,14 @@ export default function Notifications() {
 
       <UnreadableNotice count={(data?.pages ?? []).reduce((n, page) => n + (page.unreadable ?? 0), 0)} />
 
-      {error ? (
-        <View testID="notifications-load-failed" style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
-          <Text tone="muted">
-            {failureMessage(error, t("notifications.loadFailed"))}
-          </Text>
-          <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
-            <Text tone="accent">{t("common.tryAgain")}</Text>
-          </Pressable>
-        </View>
-      ) : null}
+      <LoadFailure
+        error={error}
+        loadFailed={t("notifications.loadFailed")}
+        hasData={Boolean(data)}
+        updatedAt={dataUpdatedAt}
+        onRetry={() => void refetch()}
+        testID="notifications-load-failed"
+      />
 
       <FlatList
         testID="notifications-list"

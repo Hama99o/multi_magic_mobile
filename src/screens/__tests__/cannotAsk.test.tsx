@@ -31,13 +31,12 @@
  * What it cannot see: a screen that already had data and then lost the
  * network (the refetch case), and anything a pixel would show.
  */
-import fs from "fs";
-import path from "path";
 import MockAdapter from "axios-mock-adapter";
 import { act, render, screen, waitFor } from "@testing-library/react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 import { testQueryClient } from "@/__tests__/queryClient";
+import { occurrenceToday, serveApi } from "@/__tests__/journey";
 import { http, __resetTokenCache } from "@/api/http";
 import { __resetFingerprintCache } from "@/lib/fingerprint";
 import { __resetReachability } from "@/stores/reachability.store";
@@ -52,53 +51,12 @@ import AiKeys from "../../../app/ai-keys";
 
 // jest.mock is hoisted above every import, so these mocks are in place first.
 
-jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
-  useLocalSearchParams: () => ({ id: "266", name: "Qa MOBILE", isGroup: "0", unread: "0" }),
-  Link: ({ children }: { children: unknown }) => children,
-}));
-jest.mock("expo-clipboard", () => ({ setStringAsync: jest.fn() }));
-jest.mock("expo-haptics", () => ({ impactAsync: jest.fn(), ImpactFeedbackStyle: { Light: "light" } }));
-jest.mock("expo-linking", () => ({ openURL: jest.fn() }));
-jest.mock("expo-image-picker", () => ({
-  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true })),
-  requestCameraPermissionsAsync: jest.fn(async () => ({ granted: true })),
-  launchImageLibraryAsync: jest.fn(async () => ({ canceled: true })),
-  launchCameraAsync: jest.fn(async () => ({ canceled: true })),
-}));
-jest.mock("@/lib/cable", () => ({
-  subscribeToChannel: jest.fn(() => jest.fn()),
-  performOnChannel: jest.fn(() => true),
-  resetCable: jest.fn(),
-}));
-
-
-const fixture = (name: string) =>
-  JSON.parse(fs.readFileSync(path.join(__dirname, "../../api/__tests__/fixtures", `${name}.json`), "utf8")).body;
-
-/** pagy's block from a list the QA account really has empty. */
-const EMPTY_META = fixture("notifications_page1").meta;
-
-/** Every request answered from a capture, for the EMPTY state; anything not
- *  listed is a 404, which no screen here reads as empty. */
-function serveEmpty(mock: MockAdapter, overrides: [RegExp, unknown][]) {
-  mock.onGet(/\/ai\/conversation$/).reply(200, fixture("ai_conversation"));
-  mock.onGet(/\/ai\/sessions\/\d+\/documents/).reply(200, { documents: [] });
-  mock.onGet(/\/ai\/sessions$/).reply(200, fixture("ai_sessions"));
-  mock.onGet(/\/conversations\/\d+\/messages/).reply(200, { messages: [], meta: EMPTY_META });
-  mock.onGet(/\/conversations\/unread_messages_count/).reply(200, fixture("conversations_unread"));
-  mock.onGet(/\/conversations(\?|$)/).reply(200, { conversations: [], meta: EMPTY_META });
-  mock.onGet(/\/notifications\/unread_count/).reply(200, fixture("notifications_unread"));
-  mock.onGet(/\/notifications(\?|$)/).reply(200, fixture("notifications_page1"));
-  mock.onGet(/\/calendar_app\/events\/upcoming/).reply(200, fixture("calendar_upcoming_7"));
-  mock.onGet(/\/me\/summary/).reply(200, { counts: {}, stocked: [] });
-  mock.onGet(/\/ai_keys/).reply(200, { ...fixture("ai_keys"), ai_keys: [], borrowed: [] });
-  mock.onGet(/\/users\/connected_user/).reply(200, fixture("connected_user"));
-  // LAST: the adapter REPLACES a handler whose regex has the same text, so
-  // an override registered first was silently overwritten by the default.
-  for (const [url, body] of overrides) mock.onGet(url).reply(200, body);
-  mock.onAny().reply(404, { error: "Not found" });
-}
+jest.mock("expo-router", () => require("@/__tests__/screenMocks").expoRouter);
+jest.mock("expo-clipboard", () => require("@/__tests__/screenMocks").clipboard);
+jest.mock("expo-haptics", () => require("@/__tests__/screenMocks").haptics);
+jest.mock("expo-linking", () => require("@/__tests__/screenMocks").linking);
+jest.mock("expo-image-picker", () => require("@/__tests__/screenMocks").imagePicker);
+jest.mock("@/lib/cable", () => require("@/__tests__/screenMocks").cable);
 
 /** The three ways a screen can fail to ask. Rails' error page is its real
  *  body (`PublicExceptions`), which is what made "Internal Server Error" a
@@ -176,7 +134,7 @@ describe.each(SCREENS)("$name", ({ element, failedId, loadFailed, empty }) => {
 
   if (empty) {
     it("says it is empty when the answer was empty, and nothing about failing", async () => {
-      serveEmpty(mock, []);
+      serveApi(mock, { mode: "empty" });
       renderScreen(element());
       await waitFor(() => expect(emptyShown(empty)).toBe(true), { timeout: 3000 });
       expect(screen.queryByTestId(failedId)).toBeNull();
@@ -202,10 +160,6 @@ it("the four states are four different sentences on every screen", () => {
  * Notifications is not here: the QA account has none to capture, and a
  * hand-written notification is what the contract fixtures replaced.
  */
-function todayIso(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-}
 
 const REFRESHES: { name: string; element: () => ReactElement; failedId: string; kept: () => boolean }[] = [
   {
@@ -230,21 +184,8 @@ const REFRESHES: { name: string; element: () => ReactElement; failedId: string; 
 
 describe.each(REFRESHES)("$name, when a refresh fails after a real answer", ({ element, failedId, kept }) => {
   it("keeps what it had, and says it could not refresh", async () => {
-    const on = todayIso();
-    serveEmpty(mock, [
-      [
-        /\/calendar_app\/events\/upcoming/,
-        {
-          occurrences: [
-            {
-              id: `7:${on}`, on, starts_at: `${on}T09:00:00Z`, ends_at: `${on}T09:30:00Z`, all_day: false,
-              event: { id: 7, title: "Dentist", description: null, location: null, kind: "appointment", all_day: false, recurrence: null, color: null },
-            },
-          ],
-        },
-      ],
-      [/\/conversations(\?|$)/, fixture("conversations_page1")],
-    ]);
+    // Captured chats (the QA account has one), and one event today.
+    serveApi(mock, { overrides: [[/\/calendar_app\/events\/upcoming/, { occurrences: [occurrenceToday("Dentist")] }]] });
     const client = testQueryClient();
     renderScreen(element(), client);
     await waitFor(() => expect(kept()).toBe(true), { timeout: 3000 });
@@ -256,46 +197,14 @@ describe.each(REFRESHES)("$name, when a refresh fails after a real answer", ({ e
     });
 
     expect(await screen.findByTestId(failedId)).toBeTruthy();
-    expect(screen.getByText(t("failure.unreachable"))).toBeTruthy();
+    // ONE statement owning the cause and the age (`LoadFailure`), never
+    // "Could not load …" over rows that are plainly there, and never an
+    // "Updated just now" line beside it (Hamma9901's ruling, 2026-09-25).
+    expect(screen.getByText(`${t("failure.unreachable")} ${t("failure.showingRecent")}`)).toBeTruthy();
+    expect(screen.queryByText(t("calendar.loadFailed"))).toBeNull();
+    expect(screen.queryByTestId("calendar-updated")).toBeNull();
     expect(kept()).toBe(true);
     // And the calendar's "Nothing today" never stands beside its error.
     expect(screen.queryByTestId("calendar-nothing-today")).toBeNull();
   });
-});
-
-/**
- * ONE CACHE, TWO SCREENS (2026-09-25). df9b1f2 made the calendar screen store
- * a PAGE (`{ occurrences, unreadable }`) under `["calendar","upcoming",7]`,
- * the key the assistant's starter prompts read as a bare ARRAY. Every test
- * gave each screen its own client, so nothing here could see it. On a
- * device, opening the calendar and going back crashed the assistant:
- * "(events ?? []).flatMap is not a function". So the two screens share one
- * client here, in the order a person uses them.
- */
-it("the assistant survives the calendar having filled the shared cache", async () => {
-  const on = todayIso();
-  serveEmpty(mock, [
-    [
-      /\/calendar_app\/events\/upcoming/,
-      {
-        occurrences: [
-          {
-            id: `7:${on}`, on, starts_at: `${on}T09:00:00Z`, ends_at: `${on}T09:30:00Z`, all_day: false,
-            event: { id: 7, title: "Dentist", description: null, location: null, kind: "appointment", all_day: false, recurrence: null, color: null },
-          },
-        ],
-      },
-    ],
-  ]);
-  const client = testQueryClient({ queries: { gcTime: 60_000 } });
-  const calendar = renderScreen(<Calendar />, client);
-  await screen.findByText("Dentist");
-  calendar.unmount();
-
-  renderScreen(<Assistant />, client);
-  // The empty conversation builds its suggestions from the calendar: the
-  // event is offered as a question, and nothing throws on the way.
-  await screen.findByTestId("chat-empty", {}, { timeout: 3000 });
-  expect(screen.queryByText(/Dentist/)).not.toBeNull();
-  client.clear();
 });

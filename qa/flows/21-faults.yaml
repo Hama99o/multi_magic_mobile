@@ -9,8 +9,8 @@
 #      body), and the chats still load. A dead port cannot make this case.
 #   2. a 429 on notifications, which must give the rate-limit sentence, not
 #      the screen's generic one.
-#   3. a 500 on chats, which must give "Could not load your chats." and never
-#      Rails' "Internal Server Error" (fe6717d).
+#   3. a 500 on chats, which must say it could not refresh (the chats loaded
+#      in step 1) and never Rails' "Internal Server Error" (fe6717d).
 # Every failure state must also NOT show its empty state.
 #
 # It writes nothing. The asserted text is English, and the flow checks that
@@ -64,18 +64,18 @@ onFlowComplete:
     visible:
       id: "calendar-load-failed"
     timeout: 30000
+# The REFRESH case, always, on a device: the assistant already read the
+# calendar for its suggestions (the same query), so the screen keeps its
+# last real answer (on the QA account, "Nothing today") and ONE statement
+# owns the cause and the age (`LoadFailure`, Hamma9901's ruling). A regex
+# for the age: "a moment ago" or "from 1 min ago", depending on how long
+# the sign-in took. The never-loaded case is Jest's (cannotAsk.test.tsx).
 - assertVisible:
-    text: "Could not load your calendar."
+    text: "Could not refresh\\. Showing what we had .*"
 - assertNotVisible:
     text: "Internal Server Error"
-# NOT "nothing-today is absent". The assistant already read the calendar for
-# its suggestions (the same query), so on a device this screen is always in
-# the REFRESH case: it keeps its last real answer under the error line
-# (states/SPEC.md, "Had content, then the refresh failed"). On the QA
-# account that answer is empty, so "Nothing today" stays, marked stale by the
-# line that says when it was last true. The never-loaded case, where it must
-# NOT appear, is asserted in Jest (cannotAsk.test.tsx).
-- assertVisible:
+# And no second freshness claim beside it: the "Updated …" line stands down.
+- assertNotVisible:
     id: "calendar-updated"
 - takeScreenshot: reports/21-partial-calendar
 - back
@@ -128,8 +128,10 @@ onFlowComplete:
     visible:
       id: "chats-load-failed"
     timeout: 30000
+# The chats loaded in step 1, so this is a refresh too: kept rows, one
+# statement.
 - assertVisible:
-    text: "Could not load your chats."
+    text: "Could not refresh\\. Showing what we had .*"
 - assertNotVisible:
     text: "Internal Server Error"
 - assertNotVisible:

@@ -34,6 +34,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { profileApi, type ProfileChanges } from "@/api/profile";
 import { failureMessage } from "@/api/failure";
+import { LoadFailure } from "@/components/LoadFailure";
 import { API_URL } from "@/config/env";
 import { Avatar } from "@/screens/people/Avatar";
 import { PhotoSheet, type PickedPhoto } from "@/screens/account/PhotoSheet";
@@ -89,7 +90,7 @@ export default function ProfileScreen() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
-  const { data: profile, isLoading, error, refetch } = useQuery({
+  const { data: profile, isLoading, error, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["profile"],
     queryFn: profileApi.me,
   });
@@ -171,16 +172,14 @@ export default function ProfileScreen() {
         </Text>
       </View>
 
-      {error ? (
-        <View testID="profile-load-failed" style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
-          <Text tone="muted">
-            {failureMessage(error, t("profile.loadFailed"))}
-          </Text>
-          <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
-            <Text tone="accent">{t("common.tryAgain")}</Text>
-          </Pressable>
-        </View>
-      ) : null}
+      <LoadFailure
+        error={error}
+        loadFailed={t("profile.loadFailed")}
+        hasData={Boolean(profile)}
+        updatedAt={dataUpdatedAt}
+        onRetry={() => void refetch()}
+        testID="profile-load-failed"
+      />
 
       {isLoading || !profile ? null : (
         <>

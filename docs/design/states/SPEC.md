@@ -151,10 +151,23 @@ hooks.
   read as an array. Opening the calendar and going back crashed the
   assistant (`useStarterPrompts.ts`). Both now read the page, and
   `cannotAsk.test.tsx` "one cache, two screens" mounts both on one client.
-- **Open, for a designer:** in the partial outage the calendar says
-  "Updated just now" directly above "Could not load your calendar.". Both
-  are true, because the assistant fetched it seconds earlier, and together
-  they read oddly.
+- **Decided (Hamma9901's ruling), built and asserted:** "Updated just now"
+  above "Could not load your calendar." read as a contradiction. Both were
+  true, and nothing related them. Now **one statement owns both facts**
+  wherever a failed refresh stands over kept data (calendar, notifications,
+  chats, profile, AI keys; `src/components/LoadFailure.tsx`):
+  - the cause, else "Could not refresh.";
+  - then "Showing what we had a moment ago." or "… from 5 min ago.";
+  - the "Updated …" line stands down while it shows.
+
+  A first-load failure still says the screen's own "Could not load …".
+
+  **Rule Zero: no reference words this sentence.** Starlink marks kept rows
+  "unreachable" and Docusign "Failed to sync", and a third search found only
+  offline libraries and timestamps. The words are the ruling's, recorded as
+  such. Planted: the "Updated" line put back beside the statement fails;
+  the component ignoring kept data fails three screens. `21-faults` re-ran
+  green on it (193 s).
 - **The refetch case: now decided and asserted, see below.**
 - **The other row-15 cases** (`aiError` over the socket, no recogniser,
   permission refused) are specified and tested in their own screens' SPECs

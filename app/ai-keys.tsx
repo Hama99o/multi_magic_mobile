@@ -39,6 +39,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { KeyRefused, aiKeysApi, type AiKey, type AiKeyPayload } from "@/api/aiKeys";
 import { failureMessage } from "@/api/failure";
+import { LoadFailure } from "@/components/LoadFailure";
 import { BorrowedKeyRow } from "@/components/settings/BorrowedKeyRow";
 import { MorningBriefRow } from "@/components/settings/MorningBriefRow";
 
@@ -48,7 +49,7 @@ export default function AiKeys() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, error, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["aiKeys"],
     queryFn: aiKeysApi.list,
   });
@@ -134,16 +135,15 @@ export default function AiKeys() {
         {t("aiKeys.intro")}
       </Text>
 
-      {error ? (
-        <View testID="ai-keys-load-failed" style={{ gap: metrics.space.sm }}>
-          <Text tone="muted">
-            {failureMessage(error, t("aiKeys.loadFailed"))}
-          </Text>
-          <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
-            <Text tone="accent">{t("common.tryAgain")}</Text>
-          </Pressable>
-        </View>
-      ) : null}
+      <LoadFailure
+        error={error}
+        loadFailed={t("aiKeys.loadFailed")}
+        hasData={Boolean(data)}
+        updatedAt={dataUpdatedAt}
+        onRetry={() => void refetch()}
+        testID="ai-keys-load-failed"
+        padded={false}
+      />
 
       {/* ── The keys you have ──────────────────────────────────────────── */}
       {keys.length > 0 ? (

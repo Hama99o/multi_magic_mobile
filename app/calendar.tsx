@@ -55,7 +55,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { calendarApi, type Occurrence } from "@/api/calendar";
 import { aiApi } from "@/api/ai";
 import { UnreadableNotice } from "@/components/UnreadableNotice";
-import { failureMessage } from "@/api/failure";
+import { LoadFailure, isStale } from "@/components/LoadFailure";
 import { useDraft } from "@/hooks/useDraft";
 import { EventRow } from "@/screens/people/EventRow";
 
@@ -216,7 +216,11 @@ export default function Calendar() {
         />
       </View>
 
-      <UpdatedLine at={dataUpdatedAt} refreshing={isRefetching} testID="calendar-updated" />
+      {/* One freshness claim at a time: while a failed refresh stands over
+          kept data, `LoadFailure` says how old it is (Hamma9901, 2026-09-25). */}
+      {isStale(error, Boolean(data)) ? null : (
+        <UpdatedLine at={dataUpdatedAt} refreshing={isRefetching} testID="calendar-updated" />
+      )}
 
       {composed ? (
         <Text variant="caption" tone="muted" style={{ paddingBottom: metrics.space.sm }}>
@@ -226,16 +230,14 @@ export default function Calendar() {
 
       <UnreadableNotice count={data?.unreadable ?? 0} />
 
-      {error ? (
-        <View testID="calendar-load-failed" style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
-          <Text tone="muted">
-            {failureMessage(error, t("calendar.loadFailed"))}
-          </Text>
-          <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
-            <Text tone="accent">{t("common.tryAgain")}</Text>
-          </Pressable>
-        </View>
-      ) : null}
+      <LoadFailure
+        error={error}
+        loadFailed={t("calendar.loadFailed")}
+        hasData={Boolean(data)}
+        updatedAt={dataUpdatedAt}
+        onRetry={() => void refetch()}
+        testID="calendar-load-failed"
+      />
 
       <FlatList
         testID="calendar-list"

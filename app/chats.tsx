@@ -30,7 +30,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { subscribeToChannel } from "@/lib/cable";
 import { conversationsApi, type Conversation } from "@/api/conversations";
 import { UnreadableNotice } from "@/components/UnreadableNotice";
-import { failureMessage } from "@/api/failure";
+import { LoadFailure } from "@/components/LoadFailure";
 import { ConversationRow } from "@/screens/people/ConversationRow";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
 
@@ -48,7 +48,7 @@ export default function Chats() {
    * thread's and the socket's invalidations still refetch it; a refetch
    * re-reads every page that is loaded.
    */
-  const { data, isLoading, error, refetch, isRefetching, fetchNextPage, hasNextPage, isFetchingNextPage } =
+  const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
       queryKey: ["conversations", "list"],
       queryFn: ({ pageParam }) => conversationsApi.list(pageParam),
@@ -129,16 +129,14 @@ export default function Chats() {
 
       <UnreadableNotice count={(data?.pages ?? []).reduce((n, page) => n + (page.unreadable ?? 0), 0)} />
 
-      {error ? (
-        <View testID="chats-load-failed" style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
-          <Text tone="muted">
-            {failureMessage(error, t("chats.loadFailed"))}
-          </Text>
-          <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
-            <Text tone="accent">{t("common.tryAgain")}</Text>
-          </Pressable>
-        </View>
-      ) : null}
+      <LoadFailure
+        error={error}
+        loadFailed={t("chats.loadFailed")}
+        hasData={Boolean(data)}
+        updatedAt={dataUpdatedAt}
+        onRetry={() => void refetch()}
+        testID="chats-load-failed"
+      />
 
       <FlatList
         testID="chats-list"

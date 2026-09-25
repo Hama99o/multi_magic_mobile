@@ -325,6 +325,35 @@ useful:
 Worth adopting here first: live-captured contract fixtures, since the
 local backend and the QA account already exist.
 
+### What came of karwan-42's cross-read (2026-09-25)
+
+1. **Contract fixtures: adopted** (`63cd1be`). 13 captures as the QA
+   account, scrubbed, every list `unreadable === 0`.
+2. **Vocabulary pairs: adopted** (`qa/vocabulary.py`, in `pretest`). Five
+   pairs: three EXHAUSTIVE (ratings, `key_problem` codes, document
+   statuses: every server value must be named by the app) and two EXISTS
+   (the password refusal code, the notification kind the app branches on:
+   the app's branch must still match something the server sends). Planted
+   four ways, all red: the app dropping a code, a typo, an empty capture
+   (BROKEN, never "same"), the server adding a rating. **Exit 3 in CI**,
+   which has no sibling `multi_magic` checkout; it guards the desk only,
+   and `npm test` treats 3 as not measured, not as a pass it earned.
+   `MessageRole` is not pairable (no server enum) and the file says why.
+3. **Per-language sentences:** (a) the app's own sentences are already
+   walked both ways by `keys.test.ts` and `locales.test.ts`; `key_problem`
+   *sentences* come from the server, so there is nothing app-side to
+   sweep. (b) The "no English fallback before the backend deploy" gate
+   cannot be automated: its trigger is a production deploy, which no file
+   in either repo records.
+4. **Cancel before an optimistic write: one instance, fixed.**
+   `MorningBriefRow` now cancels an in-flight `["profile"]` read before
+   writing optimistically; a read already on the wire used to land after
+   the tap and flip the switch back. The test was blind twice before it
+   went red on the plant (the tap came before the refetch started; React
+   Query notifies on a later tick). The socket-handler variant was checked
+   and is **not** an instance: `AnswerActions`' local rating resyncs only
+   when `message.rating` changes.
+
 ## What I would do next, in order
 
 1. **Run 9 on a device, the moment the disk frees.** More changed today than

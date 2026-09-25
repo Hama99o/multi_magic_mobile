@@ -50,9 +50,14 @@ export function MorningBriefRow() {
 
   const setBrief = useMutation({
     mutationFn: (on: boolean) => profileApi.update((profile as Profile).id, { ai_morning_brief: on }),
-    onMutate: (on) => {
+    onMutate: async (on) => {
       setFailure(null);
       setJustTurnedOn(false);
+      // CANCEL an in-flight profile read FIRST (React Query's own rule for
+      // optimistic updates; karwan-42's cross-read, 2026-09-25). Otherwise a
+      // read that started before the tap lands after it and flips the switch
+      // back, until the save returns.
+      await queryClient.cancelQueries({ queryKey: ["profile"] });
       const before = queryClient.getQueryData<Profile>(["profile"]);
       if (before) queryClient.setQueryData<Profile>(["profile"], { ...before, aiMorningBrief: on });
       return { before };

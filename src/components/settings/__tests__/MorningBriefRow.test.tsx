@@ -64,3 +64,45 @@ it("puts the switch back and says why when the server refuses", async () => {
   expect(await screen.findByTestId("ai-keys-brief-failed")).toBeTruthy();
   expect(screen.getByTestId("ai-keys-brief-switch").props.value).toBe(false);
 });
+
+
+// A read that started BEFORE the tap and lands AFTER it must not flip the
+// switch back (karwan-42's poll/tap rule, 2026-09-25).
+it("a profile read in flight when he taps does not flip the switch back", async () => {
+  const me = jest.spyOn(profileApi, "me").mockResolvedValue(profile({ aiMorningBrief: false }));
+  let saveDone: (p: Profile) => void = () => {};
+  jest.spyOn(profileApi, "update").mockImplementation(() => new Promise<Profile>((r) => { saveDone = r; }));
+  const client = testQueryClient();
+  render(
+    <QueryClientProvider client={client}>
+      <MorningBriefRow />
+    </QueryClientProvider>,
+  );
+  await screen.findByTestId("ai-keys-brief-switch");
+
+  // A refetch starts, slow, and will answer with the OLD value.
+  let staleRead: (p: Profile) => void = () => {};
+  me.mockImplementation(() => new Promise<Profile>((r) => { staleRead = r; }));
+  void client.invalidateQueries({ queryKey: ["profile"] });
+  // The race only exists once that read has really STARTED. The first
+  // version tapped before it had, so the plant (no cancel) stayed green: a
+  // race test with no race in it.
+  await waitFor(() => expect(me).toHaveBeenCalledTimes(2));
+
+  // He taps while it is in flight.
+  await act(async () => {
+    fireEvent(screen.getByTestId("ai-keys-brief-switch"), "valueChange", true);
+  });
+  // The stale read lands. React Query notifies on a scheduled tick, so the
+  // screen is read after it settles: asserting at once passed without the
+  // fix (the cache was already false, the screen not yet redrawn).
+  await act(async () => {
+    staleRead(profile({ aiMorningBrief: false }));
+    await new Promise((r) => setTimeout(r, 30));
+  });
+  expect(screen.getByTestId("ai-keys-brief-switch").props.value).toBe(true);
+
+  await act(async () => {
+    saveDone(profile({ aiMorningBrief: true }));
+  });
+});

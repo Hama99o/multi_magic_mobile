@@ -302,6 +302,29 @@ their shell tests; `Accept-Language`.
 timing, the keyboard lift's feel, drag-to-dismiss against the lift, the
 socket's TCP overhead, and every "fits at 360 dp" estimate.
 
+## What karwan-mobile has that this repo lacks (read 2026-09-25, read-only)
+
+Read while writing karwan-42 a list of our instruments. The reverse is as
+useful:
+- **Contract fixtures captured from the LIVE API** (`src/api/__tests__/
+  fixtures/`, `contract.test.ts`, `qa/CONTRACT_FIXTURES.md`). They are
+  curl-captured, run through the real parsers, and guarded by a
+  "fingerprint" test that fails if a fixture was hand-edited (a Rails
+  decimal must still arrive as a string). "Replace by re-capturing, never
+  edit." Every fixture in this repo was typed by hand, which is how a
+  parser can agree with a payload the server never sends.
+- **STRICT vocabulary pairs** (`qa/vocabulary.py`, a CI job against the
+  API's default branch): every server code family (refusals, statuses,
+  push keys) must be named by the app, and a new server value with no app
+  name fails the build. Our `key_problem` codes, error codes and statuses
+  are matched by hand.
+- **Touch-target sizes asserted in Jest** (`minHeight` 48/56/64 via
+  `getByRole("button")`). A number read from source, not a pixel, but more
+  than we assert.
+
+Worth adopting here first: live-captured contract fixtures, since the
+local backend and the QA account already exist.
+
 ## What I would do next, in order
 
 1. **Run 9 on a device, the moment the disk frees.** More changed today than

@@ -356,10 +356,10 @@ local backend and the QA account already exist.
 
 ## What I would do next, in order
 
-1. **Run 9 on a device, the moment the disk frees.** More changed today than
-   any desk check can vouch for, and the running order is ready.
-2. **Form error states**, once the backend's localisation is deployed, so
-   the sweep checks the text people will actually get.
+**Superseded 2026-09-25: read `docs/HANDOFF.md`**, which has the state, what
+waits on the owner, and what to pick up first. The list that stood here was
+run 9 first, then form error states; run 9 now sits behind the merge
+(`docs/MERGE_PLAN.md`).
 
 ## The instruments' own failures, for whoever extends them
 

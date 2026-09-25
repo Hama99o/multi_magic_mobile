@@ -22,6 +22,7 @@ import os
 import re
 import sys
 
+sys.dont_write_bytecode = True  # importing content.py must not leave __pycache__ in qa/demo
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 sys.path.insert(0, HERE)

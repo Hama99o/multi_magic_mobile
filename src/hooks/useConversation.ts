@@ -71,6 +71,15 @@ export interface UseConversationOptions {
   /** `MessageChannel` for the assistant, `ConversationChannel` for people. */
   channel: string;
   channelParams?: ChannelParams;
+  /**
+   * Messages the app ALREADY KNOWS for this conversation, drawn before the
+   * first read arrives, instead of a skeleton (2026-09-25). The people thread
+   * passes the chats list's last message. They go through the same parser
+   * (`messagesApi.parseOne`) as a loaded page, and the first read MERGES by
+   * id, so a seeded bubble is kept, not replaced. Only for the conversation
+   * it was given with: a different id starts empty.
+   */
+  seed?: ChatMessage[];
 }
 
 export interface UseConversationResult {
@@ -195,8 +204,12 @@ export function useConversation({
   conversationId,
   channel,
   channelParams,
+  seed,
 }: UseConversationOptions): UseConversationResult {
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  // The seed belongs to the id it arrived with, fixed at mount.
+  const seedFor = useRef({ id: conversationId, messages: seed ?? [] });
+  const seedOf = (id: number | null) => (id != null && id === seedFor.current.id ? seedFor.current.messages : []);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => seedOf(conversationId));
   const [status, setStatus] = useState<ConversationStatus>("loading");
   const [hasOlder, setHasOlder] = useState(false);
   const [awaitingReply, setAwaitingReply] = useState(false);
@@ -350,7 +363,9 @@ export function useConversation({
   // Opening a different conversation starts over.
   useEffect(() => {
     drawnAs.current.clear();
-    setMessages([]);
+    // Not [] for the conversation it was opened with: the seed stays on screen
+    // until the first read merges into it (the mount effect runs on open too).
+    setMessages(seedOf(conversationId));
     setStatus(conversationId == null ? "loading" : "loading");
     setAwaitingReply(false);
     setFailed(false);

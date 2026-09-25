@@ -10,13 +10,13 @@
  */
 import MockAdapter from "axios-mock-adapter";
 import { act, screen } from "@testing-library/react-native";
-import { journey, occurrenceToday, serveApi } from "@/__tests__/journey";
+import { fixture, journey, occurrenceToday, serveApi } from "@/__tests__/journey";
 import { http, __resetTokenCache } from "@/api/http";
 import { __resetFingerprintCache } from "@/lib/fingerprint";
 import i18n from "@/i18n";
 import Assistant from "../../../app/chat";
 import Chats from "../../../app/chats";
-import Thread from "../../../app/chat/[id]";
+import Thread, { lastKnownMessages, SEED_MAX_AGE_MS } from "../../../app/chat/[id]";
 import Notifications from "../../../app/notifications";
 import Calendar from "../../../app/calendar";
 import Profile from "../../../app/profile";
@@ -103,4 +103,84 @@ it("the profile, then the assistant: a profile read does not disturb the convers
   j.visit(<Assistant />);
   await screen.findByTestId("composer-input");
   expect(screen.queryByTestId("chat-load-failed")).toBeNull();
+});
+
+/**
+ * THE THREAD OPENS WITH WHAT THE APP ALREADY KNOWS (2026-09-25). The chats list
+ * holds each conversation's last message; the thread used to open onto a
+ * skeleton for about a second anyway (seen frame by frame on qa_phone4). It
+ * is seeded now (`lastKnownMessages`, app/chat/[id].tsx). The claim is the
+ * BEHAVIOUR, not the milliseconds: an emulator exaggerates the gap it closes.
+ */
+describe("a thread opened from the chats list", () => {
+  const LAST = fixture("conversations_page1").conversations[0].last_message;
+  const OLDER = { ...LAST, id: LAST.id - 1, body: "An older message", created_at: "2026-09-24T10:00:00.000Z" };
+
+  /** The thread's own read, held until the test releases it. */
+  function holdThread(): () => void {
+    let release: () => void = () => undefined;
+    const held = new Promise<[number, unknown]>((resolve) => {
+      release = () => resolve([200, { messages: [LAST, OLDER], meta: fixture("notifications_page1").meta }]);
+    });
+    // The SAME regex text as serveApi's, so this REPLACES its handler. A
+    // different one would lose to it (the first registered wins), the thread
+    // would get the unheld fixture at once, and "before the server answers"
+    // would never happen: exactly what this test's first draft did.
+    mock.onGet(/\/conversations\/\d+\/messages/).reply(() => held);
+    return () => release();
+  }
+
+  it("shows the list's last message at once, no skeleton, and keeps it when the read lands", async () => {
+    serveApi(mock);
+    j.visit(<Chats />);
+    await screen.findByTestId("chats-list");
+    const release = holdThread();
+    j.visit(<Thread />);
+    // BEFORE the server answers: the last message, and no skeleton. And the
+    // server really has not answered: the older message is not there yet.
+    expect(await screen.findByText(LAST.body)).toBeTruthy();
+    expect(screen.queryByTestId("bubbles-skeleton")).toBeNull();
+    expect(screen.queryByText("An older message")).toBeNull();
+    await act(async () => {
+      release();
+      await new Promise((r) => setTimeout(r, 20));
+    });
+    // AFTER: the older message joins it, and the seeded one is there once.
+    expect(await screen.findByText("An older message")).toBeTruthy();
+    expect(screen.getAllByText(LAST.body)).toHaveLength(1);
+  });
+
+  it("still draws the unread divider, from the server's page and not from the seed", async () => {
+    const router = jest.requireMock("expo-router");
+    const params = router.useLocalSearchParams;
+    router.useLocalSearchParams = () => ({ ...params(), unread: "1" });
+    try {
+      serveApi(mock);
+      j.visit(<Chats />);
+      await screen.findByTestId("chats-list");
+      const release = holdThread();
+      j.visit(<Thread />);
+      await screen.findByText(LAST.body);
+      expect(screen.queryByTestId("unread-divider")).toBeNull(); // not latched on the seed
+      await act(async () => {
+        release();
+        await new Promise((r) => setTimeout(r, 20));
+      });
+      expect(await screen.findByTestId("unread-divider")).toBeTruthy();
+    } finally {
+      router.useLocalSearchParams = params;
+    }
+  });
+});
+
+describe("lastKnownMessages", () => {
+  it("seeds nothing from a stale list, or for a conversation it does not hold", async () => {
+    serveApi(mock);
+    j.visit(<Chats />);
+    await screen.findByTestId("chats-list");
+    const updatedAt = j.client.getQueryState(["conversations", "list"])!.dataUpdatedAt;
+    expect(lastKnownMessages(j.client, 266, updatedAt + 1000)).toHaveLength(1);
+    expect(lastKnownMessages(j.client, 266, updatedAt + SEED_MAX_AGE_MS + 1)).toBeUndefined();
+    expect(lastKnownMessages(j.client, 999999, updatedAt + 1000)).toBeUndefined();
+  });
 });

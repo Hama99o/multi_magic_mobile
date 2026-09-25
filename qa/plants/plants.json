@@ -181,5 +181,45 @@
     "new": "**`SPECIFIED`** → [`chat/`](chat/SPEC.md): **built** (`SourceChips.tsx`",
     "expect": "UNDER  row 9 ",
     "why": "the wiring, not just the script: a stale row must stop npm test before a single suite runs"
+  },
+  {
+    "instrument": "thread seed (journey)",
+    "check": "npx jest src/screens/__tests__/journeys.test.tsx",
+    "plant": "the thread is given no seed",
+    "file": "app/chat/[id].tsx",
+    "old": "    seed,\n  });",
+    "new": "  });",
+    "expect": "✕ shows the list's last message at once",
+    "why": "the thread opened onto a skeleton for a second while the list already held the message"
+  },
+  {
+    "instrument": "thread seed survives mount",
+    "check": "npx jest src/screens/__tests__/journeys.test.tsx",
+    "plant": "the mount effect wipes the seed",
+    "file": "src/hooks/useConversation.ts",
+    "old": "    setMessages(seedOf(conversationId));",
+    "new": "    setMessages([]);",
+    "expect": "✕ shows the list's last message at once",
+    "why": "the mount effect runs on open too, and a naive seed dies in it"
+  },
+  {
+    "instrument": "unread divider after a seed",
+    "check": "npx jest src/screens/__tests__/journeys.test.tsx",
+    "plant": "the unread anchor latches on the seed",
+    "file": "app/chat/[id].tsx",
+    "old": " || status !== \"ready\") return unreadAnchor.current.id;",
+    "new": ") return unreadAnchor.current.id;",
+    "expect": "✕ still draws the unread divider",
+    "why": "latched on one seeded message, the divider goes nowhere and stays there"
+  },
+  {
+    "instrument": "key gate sees the thread's cache read",
+    "check": "npx jest src/__tests__/queryKeys.test.ts",
+    "plant": "the thread reads the chats list's cache as the wrong shape",
+    "file": "app/chat/[id].tsx",
+    "old": "client.getQueryState<InfiniteData<ConversationList>>",
+    "new": "client.getQueryState<InfiniteData<ChatMessage[]>>",
+    "expect": "\\[chat\\]/\\[id\\]\\.tsx:\\d+ getQueryState",
+    "why": "seeding one screen's cache from another is the shape that crashed the assistant this morning"
   }
 ]

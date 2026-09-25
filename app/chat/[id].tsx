@@ -40,7 +40,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "@/components/icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, type InfiniteData, type QueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -51,6 +51,7 @@ import {
   conversationsApi,
   threadApi,
   type ConversationEvent,
+  type ConversationList,
 } from "@/api/conversations";
 import type { ChatMessage } from "@/api/ai";
 import { failureMessage, refusalReason } from "@/api/failure";
@@ -180,6 +181,34 @@ const ThreadRow = memo(
     a.onRetry === b.onRetry,
 );
 
+/**
+ * WHAT THE APP ALREADY KNOWS ABOUT THIS THREAD, so it opens with it (2026-09-25).
+ *
+ * The chats list holds each conversation's last message, parsed by the same
+ * `messagesApi.parseOne` as the thread's own page, so it is the same
+ * `ChatMessage` and not a near-miss (the key-and-shape gate checks this read,
+ * `src/__tests__/queryKeys.test.ts`). Seeding it means the thread opens with
+ * the newest message instead of a skeleton; the first read MERGES by id and
+ * keeps it.
+ *
+ * Only while the list's copy is fresh: a copy older than a minute may be
+ * superseded, and a bubble that changes under the reader is worse than a
+ * skeleton. A later edit arriving over the socket changes the bubble exactly
+ * as it would on a thread already open, which is a live edit, not a
+ * correction.
+ */
+export const SEED_MAX_AGE_MS = 60_000;
+
+export function lastKnownMessages(client: QueryClient, conversationId: number, now = Date.now()): ChatMessage[] | undefined {
+  const state = client.getQueryState<InfiniteData<ConversationList>>(["conversations", "list"]);
+  if (!state?.data || now - state.dataUpdatedAt > SEED_MAX_AGE_MS) return undefined;
+  for (const page of state.data.pages) {
+    const found = page.conversations.find((c) => c.id === conversationId);
+    if (found) return found.lastMessage ? [found.lastMessage] : undefined;
+  }
+  return undefined;
+}
+
 export default function PersonThread() {
   const colors = useColors();
   const metrics = useMetrics();
@@ -210,10 +239,13 @@ export default function PersonThread() {
    * cost is now taken rather than carried. Nothing here expects a reply, so
    * nothing here calls `addPending`.
    */
+  // Fixed at open: what the chats list already knew (`lastKnownMessages`).
+  const [seed] = useState(() => (Number.isFinite(conversationId) ? lastKnownMessages(queryClient, conversationId) : undefined));
   const { messages, status, hasOlder, loadOlder, mergeMessage, resync, unreadable, loadError } = useConversation({
     conversationId: Number.isFinite(conversationId) ? conversationId : null,
     // See this file's header. NOT ConversationChannel.
     channel: "MessageChannel",
+    seed,
   });
 
   const [draft, setDraft] = useState("");
@@ -417,7 +449,10 @@ export default function PersonThread() {
     // grows while the thread is open, so `length - count` would slide the
     // divider one message further down with every message received — which is
     // exactly the bug the "anchor to an id" rule exists to prevent.
-    if (unreadAnchor.current.settled || messages.length === 0) return unreadAnchor.current.id;
+    // And only on the SERVER's page: a seeded thread starts with one message
+    // (`lastKnownMessages`), and latching on it would put the divider nowhere
+    // and keep it there.
+    if (unreadAnchor.current.settled || messages.length === 0 || status !== "ready") return unreadAnchor.current.id;
 
     unreadAnchor.current.settled = true;
     const count = unreadOnOpen.current;
@@ -426,7 +461,7 @@ export default function PersonThread() {
     // divider would then sit at the very top, where it says nothing.
     unreadAnchor.current.id = count > 0 && index > 0 ? (messages[index]?.id ?? null) : null;
     return unreadAnchor.current.id;
-  }, [messages]);
+  }, [messages, status]);
 
   /** The last message I sent — the only one that carries a tick. */
   const lastSentId = useMemo(() => {

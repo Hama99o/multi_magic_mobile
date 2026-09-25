@@ -94,10 +94,19 @@ function collect(): { accesses: Access[]; unreadable: string[]; checker: ts.Type
           }
         }
 
-        if ((name === "setQueryData" || name === "getQueryData") && ts.isPropertyAccessExpression(callee) && node.arguments[0]) {
+        if ((name === "setQueryData" || name === "getQueryData" || name === "getQueryState") && ts.isPropertyAccessExpression(callee) && node.arguments[0]) {
           const key = keyOf(node.arguments[0], where);
           let type: ts.Type | undefined;
-          if (node.typeArguments?.[0]) type = checker.getTypeFromTypeNode(node.typeArguments[0]);
+          let infinite = false;
+          const arg = node.typeArguments?.[0];
+          // `InfiniteData<Page>` is how an infinite query's cache is typed: it
+          // is stored per PAGE, so the page type is what must agree with the
+          // queryFn, and the access is marked infinite (2026-09-25, the people
+          // thread seeding from the chats list).
+          if (arg && ts.isTypeReferenceNode(arg) && arg.typeName.getText() === "InfiniteData" && arg.typeArguments?.[0]) {
+            type = checker.getTypeFromTypeNode(arg.typeArguments[0]);
+            infinite = true;
+          } else if (arg) type = checker.getTypeFromTypeNode(arg);
           else if (name === "setQueryData" && node.arguments[1]) {
             const value = checker.getTypeAtLocation(node.arguments[1]);
             // An updater function stores what it returns.
@@ -105,7 +114,7 @@ function collect(): { accesses: Access[]; unreadable: string[]; checker: ts.Type
             type = sig ? checker.getReturnTypeOfSignature(sig) : value;
           }
           // An untyped getQueryData reads `unknown`, which claims nothing.
-          if (key && type) accesses.push({ where, key, type: checker.getNonNullableType(type), infinite: false, what: name });
+          if (key && type) accesses.push({ where, key, type: checker.getNonNullableType(type), infinite, what: name });
         }
       }
       ts.forEachChild(node, visit);
@@ -129,7 +138,7 @@ describe("one query key, one shape", () => {
     const files = ts.sys
       .readDirectory(ROOT, [".ts", ".tsx"], ["node_modules"], ["app/**/*", "src/**/*"])
       .filter((f) => !f.includes("__tests__") && !/\.test\.tsx?$/.test(f));
-    const pattern = /\buse(?:Infinite)?Query(?:<[^>]*>)?\(\{|\.setQueryData(?:<[^>]*>)?\(|\.getQueryData<[^>]*>\(/g;
+    const pattern = /\buse(?:Infinite)?Query(?:<[^>]*>)?\(\{|\.setQueryData(?:<[^>]*>)?\(|\.getQuery(?:Data|State)<(?:[^<>]|<[^<>]*>)*>\(/g;
     const counted = files.reduce((n, f) => n + (ts.sys.readFile(f)?.match(pattern)?.length ?? 0), 0);
     expect(accesses.length).toBe(counted);
     expect(counted).toBeGreaterThan(20);

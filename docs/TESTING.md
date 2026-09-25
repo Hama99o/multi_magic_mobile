@@ -1485,6 +1485,19 @@ for a reason unrelated to the claim.**
 | 8 | a radio announces its state | the framework adds an empty state object |
 | 9 | a stale profile read cannot flip the morning-brief switch back (2026-09-25) | blind TWICE with the fix already right: the tap came before the refetch had started, so there was nothing in flight to cancel; then React Query delivered the stale result on a later tick, after the assertion. Red on the plant only after waiting for the second `me()` call and settling 30 ms inside `act` |
 
+**And one in the RIG, which is the worst place for one, because every test
+built on it inherits it** (2026-09-25, `cannotAsk.test.tsx`).
+`axios-mock-adapter` **replaces** a handler when a later one has the same
+method and the same regex *text* (`findInHandlers` in its `src/index.js`
+compares `String(regex)`). So a helper that registered a test's overrides
+first and its defaults after had every override silently overwritten by the
+default. The override was never served. It surfaced only because a new test
+waited for data the override should have supplied. **Register defaults first
+and overrides last**, and when an override seems to be ignored, look in
+`mock.handlers` before looking at the screen. A different regex that happens
+to match the same URL is not replaced: the first registered wins. Same
+library, opposite rule.
+
 And one more in time rather than content: a wait on a mock's call history
 passed on the previous render's calls. The general form, for the next
 instrument: **before trusting green, ask what ELSE would make this true.**

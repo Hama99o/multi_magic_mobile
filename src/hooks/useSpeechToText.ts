@@ -113,19 +113,24 @@ export const LANGUAGES = [
   { code: "fr-FR", label: "Français" },
   { code: "en-US", label: "English" },
   /**
-   * His request: *"if there is pashto possible add that also."* It is his own
-   * language and `Ai::RagChat` already answers in it — "Someone writing
-   * Pashto… wants it back the same way" — so the assistant can hold the
-   * conversation; only the microphone could not.
+   * PASHTO WAS HERE AND WAS REMOVED — 2026-09-24, his call.
    *
-   * **Whether a phone can hear it is the phone's answer, not ours.** Android
-   * ships whichever locales its recogniser has, and `ps-AF` is not among the
-   * common ones — so this is offered and then CHECKED against
-   * `getSupportedLocales()` rather than promised. `useDictationLocales` below
-   * is how the chooser knows to say so instead of failing silently when the
-   * mic is pressed.
+   * It was added on his request ("if there is pashto possible add that also")
+   * and `Ai::RagChat` does answer in it, so the assistant side was never the
+   * problem. Two things on the microphone side were:
+   *
+   * 1. `ps-AF` is not among the locales an Android recogniser commonly ships,
+   *    and whether Apple offers it at all was never measured.
+   * 2. The mic's LONG PRESS could not reach it. The switch is
+   *    `LANGUAGES.find((l) => l.code !== lang)` — the first entry that is not
+   *    the current one — which cycles between the first two and dumps a third
+   *    back to French with no way home but this settings row. With two
+   *    languages that expression is correct; with three it silently was not.
+   *
+   * So removing it fixes the long press by construction rather than by a
+   * cleverer cycle nobody would test. If it comes back, the long press has to
+   * become a real modulo cycle in BOTH composers in the same commit.
    */
-  { code: "ps-AF", label: "پښتو" },
 ] as const;
 
 /**

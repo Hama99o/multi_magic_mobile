@@ -43,14 +43,17 @@ beforeEach(() => {
 
 const noop = () => {};
 
-describe("the three languages", () => {
-  it("offers French, English and Pashto", async () => {
+describe("the two languages", () => {
+  it("offers French and English, and nothing else", async () => {
     render(<DictationRow lang="fr-FR" onChange={noop} />);
 
     expect(screen.getByTestId("dictation-fr-FR")).toBeTruthy();
     expect(screen.getByTestId("dictation-en-US")).toBeTruthy();
-    // His request. `Ai::RagChat` already answers in Pashto; only the mic could not.
-    expect(screen.getByTestId("dictation-ps-AF")).toBeTruthy();
+    // Pashto was offered until 2026-09-24 and was removed — see LANGUAGES in
+    // useSpeechToText.ts for why, and for what the long press needs if it ever
+    // comes back. Asserted ABSENT rather than simply dropped, so that putting
+    // it back without reading that note fails here first.
+    expect(screen.queryByTestId("dictation-ps-AF")).toBeNull();
   });
 
   it("changes the language when one is chosen", async () => {
@@ -64,9 +67,11 @@ describe("the three languages", () => {
 
 describe("when the phone says which languages it has", () => {
   it("still offers one it did not list — nothing here is a gate", async () => {
+    // The phone answers, and LEAVES ENGLISH OUT. That is the case this test
+    // exists for; listing both would assert nothing.
     mockGetSupportedLocales.mockResolvedValue({
-      locales: ["fr_FR", "en_US"],
-      installedLocales: ["en_US"],
+      locales: ["fr_FR"],
+      installedLocales: ["fr_FR"],
     });
     const onChange = jest.fn();
     render(<DictationRow lang="fr-FR" onChange={onChange} />);
@@ -76,14 +81,14 @@ describe("when the phone says which languages it has", () => {
     // that is wrong often enough to matter — an empty array on Android 12, a
     // service that refuses, a recogniser that lists less than it can do. The
     // phone answers at the microphone now, through `problemSentence`.
-    expect(screen.getByTestId("dictation-ps-AF").props.accessibilityState.disabled).toBeUndefined();
-    fireEvent.press(screen.getByTestId("dictation-ps-AF"));
-    expect(onChange).toHaveBeenCalledWith("ps-AF");
+    expect(screen.getByTestId("dictation-en-US").props.accessibilityState.disabled).toBeUndefined();
+    fireEvent.press(screen.getByTestId("dictation-en-US"));
+    expect(onChange).toHaveBeenCalledWith("en-US");
   });
 
   it("says why, once, rather than beside every row", async () => {
     mockGetSupportedLocales.mockResolvedValue({
-      locales: ["fr_FR", "en_US"],
+      locales: ["fr_FR"],
       installedLocales: [],
     });
     render(<DictationRow lang="fr-FR" onChange={noop} />);
@@ -101,7 +106,7 @@ describe("when the phone says which languages it has", () => {
     // appearing would mean the subtag comparison had failed. That note is the
     // only consumer of the matching left, now that nothing is disabled.
     mockGetSupportedLocales.mockResolvedValue({
-      locales: ["fr_CA", "en_GB", "ps_PK"],
+      locales: ["fr_CA", "en_GB"],
       installedLocales: [],
     });
     render(<DictationRow lang="fr-FR" onChange={noop} />);
@@ -131,9 +136,9 @@ describe("when the phone cannot say", () => {
     // and survived a plant that treated an empty list as "supports nothing".
     await settled();
 
-    expect(screen.getByTestId("dictation-ps-AF").props.accessibilityState.disabled).toBeUndefined();
-    fireEvent.press(screen.getByTestId("dictation-ps-AF"));
-    expect(onChange).toHaveBeenCalledWith("ps-AF");
+    expect(screen.getByTestId("dictation-en-US").props.accessibilityState.disabled).toBeUndefined();
+    fireEvent.press(screen.getByTestId("dictation-en-US"));
+    expect(onChange).toHaveBeenCalledWith("en-US");
     expect(screen.queryByTestId("dictation-unavailable")).toBeNull();
   });
 
@@ -143,8 +148,8 @@ describe("when the phone cannot say", () => {
     render(<DictationRow lang="fr-FR" onChange={onChange} />);
     await settled();
 
-    expect(screen.getByTestId("dictation-ps-AF").props.accessibilityState.disabled).toBeUndefined();
-    fireEvent.press(screen.getByTestId("dictation-ps-AF"));
-    expect(onChange).toHaveBeenCalledWith("ps-AF");
+    expect(screen.getByTestId("dictation-en-US").props.accessibilityState.disabled).toBeUndefined();
+    fireEvent.press(screen.getByTestId("dictation-en-US"));
+    expect(onChange).toHaveBeenCalledWith("en-US");
   });
 });

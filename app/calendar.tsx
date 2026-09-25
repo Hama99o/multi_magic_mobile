@@ -70,7 +70,7 @@ type Row =
 
 /** `Today · Thu 18 Sep` — Craft names the day AND the date, so "Today" never
  *  floats free of when today is. */
-function headingFor(
+export function headingFor(
   on: string,
   today: string,
   t: (key: string) => string,

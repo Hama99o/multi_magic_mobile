@@ -130,6 +130,6 @@
     "new": "  const date = new Date(on);",
     "expect": "FAIL src/",
     "why": "UTC midnight is the same local day in Paris and the day BEFORE in New York: a bug only the western run can see. The control is the same suites in Paris, which must stay green",
-    "control": "npx jest src/screens/people src/lib src/components/settings src/api/__tests__/calendar.test.ts src/screens/__tests__/screens.render.test.tsx"
+    "control": "npx jest src/screens/people src/lib src/components/settings src/api/__tests__/calendar.test.ts src/screens/__tests__/screens.render.test.tsx app/__tests__/calendarHeading.test.ts"
   }
 ]

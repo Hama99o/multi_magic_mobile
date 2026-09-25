@@ -106,9 +106,27 @@ hooks.
 
 ## Not done, and why the status is not DONE
 
-- **No device screenshot of any failure state**, which `DONE` needs at 360,
-  411 and 800. They need the emulator with the backend stopped. The backend is
-  the owner's real stack, so stopping it is his call.
+- **Offline: shot on a device, 2026-09-25**, on `qa_phone4`. `ours/`
+  holds `{360,411,800}-offline-{assistant,chats,notifications,calendar,profile}.png`.
+  - How: Metro on 3029 was started with
+    `EXPO_PUBLIC_API_URL=http://10.0.2.2:3999`, a host port nothing listens
+    on (checked with `ss`). Every request got a real connection refusal, and
+    the owner's backend was never touched.
+  - What they show: all 15 carry "Could not reach MultiMagic." and Try
+    again, and none shows an empty state. The assistant also shows the
+    composer's own offline line, which is the reachability store working.
+  - Which branch ran on the assistant screen, a failed session lookup or a
+    remembered chat that failed to load, **cannot be told from the
+    screenshot**. Both say the same sentence, and the unit test covers the
+    former.
+  - Cleanup: Metro was stopped after the shots, because it had the bad URL
+    baked in (`src/config/env.ts`). A leftover would have broken the next
+    session's run.
+- **5xx and 429 are not shot.** A dead port cannot fake a status. They need
+  a backend that answers badly, and that is the owner's stack. They are
+  asserted in Jest only.
+- **No flow covers these states**, and `DONE` needs flows run. A flow would
+  need the same Metro swap, which `qa/run.sh` does not do.
 - **The refetch case: now decided and asserted, see below.**
 - **The other row-15 cases** (`aiError` over the socket, no recogniser,
   permission refused) are specified and tested in their own screens' SPECs

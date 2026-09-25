@@ -1,0 +1,35 @@
+{
+  "body": {
+    "user": {
+      "about": "scrubbed about",
+      "ai_morning_brief": false,
+      "applications": null,
+      "avatar": null,
+      "birth_date": null,
+      "country_code": null,
+      "cover_photo": null,
+      "created_at": "2026-09-18T14:52:46.248Z",
+      "email": "person@example.test",
+      "firstname": "scrubbed firstname",
+      "followers_count": 0,
+      "following_count": 0,
+      "fullname": "scrubbed fullname",
+      "gender": "",
+      "id": 494,
+      "is_online": true,
+      "lang": "en",
+      "last_sign_in_at": "scrubbed last_sign_in_at",
+      "lastname": "scrubbed lastname",
+      "note_index_type": "card_list",
+      "phone_number": "scrubbed phone_number",
+      "safezone_pin_enabled": false,
+      "status": "active",
+      "theme": "dark",
+      "two_factor_enabled": false,
+      "updated_at": "2026-09-25T00:55:45.093Z",
+      "username": "scrubbed username"
+    }
+  },
+  "request": "GET /api/v1/users/connected_user",
+  "status": 200
+}

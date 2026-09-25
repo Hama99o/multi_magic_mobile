@@ -1,0 +1,20 @@
+{
+  "body": {
+    "counts": {
+      "contacts": 0,
+      "documents": 1,
+      "events": 0,
+      "expenses": 0,
+      "incomes": 0,
+      "loans": 0,
+      "notes": 0,
+      "pages": 0,
+      "todos": 0
+    },
+    "stocked": [
+      "documents"
+    ]
+  },
+  "request": "GET /api/v1/me/summary",
+  "status": 200
+}

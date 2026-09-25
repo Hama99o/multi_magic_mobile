@@ -1,0 +1,7 @@
+{
+  "body": {
+    "documents": []
+  },
+  "request": "GET /api/v1/ai/sessions/264/documents",
+  "status": 200
+}

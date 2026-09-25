@@ -1,0 +1,7 @@
+{
+  "body": {
+    "unread_count": 0
+  },
+  "request": "GET /api/v1/notifications/unread_count",
+  "status": 200
+}

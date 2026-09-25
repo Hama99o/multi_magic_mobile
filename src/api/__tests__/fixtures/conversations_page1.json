@@ -1,0 +1,147 @@
+{
+  "body": {
+    "conversations": [
+      {
+        "can_delete": true,
+        "created_at": "2026-09-18T17:29:24.059Z",
+        "id": 266,
+        "is_admin": false,
+        "is_group": false,
+        "last_message": {
+          "body": "[qa] automated test message",
+          "conversation_id": 266,
+          "created_at": "2026-09-24T14:47:42.065Z",
+          "deleted": false,
+          "edited_at": null,
+          "id": 2395,
+          "key_problem": null,
+          "key_resets_at": null,
+          "key_resets_on": null,
+          "links": [],
+          "rating": null,
+          "reactions": [],
+          "read_at": null,
+          "role": null,
+          "sent_by_me": true,
+          "sources": [],
+          "undoable": false,
+          "undone_at": null,
+          "user": {
+            "about": "scrubbed about",
+            "avatar": null,
+            "email": "person@example.test",
+            "firstname": "scrubbed firstname",
+            "fullname": "scrubbed fullname",
+            "id": 494,
+            "is_following": null,
+            "is_online": true,
+            "lastname": "scrubbed lastname",
+            "updated_at": "2026-09-25T00:55:45.375Z",
+            "username": "scrubbed username"
+          },
+          "user_id": 494
+        },
+        "participants": [
+          {
+            "is_admin": false,
+            "last_read_at": "2026-09-24T14:47:42.235Z",
+            "user": {
+              "about": "scrubbed about",
+              "avatar": null,
+              "email": "person@example.test",
+              "firstname": "scrubbed firstname",
+              "fullname": "scrubbed fullname",
+              "id": 494,
+              "is_following": false,
+              "is_online": true,
+              "lastname": "scrubbed lastname",
+              "updated_at": "2026-09-25T00:55:45.375Z",
+              "username": "scrubbed username"
+            }
+          }
+        ],
+        "title": null,
+        "unread_messages_count": 0,
+        "updated_at": "2026-09-24T14:47:42.209Z",
+        "user": {
+          "about": "scrubbed about",
+          "avatar": null,
+          "email": "person@example.test",
+          "firstname": "scrubbed firstname",
+          "fullname": "scrubbed fullname",
+          "id": 494,
+          "is_following": false,
+          "is_online": true,
+          "lastname": "scrubbed lastname",
+          "updated_at": "2026-09-25T00:55:45.375Z",
+          "username": "scrubbed username"
+        }
+      }
+    ],
+    "meta": {
+      "pagy": {
+        "count": 1,
+        "first_url": "/api/v1/conversations?page=1",
+        "from": 1,
+        "in": 1,
+        "last": 1,
+        "last_url": "/api/v1/conversations?page=1",
+        "limit": 15,
+        "next": null,
+        "next_url": "/api/v1/conversations?page=",
+        "page": 1,
+        "page_url": "/api/v1/conversations?page=1",
+        "pages": 1,
+        "prev": null,
+        "prev_url": "/api/v1/conversations?page=",
+        "scaffold_url": "/api/v1/conversations?page=__pagy_page__",
+        "series": [
+          "1"
+        ],
+        "to": 1,
+        "vars": {
+          "count": 1,
+          "count_args": [
+            "all"
+          ],
+          "ends": true,
+          "headers": {
+            "count": "total-count",
+            "limit": "page-items",
+            "page": "current-page",
+            "pages": "total-pages"
+          },
+          "limit": 15,
+          "metadata": [
+            "scaffold_url",
+            "first_url",
+            "prev_url",
+            "page_url",
+            "next_url",
+            "last_url",
+            "count",
+            "page",
+            "limit",
+            "vars",
+            "pages",
+            "last",
+            "in",
+            "from",
+            "to",
+            "prev",
+            "next",
+            "series"
+          ],
+          "outset": 0,
+          "page": "1",
+          "page_param": "page",
+          "size": 7
+        }
+      },
+      "total_count": 1,
+      "unread_conversations": 0
+    }
+  },
+  "request": "GET /api/v1/conversations",
+  "status": 200
+}

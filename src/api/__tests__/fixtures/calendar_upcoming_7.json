@@ -1,0 +1,7 @@
+{
+  "body": {
+    "occurrences": []
+  },
+  "request": "GET /api/v1/calendar_app/events/upcoming",
+  "status": 200
+}

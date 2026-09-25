@@ -1,0 +1,7 @@
+{
+  "body": {
+    "id": 264
+  },
+  "request": "GET /api/v1/ai/conversation",
+  "status": 200
+}

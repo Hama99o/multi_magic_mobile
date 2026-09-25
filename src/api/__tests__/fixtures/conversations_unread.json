@@ -1,0 +1,8 @@
+{
+  "body": {
+    "unread_messages_count": 0,
+    "unread_messages_total": 0
+  },
+  "request": "GET /api/v1/conversations/unread_messages_count",
+  "status": 200
+}

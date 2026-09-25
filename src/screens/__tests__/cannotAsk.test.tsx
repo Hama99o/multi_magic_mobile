@@ -34,7 +34,7 @@
 import fs from "fs";
 import path from "path";
 import MockAdapter from "axios-mock-adapter";
-import { render, screen, waitFor } from "@testing-library/react-native";
+import { act, render, screen, waitFor } from "@testing-library/react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 import { testQueryClient } from "@/__tests__/queryClient";
@@ -82,7 +82,6 @@ const EMPTY_META = fixture("notifications_page1").meta;
 /** Every request answered from a capture, for the EMPTY state; anything not
  *  listed is a 404, which no screen here reads as empty. */
 function serveEmpty(mock: MockAdapter, overrides: [RegExp, unknown][]) {
-  for (const [url, body] of overrides) mock.onGet(url).reply(200, body);
   mock.onGet(/\/ai\/conversation$/).reply(200, fixture("ai_conversation"));
   mock.onGet(/\/ai\/sessions\/\d+\/documents/).reply(200, { documents: [] });
   mock.onGet(/\/ai\/sessions$/).reply(200, fixture("ai_sessions"));
@@ -95,6 +94,9 @@ function serveEmpty(mock: MockAdapter, overrides: [RegExp, unknown][]) {
   mock.onGet(/\/me\/summary/).reply(200, { counts: {}, stocked: [] });
   mock.onGet(/\/ai_keys/).reply(200, { ...fixture("ai_keys"), ai_keys: [], borrowed: [] });
   mock.onGet(/\/users\/connected_user/).reply(200, fixture("connected_user"));
+  // LAST: the adapter REPLACES a handler whose regex has the same text, so
+  // an override registered first was silently overwritten by the default.
+  for (const [url, body] of overrides) mock.onGet(url).reply(200, body);
   mock.onAny().reply(404, { error: "Not found" });
 }
 
@@ -148,8 +150,8 @@ afterEach(() => {
   __resetReachability();
 });
 
-function renderScreen(element: ReactElement) {
-  return render(<QueryClientProvider client={testQueryClient()}>{element}</QueryClientProvider>);
+function renderScreen(element: ReactElement, client = testQueryClient()) {
+  return render(<QueryClientProvider client={client}>{element}</QueryClientProvider>);
 }
 
 function emptyShown(empty: (typeof SCREENS)[number]["empty"]): boolean {
@@ -187,4 +189,76 @@ it("the four states are four different sentences on every screen", () => {
     const sentences = [t("failure.unreachable"), s.loadFailed(), t("failure.rateLimited")];
     expect(new Set(sentences).size).toBe(3);
   }
+});
+
+/**
+ * HAD CONTENT, THEN THE REFRESH FAILED. A different question from the one
+ * above: the screen already showed a real answer. What every reference that
+ * shows this case does (Starlink, Docusign, Perplexity; states/SPEC.md) is
+ * keep the content and mark it. The calendar used to CLEAR it, throwing away
+ * an agenda that was right a minute ago; it keeps it now, under the error
+ * line and its "updated" line.
+ *
+ * Notifications is not here: the QA account has none to capture, and a
+ * hand-written notification is what the contract fixtures replaced.
+ */
+function todayIso(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+const REFRESHES: { name: string; element: () => ReactElement; failedId: string; kept: () => boolean }[] = [
+  {
+    name: "calendar",
+    element: () => <Calendar />,
+    failedId: "calendar-load-failed",
+    kept: () => screen.queryByText("Dentist") !== null,
+  },
+  {
+    name: "chats",
+    element: () => <Chats />,
+    failedId: "chats-load-failed",
+    kept: () => screen.queryAllByTestId(/^chat-row-/).length > 0,
+  },
+  {
+    name: "profile",
+    element: () => <Profile />,
+    failedId: "profile-load-failed",
+    kept: () => screen.queryByTestId("profile-firstname") !== null,
+  },
+];
+
+describe.each(REFRESHES)("$name, when a refresh fails after a real answer", ({ element, failedId, kept }) => {
+  it("keeps what it had, and says it could not refresh", async () => {
+    const on = todayIso();
+    serveEmpty(mock, [
+      [
+        /\/calendar_app\/events\/upcoming/,
+        {
+          occurrences: [
+            {
+              id: `7:${on}`, on, starts_at: `${on}T09:00:00Z`, ends_at: `${on}T09:30:00Z`, all_day: false,
+              event: { id: 7, title: "Dentist", description: null, location: null, kind: "appointment", all_day: false, recurrence: null, color: null },
+            },
+          ],
+        },
+      ],
+      [/\/conversations(\?|$)/, fixture("conversations_page1")],
+    ]);
+    const client = testQueryClient();
+    renderScreen(element(), client);
+    await waitFor(() => expect(kept()).toBe(true), { timeout: 3000 });
+
+    mock.reset();
+    mock.onAny().networkError();
+    await act(async () => {
+      await client.refetchQueries();
+    });
+
+    expect(await screen.findByTestId(failedId)).toBeTruthy();
+    expect(screen.getByText(t("failure.unreachable"))).toBeTruthy();
+    expect(kept()).toBe(true);
+    // And the calendar's "Nothing today" never stands beside its error.
+    expect(screen.queryByTestId("calendar-nothing-today")).toBeNull();
+  });
 });

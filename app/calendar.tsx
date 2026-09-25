@@ -110,7 +110,7 @@ export default function Calendar() {
   const { t, i18n } = useTranslation();
   const [composed, setComposed] = useState(false);
 
-  const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt } = useQuery({
+  const { data, error, refetch, isRefetching, dataUpdatedAt } = useQuery({
     queryKey: ["calendar", "upcoming", WINDOW_DAYS],
     // The page, not the bare list: it carries how many occurrences could not
     // be read, which the screen says (`UnreadableNotice`).
@@ -239,7 +239,14 @@ export default function Calendar() {
 
       <FlatList
         testID="calendar-list"
-        data={isLoading || error ? [] : rows}
+        // Rows only from a REAL answer, and kept when a refresh fails. Two
+        // traps, both live: `rows` always carries "Nothing today" (today
+        // always appears), so rows without data would put that sentence
+        // under an error, the fact nobody got; and clearing the rows on a
+        // failed REFRESH threw away an agenda that was right a minute ago.
+        // The error line above and `UpdatedLine` say how stale it is, as
+        // notifications and chats already did (docs/design/states/SPEC.md).
+        data={data ? rows : []}
         keyExtractor={(row) => row.key}
         renderItem={({ item }) => {
           if (item.kind === "day") {
@@ -275,7 +282,7 @@ export default function Calendar() {
           />
         }
         ListFooterComponent={
-          isLoading || error || rows.length === 0 ? null : (
+          !data || rows.length === 0 ? null : (
             <Text
               variant="caption"
               tone="muted"

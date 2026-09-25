@@ -109,13 +109,58 @@ hooks.
 - **No device screenshot of any failure state**, which `DONE` needs at 360,
   411 and 800. They need the emulator with the backend stopped. The backend is
   the owner's real stack, so stopping it is his call.
-- **The refetch case is not asserted.** A screen that had data and then lost
-  the network behaves differently per screen:
-  - `chats`, `notifications` and `profile` keep the rows under the error line.
-  - `calendar` **drops** its events and shows only the error
-    (`data={isLoading || error ? [] : rows}`).
-  - Neither claims a false fact, so neither is a defect. Whether the calendar
-    should keep stale rows is a design question, not answered here.
+- **The refetch case: now decided and asserted, see below.**
 - **The other row-15 cases** (`aiError` over the socket, no recogniser,
   permission refused) are specified and tested in their own screens' SPECs
   (`chat/`). They are not re-checked here.
+
+## Had content, then the refresh failed (2026-09-25)
+
+This is a different question from "never loaded". Before, the screens did
+not agree:
+
+- `chats`, `notifications` and `profile` kept their rows under the error
+  line.
+- `calendar` cleared its events (`data={isLoading || error ? [] : rows}`) and
+  showed only the error line, under an `UpdatedLine` that still said when it
+  last succeeded.
+
+**Rule Zero, iOS.** Two searches: a calendar still showing events with a
+could-not-refresh notice, and a feed still showing items under an offline
+banner.
+
+**The evidence is thin, and I'm saying so.** A still screenshot rarely
+catches a refresh failing over content. The references that do show content
+surviving a failure all keep it and mark it:
+
+- **Starlink** (`mobbin.com/screens/c3e3361e-aac7-47f4-b287-b6f448dd0333`):
+  rows stay, each dimmed with "unreachable".
+- **Docusign** (`mobbin.com/screens/5e8c61aa-c77e-4013-8310-5808541018ba`):
+  the row stays, marked "Failed to sync".
+- **Perplexity** (`mobbin.com/screens/09e365a3-519a-44a7-9c03-c0449fcc16e4`):
+  the thread stays, with a notice over the composer.
+- **Qantas** (`mobbin.com/screens/18f77caf-19d5-4199-98b4-a36f34096d23`):
+  pairs an "Unable to update" toast with its offline screen. That is the
+  never-loaded case again.
+
+**None clears content it already had.**
+
+**Decision: keep what it had.** `app/calendar.tsx` now reads
+`data={data ? rows : []}`, and every loading screen now agrees. The error
+line says it could not refresh, and the `UpdatedLine` says how old the
+agenda is.
+
+**The trap, which is why the condition is `data` and not `!isLoading`:**
+`rows` always carries today's "Nothing today" row, because today always
+appears. So rows rendered without a real answer would put "Nothing today"
+under an error, the fact nobody got. Both halves are asserted and were
+planted:
+
+- the old clearing condition goes red on the new refresh test;
+- the naive `data={rows}` goes red on all three calendar never-loaded
+  rows.
+
+**Asserted** by `cannotAsk.test.tsx` "when a refresh fails after a real
+answer": calendar, chats and profile. Notifications is **not** asserted,
+because the QA account has no notification to capture, and the contract
+fixtures exist to replace hand-written bodies.

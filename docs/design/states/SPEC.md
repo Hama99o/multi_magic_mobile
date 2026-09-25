@@ -1,6 +1,6 @@
 # Error & empty states: what a screen says when it could not ask
 
-**Status: `IN PROGRESS`** · board row 15 · 2026-09-25
+**Status: `IN PROGRESS`** · board row 15 · 2026-09-25 · every state shot on a device at three widths; what is missing is a flow
 
 The question for each screen is not "is there an offline banner" but **what
 does the screen claim while it cannot know?** A calendar that draws "nothing
@@ -122,9 +122,23 @@ hooks.
   - Cleanup: Metro was stopped after the shots, because it had the bad URL
     baked in (`src/config/env.ts`). A leftover would have broken the next
     session's run.
-- **5xx and 429 are not shot.** A dead port cannot fake a status. They need
-  a backend that answers badly, and that is the owner's stack. They are
-  asserted in Jest only.
+- **5xx and 429: shot on a device, 2026-09-25**, through
+  `qa/fault_proxy.py` (`759baaf`). The proxy sat on 127.0.0.1:3031 in front
+  of the local backend, Metro was baked to `http://10.0.2.2:3031`, and the
+  fault was switched from 500 to 429 on the control route, with no Metro
+  restart. `ours/{360,411,800}-{5xx,429}-{assistant,chats,notifications,calendar,profile}.png`:
+  - **5xx:** each screen says its own "Could not load …", and **"Internal
+    Server Error" appears nowhere**. That is finding 3 above, confirmed on a
+    device, with the proxy serving Rails' real `PublicExceptions` body.
+  - **429:** every screen says "Too many requests just now. Give it a
+    minute."
+  - Two 360 dp 5xx frames were first captured mid-load, came out blank, and
+    were reshot.
+- **One endpoint failing while the rest works**, the case a dead port cannot
+  make: `ours/411-partial-{assistant,calendar,chats}.png`, with only
+  `/api/v1/calendar_app` answering 500. The assistant and chats load the QA
+  account's real data, and the calendar alone says "Could not load your
+  calendar." with Try again.
 - **No flow covers these states**, and `DONE` needs flows run. A flow would
   need the same Metro swap, which `qa/run.sh` does not do.
 - **The refetch case: now decided and asserted, see below.**

@@ -67,7 +67,32 @@ default is the platform's own motion, on the native thread, which is what
 
 - A device recording where a push stutters, or where a white or black frame
   shows between two screens. Either is a measurable defect, not a taste.
-  **NOT MEASURED yet:** no push has been recorded frame by frame.
+  **Recorded 2026-09-25, on the emulator (`qa_phone4`, current build)**:
+  `screenrecord`, split into frames with ffmpeg, stills in `ours/`.
+  - **No flash.** Every frame's brightness was checked against its
+    neighbours; a single frame more than 40 off both counts as a flash.
+    There were none, in light or dark, at 360, 411 or 800 dp. Light stayed
+    within 213–244 and dark within 28–53, so no white frame on dark and no
+    black frame on light.
+  - **The slide takes what this file says.** The header band, compared
+    frame by frame with the settled screen, moves and settles in **384 ms
+    (411 dp), 391 ms (360) and 440 ms (800)**. That is against the 450 ms of
+    `rns_default_enter_in.xml` above: a platform claim beside an
+    observation, and they agree, since `fast_out_extra_slow_in` crawls
+    through its last stretch below the comparison's threshold.
+  - **A number I reported first was wrong, and is recorded as wrong.** I
+    first said "slides of 0.60–1.09 s": that was the whole burst of change,
+    including the calendar's "Updating…" and its content arriving after the
+    slide. Hamma9901 asked why it disagreed with 450 ms, and the header-band
+    measure above is the answer.
+  - **Smoothness: NOT MEASURED.** The recording's own timestamps give 20–28
+    fps during a slide, with gaps up to 99 ms. A screen recording on a loaded
+    emulator cannot say whether a frame was dropped by the app, the emulator
+    or the recorder, so this needs **his phone**.
+  - **Not a transition finding, noticed on the way:** a people thread opens
+    onto its bubble skeleton for about a second while its messages load,
+    though the chats list already holds the last message. Seeding the thread
+    with it is a design question.
   The method is the keyboard's (`chat/SPEC.md`, "frame by frame"): a 60 fps
   screen recording, split into frames with ffmpeg, one column or crop compared
   across frames. It is not written up in `qa/QA_HANDBOOK.md` yet.

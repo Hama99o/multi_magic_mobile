@@ -72,6 +72,14 @@ API_URL_LOCAL="${API_URL_LOCAL:-http://localhost:3001}"
 #
 # Build it with:  npx expo prebuild --platform android && (cd android && ./gradlew assembleDebug)
 DEV_BUILD_APK="${DEV_BUILD_APK:-android/app/build/outputs/apk/debug/app-debug.apk}"
+# android/ is generated and was deleted on 2026-09-25 to free disk. The APK the
+# device actually runs is kept outside the tree (its base.apk hashed the same,
+# ~/qa-apk-keep/README.txt). Fall back to it, and SAY so, rather than let
+# `qa.sh install` stop on a missing path.
+if [ ! -f "$(dirname "${BASH_SOURCE[0]}")/../$DEV_BUILD_APK" ] && [ -f "$HOME/qa-apk-keep/app-debug-sdk54-known-good.apk" ]; then
+  DEV_BUILD_APK="$HOME/qa-apk-keep/app-debug-sdk54-known-good.apk"
+  DEV_BUILD_APK_NOTE="android/ has none, so this is the kept known-good APK"
+fi
 DEV_BUILD_ID="${DEV_BUILD_ID:-co.byseven.multimagic}"
 
 # `USE_DEV_BUILD=1` drives our own app; anything else falls back to Expo Go, so

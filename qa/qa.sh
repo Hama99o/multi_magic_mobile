@@ -89,9 +89,11 @@ case "${1:-all}" in
   install)
     # The dev build, onto whatever device is up. Needs the box; everything
     # before it does not, which is why the APK is built ahead of the claim.
-    [ -f "$DIR/../$DEV_BUILD_APK" ] || { echo "no APK at $DEV_BUILD_APK — build it first:"; \
+    case "$DEV_BUILD_APK" in /*) APK="$DEV_BUILD_APK";; *) APK="$DIR/../$DEV_BUILD_APK";; esac
+    [ -n "${DEV_BUILD_APK_NOTE:-}" ] && echo "installing $APK: $DEV_BUILD_APK_NOTE"
+    [ -f "$APK" ] || { echo "no APK at $DEV_BUILD_APK — build it first:"; \
       echo "  npx expo prebuild --platform android && (cd android && ./gradlew assembleDebug)"; exit 1; }
-    adb -s "$SERIAL" install -r "$DIR/../$DEV_BUILD_APK" || exit 1
+    adb -s "$SERIAL" install -r "$APK" || exit 1
     echo "installed $DEV_BUILD_ID — run flows with USE_DEV_BUILD=1";;
   down)
     adb -s "$SERIAL" emu kill >/dev/null 2>&1

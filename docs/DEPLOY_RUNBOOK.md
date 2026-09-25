@@ -163,7 +163,13 @@ is what preceded the reboot.
 for a build. An SDK bump invalidates much of that cache rather than reusing it,
 so budget a second 8 GB, not a delta.
 
-**Delete `android/` before the prebuild.** It is generated, gitignored build
+**Delete `android/` before the prebuild.** *Done 2026-09-25, before any
+prebuild, to bank the disk (14 → 16 GB free). Both APKs and the debug key are
+in `~/qa-apk-keep/`, whose `README.txt` says which the device runs (its
+base.apk hash matches `app-debug-sdk54-known-good.apk`, not the later one that
+sat in `android/`). `qa.sh install` falls back to the kept APK, and the debug
+key must go back into `android/app/` after `prebuild`, or the installed app
+must be uninstalled to take the new build.* It is generated, gitignored build
 output, `expo prebuild` regenerates it, and it reclaims 3 GB — and it removes
 the risk of SDK 54 artifacts confusing an SDK 57 prebuild, which is a
 reasonable worry rather than an observed one. **Do not clear `~/.gradle`**

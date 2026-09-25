@@ -64,10 +64,13 @@ set +e
 export MAESTRO_QA_EMAIL="$QA_EMAIL"
 export MAESTRO_QA_PASSWORD="$QA_PASSWORD"
 ARGS=(-e APP_ID="$APP_ID" -e DEEP_LINK="$DEEP_LINK")
+# `faults`-tagged flows need qa/fault_proxy.py in front of the backend and a
+# Metro baked to it; only `qa/faults.sh` provides both. Run here, they fail.
+EXCLUDE=(--exclude-tags faults)
 if [ -n "$TAG" ]; then
-  maestro --device "$SERIAL" test --include-tags "$TAG" "${ARGS[@]}" "$DIR/flows"
+  maestro --device "$SERIAL" test --include-tags "$TAG" "${EXCLUDE[@]}" "${ARGS[@]}" "$DIR/flows"
 else
-  maestro --device "$SERIAL" test "${ARGS[@]}" "$DIR/flows"
+  maestro --device "$SERIAL" test "${EXCLUDE[@]}" "${ARGS[@]}" "$DIR/flows"
 fi
 rc=$?
 set -e

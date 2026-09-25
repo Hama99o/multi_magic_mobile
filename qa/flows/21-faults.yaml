@@ -1,0 +1,138 @@
+# WHAT A SCREEN SAYS WHEN ONE ENDPOINT FAILS (2026-09-25, board row 15).
+#
+# Runs ONLY through `qa/faults.sh`, which puts `qa/fault_proxy.py` between
+# the app and the backend and bakes Metro to it. `run.sh` excludes the
+# `faults` tag, because without the proxy every step here is meaningless.
+#
+# One boot, three states, switched live on the proxy's control route:
+#   1. a PARTIAL outage: only the calendar fails (500, Rails' real error
+#      body), and the chats still load. A dead port cannot make this case.
+#   2. a 429 on notifications, which must give the rate-limit sentence, not
+#      the screen's generic one.
+#   3. a 500 on chats, which must give "Could not load your chats." and never
+#      Rails' "Internal Server Error" (fe6717d).
+# Every failure state must also NOT show its empty state.
+#
+# It writes nothing. The asserted text is English, and the flow checks that
+# rather than setting it.
+appId: ${APP_ID}
+tags:
+  - faults
+onFlowComplete:
+  # Runs when the flow FAILS too. faults.sh stops the proxy anyway; this is
+  # so a failed step never leaves a fault behind for a proxy someone reuses.
+  - runScript:
+      file: scripts/fault.js
+      env:
+        KIND: none
+        PREFIX: /
+---
+# ── 0. THE PROXY IS THERE ─────────────────────────────────────────────────
+# First, before the app, so a missing proxy fails HERE with its own sentence
+# rather than as a sign-in that could not reach the server.
+- runScript:
+    file: scripts/fault.js
+    env:
+      KIND: none
+      PREFIX: /
+- assertTrue:
+    condition: ${output.fault == 'set'}
+    label: "the fault proxy answers its control route"
+
+- runFlow: login.yaml
+# The sentences below are English. Checked, not set: setting it would be a
+# write to the QA account's `users.lang`, and `set-language.yaml` failed
+# here on 2026-09-25 when its tap on the avatar opened nothing.
+- assertVisible:
+    text: "Answers come from your MultiMagic data and can be wrong. Check anything that matters."
+    label: "the app is in English (if not: set-language.yaml with LANG_ID=language-en)"
+- waitForAnimationToEnd:
+    timeout: 10000
+
+# ── 1. A PARTIAL OUTAGE: the calendar fails, the chats do not ─────────────
+- runScript:
+    file: scripts/fault.js
+    env:
+      KIND: "500"
+      PREFIX: /api/v1/calendar_app
+- assertTrue:
+    condition: ${output.fault == 'set'}
+    label: "fault set: calendar answers 500"
+- tapOn:
+    id: "chat-open-calendar"
+- extendedWaitUntil:
+    visible:
+      id: "calendar-load-failed"
+    timeout: 30000
+- assertVisible:
+    text: "Could not load your calendar."
+- assertNotVisible:
+    text: "Internal Server Error"
+# NOT "nothing-today is absent". The assistant already read the calendar for
+# its suggestions (the same query), so on a device this screen is always in
+# the REFRESH case: it keeps its last real answer under the error line
+# (states/SPEC.md, "Had content, then the refresh failed"). On the QA
+# account that answer is empty, so "Nothing today" stays, marked stale by the
+# line that says when it was last true. The never-loaded case, where it must
+# NOT appear, is asserted in Jest (cannotAsk.test.tsx).
+- assertVisible:
+    id: "calendar-updated"
+- takeScreenshot: reports/21-partial-calendar
+- back
+# The rest of the app still works: that is what makes it PARTIAL.
+- tapOn:
+    id: "chat-open-chats"
+- extendedWaitUntil:
+    visible:
+      id: "chats-list"
+    timeout: 30000
+- assertNotVisible:
+    id: "chats-load-failed"
+- takeScreenshot: reports/21-partial-chats-still-load
+- back
+
+# ── 2. A 429 ON NOTIFICATIONS ─────────────────────────────────────────────
+- runScript:
+    file: scripts/fault.js
+    env:
+      KIND: "429"
+      PREFIX: /api/v1/notifications
+- assertTrue:
+    condition: ${output.fault == 'set'}
+    label: "fault set: notifications answers 429"
+- tapOn:
+    id: "chat-open-notifications"
+- extendedWaitUntil:
+    visible:
+      id: "notifications-load-failed"
+    timeout: 30000
+- assertVisible:
+    text: "Too many requests just now. Give it a minute."
+- assertNotVisible:
+    id: "notifications-empty"
+- takeScreenshot: reports/21-429-notifications
+- back
+
+# ── 3. A 500 ON CHATS, with Rails' real error body ────────────────────────
+- runScript:
+    file: scripts/fault.js
+    env:
+      KIND: "500"
+      PREFIX: /api/v1/conversations
+- assertTrue:
+    condition: ${output.fault == 'set'}
+    label: "fault set: chats answers 500"
+- tapOn:
+    id: "chat-open-chats"
+- extendedWaitUntil:
+    visible:
+      id: "chats-load-failed"
+    timeout: 30000
+- assertVisible:
+    text: "Could not load your chats."
+- assertNotVisible:
+    text: "Internal Server Error"
+- assertNotVisible:
+    id: "chats-empty"
+- takeScreenshot: reports/21-500-chats
+- back

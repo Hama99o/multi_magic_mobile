@@ -1,6 +1,6 @@
 # Error & empty states: what a screen says when it could not ask
 
-**Status: `IN PROGRESS`** · board row 15 · 2026-09-25 · every state shot on a device at three widths; what is missing is a flow
+**Status: `DONE`** · board row 15 · 2026-09-25 · every state shot on a device at three widths, and `21-faults` PASSES through `qa/faults.sh`
 
 The question for each screen is not "is there an offline banner" but **what
 does the screen claim while it cannot know?** A calendar that draws "nothing
@@ -139,8 +139,22 @@ hooks.
   `/api/v1/calendar_app` answering 500. The assistant and chats load the QA
   account's real data, and the calendar alone says "Could not load your
   calendar." with Try again.
-- **No flow covers these states**, and `DONE` needs flows run. A flow would
-  need the same Metro swap, which `qa/run.sh` does not do.
+- **The flow: `qa/flows/21-faults.yaml`, run by `qa/faults.sh`, PASS on
+  2026-09-25** (exit 0, 41 steps, 168 s). It covers a partial outage, a 429
+  and a 500 in one boot, switched live on the proxy. The runner's teardown
+  is a trap on EXIT, INT and TERM that selects by process group and port,
+  never by command line. It was proved by five failed runs and a TERM mid-run,
+  each followed by a clean ordinary bundle. The register row has the plants
+  and which case each screen took.
+- **A crash the flow found that Jest could not: fixed.** `df9b1f2` made the
+  calendar screen store a page under the key the assistant's suggestions
+  read as an array. Opening the calendar and going back crashed the
+  assistant (`useStarterPrompts.ts`). Both now read the page, and
+  `cannotAsk.test.tsx` "one cache, two screens" mounts both on one client.
+- **Open, for a designer:** in the partial outage the calendar says
+  "Updated just now" directly above "Could not load your calendar.". Both
+  are true, because the assistant fetched it seconds earlier, and together
+  they read oddly.
 - **The refetch case: now decided and asserted, see below.**
 - **The other row-15 cases** (`aiError` over the socket, no recogniser,
   permission refused) are specified and tested in their own screens' SPECs

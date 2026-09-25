@@ -219,7 +219,7 @@
     "file": "app/chat/[id].tsx",
     "old": "client.getQueryState<InfiniteData<ConversationList>>",
     "new": "client.getQueryState<InfiniteData<ChatMessage[]>>",
-    "expect": "\\[chat\\]/\\[id\\]\\.tsx:\\d+ getQueryState",
+    "expect": "app/chat/\\[id\\]\\.tsx:\\d+ getQueryState",
     "why": "seeding one screen's cache from another is the shape that crashed the assistant this morning"
   }
 ]

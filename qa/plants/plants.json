@@ -128,7 +128,8 @@
     "file": "src/screens/people/DayDivider.tsx",
     "old": "    a.getDate() === b.getDate();",
     "new": "    a.getUTCDate() === b.getUTCDate();",
-    "expect": "✕",
-    "why": "a zone bug the Paris-pinned run may not see; the reason it exists"
+    "expect": "FAIL src/",
+    "why": "a zone bug the Paris-pinned run may not see; the reason it exists. The control is the same suites in Paris: they must stay green, or the plant proves the date suites and not the western run",
+    "control": "npx jest src/screens/people src/lib src/components/settings src/api/__tests__/calendar.test.ts src/screens/__tests__/screens.render.test.tsx"
   }
 ]

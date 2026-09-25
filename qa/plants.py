@@ -23,6 +23,8 @@ check, which must FAIL giving that reason; revert.
                  rewriting, and until then the instrument is unproved
     BASELINE     the reason already shows on a clean tree, so the plant
                  proves nothing
+    NOT SPECIFIC red, but the plant's CONTROL (a command that must stay green
+                 with it) went red too: it proves some check, not this one
     NOT MEASURED the check fails on a CLEAN tree (the rig, not the plant):
                  nothing is proved either way
 
@@ -156,14 +158,25 @@ def main():
                 continue
             open(path, "w").write(text.replace(p["old"], p["new"], 1))
         rc1, planted = sh(p["check"], WT, env_p)
+        # A CONTROL must stay green with the plant in place: the proof that the
+        # plant is caught by THIS instrument and not merely by any. The western
+        # run exists for bugs the Paris run cannot see, so a western plant that
+        # Paris also catches proves the date suites, not the western run.
+        rc_c = sh(p["control"], WT, env_p)[0] if p.get("control") else 0
         # `-e node_modules`: the symlink is untracked, and a plain clean took it.
         sh("git checkout -- . && git clean -fdq -e node_modules", WT)
-        if rc1 != 0 and expect.search(planted):
-            print(f"  BITES        {name}: \"{p['plant']}\" → red, for the stated reason")
+        if rc1 != 0 and expect.search(planted) and rc_c != 0:
+            print(f"  NOT SPECIFIC {name}: \"{p['plant']}\" → red, but the control went red too, so this does not prove {name} in particular")
+            findings += 1
+        elif rc1 != 0 and expect.search(planted):
+            print(f"  BITES        {name}: \"{p['plant']}\" → red, for the stated reason"
+                  + (" (and the control stayed green)" if p.get("control") else ""))
         else:
             why = "the check passed" if rc1 == 0 else "it failed, but not for the stated reason"
             print(f"  DEAD         {name}: \"{p['plant']}\" → {why}. Either it stopped being able to fail, or it never could this way; find out which.")
-            tail = "\n".join(planted.strip().splitlines()[-6:])
+            lines = planted.strip().splitlines()
+            fails = [l for l in lines if l.startswith("FAIL ") or l.lstrip().startswith("● ")][:6]
+            tail = "\n".join(fails + lines[-4:])
             print("               last lines:\n               " + tail.replace("\n", "\n               "))
             findings += 1
     print(f"proved at HEAD {head}: committed code only. Uncommitted edits in the working copy are NOT proved by this run.")

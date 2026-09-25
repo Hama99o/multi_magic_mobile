@@ -13,7 +13,9 @@
     "typecheck": "tsc --noEmit",
     "lint:flows": "python3 qa/flow_lint.py",
     "test:qa": "bash qa/app_checks_test.sh",
-    "pretest": "npm run lint:flows && npm run test:qa"
+    "pretest": "npm run lint:flows && npm run test:qa",
+    "test:west": "JEST_TZ=America/New_York jest src/components/settings/__tests__/BorrowedKeyRow.test.ts src/lib/__tests__/relativeTime.test.ts src/screens/people/__tests__/dayLabel.test.ts src/screens/people/__tests__/EventRow.test.tsx src/api/__tests__/calendar.test.ts src/screens/__tests__/screens.render.test.tsx",
+    "posttest": "npm run test:west"
   },
   "dependencies": {
     "@rails/actioncable": "^7.2.302",

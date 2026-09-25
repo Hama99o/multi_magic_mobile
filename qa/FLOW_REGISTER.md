@@ -1011,6 +1011,12 @@ first, which is more.
   before claiming a clean launch. The dev launcher waiting for a server is a
   warning that names the tap to make.
 
+**Watch sign-in specifically, not only the chat** (Hamma9901): since
+`9b56a2e` every Android form lifts through `KeyboardPadding`, sign-in first
+among them. Confirm the field and the button stay above the keyboard, and
+that the lift eases rather than jumps. The dialogs still use KAV: a known
+inconsistency, not a finding.
+
 **Before the first flow:** Metro on 3029 with
 `EXPO_PUBLIC_API_URL=http://10.0.2.2:3001` (inlined at build time, so it must be
 right before Metro starts); launch with `monkey`, and if the dev launcher

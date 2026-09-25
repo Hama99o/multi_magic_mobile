@@ -274,11 +274,18 @@ their shell tests; `Accept-Language`.
    the chat. The dialogs (rename, instructions, feedback) still use KAV, so
    Android now has two lift behaviours. If run 9 shows anything wrong,
    reverting this one commit restores the old behaviour everywhere.
+   **Decided (Hamma9901):** kept, because the single-frame jump is KAV's
+   designed behaviour on every Android form, so fixing only the chat was
+   the narrower change, not the safer one. The two behaviours are a KNOWN
+   INCONSISTENCY, to resolve by moving the dialogs over once the device says
+   the lift is right. Run 9 watches SIGN-IN specifically.
 2. **Pinning every test to Europe/Paris** (`jest.config.js`) made CI see a
-   zone bug that only shows east of UTC, and **it moved the blind spot, not
-   removed it**: a bug that only shows in UTC, or west of it, is now
-   invisible to every run. A second zone would close it, but that means
-   running the date suites twice.
+   zone bug that only shows east of UTC, and moved the blind spot rather
+   than removing it. **CLOSED:** `npm run test:west` runs the six
+   date-sensitive suites again in America/New_York, as `posttest`, so
+   `npm test` and CI run both zones. Proven to apply: a probe reports offset
+   +300 against Paris's −60, and the old phone-calendar `resetDate` is red
+   there with New York's own value (04:00Z).
 3. **Drafts written before `df9b1f2`** sit under the old key
    (`mm-draft:<id>`) and are not migrated: one half-written question from
    before this build will not come back, and the orphan stays on disk.
@@ -287,7 +294,9 @@ their shell tests; `Accept-Language`.
    purpose.
 4. **The paged lists re-read EVERY loaded page on each live event.** Right
    for correctness, and cheap at one or two pages. After a long scroll back
-   it is N requests per message.
+   it is N requests per message. **Recorded, not fixed:** it matters only if
+   his lists run past a few pages (chats at 15 a page, notifications at 20).
+   Measure how many pages his real account loads before changing it.
 
 **Still INFERRED, not settleable at the desk:** the opening's size and
 timing, the keyboard lift's feel, drag-to-dismiss against the lift, the

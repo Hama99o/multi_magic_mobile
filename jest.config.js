@@ -26,7 +26,10 @@
  * where this app is developed: the whole suite was already green here, so
  * pinning it changes nothing on the laptop and makes CI agree with it.
  */
-process.env.TZ = "Europe/Paris";
+// JEST_TZ overrides it, for the second run WEST of UTC (`npm run test:west`):
+// one zone moves a blind spot rather than removing it, since a bug that shows
+// only in UTC or west of it would be invisible to a Paris-only run.
+process.env.TZ = process.env.JEST_TZ || "Europe/Paris";
 
 /** @type {import('jest').Config} */
 module.exports = {

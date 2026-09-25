@@ -536,3 +536,56 @@ curve, so on iOS it should be the smooth one. `"interactive"` becomes right
 when the composer tracks the keyboard frame
 (`react-native-keyboard-controller`'s `KeyboardStickyView`). That is the Expo
 Go SDK 57 availability question the `[PROBE]` asks.
+
+## Smoothness, measured in two layers — 2026-09-25
+
+**Rule Zero, and where it stops.** Stills show presentation, not motion,
+which `transitions/SPEC.md` already records. A screenshot cannot say whether
+a list scrolls at sixty frames or thirty. So Mobbin was asked only what a
+still can answer: where does the waiting indicator sit while a reply is
+coming?
+- The references agree: exactly where the reply will land, under the
+  question. Perplexity "Thinking"
+  (`mobbin.com/screens/7dfe5a02-1467-4d1f-a00c-503736dc7bd5`), Shop's dots
+  (`…/e7b5c087-5ca6-4049-98db-4b580c3dc11b`), Lloyds "Preparing a response"
+  (`…/0b513db0-3b95-44c1-aa50-6ebd386b1c8a`), Cash App "Connecting the dots"
+  (`…/8bd8633c-b469-43b3-84d9-91bef8063671`).
+- Ours matches: `ThinkingDots` is the list HEADER, which an inverted list
+  draws under the newest message (`app/chat.tsx`).
+
+**The motion questions came from measurement, not references.**
+
+**Layer 1: render counts, at the desk, deterministic**
+(`src/screens/__tests__/renders.test.tsx`). Each row's real renders are
+counted with the same memo rebuilt around a counter. Budgets:
+- typing ten characters: 0 row renders and 0 list-cell renders;
+- a reply arriving: old rows 0, the new row at most 2;
+- an edit to one message: that row only;
+- scrolling the history: 0 renders of rows already on screen;
+- the people thread: the same budgets for typing and arrival.
+
+There is no token streaming. A reply lands whole over the socket, so the
+"streaming" case is the socket frames that do arrive. Every budget was
+planted, and the test header lists what each catches and what it misses.
+Typing in the thread is guarded twice (the stable `renderItem` and
+`ThreadRow`'s memo), and it fails only when both break.
+
+**Layer 2: frame timing on a device** (`qa/gfxinfo.sh` around
+`qa/flows/22-drive.yaml`). **A comparison instrument only**:
+- an x86 emulator on a sixteen-core desktop is not his phone;
+- the dev build runs its JS unminified in development mode;
+- a busy host is a third app. Two baselines of the same code, on the same
+  boot and the same drive, gave 781 frames at 21% jank and then 341 at 57%,
+  while another session's suite held load 24.7 on 16 cores. The script now
+  records the load and refuses to measure when the 1-minute load is over
+  half the cores.
+
+No absolute number from it is a property of the app. Layer 1 carries the
+absolute claims.
+
+**Tonight's layer 2 verdict: NOT MEASURED.** The drive ran identically four
+times. The only run that started on a quiet host (load 7.23) ended at 14.29,
+so it is invalid. The plant comparison (`renderItem` rebuilt every render,
+which layer 1 counts at 100 cell renders while typing) refused at the start
+on a busy host. That is the instrument working: refusing is its job when
+the host would be what it measured. Run it when the box is quiet.

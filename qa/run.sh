@@ -73,9 +73,10 @@ set +e
 export MAESTRO_QA_EMAIL="$QA_EMAIL"
 export MAESTRO_QA_PASSWORD="$QA_PASSWORD"
 ARGS=(-e APP_ID="$APP_ID" -e DEEP_LINK="$DEEP_LINK")
+# `drive` (22-drive, frame timing) is a drive for qa/gfxinfo.sh, not a test.
 # `faults`-tagged flows need qa/fault_proxy.py in front of the backend and a
 # Metro baked to it; only `qa/faults.sh` provides both. Run here, they fail.
-EXCLUDE=(--exclude-tags faults)
+EXCLUDE=(--exclude-tags faults,drive)
 if [ -n "$TAG" ]; then
   maestro --device "$SERIAL" test --include-tags "$TAG" "${EXCLUDE[@]}" "${ARGS[@]}" "$DIR/flows"
 else

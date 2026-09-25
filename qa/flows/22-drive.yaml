@@ -1,0 +1,60 @@
+# A FIXED DRIVE for frame timing (qa/gfxinfo.sh). It asserts only that each
+# screen it passes through appeared, because its job is to move, identically
+# every time, so two runs can be compared. It is not a test of smoothness;
+# the numbers gfxinfo takes around it are the measurement.
+#
+# Expects to START on the assistant, signed in: gfxinfo.sh signs in first
+# (login.yaml) and resets the frame counters after, so sign-in frames are not
+# counted. Excluded from run.sh by its `drive` tag.
+#
+# It writes nothing: it types a question and erases it, never sends.
+appId: ${APP_ID}
+tags:
+  - drive
+---
+- assertVisible:
+    id: "composer-input"
+# The history, both ways. The list is inverted: a drag DOWN reads back.
+- repeat:
+    times: 5
+    commands:
+      - swipe:
+          start: "50%, 35%"
+          end: "50%, 75%"
+          duration: 300
+- repeat:
+    times: 5
+    commands:
+      - swipe:
+          start: "50%, 75%"
+          end: "50%, 35%"
+          duration: 300
+# Typing, the case that once cost 212–382 ms a commit (app/chat.tsx).
+- tapOn:
+    id: "composer-input"
+- inputText: "What is on my calendar today"
+- eraseText: 30
+# Not hideKeyboard: with no IME up it reaches the app as BACK, which on the
+# assistant can leave the app. A drag on the thread puts the keyboard away,
+# by the app's own design (`keyboardDismissMode="on-drag"`, app/chat.tsx).
+- swipe:
+    start: "50%, 35%"
+    end: "50%, 55%"
+    duration: 300
+# Two screens and back.
+- tapOn:
+    id: "chat-open-calendar"
+- extendedWaitUntil:
+    visible:
+      id: "calendar-list"
+    timeout: 15000
+- back
+- tapOn:
+    id: "chat-open-chats"
+- extendedWaitUntil:
+    visible:
+      id: "chats-list"
+    timeout: 15000
+- back
+- assertVisible:
+    id: "composer-input"

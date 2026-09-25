@@ -106,3 +106,7 @@ scripts/__pycache__/
 # Holds the .p12 password and points at signing material. NEVER commit:
 # this repo is public and these credentials sign App Store binaries.
 credentials.json
+
+# Frame-timing runs (qa/gfxinfo.sh): one box, one boot, one load. Comparison
+# data for the session that took them, never a property of the app.
+qa/reports/gfxinfo/

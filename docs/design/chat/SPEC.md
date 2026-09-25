@@ -583,9 +583,30 @@ Typing in the thread is guarded twice (the stable `renderItem` and
 No absolute number from it is a property of the app. Layer 1 carries the
 absolute claims.
 
-**Tonight's layer 2 verdict: NOT MEASURED.** The drive ran identically four
-times. The only run that started on a quiet host (load 7.23) ended at 14.29,
-so it is invalid. The plant comparison (`renderItem` rebuilt every render,
-which layer 1 counts at 100 cell renders while typing) refused at the start
-on a busy host. That is the instrument working: refusing is its job when
-the host would be what it measured. Run it when the box is quiet.
+**Layer 2, tonight: the instrument works; the comparison is NOT MEASURED,
+and the reason is the measurement environment.** It was attempted twice
+under the documented guard.
+- **Attempt 1, from 06:01:** two baselines of the same code differed
+  (781 → 341 frames, 21% → 57% jank) at load 24.7. The guard was built from
+  that. The next quiet-start run ended at 14.29 and was invalid, and the
+  plant comparison refused at the start.
+- **Attempt 2, 06:35, in a window Hamma9901 cleared by holding the other
+  sessions' heavy runs:**
+  - `window-1` is **VALID**: load 7.93 at the start and 7.02 at the end, on
+    16 cores. 916 frames, 14.74% janky, p50 25 ms, p90 32 ms, p95 42 ms,
+    p99 61 ms. **This is the tool's first clean reading. It is one point on
+    one emulator on the dev build, not a property of the app.**
+  - `window-2` was **INVALID**: load 7.02 rose to 10.98 during the drive,
+    and its own guard voided it.
+  - Hamma9901 then called a stop on memory pressure, reporting
+    `full avg10` 2.04 and `some` 2.41 with swap full for hours. When I read
+    it just after the emulator was down (06:41:18), pressure was 0.00 and
+    load 10.2, so that reading cannot confirm or contradict the earlier one.
+
+**The finding: this box cannot produce a valid frame-timing COMPARISON while
+four sessions work.** One valid baseline exists and no noise spread does,
+because the second run was always voided. A difference is only believable
+against the spread between two quiet baselines. So no before-and-after can
+be claimed yet, including for the `renderItem` plant that layer 1 already
+catches. The missing number is the environment's, not neglect: whoever
+picks this up needs a box with one session on it.

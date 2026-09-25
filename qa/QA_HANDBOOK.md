@@ -705,3 +705,27 @@ merely "not 200".
 A live probe that expects a 401 on purpose, like 2026-09-24 21:33's
 unauthenticated call, is fine. It is checking authentication, which is what
 a 401 is.
+
+## The rig drives something other than it claims — a named class, 2026-09-25
+
+**Three instances in one night, and all had the same shape: the thing being
+driven was not the thing assumed, and nothing said so.** Each one produced
+confident output about a question nobody had asked. The next one will not
+look like these three, so the class is the lesson, not the instances.
+
+| # | What was driven | What was assumed | The tell | What names it now |
+|---|---|---|---|---|
+| 1 | **Expo Go** (`host.exp.exponent`) | the dev build | header taps "COMPLETED" and navigated nowhere, the mic was missing, four runs, about 40 minutes | `faults.sh` and `gfxinfo.sh` read the focused package and refuse by name; `run.sh` prints which app it drives |
+| 2 | **Node 18** | the `.nvmrc` Node 22 | a backgrounded Metro died on `toReversed`, and a wait loop hung past 600 s saying nothing | `ensure_node` (`qa.config.sh`) switches and says so, or refuses by name, in every Metro starter |
+| 3 | **the dev build's LAUNCHER** | the app | a bare `multimagic://` on a fresh boot opened the server list, which included **another repo's Metro on :8081**; sign-in "failed" | `open_dev_build` opens the dev-client URL for THIS repo's Metro |
+
+**The rule: before a run measures anything, it names what it is driving,
+and refuses rather than infers.** That means the package in front, the
+Node that started Metro, the Metro the app loaded, and, for frame timing,
+the load on the host, which is a fourth thing being driven whether you meant
+to or not (`gfxinfo.sh`: two runs of the same code gave 781 frames at 21%
+jank and 341 at 57% at load 24.7).
+
+**And do not soften a refusal into a warning.** A warning is read once and
+then scrolls past. A refusal (exit 3, NOT MEASURED) cannot be averaged into
+a result. Every guard above refuses on purpose.

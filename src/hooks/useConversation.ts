@@ -120,6 +120,12 @@ export interface UseConversationResult {
   /** Messages the parser could not read and left out, for the screen to say
    *  so (`UnreadableNotice`). */
   unreadable: number;
+  /**
+   * WHY the last load failed, for the screen to say which (offline, a
+   * refusal, too many requests) through `failureMessage`. Null once a load
+   * succeeds. Before this the thread said one sentence for all of them.
+   */
+  loadError: unknown;
   resync: () => Promise<void>;
 }
 
@@ -199,6 +205,7 @@ export function useConversation({
    *  page's (`readableRows`). The screen says so (`UnreadableNotice`). */
   const [unreadableLatest, setUnreadableLatest] = useState(0);
   const [unreadableOlder, setUnreadableOlder] = useState(0);
+  const [loadError, setLoadError] = useState<unknown>(null);
 
   /**
    * The live conversation id, read inside callbacks that must not be rebuilt
@@ -252,6 +259,7 @@ export function useConversation({
       setMessages((current) => merge(current, page.messages));
       setHasOlder(page.hasMore);
       setStatus("ready");
+      setLoadError(null);
       // Newer than the question, not merely present: an older assistant message
       // already on screen must not be read as this question's answer.
       if (page.messages.some((m) => m.role === "assistant" && m.id > askedAfterIdRef.current)) {
@@ -264,7 +272,10 @@ export function useConversation({
       // problem. Anything else keeps the old rule: a thread already shown
       // stays shown.
       if ((e as { response?: { status?: number } })?.response?.status === 404) setStatus("gone");
-      else setStatus((current) => (current === "ready" ? current : "failed"));
+      else {
+        setLoadError(e);
+        setStatus((current) => (current === "ready" ? current : "failed"));
+      }
     }
   }, []);
 
@@ -448,5 +459,6 @@ export function useConversation({
     messages, status, awaitingReply, hasOlder, loadOlder,
     addPending, addOptimistic, confirmPending, dropPending, keyOf, mergeMessage, failed, resync,
     unreadable: unreadableLatest + unreadableOlder,
+    loadError,
   };
 }

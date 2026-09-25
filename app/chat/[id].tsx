@@ -210,7 +210,7 @@ export default function PersonThread() {
    * cost is now taken rather than carried. Nothing here expects a reply, so
    * nothing here calls `addPending`.
    */
-  const { messages, status, hasOlder, loadOlder, mergeMessage, resync, unreadable } = useConversation({
+  const { messages, status, hasOlder, loadOlder, mergeMessage, resync, unreadable, loadError } = useConversation({
     conversationId: Number.isFinite(conversationId) ? conversationId : null,
     // See this file's header. NOT ConversationChannel.
     channel: "MessageChannel",
@@ -537,7 +537,7 @@ export default function PersonThread() {
             </View>
           ) : status === "failed" ? (
             <View testID="thread-load-failed" style={{ paddingVertical: metrics.space.xl, gap: metrics.space.sm }}>
-              <Text tone="muted">{t("thread.loadFailed")}</Text>
+              <Text tone="muted">{failureMessage(loadError, t("thread.loadFailed"))}</Text>
               <Pressable onPress={() => void resync()} accessibilityRole="button" hitSlop={8}>
                 <Text tone="accent">{t("common.tryAgain")}</Text>
               </Pressable>
@@ -548,7 +548,7 @@ export default function PersonThread() {
             </View>
           )
     ),
-    [status, metrics, t, resync],
+    [status, loadError, metrics, t, resync],
   );
 
   return (

@@ -401,6 +401,12 @@ describe("the session email", () => {
 describe("the server's error sentence", () => {
   const refusal = (data: unknown) => ({ isAxiosError: true, response: { status: 422, data } });
 
+  it("does not read Rails' own error page as a reason", () => {
+    // What `PublicExceptions` renders for any exception nothing rescued.
+    const page = { isAxiosError: true, response: { status: 500, data: { status: 500, error: "Internal Server Error" } } };
+    expect(apiErrorMessage(page)).toBeNull();
+  });
+
   it("reads the singular `error`", () => {
     expect(apiErrorMessage(refusal({ error: "Password is incorrect" }))).toBe("Password is incorrect");
   });

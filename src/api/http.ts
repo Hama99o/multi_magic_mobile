@@ -275,7 +275,18 @@ export async function authHeaders(): Promise<Record<string, string>> {
 export function apiErrorMessage(error: unknown): string | null {
   const data = (error as AxiosError | undefined)?.response?.data;
   if (typeof data !== "object" || data === null) return null;
-  const record = data as { error?: unknown; message?: unknown; errors?: unknown };
+  const record = data as { error?: unknown; message?: unknown; errors?: unknown; status?: unknown };
+  // RAILS' OWN ERROR PAGE IS NOT A REASON. An exception nothing rescues
+  // (every 500 in production) is rendered by `PublicExceptions` as
+  // `{ status: 500, error: "Internal Server Error" }`, the Rack phrase for
+  // the status (actionpack 8.1 `public_exceptions.rb:29`, read in the
+  // backend's container 2026-09-25). Read as the server's sentence, it put
+  // "Internal Server Error" on a French phone (from the source, not yet seen
+  // on a device: nothing here can make production fail on purpose). A
+  // numeric `status` beside `error`
+  // is that page's fingerprint: grepped 2026-09-25, no controller renders a
+  // numeric one (the loans controller's `status: 'error'` is a string).
+  if (typeof record.status === "number") return null;
   const lines = errorLines(record.errors);
   // SEVERAL reasons beat one. Account deletion now answers with BOTH keys,
   // `{ error: messages.first, errors: messages }` (multi_magic `30dce44`), so

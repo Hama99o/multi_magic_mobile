@@ -29,6 +29,7 @@ import { LIMITS, RETRYABLE_KEY_PROBLEMS, aiApi, type ChatMessage } from "@/api/a
 import { isRateLimited, isNetworkFailure, apiErrorMessage, retryAfterSeconds } from "@/api/http";
 import { useReachability } from "@/stores/reachability.store";
 import { UnreadableNotice } from "@/components/UnreadableNotice";
+import { failureMessage } from "@/api/failure";
 import { useConversation } from "@/hooks/useConversation";
 import { useDraft } from "@/hooks/useDraft";
 import { useStarterPrompts } from "@/hooks/useStarterPrompts";
@@ -162,7 +163,7 @@ export default function Chat() {
   const { t } = useTranslation();
   const user = useAuthStore((s) => s.user);
 
-  const { data: sessionId } = useQuery({
+  const { data: sessionId, error: sessionError, refetch: refetchSession } = useQuery({
     queryKey: ["ai", "currentSession"],
     queryFn: aiApi.currentSessionId,
   });
@@ -209,8 +210,16 @@ export default function Chat() {
     },
     [user?.id],
   );
-  const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addOptimistic, confirmPending, dropPending, keyOf, mergeMessage, resync, unreadable } =
+  const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addOptimistic, confirmPending, dropPending, keyOf, mergeMessage, resync, unreadable, loadError } =
     useConversation({ conversationId, channel: "MessageChannel" });
+  /**
+   * WHICH conversation could not be asked, before any could be loaded.
+   * Opened with no network and no chat remembered on this device, the
+   * session lookup fails, the id stays null, and `useConversation` never
+   * loads anything, so its status stays "loading": the skeleton ran for
+   * ever, with no sentence and nothing to tap (2026-09-25).
+   */
+  const sessionUnknown = conversationId == null && sessionError != null;
 
   const { draft, setDraft, clear } = useDraft(conversationId);
 
@@ -504,22 +513,28 @@ export default function Chat() {
   const listEmpty = useMemo(
     () => (
             <View>
-            {status === "loading" ? (
+            {status === "loading" && !sessionUnknown ? (
               // The shape of the thread while it loads — see `skeleton.tsx`.
               <ThreadSkeleton />
-            ) : status === "failed" ? (
+            ) : status === "failed" || sessionUnknown ? (
+              // Never the empty state: "what can I help with" over a thread
+              // that could not be read states a fact nobody got.
               <View style={{ gap: metrics.space.md, paddingVertical: metrics.space.xl }}>
                 <Text tone="muted" testID="chat-load-failed">
-                  {t("chat.loadFailed")}
+                  {failureMessage(sessionUnknown ? sessionError : loadError, t("chat.loadFailed"))}
                 </Text>
-                <Button label={t("common.tryAgain")} tone="neutral" onPress={() => void resync()} />
+                <Button
+                  label={t("common.tryAgain")}
+                  tone="neutral"
+                  onPress={() => void (sessionUnknown ? refetchSession() : resync())}
+                />
               </View>
             ) : (
               <EmptyState onPick={(q) => void send(q)} prompts={prompts} />
             )}
             </View>
     ),
-    [status, metrics, t, resync, send, prompts],
+    [status, sessionUnknown, sessionError, loadError, refetchSession, metrics, t, resync, send, prompts],
   );
 
   // HEADER, not footer: an inverted list draws its header at the bottom,

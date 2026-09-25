@@ -27,11 +27,11 @@
  *    GROUPS its children into one. RNTL does not emulate that grouping, so a
  *    query here finds nested controls that VoiceOver would never reach. The
  *    two scrim-wrapped sheets are in the audit, not in this file.
- *  - **It does not see a control whose only text is CONDITIONAL.** Found by
- *    `qa/plants.py`, 2026-09-25: `rendersOwnText` counts any `<Text>` as a
- *    name, so a `HeaderIcon` without its label passes on the strength of an
- *    unread badge that is not drawn when the count is zero. docs/TESTING.md
- *    §21.
+ *  - **(Closed 2026-09-25.)** It used not to see a control whose only text
+ *    is CONDITIONAL: found by `qa/plants.py`, fixed in `rendersOwnText`, "a
+ *    name that is only sometimes there is not a name". It still does not
+ *    see a name that is present but EMPTY at runtime (a string that is empty
+ *    in one language): a static walk reads the source, not the values.
  *  - **It does not mean anything is legible or big enough.** Jest has no layout
  *    engine. Touch targets are measured from the source in the audit and
  *    settled on a device.
@@ -79,10 +79,27 @@ const tagName = (node: any): string =>
  * label is given. A nested control is skipped: it has its own name and does not
  * lend it to the parent.
  */
+/**
+ * A NAME THAT IS ONLY SOMETIMES THERE IS NOT A NAME (2026-09-25).
+ *
+ * Text reached only through a condition (`a ? <Text/> : null`,
+ * `count > 0 && <Text/>`, `x || <Text/>`, `x ?? <Text/>`) is present in some
+ * states and absent in others, so the control is nameless in the states
+ * without it, which is usually the ordinary one. `HeaderIcon` was the case
+ * found (`qa/plants.py`): its only text was an unread badge, drawn when the
+ * count is above zero, so with its label removed a button with nothing
+ * unread was nameless to TalkBack while this walk called it named. The same
+ * shape will come back as a conditional icon label, a `length > 0 &&` text,
+ * or a string that is empty in one language. Detecting the conditional
+ * forms is the implementation; a conditional name is not a name is the rule.
+ */
+const CONDITIONAL = new Set(["ConditionalExpression", "LogicalExpression"]);
+
 function rendersOwnText(node: any): boolean {
   let found = false;
   const visit = (n: any) => {
     if (found || !n || typeof n !== "object") return;
+    if (CONDITIONAL.has(n.type)) return;
     if (n.type === "JSXElement") {
       const tag = tagName(n.openingElement.name);
       if (INTERACTIVE.has(tag) || tag === "Button") return;

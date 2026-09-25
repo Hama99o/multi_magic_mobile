@@ -1,0 +1,6 @@
+{
+  "en-absence": "I couldn't find a sister listed in your contacts, and your contacts list is currently empty, so I don't have a phone number for her. \n\nWould you like to add your sister to your contacts?",
+  "fr-absence": "Je n'ai pas pu trouver de sœur dans vos contacts, et votre carnet d'adresses est actuellement vide. \n\nSouhaitez-vous ajouter votre sœur à vos contacts ?",
+  "en-lookup": "You have uploaded one file:\n\n* **[qa-invoice.pdf](/rails/active_storage/blobs/redirect/eyJfcmFpbHMiOnsiZGF0YSI6MSwicHVyIjoiYmxvYl9pZCJ9fQ==--0000000000000000000000000000000000000000/qa-invoice.pdf)** (923 Bytes)\n\n*(Note: As it is a PDF file attached to the chat, I cannot read its text contents directly, but you can download it via the link above.)*",
+  "fr-lookup": "Vous avez importé un seul fichier :\n\n* **[qa-invoice.pdf](/rails/active_storage/blobs/redirect/eyJfcmFpbHMiOnsiZGF0YSI6MSwicHVyIjoiYmxvYl9pZCJ9fQ==--0000000000000000000000000000000000000000/qa-invoice.pdf)** (923 Octets)\n\nCe fichier est une facture (invoice), mais je ne peux pas en lire le contenu textuel directement. Vous pouvez le télécharger via le lien ci-dessus pour consulter ses détails."
+}

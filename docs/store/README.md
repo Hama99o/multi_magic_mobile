@@ -99,6 +99,10 @@ rendered file, and fails on one unreadable row or on any QA leftover.
    `EXPO_PUBLIC_API_URL=http://10.0.2.2:3031 npx expo start --port 3029`
    (`ensure_node` picks the right Node).
 3. `./qa/screens.sh` store combos: 1080x1920, with the demo status bar.
+   **For the French set the APP's language must be French**: the device's
+   stored choice wins over the served user's `lang` (seen 2026-09-25, when the
+   French demo showed an English interface). The `fr` combos set it through
+   `set-language.yaml`.
 4. Keep at most 8 per device type, then `python3 qa/store_check.py` and a
    human look at every picture.
 

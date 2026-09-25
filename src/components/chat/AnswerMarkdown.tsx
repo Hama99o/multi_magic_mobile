@@ -45,6 +45,14 @@ export interface AnswerLink {
  *   questions about money.
  * - A link target may hold one level of balanced parentheses. Without it
  *   `[Foo](https://…/Foo_(bar))` opened `…/Foo_(bar` and left a stray ")".
+ *
+ * And one more, the same night: bold and italic CONTENTS are parsed again.
+ * The assistant sends a file as `**[qa-invoice.pdf](/rails/active_storage/…)**`
+ * (captured from the live backend, `liveReplies.json`). The bold alternative
+ * matched the whole thing and printed its inside as text, so the reader saw
+ * brackets and the full blob URL, nothing was tappable, and TalkBack read the
+ * URL aloud. Each call gets its OWN regex: the shared global one carries
+ * `lastIndex`, which an inner call would clobber mid-loop.
  */
 const INLINE =
   /(\[[^\]]+\]\((?:[^()\s]|\([^()\s]*\))+\))|(\*\*[^*\s](?:[^*]*[^*\s])?\*\*)|(\*[^*\s](?:[^*\n]*[^*\s])?\*)|(`[^`\n]+`)/g;
@@ -53,9 +61,10 @@ const INLINE =
  *  the markup. The label used to be the raw source, so TalkBack read
  *  "asterisk asterisk Total asterisk asterisk" (found 2026-09-25). */
 function spokenText(source: string): string {
-  return source.replace(INLINE, (token) => {
+  return source.replace(new RegExp(INLINE.source, "g"), (token) => {
     if (token.startsWith("[")) return token.slice(1, token.indexOf("]"));
-    if (token.startsWith("**")) return token.slice(2, -2);
+    if (token.startsWith("**")) return spokenText(token.slice(2, -2));
+    if (token.startsWith("*")) return spokenText(token.slice(1, -1));
     return token.slice(1, -1);
   });
 }
@@ -82,14 +91,15 @@ function renderInline(
   line: string,
   colors: ReturnType<typeof useColors>,
   onOpenLink: (link: AnswerLink) => void,
+  prefix = "",
 ): ReactNode[] {
   const out: ReactNode[] = [];
   let last = 0;
   let match: RegExpExecArray | null;
-  INLINE.lastIndex = 0;
+  const re = new RegExp(INLINE.source, "g");
 
-  while ((match = INLINE.exec(line)) !== null) {
-    if (match.index > last) out.push(<Fragment key={`t${last}`}>{line.slice(last, match.index)}</Fragment>);
+  while ((match = re.exec(line)) !== null) {
+    if (match.index > last) out.push(<Fragment key={`${prefix}t${last}`}>{line.slice(last, match.index)}</Fragment>);
     const token = match[0];
 
     if (token.startsWith("[")) {
@@ -97,7 +107,7 @@ function renderInline(
       const target = token.slice(token.indexOf("](") + 2, -1); // balanced parens kept
       out.push(
         <RNText
-          key={`l${match.index}`}
+          key={`${prefix}l${match.index}`}
           accessibilityRole="link"
           style={{ color: colors.accent, textDecorationLine: "underline" }}
           onPress={() => onOpenLink({ label, url: absoluteUrl(target) })}
@@ -106,19 +116,27 @@ function renderInline(
         </RNText>,
       );
     } else if (token.startsWith("**")) {
-      out.push(<RNText key={`b${match.index}`} style={{ fontWeight: "700" }}>{token.slice(2, -2)}</RNText>);
+      out.push(
+        <RNText key={`${prefix}b${match.index}`} style={{ fontWeight: "700" }}>
+          {renderInline(token.slice(2, -2), colors, onOpenLink, `${prefix}b${match.index}.`)}
+        </RNText>,
+      );
     } else if (token.startsWith("*")) {
-      out.push(<RNText key={`i${match.index}`} style={{ fontStyle: "italic" }}>{token.slice(1, -1)}</RNText>);
+      out.push(
+        <RNText key={`${prefix}i${match.index}`} style={{ fontStyle: "italic" }}>
+          {renderInline(token.slice(1, -1), colors, onOpenLink, `${prefix}i${match.index}.`)}
+        </RNText>,
+      );
     } else {
       out.push(
-        <RNText key={`c${match.index}`} style={{ fontFamily: FONTS.mono, color: colors.inkMuted }}>
+        <RNText key={`${prefix}c${match.index}`} style={{ fontFamily: FONTS.mono, color: colors.inkMuted }}>
           {token.slice(1, -1)}
         </RNText>,
       );
     }
     last = match.index + token.length;
   }
-  if (last < line.length) out.push(<Fragment key={`t${last}`}>{line.slice(last)}</Fragment>);
+  if (last < line.length) out.push(<Fragment key={`${prefix}t${last}`}>{line.slice(last)}</Fragment>);
   return out;
 }
 

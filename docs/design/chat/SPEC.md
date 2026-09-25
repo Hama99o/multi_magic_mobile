@@ -610,3 +610,45 @@ against the spread between two quiet baselines. So no before-and-after can
 be claimed yet, including for the `renderItem` plant that layer 1 already
 catches. The missing number is the environment's, not neglect: whoever
 picks this up needs a box with one session on it.
+
+## Tonight's backend reply changes, checked on the phone — 2026-09-25
+
+multi_magic changed what a reply carries:
+- it cites only the records used (`cdbd007`, `ffae489`);
+- it states an absence before offering a near thing (`bcf1922`);
+- it reduces a made-up link to its label (`101b907`).
+
+Four replies were **captured** from the local backend running those commits
+(its worker started after them), as the QA account, in English and French.
+They are kept in `src/components/chat/__tests__/liveReplies.json` with only
+the signed blob token faked.
+
+**Found, and fixed on the phone.** The assistant sends a file as
+`**[qa-invoice.pdf](/rails/active_storage/…)**`, a link inside bold. The
+renderer's bold branch matched the whole thing and printed its inside as
+text. The reader saw brackets and the whole blob URL, nothing was tappable,
+and TalkBack read the URL aloud. `AnswerMarkdown` now parses bold and italic
+contents again, each call with its own regex (the shared global one's
+`lastIndex` would be clobbered). This bug is the phone's, not the backend's:
+bold around a link is valid markdown.
+- Test: `liveReplies.test.tsx` runs the real bodies through the real
+  renderer. It checks no markup survives, the link opens the absolute URL,
+  and what a screen reader gets.
+- Planted: bold contents printed raw again → 5 red; an italic link case
+  added to `AnswerMarkdown.test.tsx` → red when italic contents are raw.
+- **On the device** (`qa_phone4`, 360 dp, French, the captured replies
+  served by the fault proxy): the link renders underlined and tappable.
+
+**Checked, and fine:**
+- **Zero sources.** All four replies carry `sources: []`. An answer ends
+  with its text and then the copy and thumbs row; nothing reads as cut off.
+- **Absence first**, in both languages: "I couldn't find a sister… Would you
+  like to add…" and "Je n'ai pas pu trouver de sœur… Souhaitez-vous
+  ajouter…". Both render whole, and at 360 dp in French they wrap normally
+  and fit.
+- **Made-up links:** none left in any captured reply.
+
+**For the backend, an observation and not a finding:** the file answers
+used the file and cite no sources; the file travels as an inline link
+instead. If "cites the records it used" is meant to cover files, that is a
+gap. If files are inline on purpose, it is fine. Theirs to say.

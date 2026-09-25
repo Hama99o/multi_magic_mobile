@@ -176,3 +176,15 @@ it.each([
   const words = content.match(/[A-Za-z0-9]{2,}/g) ?? [];
   expect(words.filter((w) => !shown.includes(w))).toEqual([]);
 });
+
+describe("a link INSIDE emphasis (2026-09-25)", () => {
+  // The live assistant wraps a file link in bold (liveReplies.test.tsx); the
+  // same must hold for italics, which no captured reply has used yet.
+  it("keeps an italic link a link, with its label and no markup", () => {
+    const open = jest.fn();
+    render(<AnswerMarkdown content="*see [the invoice](/rails/active_storage/blobs/redirect/x/invoice.pdf)*" onOpenLink={open} />);
+    fireEvent.press(screen.getByText("the invoice"));
+    expect(open).toHaveBeenCalledWith(expect.objectContaining({ label: "the invoice" }));
+    expect(screen.queryByText(/\]\(/)).toBeNull();
+  });
+});

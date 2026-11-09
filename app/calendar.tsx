@@ -51,6 +51,7 @@ import { RefreshButton, UpdatedLine } from "@/components/Freshness";
 import { CALENDAR_KEYS, useAssistantEcho } from "@/hooks/useAssistantEcho";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
+import { AiButton } from "@/components/AiButton";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { calendarApi, type Occurrence } from "@/api/calendar";
 import { aiApi } from "@/api/ai";
@@ -203,7 +204,7 @@ export default function Calendar() {
         >
           <ChevronLeft size={24} color={colors.ink} />
         </Pressable>
-        <Text variant="title" style={{ flex: 1 }}>
+        <Text variant="title" style={{ flex: 1 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
           {t("calendar.title")}
         </Text>
         {/* Quiet, unlabelled, top right — Outlook's agenda header and Mesh's
@@ -214,6 +215,9 @@ export default function Calendar() {
           label={t("calendar.refresh")}
           testID="calendar-refresh"
         />
+        {/* The assistant from every screen (the owner, 2026-11-06); it opens
+            over this one and closes back to it (docs/QA_FULL.md F4). */}
+        <AiButton compact />
       </View>
 
       {/* One freshness claim at a time: while a failed refresh stands over

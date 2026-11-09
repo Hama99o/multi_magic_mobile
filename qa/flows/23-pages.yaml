@@ -1,0 +1,159 @@
+# PAGES, as redesigned like Google Drive (2026-11-06/07): the way there, the
+# tabs, a space, a folder, its filters and views, a photo, and the drive-wide
+# lists. docs/design/pages/SPEC.md, docs/design/pages/QA_DEEP.md.
+#
+# Arrives the way a user now arrives: the "Pages" tile on Home. It reads the
+# QA account's own "QA Pages" space, whose folder "QA uploads" holds a
+# 3,145,728-byte binary (shown "3.1 MB", in thousands like the phone,
+# QA_DEEP #4), a 1-pixel PNG, a page, and photos uploaded on 2026-11-07.
+#
+# It writes nothing. The upload path is `24-pages-share-in.yaml`.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: the door (Home tile); the four tabs; a space and a folder; a row's
+# size and date; the Images filter showing FILES ONLY (QA_DEEP #1) and the
+# Folders filter showing FOLDERS ONLY (#2); the grid toggle; the sort sheet;
+# a photo opening in the gallery; Recent naming each row's space; Trash
+# reached (state shot, not asserted into); Search with the Type chip alone.
+# CANNOT TELL YOU: pinch-zoom (no two-finger gesture); a PDF's pixels; uploads;
+# a shared space (the QA account has none).
+appId: ${APP_ID}
+tags:
+  - pages
+---
+- runFlow: login.yaml
+
+# login ends in the assistant, opened over Home: close it, then the tile.
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-pages"
+- extendedWaitUntil:
+    visible:
+      id: "pages-home-list"
+    timeout: 30000
+- assertVisible:
+    id: "pages-tab-home"
+- assertVisible:
+    id: "pages-tab-files"
+- takeScreenshot: reports/23-pages-home
+
+# Files tab: the spaces. A space, then a folder in it.
+- tapOn:
+    id: "pages-tab-files"
+- extendedWaitUntil:
+    visible: "QA Pages"
+    timeout: 30000
+- tapOn: "QA Pages"
+- extendedWaitUntil:
+    visible: "QA uploads"
+    timeout: 30000
+- takeScreenshot: reports/24-pages-space
+
+# Folders only: no file is listed (QA_DEEP #2).
+- tapOn:
+    id: "pages-type-folders"
+- extendedWaitUntil:
+    notVisible: "Itinerary.pdf"
+    timeout: 15000
+- assertVisible: "QA uploads"
+- tapOn:
+    id: "pages-type-all"
+
+- tapOn: "QA uploads"
+- extendedWaitUntil:
+    visible: "probe-pixel.png"
+    timeout: 30000
+- assertVisible: "probe-3mb.bin"
+# The size line, in thousands like the phone (3,145,728 bytes).
+- assertVisible: "3.1 MB · .*"
+- takeScreenshot: reports/25-pages-folder
+
+# Images only: the binary and the page go, the PNG stays (QA_DEEP #1).
+- tapOn:
+    id: "pages-type-image"
+- extendedWaitUntil:
+    notVisible: "probe-3mb.bin"
+    timeout: 15000
+- assertNotVisible: "QA page"
+- assertVisible: "probe-pixel.png"
+- takeScreenshot: reports/26-pages-filter-images
+- tapOn:
+    id: "pages-type-all"
+- extendedWaitUntil:
+    visible: "probe-3mb.bin"
+    timeout: 15000
+
+# Grid and back to the list (the choice is kept, so it is put back).
+- tapOn:
+    id: "pages-view-toggle"
+- extendedWaitUntil:
+    visible:
+      id: "pages-card-file"
+    timeout: 15000
+- takeScreenshot: reports/26b-pages-grid
+- tapOn:
+    id: "pages-view-toggle"
+- extendedWaitUntil:
+    visible:
+      id: "pages-row-file"
+    timeout: 15000
+
+# The sort sheet names every sort the server knows.
+- tapOn:
+    id: "pages-sort"
+- assertVisible:
+    id: "pages-sort-sheet"
+- assertVisible:
+    id: "pages-sort-size"
+- takeScreenshot: reports/27-pages-sort
+- tapOn:
+    id: "pages-sort-name"
+
+# A photo opens in the gallery.
+- tapOn: "probe-pixel.png"
+- extendedWaitUntil:
+    visible:
+      id: "pages-view-image"
+    timeout: 30000
+- assertVisible:
+    id: "pages-gallery"
+- assertVisible:
+    id: "pages-view-share"
+- takeScreenshot: reports/28-pages-view-image
+- back
+- back
+- back
+
+# Home tab: Recent, across every space; each row names its space.
+- tapOn:
+    id: "pages-tab-home"
+- extendedWaitUntil:
+    visible:
+      id: "pages-home-list"
+    timeout: 30000
+- assertVisible: ".*QA Pages.*"
+- takeScreenshot: reports/29-pages-recent
+
+# Trash: reached from the menu, shot, not asserted into.
+- tapOn:
+    id: "pages-menu"
+- tapOn: "Trash"
+- extendedWaitUntil:
+    visible:
+      id: "pages-drive-list"
+    timeout: 30000
+- takeScreenshot: reports/30-pages-trash
+- back
+
+# Search: the Type chip alone, PDFs, nothing typed.
+- tapOn:
+    id: "pages-open-search"
+- tapOn:
+    id: "pages-search-chip-type"
+- tapOn:
+    id: "pages-search-type-pdf"
+- extendedWaitUntil:
+    visible: "Itinerary.pdf"
+    timeout: 30000
+- takeScreenshot: reports/31-pages-search-pdfs

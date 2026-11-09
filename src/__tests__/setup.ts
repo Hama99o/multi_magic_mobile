@@ -153,3 +153,20 @@ jest.mock("react-native/src/private/animated/NativeAnimatedHelper", () => {
     default: { ...actual.default, shouldUseNativeDriver: () => false },
   };
 });
+
+/**
+ * The share extension's module is native and absent under Jest. No intent is
+ * pending in a test unless one says so: `useShareIntentContext` is the
+ * idle state, and the provider renders its children.
+ */
+jest.mock("expo-share-intent", () => ({
+  ShareIntentProvider: ({ children }: { children: unknown }) => children,
+  useShareIntentContext: () => ({
+    isReady: true,
+    hasShareIntent: false,
+    shareIntent: { files: null, text: null, webUrl: null, type: null, meta: null },
+    resetShareIntent: jest.fn(),
+    error: null,
+  }),
+  getShareExtensionKey: () => "multimagicShareKey",
+}));

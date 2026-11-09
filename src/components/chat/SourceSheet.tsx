@@ -48,7 +48,7 @@ export function useOpenSource() {
   const [openSource, setOpenSource] = useState<MessageLink | null>(null);
 
   const openLink = useCallback((source: MessageLink) => {
-    const screen = inAppRoute(source.key);
+    const screen = inAppRoute(source);
     if (screen) {
       router.push(screen);
       return;

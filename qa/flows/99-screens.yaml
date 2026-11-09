@@ -53,32 +53,60 @@ tags:
 # see `login.yaml`.
 #
 # 3 · People.
+# Since 2026-11-07 the door is HOME's tile: the assistant is an overlay and
+# its header no longer carries Chats / Notifications / Calendar.
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
 - tapOn:
-    id: "chat-open-chats"
+    id: "home-tile-chats"
 - assertVisible:
     id: "chats-list"
 - takeScreenshot: reports/${SHOT}-people-chat
 - pressKey: Back
 
 # 4 · Notifications.
+# Since 2026-11-07 the door is HOME's tile: the assistant is an overlay and
+# its header no longer carries Chats / Notifications / Calendar.
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
 - tapOn:
-    id: "chat-open-notifications"
+    id: "home-tile-notifications"
 - assertVisible:
     id: "notifications-list"
 - takeScreenshot: reports/${SHOT}-notifications
 - pressKey: Back
 
 # 5 · Calendar.
+# Since 2026-11-07 the door is HOME's tile: the assistant is an overlay and
+# its header no longer carries Chats / Notifications / Calendar.
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
 - tapOn:
-    id: "chat-open-calendar"
+    id: "home-tile-calendar"
 - assertVisible:
     id: "calendar-list"
 - takeScreenshot: reports/${SHOT}-calendar
 - pressKey: Back
 
-# 6 · Account, reached through the sheet.
+# 6 · Account, reached through the sheet. Since 2026-11-07 Back from Calendar
+# lands on HOME, whose avatar opens the same sheet.
 - tapOn:
-    id: "chat-open-profile"
+    id: "home-open-profile"
 # THE SCROLL IS GONE, and that is a finding rather than a tidy-up. This step
 # used to read: "reaching Account is now a scroll, not a glance" — the rows sat
 # at the tail of the conversations list and a long list pushed them under the
@@ -92,7 +120,7 @@ tags:
 # 7 · Profile.
 - pressKey: Back
 - tapOn:
-    id: "chat-open-profile"
+    id: "home-open-profile"
 # Same reason as Account above.
 - tapOn:
     id: "profile-open-profile"
@@ -102,8 +130,13 @@ tags:
 - pressKey: Back
 
 # 8 · Upload — the attach sheet, which is the whole of that screen's design.
-- assertVisible:
-    id: "composer-input"
+# Back from Profile is Home: the assistant is opened from its tile.
+- tapOn:
+    id: "home-tile-ai"
+- extendedWaitUntil:
+    visible:
+      id: "composer-input"
+    timeout: 30000
 - tapOn:
     id: "composer-attach"
 - assertVisible:

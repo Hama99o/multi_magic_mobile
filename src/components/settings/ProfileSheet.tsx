@@ -210,6 +210,18 @@ export function ProfileSheet({
                   </Text>
                 </View>
 
+                {/* Pages lives here, not in the chat header: at 360 dp that
+                    row already holds the title and five 48 dp targets
+                    (docs/design/pages/SPEC.md §2, "The door"). */}
+                <Row
+                  label={t("pages.title")}
+                  chevron
+                  onPress={() => {
+                    close();
+                    router.push("/pages");
+                  }}
+                  testID="profile-open-pages"
+                />
                 <Row
                   label={t("sessions.yourProfile")}
                   onPress={() => {

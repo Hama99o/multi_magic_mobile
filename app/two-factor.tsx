@@ -128,13 +128,13 @@ export default function TwoFactor() {
   async function remember(trust: boolean) {
     if (trusting) return;
     if (!trust) {
-      router.replace("/chat");
+      router.replace("/home");
       return;
     }
     setTrusting(true);
     await trustThisDevice();
     setTrusting(false);
-    router.replace("/chat");
+    router.replace("/home");
   }
 
   if (verified) {

@@ -123,6 +123,12 @@ tags:
 - assertVisible:
     id: "profile-password"
 - assertVisible: "Change password"
+# At 360 dp (density 480) `profile-keys` is below the fold after saving;
+# the flow was measured at 411 dp, where it was not (2026-11-07). The same
+# explicit swipe as below, which is what scrolls this screen.
+- swipe:
+    start: 50%, 75%
+    end: 50%, 45%
 - assertVisible:
     id: "profile-keys"
 - assertVisible: "Your AI provider key"

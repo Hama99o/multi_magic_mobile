@@ -37,6 +37,9 @@ const FRENCH = flatten(fr);
  * because it was checked, not because it looked foreign.
  */
 const SAME_IN_BOTH = new Set([
+  "pages.searchChips.type",
+  // "Pause" is the French word too (a player button).
+  "pages.view.pause",
   // Only an interpolation: "9 120 / 10 000" — the numbers are localised by
   // toLocaleString, the slash is the same in both.
   "composer.length",
@@ -60,6 +63,23 @@ const SAME_IN_BOTH = new Set([
   "files.photo",
   "sessions.messages_one",
   "sessions.messages_other",
+  // Pages: the product name is the web's in both languages (its fr.ts says
+  // `spaces: 'Pages'`), "Page" and "Images"/"Audio" are the same word, and
+  // the row label is only an interpolation.
+  "pages.title",
+  "pages.kind.page",
+  "pages.rowLabel",
+  "pages.types.image",
+  "pages.types.audio",
+  // The Drive vocabulary that French shares word for word.
+  "pages.family.pdf",
+  "pages.family.image",
+  "pages.family.audio",
+  "pages.family.archive",
+  "pages.family.page",
+  "pages.family.folder",
+  // The product name.
+  "home.title",
 ]);
 
 describe("the two locales", () => {
@@ -110,5 +130,14 @@ describe("the two locales", () => {
       .map(([key]) => key);
 
     expect(ascii).toEqual([]);
+  });
+});
+
+// Home shows both on one screen (docs/QA_FULL.md, 2026-11-07): in French
+// they were the same word, "Discussions", for two different places.
+describe("Home's tiles say different things", () => {
+  it.each(["en", "fr"] as const)("%s: Chats and the assistant's history are not the same word", (lang) => {
+    const locale = (lang === "en" ? ENGLISH : FRENCH) as Record<string, string>;
+    expect(locale["chat.chats"]).not.toBe(locale["chat.conversations"]);
   });
 });

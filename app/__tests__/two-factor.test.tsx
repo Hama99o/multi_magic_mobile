@@ -195,14 +195,14 @@ describe("after the code is accepted", () => {
     fireEvent.press(screen.getByTestId("two-factor-trust"));
 
     await waitFor(() => expect(mockTrust).toHaveBeenCalled());
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/chat"));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/home"));
   });
 
   it("takes no for an answer without asking the server anything", async () => {
     await verify();
     fireEvent.press(screen.getByTestId("two-factor-not-now"));
 
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/chat"));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/home"));
     expect(mockTrust).not.toHaveBeenCalled();
   });
 
@@ -216,7 +216,7 @@ describe("after the code is accepted", () => {
     await verify();
     fireEvent.press(screen.getByTestId("two-factor-trust"));
 
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/chat"));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/home"));
   });
 
   /**

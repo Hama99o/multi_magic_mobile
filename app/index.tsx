@@ -9,5 +9,5 @@ import { useAuthStore } from "@/stores/auth.store";
 
 export default function Index() {
   const status = useAuthStore((s) => s.status);
-  return <Redirect href={status === "signedIn" ? "/chat" : "/sign-in"} />;
+  return <Redirect href={status === "signedIn" ? "/home" : "/sign-in"} />;
 }

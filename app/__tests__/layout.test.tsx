@@ -21,11 +21,18 @@ jest.mock("expo-status-bar", () => ({
 const mockStack = jest.fn();
 const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({
-  Stack: (props: unknown) => {
-    mockStack(props);
-    return null;
-  },
+  // `Stack.Screen` too: the root declares the assistant as a modal.
+  Stack: Object.assign(
+    (props: unknown) => {
+      mockStack(props);
+      return null;
+    },
+    { Screen: () => null },
+  ),
   router: { replace: (...args: unknown[]) => mockReplace(...args) },
+  // The root renders `ShareIntentBridge`, which asks where it is
+  // (`src/screens/pages/ShareIntentBridge.tsx`).
+  usePathname: () => "/",
 }));
 
 jest.mock("expo-splash-screen", () => ({
@@ -121,5 +128,17 @@ describe("the status bar", () => {
     // The phone is mocked light, so dark glyphs on a light ground.
     expect(lastStatusBar().style).toBe("dark");
     expect(lastStack().screenOptions.contentStyle.backgroundColor).toBe(TOKENS.light.ground);
+  });
+});
+
+describe("a deep link opens ON TOP OF HOME", () => {
+  // Measured 2026-11-07 on qa_phone: a cold deep link (a tapped notification)
+  // opened Notifications with nothing under it, so Back CLOSED the app. With
+  // Home as the stack's initial route, expo-router puts Home underneath, and
+  // Back goes Home. The device is the real check (docs/QA_FULL.md F7); this
+  // only keeps the setting from being dropped.
+  it("declares Home as the initial route", () => {
+    const layout = jest.requireActual("../_layout");
+    expect((layout as { unstable_settings?: { initialRouteName?: string } }).unstable_settings?.initialRouteName).toBe("home");
   });
 });

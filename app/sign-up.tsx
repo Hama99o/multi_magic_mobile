@@ -162,7 +162,7 @@ export default function SignUp() {
       // A clean start, as every sign-in has (`forgetSession`, auth.store.ts).
       forgetSession();
       useAuthStore.setState({ user, status: "signedIn", signedOutReason: null });
-      router.replace("/chat");
+      router.replace("/home");
     } catch (e) {
       const parsed = serverErrors(e);
       if (parsed) {

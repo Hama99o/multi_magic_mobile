@@ -35,8 +35,17 @@ tags:
 - runFlow: login.yaml
 
 # ══ NOTIFICATIONS ═════════════════════════════════════════════════════════
+# Since 2026-11-07 the door is HOME's tile: the assistant is an overlay and
+# its header no longer carries Chats / Notifications / Calendar.
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
 - tapOn:
-    id: "chat-open-notifications"
+    id: "home-tile-notifications"
 - extendedWaitUntil:
     visible:
       id: "notifications-list"
@@ -78,8 +87,17 @@ tags:
 - back
 
 # ══ CALENDAR ══════════════════════════════════════════════════════════════
+# Since 2026-11-07 the door is HOME's tile: the assistant is an overlay and
+# its header no longer carries Chats / Notifications / Calendar.
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
 - tapOn:
-    id: "chat-open-calendar"
+    id: "home-tile-calendar"
 - extendedWaitUntil:
     visible:
       id: "calendar-list"
@@ -113,5 +131,7 @@ tags:
       - takeScreenshot: reports/104-calendar-nothing-today-NOT-MEASURED
 
 - back
+# Back from a screen opened from Home lands on HOME (2026-11-07 shell); it
+# used to land on the assistant, which was the first screen then.
 - assertVisible:
-    id: "composer-input"
+    id: "home-tile-pages"

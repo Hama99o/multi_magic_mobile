@@ -26,6 +26,7 @@ import { ChevronLeft } from "@/components/icons";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
+import { AiButton } from "@/components/AiButton";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { subscribeToChannel } from "@/lib/cable";
 import { conversationsApi, type Conversation } from "@/api/conversations";
@@ -122,9 +123,12 @@ export default function Chats() {
         >
           <ChevronLeft size={24} color={colors.ink} />
         </Pressable>
-        <Text variant="title" style={{ flex: 1 }}>
+        <Text variant="title" style={{ flex: 1 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
           {t("chats.title")}
         </Text>
+        {/* The assistant from every screen (the owner, 2026-11-06); it opens
+            over this one and closes back to it (docs/QA_FULL.md F4). */}
+        <AiButton compact />
       </View>
 
       <UnreadableNotice count={(data?.pages ?? []).reduce((n, page) => n + (page.unreadable ?? 0), 0)} />

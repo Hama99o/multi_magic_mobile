@@ -41,9 +41,18 @@ tags:
 - runFlow: login.yaml
 
 # The real door, not a deep link — so this flow proves the screen is reachable
-# as well as correct. `chat-open-chats` is the first of the four title-bar icons.
+# as well as correct. Since 2026-11-07 that door is the "Chats" tile on Home.
+# Since 2026-11-07 the door is HOME's tile: the assistant is an overlay and
+# its header no longer carries Chats / Notifications / Calendar.
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
 - tapOn:
-    id: "chat-open-chats"
+    id: "home-tile-chats"
 - extendedWaitUntil:
     visible:
       id: "chats-list"
@@ -197,6 +206,14 @@ tags:
       - takeScreenshot: reports/12-separation-people-thread
       - back
       - back
+      # Since 2026-11-07 Back from Chats lands on HOME, not on the assistant:
+      # the assistant is opened from its tile for the other half of the pair.
+      - extendedWaitUntil:
+          visible:
+            id: "home-tile-ai"
+          timeout: 30000
+      - tapOn:
+          id: "home-tile-ai"
       - extendedWaitUntil:
           visible:
             id: "composer-input"

@@ -26,6 +26,7 @@
 import { create } from "zustand";
 import { AppState } from "react-native";
 import { http, setReachabilityHandler } from "@/api/http";
+import { queryClient } from "@/lib/queryClient";
 
 /** Between probes while unreachable. Short enough that a banner comes down
  *  soon after a tunnel; long enough not to be a poll storm on a dead link. */
@@ -41,6 +42,8 @@ interface ReachabilityState {
 
 let probe: ReturnType<typeof setInterval> | null = null;
 let appStateSub: { remove: () => void } | null = null;
+/** The always-on one: a return to the foreground asks at once (below). */
+let foregroundSub: { remove: () => void } | null = null;
 
 async function ping(): Promise<void> {
   try {
@@ -79,7 +82,13 @@ export const useReachability = create<ReachabilityState>((set, get) => ({
 
   markReachable: () => {
     stopProbe();
-    if (!get().reachable) set({ reachable: true, unreachableSince: null });
+    if (get().reachable) return;
+    set({ reachable: true, unreachableSince: null });
+    // BACK ONLINE, THE SCREEN RECOVERS BY ITSELF. Measured 2026-11-07: Pages
+    // opened offline kept "Could not reach MultiMagic" after the connection
+    // returned, until Try again was tapped. Only what failed and is on screen
+    // is asked again; a list that loaded fine is not re-read for nothing.
+    void queryClient.refetchQueries({ type: "active", predicate: (q) => q.state.status === "error" });
   },
 
   markUnreachable: () => {
@@ -90,6 +99,15 @@ export const useReachability = create<ReachabilityState>((set, get) => ({
 
 /** Called once at boot, beside `wireAuthStore`. */
 export function wireReachability(): void {
+  // ASK ON EVERY RETURN TO THE APP, not only after a failure (docs/QA_FULL.md
+  // top-10 #8). Measured 2026-11-07: in airplane mode the app said nothing
+  // until a send failed. One GET /up per return to the foreground; while
+  // MultiMagic answers, nothing else runs.
+  if (!foregroundSub) {
+    foregroundSub = AppState.addEventListener("change", (status) => {
+      if (status === "active") void ping();
+    });
+  }
   setReachabilityHandler((reached) => {
     const state = useReachability.getState();
     if (reached) state.markReachable();
@@ -100,5 +118,7 @@ export function wireReachability(): void {
 /** Test seam: back to the launch state with no timer left running. */
 export function __resetReachability(): void {
   stopProbe();
+  foregroundSub?.remove();
+  foregroundSub = null;
   useReachability.setState({ reachable: true, unreachableSince: null });
 }

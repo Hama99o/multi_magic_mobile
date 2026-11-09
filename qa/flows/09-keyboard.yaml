@@ -28,6 +28,18 @@ tags:
 ---
 - runFlow: login.yaml
 
+# The composer KEEPS a draft across runs (`useDraft`), so another flow's text
+# can be in it (03-dictation leaves one): 2026-11-07 this flow typed into the
+# middle of it and asserted garbled text. `eraseText` did not cure it: the tap
+# put the cursor mid-draft and erasing goes BACKWARDS from the cursor, leaving
+# the tail. The composer's own × clears the whole draft, so it is used first.
+- runFlow:
+    when:
+      visible:
+        id: "composer-clear"
+    commands:
+      - tapOn:
+          id: "composer-clear"
 - tapOn:
     id: "composer-input"
 - inputText: "does the composer stay above the keyboard"
@@ -45,10 +57,10 @@ tags:
 # ── THE DRAFT SURVIVES THE KEYBOARD CLOSING ────────────────────────────────
 # `hideKeyboard` on Android is a BACK press, which is only safe while an IME is
 # up to consume it. Here one provably is — the step above asserted the
-# keyboard-up state and nothing has dismissed it — and this screen is the ROOT
-# route, so if the press ever did reach the app it would background it and the
-# assertion immediately below would fail loudly rather than the flow drifting
-# on. It is also the step's whole purpose: closing the keyboard is the event
+# keyboard-up state and nothing has dismissed it. Since 2026-11-07 the
+# assistant is an overlay over Home, so a press that did reach the app would
+# close it, and the assertion immediately below would fail loudly rather than
+# the flow drifting on. It is also the step's whole purpose: closing the keyboard is the event
 # whose effect on the draft is being measured.
 - hideKeyboard
 - assertVisible:

@@ -35,6 +35,7 @@ import { ChevronLeft, CheckCheck, Trash2 } from "@/components/icons";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
+import { AiButton } from "@/components/AiButton";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { RefreshButton, UpdatedLine } from "@/components/Freshness";
 import { subscribeToChannel } from "@/lib/cable";
@@ -250,7 +251,9 @@ export default function Notifications() {
         >
           <ChevronLeft size={24} color={colors.ink} />
         </Pressable>
-        <Text variant="title" style={{ flex: 1 }}>
+        {/* One line, shrinking a little if it must: at 360 dp with four
+            controls it wrapped to "Notificatio / ns" (2026-11-07). */}
+        <Text variant="title" style={{ flex: 1 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
           {t("notifications.title")}
         </Text>
 
@@ -266,15 +269,19 @@ export default function Notifications() {
           </Pressable>
         ) : null}
 
-        <Pressable
-          onPress={confirmClear}
-          accessibilityRole="button"
-          accessibilityLabel={t("notifications.clearRead")}
-          hitSlop={8}
-          style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
-        >
-          <Trash2 size={20} color={colors.inkMuted} />
-        </Pressable>
+        {/* Nothing to clear on an empty list: the bin stood there doing
+            nothing (docs/QA_FULL.md, 2026-11-07). */}
+        {rows.length > 0 ? (
+          <Pressable
+            onPress={confirmClear}
+            accessibilityRole="button"
+            accessibilityLabel={t("notifications.clearRead")}
+            hitSlop={8}
+            style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+          >
+            <Trash2 size={20} color={colors.inkMuted} />
+          </Pressable>
+        ) : null}
 
         {/* Last, and the quietest of the three — the socket usually gets here
             first. See this file's header. */}
@@ -284,6 +291,8 @@ export default function Notifications() {
           label={t("notifications.refresh")}
           testID="notifications-refresh"
         />
+        {/* The assistant from every screen, rightmost as everywhere (F4). */}
+        <AiButton compact />
       </View>
 
       {/* One freshness claim at a time; see `LoadFailure`. */}

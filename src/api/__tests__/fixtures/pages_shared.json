@@ -1,0 +1,7 @@
+{
+  "body": {
+    "shares": []
+  },
+  "request": "GET /api/v1/page_app/spaces/shared_with_me",
+  "status": 200
+}

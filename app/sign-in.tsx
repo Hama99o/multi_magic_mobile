@@ -65,7 +65,7 @@ export default function SignIn() {
     setBusy(true);
     try {
       await signIn({ email, password });
-      router.replace("/chat");
+      router.replace("/home");
     } catch (e) {
       // NOT AN ERROR — a second step. The password was right; the server has
       // mailed a code and is waiting for it (`sessions_controller.rb:26-36`).

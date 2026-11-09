@@ -1,4 +1,14 @@
-# END signed in on the assistant, whatever state the app was left in.
+# END signed in on the assistant, whatever state the app was left in, and
+# arrived at the way a person now arrives: from HOME.
+#
+# ── 2026-11-07: the app opens on Home, not on the assistant ───────────────
+# The owner's new shell (`app/home.tsx`) made Home the first screen and the
+# assistant an overlay opened from it (the AI button, the "Assistant" tile).
+# This flow still waited for `composer-input` as "signed in", so on a
+# signed-in app it saw no composer, waited for a sign-in screen that never
+# came, and EVERY flow failed before its first step. Signed in is now Home
+# (`home-tile-pages`) or the assistant; the flow then opens the assistant
+# from the Home tile, so the flows after it start where they always did.
 #
 # ── Why this does not force a signed-OUT state first ──────────────────────
 # It used to: sign out if a session was open, then sign in, so every flow
@@ -33,6 +43,12 @@ appId: ${APP_ID}
       id: "sign-in-email"
     timeout: 30000
     optional: true
+# lint: optional-ok — Home is the third legitimate end state since 2026-11-07.
+- extendedWaitUntil:
+    visible:
+      id: "home-tile-pages"
+    timeout: 10000
+    optional: true
 
 # Expo Go's developer menu opens on gestures Maestro produces and covers the
 # screen while swallowing every tap under it. Measured: three flows "failed to
@@ -61,60 +77,41 @@ appId: ${APP_ID}
     commands:
       - pressKey: Back
 
-# Signed in but on another screen: ONE Back, and only one.
-#
-# Two wrong answers were tried and both are worth recording, because each
-# looked obviously right:
-#
-#   - `repeat: 3` Back presses — the assistant is the ROOT route, so Back EXITS
-#     the app. The "harmless" repeat walked Expo Go out to the launcher, and the
-#     flow then failed asserting a sign-in screen with no app running at all.
-#   - `openLink: ${DEEP_LINK}/--/chat` — Expo Go treats that as a new experience
-#     URL rather than a route within the running one, and lands on its own home
-#     screen. Further from the app, not nearer.
-#
-# One Back escapes a pushed screen, which is the only case this needs to handle,
-# and cannot exit from the assistant because the guard below re-checks.
+# The assistant left open OVER something (it is an overlay now): close it.
 - runFlow:
     when:
-      notVisible:
-        id: "composer-input"
       visible:
-        id: "chat-open-sessions"
+        id: "chat-close"
     commands:
-      - pressKey: Back
-      # lint: optional-ok — one Back may or may not land on the assistant; the
-      # sign-in branch below is the answer either way.
-      - extendedWaitUntil:
-          visible:
-            id: "composer-input"
-          timeout: 20000
-          optional: true
+      - tapOn:
+          id: "chat-close"
 
-# Only sign in if we are not already. The composer is the proof of arrival: it
-# exists on no other screen.
+# NO "Back from a pushed screen" step any more. `launchApp` restarts the
+# app, so the stack is fresh: Home, the assistant or sign-in, never a pushed
+# screen. The Back step that was here (2026-11-07 morning) fired during a
+# slow cold start, when neither Home nor sign-in was drawn yet, and pressed
+# Back OUT of the app: 17-privacy failed on the Android launcher.
+
+# Only sign in if we are not already. Home is the proof of arrival.
 - runFlow:
     when:
       notVisible:
-        id: "composer-input"
+        id: "home-tile-pages"
     commands:
-      # WAIT ON EITHER, AGAIN, before demanding the sign-in screen.
-      #
-      # A cold relaunch has a window where NEITHER is on screen, and the
-      # conditional above fires during it — so a signed-in app was asked for a
-      # sign-in field it would never show. Found by 12-account, which relaunches
-      # deliberately to prove the theme survives it.
+      # WAIT ON EITHER, AGAIN, before demanding the sign-in screen: a cold
+      # relaunch has a window where neither is on screen (found by
+      # 12-account, which relaunches deliberately).
       # lint: optional-ok — settles the cold-relaunch window before deciding
       # which state we are in; deciding early is the bug this replaced.
       - extendedWaitUntil:
           visible:
-            id: "composer-input"
+            id: "home-tile-pages"
           timeout: 45000
           optional: true
       - runFlow:
           when:
             notVisible:
-              id: "composer-input"
+              id: "home-tile-pages"
           commands:
             - extendedWaitUntil:
                 visible:
@@ -132,10 +129,21 @@ appId: ${APP_ID}
             - takeScreenshot: reports/01-sign-in-filled
             - tapOn:
                 id: "sign-in-submit"
+            # Signing in lands on HOME (`app/sign-in.tsx`, 2026-11-06).
             - extendedWaitUntil:
                 visible:
-                  id: "composer-input"
+                  id: "home-tile-pages"
                 timeout: 60000
 
+- assertVisible:
+    id: "home-tile-pages"
+
+# Then the assistant, the way he opens it: the tile on Home.
+- tapOn:
+    id: "home-tile-ai"
+- extendedWaitUntil:
+    visible:
+      id: "composer-input"
+    timeout: 30000
 - assertVisible:
     id: "composer-input"

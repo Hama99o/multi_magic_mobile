@@ -42,8 +42,17 @@ tags:
 ---
 - runFlow: login.yaml
 
+# Since 2026-11-07 the door is HOME's tile: the assistant is an overlay and
+# its header no longer carries Chats / Notifications / Calendar.
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
 - tapOn:
-    id: "chat-open-calendar"
+    id: "home-tile-calendar"
 - extendedWaitUntil:
     visible:
       id: "calendar-list"

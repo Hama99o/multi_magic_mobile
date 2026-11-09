@@ -46,6 +46,64 @@ they cost.
 | `20-refresh.yaml` | **PASS — 2026-09-20, dev build. THIN, and the thinness is the whole verdict.** `calendar-refresh` and `notifications-refresh` are present, tap, and — the actual assertion — the **list stays on screen while the refresh is in flight**. That is the design rule: the refresh state lives in the control, never a full-screen spinner, and no unit test here can see it because Jest has neither layout nor timing | **Both screens took their EMPTY branch**, as the flow's author predicted: the QA account has no notifications and no events today, so `calendar-nothing-today` fired and its screenshot is filed **NOT MEASURED**. What passed is that the control exists, responds, and does not replace the list. What did not run is the same refresh over a list with rows in it, which is the case the rule is actually about |
 | `21-faults.yaml` | **PASS — 2026-09-25, re-run after the one-statement change: exit 0, 41 steps, 0 failed, 193 s** (first pass 168 s), dev build, `qa_phone4`, through `qa/faults.sh`. The runner now NAMES the app in front and refused Expo Go by name when planted (exit 3). The calendar and the second chats step now assert ONE statement over kept data, `Could not refresh\\. Showing what we had .*`, and no `calendar-updated` beside it (`LoadFailure`). (well under the ~14-minute ceiling on background tasks). One boot, faults switched live on the proxy's control route: a partial outage (calendar 500 while the chats load), a 429 on notifications, a 500 on chats with Rails' real body. **Which case ran:** the calendar was in its REFRESH case, because the assistant had already read it for its suggestions, so it kept its last real answer ("Nothing today", the QA account is empty) under one statement that owns the cause and the age (the "Updated" line stands down). Notifications were never loaded, so `notifications-empty` absent is a real assertion. Chats were in the refresh case (kept their row). **Planted, all behaved:** fault never set → red on `calendar-load-failed`; proxy killed before the flow → red on the labelled proxy check; proxy never started → NOT MEASURED (exit 3). **Teardown proved:** five genuinely failed runs and one TERM mid-flow (exit 143 in 3 s) each left :3029 and :3031 free, and the next ordinary Metro's bundle carried `3001` and no `3031`, with a normal flow passing through it. *Its first four runs went to Expo Go unnoticed (`USE_DEV_BUILD` unset), where header taps complete and navigate nowhere; `faults.sh` now forces the dev build and refuses without it* | Faults are served by the proxy, not a real outage: a 5xx body from something other than Rails (an nginx page, a load balancer) is not exercised, nor a slow or truncated response. The calendar's never-loaded failure is Jest-only (`cannotAsk.test.tsx`), because on a device the assistant always loads it first. Offline is a dead port (`docs/design/states/SPEC.md`). English only |
 | `22-drive.yaml` | **As a drive: PASS ×4, 2026-09-25 (16 steps, 0 failed, dev build, `qa_phone4`). As a measurement: NOT MEASURED.** Two baselines of the same code differed 781 → 341 frames and 21% → 57% jank under another session's load (24.7 on 16 cores); the one run that started quiet (7.23) ended at 14.29; the rest refused at the start. `gfxinfo.sh` now refuses at start AND marks a run invalid when the load rose past half the cores during it. Second attempt 06:35, in a cleared window: `window-1` VALID (load 7.93→7.02; 916 frames, 14.74% jank, p95 42 ms, p99 61 ms, the tool's first clean reading), `window-2` INVALID (7.02→10.98). One valid baseline, no noise spread, so no comparison exists: the box cannot give a valid COMPARISON while four sessions work. **A DRIVE, not a test** — run only by `qa/gfxinfo.sh`, which signs in, resets `dumpsys gfxinfo`, runs this fixed sequence (history both ways, typing, two screens and back) and reads frame timing around it. Its only assertions are that each screen it passes through appeared. `run.sh` excludes the `drive` tag | **Its numbers are a COMPARISON on one emulator and one boot, never a property of the app**: an x86 emulator is not his phone, and the dev build runs its JS unminified in development mode. Two runs of the same code differ; the baseline is run twice and the spread read first. Smoothness claims are layer 1's (`renders.test.tsx`, render counts) |
+| `23-pages.yaml` | **PASS, 2026-11-06 (1 m 20 s, dev build, `qa_phone` lent by the supervisor because `qa_phone4` no longer exists in `~/.android/avd`).** The door in the profile menu, the places and the spaces, a folder's rows with size and date, the Images chip narrowing, the sort sheet, the image viewer, Recent naming each row's space, Trash reached (empty, shot, not asserted into). 8 screenshots in `qa/evidence/23-pages/`, each looked at. Took three NOT MEASURED runs first, all instrument: the dev client's floating Tools button sat on the avatar (switched off in the launcher's Settings), and an adb server restarted by another process dropped `adb reverse` (the dev client now loads from `10.0.2.2:3029`, which needs none). | Uploads (that is the share-in round trip below, by hand); video streaming (the QA space has no video); PDF inline (Android cannot, SPEC §5); Shared with me with content (the QA account has no shares); any write. |
+| *(by hand)* share-in round trip | **PASS, 2026-11-06, `qa_phone`, dev build with `patches/expo-share-intent+8.0.1.patch`.** Files → Download → long-press a 20 MB clip → Share → MultiMagic → Save to Pages (1 file · 20 MB) → QA Pages → Today's folder (created) → Upload → "Saved in QA Pages / 2026-11-06". The server copy downloaded back **sha256-identical** (`2144357e…`), **one** copy, **one** date folder. A second share reopened the picker on the last place. Screens in `qa/evidence/24-pages-share-in/`. On the way it found two crashes in the library's Kotlin and an un-awaited/content-URI move in the queue, all fixed and planted (SPEC §3.2). | iOS (the extension is different code; SPEC §8); a clip over a few hundred MB on the device; the relaunch-check on a device; Photos as the sharing app (the emulator's Photos has no media); not yet a Maestro flow, because the share sheet is another app's UI. |
+
+## RUN 2026-11-07 — dev build, `qa_phone` (emulator-5554), the HOME shell
+
+**First full run since the app started opening on Home (2026-11-06).** Full
+suite via `qa/run.sh` (`USE_DEV_BUILD=1`, Metro 3029, local backend 3001, QA
+account, 360 dp, density 480), then the failures fixed and rerun one by one.
+Evidence: `~/.maestro/tests/2026-11-07_114518/` and the reruns after it; sheet
+`docs/design/pages/qa_sheets/2026-11-07_full-app-maestro-partial.png`.
+
+**What broke under the new shell, and was fixed in the FLOWS (not the app):**
+- `login.yaml` took the assistant's composer as "signed in". With Home first,
+  every flow stopped at sign-in. It now treats Home as signed in and opens the
+  assistant from the Home tile.
+- The step "one Back from a pushed screen" fired during a slow cold start and
+  pressed Back OUT of the app. Removed: `launchApp` restarts the app, so no
+  pushed screen can exist there.
+- 06, 07, 08, 20 and 99 used the assistant's header doors to Chats,
+  Notifications and Calendar, which the overlay hides. They now use the Home
+  tiles. Back from those screens now lands on Home, so 06, 20 and 99 end there.
+- 23-pages was rewritten for the Drive layout. 13-profile scrolls to the
+  AI-keys row at 360 dp. 09-keyboard clears another flow's draft with the
+  composer's × first: `eraseText` from a mid-draft cursor left the tail.
+- Rig: `qa.config.sh` defaults to `emulator-5556` (`qa_phone4`, gone). The
+  first attempt hung 2.5 h in `adb logcat -c` and executed **nothing**: NOT
+  MEASURED. Run with `SERIAL=emulator-5554`.
+
+**Verdicts (final, after fixes):**
+
+| Flow | Verdict | Note |
+|------|---------|------|
+| login | PASS | Home path |
+| signed-out | PASS | |
+| 01-ask | PASS | |
+| 02-sign-in | PASS | |
+| 03-dictation | PASS | |
+| 04-delete-conversation | PASS | opened and kept |
+| 05-upload | PASS | the attach sheet |
+| 06-people-chat | PASS on rerun | Home tile; ends on Home → AI tile |
+| 07-notifications | PASS | Home tile; empty branch (QA account has none) |
+| 08-calendar | PASS | Home tile |
+| 09-keyboard | PASS on 2nd rerun | draft cleared with × first |
+| 10-sign-up | PASS | |
+| 11-forgot-password | PASS on rerun | failed only through login's Back step |
+| 12-account | PASS | |
+| 13-profile | PASS on rerun | scroll at 360 dp |
+| 14-change-password | PASS | |
+| 15-sessions-switch | PASS | |
+| 16-ai-keys | PASS | |
+| 17-privacy | PASS on rerun | failed only through login's Back step |
+| 18-delete-account | PASS | gate opened, never confirmed |
+| 19-session-options | PASS | |
+| 20-refresh | PASS on rerun | ends on Home |
+| 23-pages | PASS on rerun | first failure was a QA file trashed by hand during the manual pass (restored) |
+| 99-screens | PASS on 2nd rerun | Home's avatar and AI tile |
+| set-language | not a test | a helper; run alone it has no `LANG_ID` and fails by design |
+| 21-faults, 22-drive | not run | excluded tags (`faults`, `drive`). 22-drive still uses the old header doors |
 
 ## Are any of run-8's passes hollow? — checked 2026-09-21
 

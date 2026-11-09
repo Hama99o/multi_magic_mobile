@@ -21,7 +21,15 @@ RULES
   `days=7`), because karwan's "met end to end" passed on a request without
   the params the app really sends, and missed a 500 on every poll.
 
-Run from the repo root:  python3 qa/capture_fixtures.py
+Run from the repo root:  python3 qa/capture_fixtures.py [PREFIX]
+A PREFIX captures only the fixtures whose name starts with it, so adding one
+endpoint's fixtures does not rewrite every other one (`pages_`, say).
+
+PAGES (2026-11-06): the QA account's space "QA Pages" holds a folder
+"QA uploads" with a 3 MB binary, a 1-pixel PNG and a page. They were put
+there once, through the API, by the session that built the mobile Pages
+screens; this script only READS them, and skips the Pages captures with a
+message if the space is not there.
 """
 import json
 import os
@@ -88,6 +96,42 @@ def request(method, path, token=None, body=None):
         return e.code, None, json.loads(raw) if raw else None
 
 
+def pages_captures(token):
+    """The requests the Pages screens send, with their params
+    (`src/api/pages.ts`), against the QA account's own "QA Pages" space."""
+    _, _, spaces = request("GET", "/api/v1/page_app/spaces?page=1&per_page=50", token)
+    space = next((s for s in (spaces or {}).get("spaces", []) if s.get("title") == "QA Pages"), None)
+    if not space:
+        print("  --  Pages skipped: the QA account has no 'QA Pages' space")
+        return {}
+    sid = space["id"]
+    _, _, root = request("GET", f"/api/v1/page_app/spaces/{sid}/nodes?page=1&parent_id=", token)
+    folder = next((n for n in root["nodes"] if n["kind"] == "folder" and n["title"] == "QA uploads"), None)
+    if not folder:
+        print("  --  Pages folder captures skipped: no 'QA uploads' folder")
+        return {"pages_spaces": ("GET", "/api/v1/page_app/spaces?page=1&per_page=50", None)}
+    fid = folder["id"]
+    _, _, inside = request("GET", f"/api/v1/page_app/spaces/{sid}/nodes?page=1&parent_id={fid}", token)
+    by_kind = {}
+    for node in inside["nodes"]:
+        by_kind.setdefault(node["kind"], node["id"])
+    out = {
+        "pages_spaces": ("GET", "/api/v1/page_app/spaces?page=1&per_page=50", None),
+        "pages_space_show": ("GET", f"/api/v1/page_app/spaces/{sid}", None),
+        "pages_root": ("GET", f"/api/v1/page_app/spaces/{sid}/nodes?page=1&sort_by=name&sort_dir=asc&parent_id=", None),
+        "pages_root_folders": ("GET", f"/api/v1/page_app/spaces/{sid}/nodes?page=1&sort_by=name&sort_dir=asc&kind=folder&parent_id=", None),
+        "pages_folder": ("GET", f"/api/v1/page_app/spaces/{sid}/nodes?page=1&sort_by=created_at&sort_dir=desc&parent_id={fid}", None),
+        "pages_drive_recent": ("GET", "/api/v1/page_app/drive/nodes?page=1&view=recent", None),
+        "pages_drive_trash": ("GET", "/api/v1/page_app/drive/nodes?page=1&view=trash", None),
+        "pages_shared": ("GET", "/api/v1/page_app/spaces/shared_with_me", None),
+    }
+    if "file" in by_kind:
+        out["pages_node_file"] = ("GET", f"/api/v1/page_app/spaces/{sid}/nodes/{by_kind['file']}", None)
+    if "page" in by_kind:
+        out["pages_node_page"] = ("GET", f"/api/v1/page_app/spaces/{sid}/nodes/{by_kind['page']}", None)
+    return out
+
+
 def main():
     creds = env()
     status, token, _ = request("POST", "/users/login",
@@ -118,6 +162,9 @@ def main():
                                               {"current_password": "not-the-password",
                                                "password": "newpass123", "password_confirmation": "newpass123"}),
         }
+        captures.update(pages_captures(token))
+        only = sys.argv[1] if len(sys.argv) > 1 else ""
+        captures = {k: v for k, v in captures.items() if k.startswith(only)}
         os.makedirs(OUT, exist_ok=True)
         leaked = []
         for name, (method, path, body) in captures.items():

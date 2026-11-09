@@ -1,0 +1,100 @@
+diff --git a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
+index ff5b100..b1b40f5 100644
+--- a/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
++++ b/node_modules/expo-share-intent/android/src/main/java/expo/modules/shareintent/ExpoShareIntentModule.kt
+@@ -66,42 +66,70 @@ class ExpoShareIntentModule : Module() {
+                     "filePath" to instance?.getAbsolutePath(uri),
+                 )
+             }
+-            val queryResult: Cursor = resolver.query(uri, null, null, null, null)!!
+-            queryResult.moveToFirst()
+-            val fileName = queryResult.getString(queryResult.getColumnIndex(OpenableColumns.DISPLAY_NAME))
+-            val fileSize = queryResult.getString(queryResult.getColumnIndex(OpenableColumns.SIZE))
+-            queryResult.close()
++            // MultiMagic patch (docs/design/pages/SPEC.md §3.2): every read
++            // below can fail for a real share, and an uncaught throw here
++            // kills the whole app. A provider may answer with no row, a type
++            // may be missing, and a raw /storage path is unreadable under
++            // scoped storage. Each now degrades instead of crashing.
++            var fileName: String? = null
++            var fileSize: String? = null
++            try {
++                resolver.query(uri, null, null, null, null)?.use { cursor ->
++                    if (cursor.moveToFirst()) {
++                        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
++                        val sizeIndex = cursor.getColumnIndex(OpenableColumns.SIZE)
++                        if (nameIndex >= 0) fileName = cursor.getString(nameIndex)
++                        if (sizeIndex >= 0) fileSize = cursor.getString(sizeIndex)
++                    }
++                }
++            } catch (e: Exception) {
++                notifyError("Cannot query " + uri + ": " + e.message)
++            }
++            if (fileName == null) fileName = uri.lastPathSegment
+ 
+-            val mimeType = resolver.getType(uri)!!
++            val mimeType = resolver.getType(uri) ?: "application/octet-stream"
+ 
+             var mediaWidth: String? = null;
+             var mediaHeight: String? = null;
+             var mediaDuration: String? = null;
+-            if (mimeType.startsWith("image/")) {
+-                val options = BitmapFactory.Options().apply {
+-                    inJustDecodeBounds = true
++            try {
++                if (mimeType.startsWith("image/")) {
++                    val options = BitmapFactory.Options().apply {
++                        inJustDecodeBounds = true
++                    }
++                    resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
++                    mediaHeight = options.outHeight.toString()
++                    mediaWidth = options.outWidth.toString()
+                 }
+-                BitmapFactory.decodeStream(resolver.openInputStream(uri), null, options)
+-                mediaHeight = options.outHeight.toString()
+-                mediaWidth = options.outWidth.toString()
+-            }
+-            if (mimeType.startsWith("video/")) {
+-                val retriever = MediaMetadataRetriever()
+-                retriever.setDataSource(instance?.getAbsolutePath(uri))
+-                mediaWidth = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toInt().toString() ?: null
+-                mediaHeight = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toInt().toString() ?: null
+-                // Check orientation and flip size if required
+-                val metaRotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toInt() ?: 0;
+-                if (metaRotation == 90 || metaRotation == 270) {
+-                    mediaWidth = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)?.toInt().toString() ?: null
+-                    mediaHeight = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)?.toInt().toString() ?: null
++                if (mimeType.startsWith("video/")) {
++                    val retriever = MediaMetadataRetriever()
++                    // The URI, not a raw path: the app holds a grant for the
++                    // URI and none for /storage/emulated/0/...
++                    retriever.setDataSource(instance?.context, uri)
++                    mediaWidth = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_WIDTH)
++                    mediaHeight = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_HEIGHT)
++                    val metaRotation = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_VIDEO_ROTATION)?.toIntOrNull() ?: 0
++                    if (metaRotation == 90 || metaRotation == 270) {
++                        val w = mediaWidth
++                        mediaWidth = mediaHeight
++                        mediaHeight = w
++                    }
++                    mediaDuration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)
++                    retriever.release()
+                 }
+-                mediaDuration = retriever.extractMetadata(MediaMetadataRetriever.METADATA_KEY_DURATION)?.toInt().toString() ?: null
++            } catch (e: Exception) {
++                // Dimensions are a nicety; the file is still the file.
+             }
+ 
++            // Only a path the app can READ. The JS side prefers `filePath`
++            // over `contentUri`, and an unreadable path would make every
++            // upload of a shared file fail.
++            val absolutePath = instance?.getAbsolutePath(uri)
++            val readablePath = if (absolutePath != null && java.io.File(absolutePath).canRead()) absolutePath else null
++
+             return mapOf(
+                     "contentUri" to uri.toString(),
+-                    "filePath" to instance?.getAbsolutePath(uri),
++                    "filePath" to readablePath,
+                     "fileName" to fileName,
+                     "fileSize" to fileSize,
+                     "mimeType" to mimeType,

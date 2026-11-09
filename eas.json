@@ -26,6 +26,12 @@
         "EXPO_PUBLIC_API_URL": "https://www.multimagics.com"
       },
       "credentialsSource": "local"
+    },
+    "testflight": {
+      "extends": "production",
+      "credentialsSource": "remote",
+      "distribution": "store",
+      "autoIncrement": true
     }
   },
   "submit": {

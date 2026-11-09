@@ -201,7 +201,7 @@ describe("success", () => {
         password: "a-real-password",
       }),
     );
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/chat"));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/home"));
     expect(useAuthStore.getState().status).toBe("signedIn");
     expect(useAuthStore.getState().user).toEqual(USER);
   });

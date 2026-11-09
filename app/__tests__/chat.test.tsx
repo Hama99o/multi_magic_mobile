@@ -9,8 +9,11 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-
 import { AccessibilityInfo, FlatList } from "react-native";
 
 const mockReplace = jest.fn();
+const mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
   router: { replace: (...a: unknown[]) => mockReplace(...a) },
+  // `?sessions=1` opens the history (Home's Conversations tile).
+  useLocalSearchParams: () => mockParams,
   Link: ({ children }: { children: unknown }) => children,
 }));
 

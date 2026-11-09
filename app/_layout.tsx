@@ -20,6 +20,7 @@ import { queryClient } from "@/lib/queryClient";
 import * as SplashScreen from "expo-splash-screen";
 import { wireAuthStore, useAuthStore } from "@/stores/auth.store";
 import { wireReachability } from "@/stores/reachability.store";
+import { OfflineBanner } from "@/components/OfflineBanner";
 import { useLanguage } from "@/stores/language.store";
 import { useThemeStore } from "@/stores/theme.store";
 import { profileApi } from "@/api/profile";
@@ -27,12 +28,23 @@ import { useScheme } from "@/hooks/useColors";
 import { loadToken } from "@/api/http";
 import { TOKENS } from "@/theme/tokens";
 import { OpeningAnimation } from "@/components/OpeningAnimation";
+import { ShareIntentProvider } from "@/lib/shareIntent";
+import { ShareIntentBridge } from "@/screens/pages/ShareIntentBridge";
+import { useUploads } from "@/stores/uploads.store";
 
 void SplashScreen.preventAutoHideAsync();
 
 
 wireAuthStore();
 wireReachability();
+
+/**
+ * A DEEP LINK OPENS ON TOP OF HOME. Measured 2026-11-07 on qa_phone: a cold
+ * deep link (the path a tapped notification takes) opened Notifications with
+ * nothing underneath, so Back closed the app instead of going Home. With Home
+ * as the initial route, expo-router puts it under any deep-linked screen.
+ */
+export const unstable_settings = { initialRouteName: "home" };
 
 export default function RootLayout() {
   /**
@@ -83,6 +95,9 @@ export default function RootLayout() {
        * learn something every screen can do without.
        */
       if (!token) return;
+      // Uploads left from last time: checked against the server and resumed,
+      // whether or not Pages is opened (`stores/uploads.store.ts`, §3).
+      void useUploads.getState().hydrate();
       try {
         const profile = await profileApi.me();
         useAuthStore.setState({
@@ -133,9 +148,18 @@ export default function RootLayout() {
   if (!ready) return null;
 
   return (
+    /* Outermost, as its README requires: files shared from Photos or Files
+       arrive through it, and `ShareIntentBridge` sends them to "Save to
+       Pages" (docs/design/pages/SPEC.md §3). In Expo Go it is a passthrough
+       (`lib/shareIntent.tsx`). */
+    <ShareIntentProvider>
     <QueryClientProvider client={queryClient}>
       <SafeAreaProvider>
         <StatusBar style={scheme === "light" ? "dark" : "light"} />
+        {/* Above every screen, the moment MultiMagic cannot be reached — and
+            above means the screens move down rather than lose their header
+            under it (`components/OfflineBanner.tsx`). */}
+        <OfflineBanner>
         <Stack
           screenOptions={{
             headerShown: false,
@@ -143,9 +167,18 @@ export default function RootLayout() {
               backgroundColor: TOKENS[scheme].ground,
             },
           }}
-        />
+        >
+          {/* The assistant opens OVER the screen you are on and closes back
+              to it, scroll and state intact, because that screen stays
+              mounted underneath (his instruction, 2026-11-06: the AI is a
+              button at the top of every screen, not a destination). */}
+          <Stack.Screen name="chat" options={{ presentation: "modal" }} />
+        </Stack>
+        </OfflineBanner>
         {opening ? <OpeningAnimation ground={TOKENS[scheme].ground} onDone={endOpening} /> : null}
+        <ShareIntentBridge />
       </SafeAreaProvider>
     </QueryClientProvider>
+    </ShareIntentProvider>
   );
 }

@@ -77,6 +77,15 @@ module.exports = {
       "expo-image-picker|" +
       "expo-splash-screen|" +
       "expo-status-bar|" +
+      // Pages (docs/design/pages/SPEC.md): the drive's file, share and
+      // player modules. `react-native|` above does NOT cover
+      // react-native-webview: each entry here is a whole package name
+      // followed by "/", not a prefix.
+      "expo-file-system|" +
+      "expo-sharing|" +
+      "expo-video|" +
+      "expo-share-intent|" +
+      "react-native-webview|" +
       // NEW IN SDK 57: pulled in by expo-router's native-stack fork, ships
       // untranspiled ESM, and fails with `Unexpected token 'export'` pointing
       // at OUR test's first import rather than at itself — exactly what this

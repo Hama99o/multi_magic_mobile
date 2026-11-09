@@ -21,8 +21,11 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 const mockReplace = jest.fn();
+let mockParams: Record<string, string> = {};
 jest.mock("expo-router", () => ({
   router: { replace: (...a: unknown[]) => mockReplace(...a) },
+  // `?sessions=1` opens the history (Home's Conversations tile).
+  useLocalSearchParams: () => mockParams,
 }));
 
 const mockUseConversation = jest.fn();
@@ -139,5 +142,23 @@ describe("choosing a chat", () => {
     // happened, locally, exactly as it would have before this call existed.
     await waitFor(() => expect(screen.getByTestId("composer-input")).toBeTruthy());
     expect(await AsyncStorage.getItem("mm:aiSession:v1:2")).toBe("9");
+  });
+});
+
+describe("opened from Home's Conversations tile (docs/QA_FULL.md F2)", () => {
+  afterEach(() => {
+    mockParams = {};
+  });
+
+  it("opens ON the history when asked to (?sessions=1)", async () => {
+    mockParams = { sessions: "1" };
+    renderChat();
+    await waitFor(() => expect(screen.getByTestId("sessions-sheet")).toBeTruthy());
+  });
+
+  it("opens on the conversation otherwise", async () => {
+    renderChat();
+    await waitFor(() => expect(screen.getByTestId("composer-input")).toBeTruthy());
+    expect(screen.queryByTestId("sessions-sheet")).toBeNull();
   });
 });

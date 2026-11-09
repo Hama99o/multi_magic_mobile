@@ -1,0 +1,41 @@
+{
+  "body": {
+    "node": {
+      "ancestors": [
+        {
+          "id": 3355,
+          "parent_id": null,
+          "title": "QA uploads"
+        }
+      ],
+      "attachment_url": null,
+      "children_count": 0,
+      "color": null,
+      "content": {
+        "html": "<h1>Hello</h1><p>QA page body</p>"
+      },
+      "content_size": 84,
+      "created_at": "2026-11-06T14:45:44.311Z",
+      "deleted_at": null,
+      "file_size": null,
+      "id": 3358,
+      "kind": "page",
+      "mime_type": null,
+      "owner": {
+        "firstname": "scrubbed firstname",
+        "fullname": "scrubbed fullname",
+        "id": 494,
+        "lastname": "scrubbed lastname"
+      },
+      "page_app_space_id": 315,
+      "parent_id": 3355,
+      "position": 0,
+      "starred": false,
+      "thumbnail_url": null,
+      "title": "QA page",
+      "updated_at": "2026-11-06T14:45:44.311Z"
+    }
+  },
+  "request": "GET /api/v1/page_app/spaces/315/nodes/3358",
+  "status": 200
+}

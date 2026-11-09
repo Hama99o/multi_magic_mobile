@@ -108,3 +108,55 @@ describe("reachability", () => {
     expect(jest.getTimerCount()).toBe(0);
   });
 });
+
+describe("coming back to the app asks at once (docs/QA_FULL.md top-10 #8)", () => {
+  // Measured 2026-11-07: in airplane mode the app said nothing until a send
+  // failed. Now a return to the foreground probes the server even while all
+  // looked well, so "Offline" shows the moment it is true.
+  it("probes on every return to the foreground, and a failed probe is offline at once", async () => {
+    let onChange: ((status: string) => void) | null = null;
+    const { AppState } = jest.requireActual("react-native") as typeof import("react-native");
+    const spy = jest.spyOn(AppState, "addEventListener").mockImplementation((_e, fn) => {
+      onChange = fn as (status: string) => void;
+      return { remove: jest.fn() } as never;
+    });
+    __resetReachability();
+    wireReachability();
+    mock.onGet("/up").networkError();
+
+    expect(useReachability.getState().reachable).toBe(true);
+    onChange!("active");
+    await flush();
+
+    expect(probes()).toBe(1);
+    expect(useReachability.getState().reachable).toBe(false);
+    spy.mockRestore();
+  });
+});
+
+/**
+ * BACK ONLINE, THE SCREEN RECOVERS BY ITSELF. Measured 2026-11-07 on qa_phone:
+ * Pages opened in airplane mode said "Could not reach MultiMagic", and after
+ * the connection came back it went on saying so until Try again was tapped.
+ */
+describe("reconnecting", () => {
+  it("refetches the queries that failed, and only those, when MultiMagic answers again", async () => {
+    const { queryClient } = jest.requireActual("@/lib/queryClient") as typeof import("@/lib/queryClient");
+    const refetch = jest.spyOn(queryClient, "refetchQueries").mockResolvedValue(undefined);
+
+    useReachability.getState().markUnreachable();
+    expect(refetch).not.toHaveBeenCalled();
+    useReachability.getState().markReachable();
+
+    expect(refetch).toHaveBeenCalledTimes(1);
+    const filters = refetch.mock.calls[0][0] as { type: string; predicate: (q: { state: { status: string } }) => boolean };
+    expect(filters.type).toBe("active");
+    expect(filters.predicate({ state: { status: "error" } })).toBe(true);
+    expect(filters.predicate({ state: { status: "success" } })).toBe(false);
+
+    // Already reachable: an answer is not a reconnection.
+    useReachability.getState().markReachable();
+    expect(refetch).toHaveBeenCalledTimes(1);
+    refetch.mockRestore();
+  });
+});

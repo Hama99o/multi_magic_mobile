@@ -16,8 +16,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, FlatList, Pressable, View, type ViewStyle } from "react-native";
-import { Bell, CalendarDays, MessageSquareText, Users } from "@/components/icons";
-import { router } from "expo-router";
+import { Bell, CalendarDays, MessageSquareText, Users, X } from "@/components/icons";
+import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
@@ -179,7 +179,11 @@ export default function Chat() {
    */
   const [chosenId, setChosenId] = useState<number | null>(null);
   const conversationId = chosenId ?? sessionId ?? null;
-  const [sessionsOpen, setSessionsOpen] = useState(false);
+  // Home's "Conversations" tile ("Your past questions") opens the assistant ON
+  // its history (`?sessions=1`); it used to open the same plain assistant as
+  // the "Assistant" tile (docs/QA_FULL.md F2).
+  const { sessions: openOnSessions } = useLocalSearchParams<{ sessions?: string }>();
+  const [sessionsOpen, setSessionsOpen] = useState(openOnSessions === "1");
 
   // Read once into a plain local rather than depending on `user?.id` in two
   // places. The React Compiler (SDK 57) skipped this whole component with
@@ -617,6 +621,9 @@ export default function Chat() {
     [awaitingReply, failed, secondsLeft, failedQuestion, metrics, t, retryableNotice, askAgain, send],
   );
 
+  /** Opened over another screen (the AI button) rather than as the first one. */
+  const overlay = router.canGoBack?.() ?? false;
+
   return (
     /* `avoidKeyboard` — and this screen is the one that most needed it and was
        the only one without it. On Android the window resizes, which masks the
@@ -634,7 +641,25 @@ export default function Chat() {
             paddingVertical: metrics.space.md,
           }}
         >
-          <Text variant="title">{t("chat.title")}</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.xs, flexShrink: 1 }}>
+            {/* Opened over another screen (the AI button), it closes back to
+                it; opened as the first screen, there is nothing to close to. */}
+            {overlay ? (
+              <Pressable
+                onPress={() => router.back()}
+                accessibilityRole="button"
+                accessibilityLabel={t("common.close")}
+                hitSlop={8}
+                style={{ width: 36, height: 36, alignItems: "center", justifyContent: "center" }}
+                testID="chat-close"
+              >
+                <X size={24} color={colors.ink} />
+              </Pressable>
+            ) : null}
+            <Text variant="title" numberOfLines={1}>
+              {t("chat.title")}
+            </Text>
+          </View>
 
           {/* The doors out of here.
               QUIET, per IDENTITY.md §7: outline glyphs, muted, the touch floor
@@ -642,6 +667,12 @@ export default function Chat() {
               that actually has something to say. An affordance can be findable
               without being loud. */}
           <View style={{ flexDirection: "row", alignItems: "center" }}>
+            {/* Opened as an overlay (the AI button), the doors to Chats,
+                Notifications and Calendar are on the screen underneath and
+                on Home; at 360 dp the close button leaves no room for them
+                (measured 2026-11-06, the title collided with them). */}
+            {overlay ? null : (
+              <>
             <HeaderIcon
               label={t("chat.chats")}
               icon={Users}
@@ -662,6 +693,8 @@ export default function Chat() {
               onPress={() => router.push("/calendar")}
               testID="chat-open-calendar"
             />
+              </>
+            )}
             {/* The assistant's own: an app with one destination does not need
                 a persistent drawer. */}
             <HeaderIcon

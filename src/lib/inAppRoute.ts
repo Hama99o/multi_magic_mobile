@@ -50,8 +50,25 @@ const SCREENS = {
   conversation: "/chats",
 } as const satisfies Record<string, AppRoute>;
 
-/** The in-app route for a link's key, or null when only the web has it. */
-export function inAppRoute(key: string | null | undefined): AppRoute | null {
-  if (!key) return null;
-  return (SCREENS as Record<string, AppRoute>)[key] ?? null;
+/**
+ * PAGES, since 2026-11-06 a screen this app has. The server's keys carry ids
+ * in the path (`frontend_routes.rb`: `page_space` → `/pages/:space_id`,
+ * `page_node` → `/pages/:space_id?node=:node_id`), so they are read from it.
+ * A path that does not parse stays on the web rather than guessing.
+ */
+function pagesRoute(link: { key: string; path: string | null; label: string | null }): AppRoute | null {
+  const match = link.path?.match(/^\/pages\/(\d+)(?:\?(?:.*&)?node=(\d+))?/);
+  if (!match) return null;
+  const [, spaceId, nodeId] = match;
+  const title = link.label ?? "";
+  if (link.key === "page_space") return { pathname: "/pages/folder", params: { spaceId, title } };
+  if (link.key === "page_node" && nodeId) return { pathname: "/pages/view", params: { spaceId, nodeId, title } };
+  return null;
+}
+
+/** The in-app route for a link, or null when only the web has it. */
+export function inAppRoute(link: { key: string | null | undefined; path: string | null; label: string | null }): AppRoute | null {
+  if (!link.key) return null;
+  if (link.key === "page_space" || link.key === "page_node") return pagesRoute({ key: link.key, path: link.path, label: link.label });
+  return (SCREENS as Record<string, AppRoute>)[link.key] ?? null;
 }

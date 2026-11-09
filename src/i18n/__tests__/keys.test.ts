@@ -121,10 +121,20 @@ const COMPOSED = [
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
 const PLURAL = new Set([
+  "pages.trash.emptied",
   "sessions.messages",
   "sessions.files",
   "deleteConversation.questionWithFiles",
   "common.unreadable",
+  "pages.itemCount",
+  "pages.save.summary",
+  "pages.save.uploadHere",
+  "pages.uploads.active",
+  "pages.uploads.bannerFailed",
+  "pages.actions.trashedMany",
+  "pages.move.titleMany",
+  "pages.select.count",
+  "pages.uploads.barItems",
 ]);
 
 const CALLED = calledKeys();

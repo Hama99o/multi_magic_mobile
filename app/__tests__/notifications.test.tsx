@@ -115,3 +115,20 @@ describe("rows the app could not read", () => {
     expect(screen.queryByTestId("unreadable-notice")).toBeNull();
   });
 });
+
+describe("the bin (Clear read)", () => {
+  // docs/QA_FULL.md, 2026-11-07: on an empty list the bin stood in the header
+  // with nothing to clear.
+  it("is not offered when there is nothing in the list", async () => {
+    jest.spyOn(notificationsApi, "list").mockResolvedValue({ notifications: [], unreadCount: 0, hasMore: false });
+    renderScreen();
+    await waitFor(() => expect(screen.getByText("You're all caught up.")).toBeTruthy());
+    expect(screen.queryByLabelText("Clear read notifications")).toBeNull();
+  });
+
+  it("is offered when there is something to clear", async () => {
+    jest.spyOn(notificationsApi, "list").mockResolvedValue({ notifications: [read], unreadCount: 0, hasMore: false });
+    renderScreen();
+    await waitFor(() => expect(screen.getByLabelText("Clear read notifications")).toBeTruthy());
+  });
+});

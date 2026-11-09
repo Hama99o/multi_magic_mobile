@@ -38,7 +38,19 @@ import type { ReactElement } from "react";
 // jest.mock nor the real problem.
 jest.mock("expo-router", () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
-  useLocalSearchParams: () => ({ id: "266", name: "Qa MOBILE", isGroup: "0", unread: "0" }),
+  // One bag for every screen's params: a thread's, and Pages' (a space, a
+  // node, a drive view). Each screen reads only its own keys.
+  useLocalSearchParams: () => ({
+    id: "266",
+    name: "Qa MOBILE",
+    isGroup: "0",
+    unread: "0",
+    spaceId: "315",
+    nodeId: "3359",
+    view: "recent",
+    title: "QA uploads",
+  }),
+  usePathname: () => "/pages",
   Link: ({ children }: { children: unknown }) => children,
 }));
 
@@ -279,6 +291,34 @@ jest.mock("@/api/ai", () => ({
   messagesApi: { parseOne: (m: unknown) => m, latest: jest.fn(), before: jest.fn() },
 }));
 
+// ── Pages (docs/design/pages/SPEC.md) ──────────────────────────────────────
+// Shaped as `pagesApi` returns them, from the QA account's "QA Pages" space
+// as captured on 2026-11-06 (`src/api/__tests__/fixtures/pages_*.json`).
+jest.mock("react-native-webview", () => ({ WebView: () => null }));
+jest.mock("expo-video", () => ({ useVideoPlayer: () => ({}), VideoView: () => null }));
+jest.mock("expo-sharing", () => ({ shareAsync: jest.fn(), isAvailableAsync: jest.fn(async () => true) }));
+jest.mock("@/api/pages", () => {
+  const space = { id: 315, title: "QA Pages", icon: "🧪", description: null, color: null, nodesCount: 1, ownerName: "Qa MOBILE", permission: "owner", totalFileSize: null, updatedAt: "2026-11-06T10:00:00Z" };
+  const base = { spaceId: 315, starred: false, childrenCount: 0, attachmentUrl: null, thumbnailUrl: null, mimeType: null, fileSize: null, ownerName: "Qa MOBILE", updatedAt: "2026-11-06T10:00:00Z", deletedAt: null, space: { id: 315, title: "QA Pages", icon: "🧪" }, html: null, ancestors: [] };
+  const folder = { ...base, id: 3355, parentId: null, title: "QA uploads", kind: "folder", childrenCount: 3 };
+  const file = { ...base, id: 3357, parentId: 3355, title: "probe-3mb.bin", kind: "file", mimeType: "application/octet-stream", fileSize: 3145728, attachmentUrl: "http://10.0.2.2:3001/rails/active_storage/blobs/proxy/x/probe-3mb.bin" };
+  const zip = { ...file, id: 3359, title: "holiday-clips.zip", mimeType: "application/zip" };
+  const page = (rows: unknown[]) => ({ rows, hasMore: false, unreadable: 0, total: rows.length });
+  return {
+    ...jest.requireActual("@/api/pages"),
+    pagesApi: {
+      spaces: jest.fn(async () => page([space])),
+      space: jest.fn(async () => space),
+      children: jest.fn(async () => page([folder, file])),
+      drive: jest.fn(async () => page([file])),
+      sharedWithMe: jest.fn(async () => page([])),
+      node: jest.fn(async () => zip),
+      createFolder: jest.fn(async () => folder),
+      restore: jest.fn(async () => undefined),
+    },
+  };
+});
+
 // One stocked app, so the assistant offers its app question too.
 jest.mock("@/api/me", () => ({
   ...jest.requireActual("@/api/me"),
@@ -298,6 +338,13 @@ import Calendar from "../../../app/calendar";
 import Profile from "../../../app/profile";
 import ChangePassword from "../../../app/change-password";
 import AiKeys from "../../../app/ai-keys";
+import PagesHome from "../../../app/pages/index";
+import PagesFolder from "../../../app/pages/folder";
+import PagesDrive from "../../../app/pages/drive";
+import PagesView from "../../../app/pages/view";
+import PagesSave from "../../../app/pages/save";
+import PagesUploads from "../../../app/pages/uploads";
+import { usePendingImport } from "@/screens/pages/addFiles";
 import AccountScreen from "../../../app/account";
 import DeleteAccount from "../../../app/delete-account";
 import Privacy from "../../../app/privacy";
@@ -384,10 +431,10 @@ const SCREENS: {
 }[] = [
   // The empty conversation: the suggested questions are the French sentence.
   { name: "assistant", element: () => <Assistant />, handles: ["chat-empty", "composer-input"], french: "Qu’y a-t-il dans mes notes ?", settled: ["facture-mars.pdf"] },
-  { name: "chats", element: () => <Chats />, handles: ["chats-list", "chat-row-266", "chat-unread-266"], french: "Discussions" },
+  { name: "chats", element: () => <Chats />, handles: ["chats-list", "chat-row-266", "chat-unread-266", "ai-button"], french: "Discussions" },
   { name: "thread", element: () => <Thread />, handles: ["thread-list", "thread-title", "msg-mine-2311", "people-composer-input", "people-composer-send"], french: "En ligne" },
-  { name: "notifications", element: () => <Notifications />, handles: ["notifications-list", "notification-row-9", "notification-unread-9", "notifications-refresh", "notifications-updated"], french: "Aujourd’hui" },
-  { name: "calendar", element: () => <Calendar />, handles: ["calendar-list", "calendar-day-today", "calendar-event-5:2026-09-19", "calendar-refresh", "calendar-updated"], french: "À venir" },
+  { name: "notifications", element: () => <Notifications />, handles: ["notifications-list", "notification-row-9", "notification-unread-9", "notifications-refresh", "notifications-updated", "ai-button"], french: "Aujourd’hui" },
+  { name: "calendar", element: () => <Calendar />, handles: ["calendar-list", "calendar-day-today", "calendar-event-5:2026-09-19", "calendar-refresh", "calendar-updated", "ai-button"], french: "À venir" },
   { name: "profile", element: () => <Profile />, handles: ["profile-photo", "profile-firstname", "profile-lastname", "profile-email-locked", "profile-save", "profile-password", "profile-keys", "profile-web"], french: "Profil" },
   { name: "change-password", element: () => <ChangePassword />, handles: ["password-current", "password-new", "password-confirm", "password-save", "password-current-reveal"], french: "Au moins 6 caractères." },
   { name: "ai-keys", element: () => <AiKeys />, handles: ["ai-keys-list", "ai-key-gemini", "ai-key-active-gemini", "ai-key-replace-gemini", "ai-key-remove-gemini"], french: "Votre clé IA" },
@@ -410,6 +457,22 @@ const SCREENS: {
     handles: ["two-factor-code", "two-factor-submit", "two-factor-back"],
     french: "Vérification en deux étapes",
   },
+  // The Drive-style shell (2026-11-06): tabs, the search pill, "+", ⋯ on a row.
+  { name: "pages", element: () => <PagesHome />, handles: ["pages-home-list", "pages-row-file", "pages-more-file", "pages-tab-home", "pages-tab-starred", "pages-tab-shared", "pages-tab-files", "pages-open-search", "pages-menu", "pages-add", "pages-open-profile"], french: "Fichiers récents" },
+  { name: "pages-folder", element: () => <PagesFolder />, handles: ["pages-folder-list", "pages-row-folder", "pages-row-file", "pages-more-folder", "pages-sort", "pages-view-toggle", "pages-type-all", "pages-type-folders", "pages-type-video", "pages-add", "pages-tab-files", "pages-tab-home", "ai-button"], french: "Nom" },
+  { name: "pages-drive", element: () => <PagesDrive />, handles: ["pages-drive-list", "pages-row-file"], french: "Récents" },
+  { name: "pages-view", element: () => <PagesView />, handles: ["pages-view-other", "pages-view-card", "pages-view-share", "pages-view-share-button"], french: "Pas d’aperçu" },
+  // Files in hand, as the share sheet or the Add sheet leaves them.
+  {
+    name: "pages-save",
+    element: () => {
+      usePendingImport.setState({ files: [{ uri: "file:///cache/IMG_0042.MOV", name: "IMG_0042.MOV", mimeType: "video/quicktime", size: 1932735283 }] });
+      return <PagesSave />;
+    },
+    handles: ["pages-save-search", "pages-save-places", "pages-save-space", "pages-save-here"],
+    french: "Enregistrer dans Pages",
+  },
+  { name: "pages-uploads", element: () => <PagesUploads />, handles: ["pages-uploads-list", "pages-uploads-empty"], french: "Aucun envoi" },
   { name: "sign-in", element: () => <SignIn />, handles: ["sign-in-email", "sign-in-password", "sign-in-submit", "sign-in-forgot", "sign-in-create-account"], french: "Se connecter avec un e-mail" },
   { name: "sign-up", element: () => <SignUp />, handles: ["sign-up-firstname", "sign-up-lastname", "sign-up-email", "sign-up-password", "sign-up-submit", "sign-up-to-sign-in"], french: "Créer le compte" },
   { name: "forgot-password", element: () => <ForgotPassword />, handles: ["forgot-password-email", "forgot-password-submit"] /* -back and -sent belong to the sent state, not this one */, french: "Envoyer le lien" },

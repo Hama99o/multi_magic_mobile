@@ -107,7 +107,7 @@ describe("the form", () => {
         password: "a-real-password",
       }),
     );
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/chat"));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/home"));
   });
 
   it("clears the error as soon as the user edits", async () => {

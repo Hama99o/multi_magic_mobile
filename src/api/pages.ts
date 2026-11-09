@@ -233,6 +233,11 @@ function listParams(page: number, options: ListOptions): Record<string, string |
   return params;
 }
 
+/** For a delete-for-good: 404 means somebody (or its own folder) already
+ *  deleted it, which is the outcome asked for. Same rule as the web's
+ *  `alreadyGoneIsDone` (multi_magic `page_app.api.ts`). */
+const alreadyGoneIsDone = (status: number): boolean => (status >= 200 && status < 300) || status === 404;
+
 export const pagesApi = {
   /** Spaces this user can open — owned and shared as a whole. */
   spaces: async (page = 1, search?: string): Promise<Page<Space>> => {
@@ -312,7 +317,12 @@ export const pagesApi = {
    * Empty trash. The server has no such endpoint, so each item at the top of
    * the trash (`trash_roots`) is destroyed; what was trashed inside it goes
    * with it. Page 1 is read again each time, because every delete moves the
-   * rest up. Returns how many were deleted; the first failure stops it.
+   * rest up. Returns how many were deleted; the first real failure stops it.
+   *
+   * A child trashed BEFORE its folder is listed as its own trash root, and the
+   * folder's delete takes it too (the web's bug of 2026-11-09). So a row whose
+   * folder is in the same batch is not asked for, and a 404 means "already
+   * gone", which is what was asked, not a failure.
    */
   emptyTrash: async (): Promise<number> => {
     let deleted = 0;
@@ -320,8 +330,13 @@ export const pagesApi = {
       const res = await http.get("/api/v1/page_app/drive/nodes", { params: { view: "trash", page: 1, per_page: 50 } });
       const { rows } = paged(res.data, "nodes", 1, parseNode);
       if (rows.length === 0) break;
+      const ids = new Set(rows.map((node) => node.id));
       for (const node of rows) {
-        await http.delete(`/api/v1/page_app/spaces/${node.spaceId}/nodes/${node.id}/destroy_permanently`);
+        if (node.parentId == null || !ids.has(node.parentId)) {
+          await http.delete(`/api/v1/page_app/spaces/${node.spaceId}/nodes/${node.id}/destroy_permanently`, {
+            validateStatus: alreadyGoneIsDone,
+          });
+        }
         deleted += 1;
       }
     }

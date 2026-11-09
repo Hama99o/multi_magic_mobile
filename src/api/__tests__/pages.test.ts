@@ -135,3 +135,50 @@ describe("safeFileName", () => {
   it("never lets a title become a path", () => expect(safeFileName("a/b\\c:d")).toBe("a_b_c_d"));
   it("names an empty title", () => expect(safeFileName("  ")).toBe("file"));
 });
+
+/**
+ * EMPTY TRASH when a folder and its own child are both at the top of the trash
+ * (the web's bug of 2026-11-09, in the same shape here). The server lists a
+ * child trashed BEFORE its folder as its own trash root
+ * (`DriveController#trash_roots`), and destroying the folder takes the child
+ * with it (`dependent: :destroy`), so the child's own delete then answers 404.
+ * That 404 used to throw and stop the whole empty half-way, saying it failed.
+ * A 404 here means "already gone", which is exactly what was asked.
+ */
+describe("emptyTrash", () => {
+  const template = load("pages_drive_recent").body as { meta: unknown; nodes: Record<string, unknown>[] };
+  const row = (id: number, parentId: number | null, kind = "file") =>
+    ({ ...template.nodes[0], id, parent_id: parentId, kind, deleted_at: "2026-11-09T10:00:00.000Z" });
+  const trashPage = (nodes: Record<string, unknown>[]) => ({ ...template, nodes });
+
+  it("does not ask for a child its folder already took, and finishes", async () => {
+    const deletes: string[] = [];
+    mock
+      .onGet("/api/v1/page_app/drive/nodes").replyOnce(200, trashPage([row(10, null, "folder"), row(12, 10)]))
+      .onGet("/api/v1/page_app/drive/nodes").reply(200, trashPage([]));
+    mock.onDelete(/destroy_permanently$/).reply((config) => {
+      deletes.push(config.url!);
+      return config.url!.includes("/nodes/12/") ? [404, { error: "not_found" }] : [200, {}];
+    });
+
+    await expect(pagesApi.emptyTrash()).resolves.toBe(2);
+    expect(deletes).toEqual(["/api/v1/page_app/spaces/315/nodes/10/destroy_permanently"]);
+  });
+
+  it("an item somebody else already deleted (404) counts as done, not as a failure", async () => {
+    mock
+      .onGet("/api/v1/page_app/drive/nodes").replyOnce(200, trashPage([row(20, null), row(21, null)]))
+      .onGet("/api/v1/page_app/drive/nodes").reply(200, trashPage([]));
+    mock.onDelete(/\/nodes\/20\/destroy_permanently$/).reply(404, { error: "not_found" });
+    mock.onDelete(/\/nodes\/21\/destroy_permanently$/).reply(200, {});
+
+    await expect(pagesApi.emptyTrash()).resolves.toBe(2);
+  });
+
+  it("a real refusal still stops it and says so", async () => {
+    mock.onGet("/api/v1/page_app/drive/nodes").reply(200, trashPage([row(30, null)]));
+    mock.onDelete(/destroy_permanently$/).reply(403, { error: "forbidden" });
+
+    await expect(pagesApi.emptyTrash()).rejects.toBeTruthy();
+  });
+});

@@ -62,6 +62,14 @@
       "expo-sharing",
       "expo-video",
       [
+        "expo-media-library",
+        {
+          "photosPermission": "Choose photos and videos to save in your Pages, or attach one to a conversation so the assistant can read it.",
+          "savePhotosPermission": "Save the photos and videos you download from your Pages to your photo library.",
+          "granularPermissions": ["photo", "video"]
+        }
+      ],
+      [
         "expo-share-intent",
         {
           "iosShareExtensionName": "MultiMagic Pages",

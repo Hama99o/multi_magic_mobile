@@ -138,6 +138,7 @@ const PLURAL = new Set([
   "pages.download.saved",
   "pages.download.failed",
   "pages.download.skipped",
+  "pages.download.savedGallery",
 ]);
 
 const CALLED = calledKeys();

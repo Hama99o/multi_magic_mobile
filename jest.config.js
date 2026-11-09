@@ -84,6 +84,7 @@ module.exports = {
       "expo-file-system|" +
       "expo-sharing|" +
       "expo-video|" +
+      "expo-media-library|" +
       "expo-share-intent|" +
       "react-native-webview|" +
       // NEW IN SDK 57: pulled in by expo-router's native-stack fork, ships

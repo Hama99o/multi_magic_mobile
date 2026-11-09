@@ -72,9 +72,11 @@ UX is judged as a user, out of 5:
 
 | Area | Feature | What is checked | Status | Notes |
 |------|---------|-----------------|--------|-------|
-| Pages | Multi-select **Download** | 2+ files and a folder selected → Download → the system folder picker → "Downloading n of total…" → one message (saved / skipped); the files are in the chosen folder with their own names and open; Cancel in the picker says nothing | – | First device check: copying into an Android SAF folder (`File.copy` into `Directory.createFile`) is proven only on a device |
+| Pages | Multi-select **Download**, mixed → Files | 2+ files (at least one not a photo/video) and a folder selected → Download → the system folder picker → "Downloading n of total…" → one message (saved / skipped); the files are in the chosen folder with their own names and open; Cancel in the picker says nothing | – | First device check: copying into an Android SAF folder (`File.copy` into `Directory.createFile`) is proven only on a device |
 | Pages | **Empty trash** with a folder and its own child | trash a file, then its folder; Empty trash → everything goes, "emptied" message, no error | – | The 2026-11-09 web bug in its mobile shape; Jest red first (`a5fab27`) |
 | Pages | **Play badge** over a video's frame | list, grid, item sheet; light and dark | NM on the local server | Badges appear only where the server sends a video frame, i.e. once ffmpeg is in the server image (multi_magic branch `video-previews`). The local dev server has no ffmpeg, so on the emulator videos keep their red icon and no badge: NOT MEASURED there, covered by `playBadge.test.tsx` (18 tests, red first). Check on the phone after the deploy. |
+| Pages | Video **playback** ("can't play video in Pages") | a Pages video plays | ✅ owner: resolved on device 2026-11-09 (iPhone 15 Pro Max) | closed, no work needed |
+| Pages | Download, all photos/videos → **Gallery** | only photos/videos selected → Download → permission asked once → "n files saved to your photos" → they are in Photos/Gallery; refused → the message offers "Save to Files" | – | needs the NEW dev build (expo-media-library is a native module) |
 | Home | F2 Conversations tile | opens on the history | – | fixed in code, Jest both halves |
 | Links | F3 Pages links in answers | a page_node / page_space link opens in the app | – | fixed in code, Jest |
 

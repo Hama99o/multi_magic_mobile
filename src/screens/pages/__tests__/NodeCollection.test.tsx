@@ -198,7 +198,7 @@ describe("multi-select Download", () => {
   }
 
   it("hands every selected item to the downloader and says what was saved", async () => {
-    mockDownloadMany.mockResolvedValue({ saved: 2, failed: 0, skipped: 0 });
+    mockDownloadMany.mockResolvedValue({ saved: 2, failed: 0, skipped: 0, destination: "files" });
     await selectBoth();
     fireEvent.press(screen.getByTestId("pages-select-download"));
     await waitFor(() => expect(mockDownloadMany).toHaveBeenCalled());
@@ -207,7 +207,7 @@ describe("multi-select Download", () => {
   });
 
   it("says what failed and what was skipped, each on its own line", async () => {
-    mockDownloadMany.mockResolvedValue({ saved: 1, failed: 1, skipped: 2 });
+    mockDownloadMany.mockResolvedValue({ saved: 1, failed: 1, skipped: 2, destination: "files" });
     await selectBoth();
     fireEvent.press(screen.getByTestId("pages-select-download"));
     await waitFor(() =>
@@ -228,10 +228,33 @@ describe("multi-select Download", () => {
   });
 
   it("with only pages or folders chosen, says only files can be downloaded", async () => {
-    mockDownloadMany.mockResolvedValue({ saved: 0, failed: 0, skipped: 2 });
+    mockDownloadMany.mockResolvedValue({ saved: 0, failed: 0, skipped: 2, destination: "files" });
     await selectBoth();
     fireEvent.press(screen.getByTestId("pages-select-download"));
     await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith("Download", "Only files can be downloaded, not pages or folders."));
+  });
+
+  it("photos saved to the gallery say so", async () => {
+    mockDownloadMany.mockResolvedValue({ saved: 2, failed: 0, skipped: 0, destination: "gallery" });
+    await selectBoth();
+    fireEvent.press(screen.getByTestId("pages-select-download"));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith("Download", "2 files saved to your photos"));
+  });
+
+  it("gallery refused: says why and offers Files, which downloads again to Files", async () => {
+    mockDownloadMany.mockResolvedValueOnce("gallery-denied").mockResolvedValueOnce({ saved: 2, failed: 0, skipped: 0, destination: "files" });
+    await selectBoth();
+    fireEvent.press(screen.getByTestId("pages-select-download"));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalled());
+    const [title, body, buttons] = (Alert.alert as jest.Mock).mock.calls[0];
+    expect([title, body]).toEqual([
+      "Download",
+      "MultiMagic is not allowed to add to your photos. Allow it in Settings, or save the files to Files instead.",
+    ]);
+    const toFiles = (buttons as { text: string; onPress?: () => void }[]).find((b) => b.text === "Save to Files")!;
+    await act(async () => toFiles.onPress?.());
+    await waitFor(() => expect(mockDownloadMany).toHaveBeenCalledTimes(2));
+    expect(mockDownloadMany.mock.calls[1][3]).toEqual({ toFiles: true });
   });
 
   it("shows 'n of total' while it runs", async () => {
@@ -243,7 +266,7 @@ describe("multi-select Download", () => {
     await selectBoth();
     fireEvent.press(screen.getByTestId("pages-select-download"));
     expect(await screen.findByText("Downloading 1 of 2…")).toBeTruthy();
-    await act(async () => finish({ saved: 2, failed: 0, skipped: 0 }));
+    await act(async () => finish({ saved: 2, failed: 0, skipped: 0, destination: "files" }));
     await waitFor(() => expect(screen.queryByTestId("pages-download-progress")).toBeNull());
   });
 });

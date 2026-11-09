@@ -206,26 +206,42 @@ export function NodeCollection({
   // turn (`downloadMany`); the selection stays, so a failure can be retried.
   const [downloading, setDownloading] = useState<{ n: number; total: number } | null>(null);
   const download = useCallback(
-    async (items: PageNode[]) => {
-      setDownloading({ n: 0, total: 0 });
-      try {
-        const result = await downloadMany(items, undefined, (n, total) => setDownloading({ n, total }));
-        if (!result) return;
-        if (result.saved + result.failed === 0) {
-          Alert.alert(t("pages.download.title"), t("pages.download.noFiles"));
-          return;
+    (items: PageNode[]) => {
+      // A named inner function, so "Save to Files" after a refused gallery
+      // can run it again without the callback referring to itself.
+      const run = async (toFiles: boolean): Promise<void> => {
+        setDownloading({ n: 0, total: 0 });
+        try {
+          const result = await downloadMany(items, undefined, (n, total) => setDownloading({ n, total }), toFiles ? { toFiles: true } : undefined);
+          if (!result) return;
+          // Photos bound for the gallery, write access refused: say why, and
+          // offer the other place rather than a dead end.
+          if (result === "gallery-denied") {
+            Alert.alert(t("pages.download.title"), t("pages.download.galleryDenied"), [
+              { text: t("common.cancel"), style: "cancel" },
+              { text: t("pages.download.toFiles"), onPress: () => void run(true) },
+            ]);
+            return;
+          }
+          if (result.saved + result.failed === 0) {
+            Alert.alert(t("pages.download.title"), t("pages.download.noFiles"));
+            return;
+          }
+          const lines = [
+            result.saved > 0
+              ? t(result.destination === "gallery" ? "pages.download.savedGallery" : "pages.download.saved", { count: result.saved })
+              : null,
+            result.failed > 0 ? t("pages.download.failed", { count: result.failed }) : null,
+            result.skipped > 0 ? t("pages.download.skipped", { count: result.skipped }) : null,
+          ].filter(Boolean);
+          Alert.alert(t("pages.download.title"), lines.join("\n"));
+        } catch (e) {
+          Alert.alert(t("pages.download.title"), failureMessage(e, t("pages.actions.failed")));
+        } finally {
+          setDownloading(null);
         }
-        const lines = [
-          result.saved > 0 ? t("pages.download.saved", { count: result.saved }) : null,
-          result.failed > 0 ? t("pages.download.failed", { count: result.failed }) : null,
-          result.skipped > 0 ? t("pages.download.skipped", { count: result.skipped }) : null,
-        ].filter(Boolean);
-        Alert.alert(t("pages.download.title"), lines.join("\n"));
-      } catch (e) {
-        Alert.alert(t("pages.download.title"), failureMessage(e, t("pages.actions.failed")));
-      } finally {
-        setDownloading(null);
-      }
+      };
+      return run(false);
     },
     [t],
   );

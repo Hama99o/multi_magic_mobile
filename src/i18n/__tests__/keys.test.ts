@@ -135,6 +135,9 @@ const PLURAL = new Set([
   "pages.move.titleMany",
   "pages.select.count",
   "pages.uploads.barItems",
+  "pages.download.saved",
+  "pages.download.failed",
+  "pages.download.skipped",
 ]);
 
 const CALLED = calledKeys();

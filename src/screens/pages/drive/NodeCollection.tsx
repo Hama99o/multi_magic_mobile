@@ -6,7 +6,8 @@
  *
  * - View: `useViewPrefs` (list or grid, kept across restarts, like Drive).
  * - Selection: a long press starts it (Drive), a tap then toggles; the
- *   search pill becomes a selection bar with Star, Move and Trash.
+ *   search pill becomes a selection bar with Download, Star, Move and Trash
+ *   (Download for anyone who can see the files; the rest need write access).
  * - "⋯" on a row or a card opens the actions sheet; every action
  *   invalidates the `["pages"]` queries so each list shows the result.
  */
@@ -15,11 +16,12 @@ import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, View } f
 import { Text } from "@/components/reusables/text";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
-import { FolderInput, Star, Trash2 } from "@/components/icons";
+import { Download, FolderInput, Star, Trash2 } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { pagesApi, type PageNode } from "@/api/pages";
 import { failureMessage } from "@/api/failure";
 import { NameDialog, shareNode } from "../ItemSheet";
+import { downloadMany } from "../downloadMany";
 import { ActionsSheet, DetailsSheet, MoveSheet } from "./sheets";
 import { GridCard, IconButton, ListRow, SelectionBar, useViewPrefs } from "./ui";
 
@@ -200,6 +202,34 @@ export function NodeCollection({
     [renaming, refresh, t],
   );
 
+  // docs/MISSING_FEATURES.md #1. One folder asked for once, then each file in
+  // turn (`downloadMany`); the selection stays, so a failure can be retried.
+  const [downloading, setDownloading] = useState<{ n: number; total: number } | null>(null);
+  const download = useCallback(
+    async (items: PageNode[]) => {
+      setDownloading({ n: 0, total: 0 });
+      try {
+        const result = await downloadMany(items, undefined, (n, total) => setDownloading({ n, total }));
+        if (!result) return;
+        if (result.saved + result.failed === 0) {
+          Alert.alert(t("pages.download.title"), t("pages.download.noFiles"));
+          return;
+        }
+        const lines = [
+          result.saved > 0 ? t("pages.download.saved", { count: result.saved }) : null,
+          result.failed > 0 ? t("pages.download.failed", { count: result.failed }) : null,
+          result.skipped > 0 ? t("pages.download.skipped", { count: result.skipped }) : null,
+        ].filter(Boolean);
+        Alert.alert(t("pages.download.title"), lines.join("\n"));
+      } catch (e) {
+        Alert.alert(t("pages.download.title"), failureMessage(e, t("pages.actions.failed")));
+      } finally {
+        setDownloading(null);
+      }
+    },
+    [t],
+  );
+
   const move = useCallback(
     async (to: { spaceId: number; parentId: number | null }) => {
       if (!moving) return;
@@ -235,6 +265,15 @@ export function NodeCollection({
     <View style={{ flex: 1 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)} testID={`${testID}-root`}>
       {selecting ? (
         <SelectionBar count={selected.size} onClose={() => setSelected(new Set())}>
+          <IconButton
+            icon={Download}
+            label={t("pages.download.title")}
+            onPress={() => {
+              if (!downloading) void download(chosen);
+            }}
+            tone="ink"
+            testID="pages-select-download"
+          />
           {canWrite ? (
             <>
               <IconButton
@@ -252,6 +291,11 @@ export function NodeCollection({
       ) : (
         top
       )}
+      {downloading && downloading.total > 0 ? (
+        <Text variant="caption" tone="muted" accessibilityLiveRegion="polite" style={{ paddingHorizontal: metrics.space.md }} testID="pages-download-progress">
+          {t("pages.download.progress", { n: downloading.n, total: downloading.total })}
+        </Text>
+      ) : null}
 
       <FlatList
         key={mode}

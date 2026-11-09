@@ -38,6 +38,8 @@ jest.mock("@/api/pages", () => ({
   downloadToCache: jest.fn(async () => "file:///cache/x"),
 }));
 jest.mock("expo-sharing", () => ({ shareAsync: jest.fn(async () => undefined) }));
+const mockDownloadMany = jest.fn();
+jest.mock("../downloadMany", () => ({ downloadMany: (...a: unknown[]) => mockDownloadMany(...a) }));
 jest.mock("expo-router", () => ({ router: { push: jest.fn(), back: jest.fn() } }));
 
 /* eslint-disable import/first */
@@ -179,6 +181,70 @@ describe.each(["list", "grid"] as const)("in the %s view", (mode) => {
     expect(await screen.findByText("2 items moved to the trash")).toBeTruthy();
     fireEvent.press(screen.getByTestId("pages-undo"));
     await waitFor(() => expect(mockApi.restore).toHaveBeenCalledTimes(2));
+  });
+});
+
+// docs/MISSING_FEATURES.md #1: "with 2+ items selected, the top bar has only
+// star / move / delete". The order, skipping and counting live in
+// downloadMany.test.ts; this pins the button, what it is given, and what the
+// person is told at the end.
+describe("multi-select Download", () => {
+  async function selectBoth() {
+    renderIt();
+    fireEvent(screen.getByTestId("list-root"), "layout", { nativeEvent: { layout: { width: 360, height: 800 } } });
+    fireEvent(item("vlog-a.mp4"), "longPress");
+    await screen.findByTestId("pages-selection-bar");
+    fireEvent.press(item("photo-1.jpg"));
+  }
+
+  it("hands every selected item to the downloader and says what was saved", async () => {
+    mockDownloadMany.mockResolvedValue({ saved: 2, failed: 0, skipped: 0 });
+    await selectBoth();
+    fireEvent.press(screen.getByTestId("pages-select-download"));
+    await waitFor(() => expect(mockDownloadMany).toHaveBeenCalled());
+    expect(mockDownloadMany.mock.calls[0][0].map((n: PageNode) => n.id).sort()).toEqual([1, 2]);
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith("Download", "2 files saved"));
+  });
+
+  it("says what failed and what was skipped, each on its own line", async () => {
+    mockDownloadMany.mockResolvedValue({ saved: 1, failed: 1, skipped: 2 });
+    await selectBoth();
+    fireEvent.press(screen.getByTestId("pages-select-download"));
+    await waitFor(() =>
+      expect(Alert.alert).toHaveBeenCalledWith(
+        "Download",
+        "1 file saved\n1 file could not be saved\n2 pages or folders skipped: only files can be downloaded",
+      ),
+    );
+  });
+
+  it("a cancelled folder picker says nothing", async () => {
+    mockDownloadMany.mockResolvedValue(null);
+    await selectBoth();
+    fireEvent.press(screen.getByTestId("pages-select-download"));
+    await waitFor(() => expect(mockDownloadMany).toHaveBeenCalled());
+    await act(async () => { await new Promise((r) => setTimeout(r, 10)); });
+    expect(Alert.alert).not.toHaveBeenCalled();
+  });
+
+  it("with only pages or folders chosen, says only files can be downloaded", async () => {
+    mockDownloadMany.mockResolvedValue({ saved: 0, failed: 0, skipped: 2 });
+    await selectBoth();
+    fireEvent.press(screen.getByTestId("pages-select-download"));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith("Download", "Only files can be downloaded, not pages or folders."));
+  });
+
+  it("shows 'n of total' while it runs", async () => {
+    let finish: (v: unknown) => void = () => {};
+    mockDownloadMany.mockImplementation((_nodes: unknown, _deps: unknown, onProgress: (n: number, t: number) => void) => {
+      onProgress(1, 2);
+      return new Promise((r) => { finish = r; });
+    });
+    await selectBoth();
+    fireEvent.press(screen.getByTestId("pages-select-download"));
+    expect(await screen.findByText("Downloading 1 of 2…")).toBeTruthy();
+    await act(async () => finish({ saved: 2, failed: 0, skipped: 0 }));
+    await waitFor(() => expect(screen.queryByTestId("pages-download-progress")).toBeNull());
   });
 });
 

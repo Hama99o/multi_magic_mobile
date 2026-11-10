@@ -2,7 +2,7 @@
   "expo": {
     "name": "MultiMagic",
     "slug": "multimagic-mobile",
-    "version": "1.1.0",
+    "version": "1.1.1",
     "orientation": "portrait",
     "icon": "./assets/icon-1024.png",
     "scheme": "multimagic",

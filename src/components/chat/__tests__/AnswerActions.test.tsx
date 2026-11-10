@@ -128,6 +128,17 @@ describe("copying an answer out", () => {
     expect(set).toHaveBeenCalledTimes(1);
   });
 
+  // Seen 2026-11-10: the paste carried `**` and a `/rails/active_storage/…` path.
+  it("as it reads on the screen, not its markdown", async () => {
+    const set = jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
+    const body = "I found **Itinerary.pdf**: [Itinerary.pdf](/rails/active_storage/blobs/redirect/x/Itinerary.pdf).";
+    render(<AnswerActions message={answer({ body })} showUndo={false} onUndone={() => {}} />);
+
+    fireEvent.press(screen.getByLabelText("Copy answer"));
+
+    await waitFor(() => expect(set).toHaveBeenCalledWith("I found Itinerary.pdf: Itinerary.pdf."));
+  });
+
   it("says so, because setStringAsync is silent", async () => {
     jest.spyOn(Clipboard, "setStringAsync").mockResolvedValue(true);
     render(<AnswerActions message={answer()} showUndo={false} onUndone={() => {}} />);

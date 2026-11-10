@@ -402,6 +402,8 @@ export const en = {
     replace: "Replace",
     remove: "Remove",
     removeLabel: "Remove the {{provider}} key",
+    removeTitle: "Remove your {{provider}} key?",
+    removeBody: "The assistant goes back to MultiMagic's key. To use yours again you will need to paste it again.",
     replaceTitle: "Replace your {{provider}} key",
     addTitle: "Add a key",
     allProvidersKeyed: "You already have a key for every provider this app can use.",

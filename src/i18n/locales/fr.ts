@@ -418,6 +418,8 @@ export const fr: Translations = {
     replace: "Remplacer",
     remove: "Retirer",
     removeLabel: "Retirer la clé {{provider}}",
+    removeTitle: "Retirer votre clé {{provider}} ?",
+    removeBody: "L’assistant reprend la clé de MultiMagic. Pour réutiliser la vôtre, il faudra la recoller.",
     replaceTitle: "Remplacer votre clé {{provider}}",
     addTitle: "Ajouter une clé",
     allProvidersKeyed:

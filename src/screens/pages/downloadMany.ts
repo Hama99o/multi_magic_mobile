@@ -19,7 +19,7 @@
  * Pages and folders have no bytes to save and are skipped and counted, so the
  * screen can say how many. One file failing does not stop the rest.
  */
-import { Directory, File } from "expo-file-system";
+import { Directory, File, FileMode, Paths } from "expo-file-system";
 import { Asset, requestPermissionsAsync } from "expo-media-library";
 import { downloadToCache, safeFileName, type PageNode } from "@/api/pages";
 
@@ -49,17 +49,72 @@ export function isPickerCancel(error: unknown): boolean {
   return code === "ERR_PICKER_CANCELLED" || code === "ERR_FILE_PICKING_CANCELLED";
 }
 
+/** 1 MB: a 500 MB clip is copied without ever sitting in memory. */
+export const COPY_CHUNK_BYTES = 1024 * 1024;
+
+/**
+ * Bytes from the cache into a file made in the picked folder, through two
+ * file handles. NOT `File.copy(target)`: on Android, seen 2026-11-10 on the
+ * emulator, expo-file-system's SAF strategy (fsops/CopyMoveStrategy.kt,
+ * `prepareAsDestination`) refuses a destination that already exists, and
+ * `createFile` is what made it exist, so every file failed and stayed behind
+ * empty. Copying into the FOLDER instead would name it after the cache file.
+ * A file that fails half way is removed rather than left empty.
+ */
+async function streamInto(directoryUri: string, node: PageNode): Promise<void> {
+  const cached = new File(await downloadToCache(node));
+  const target = new Directory(directoryUri).createFile(safeFileName(node.title), node.mimeType ?? null);
+  try {
+    const from = cached.open(FileMode.ReadOnly);
+    const to = target.open(FileMode.WriteOnly);
+    try {
+      for (;;) {
+        const chunk = from.readBytes(COPY_CHUNK_BYTES);
+        if (chunk.length === 0) break;
+        to.writeBytes(chunk);
+      }
+    } finally {
+      from.close();
+      to.close();
+    }
+  } catch (error) {
+    try {
+      target.delete();
+    } catch {
+      // Already gone; the original error is the one worth reporting.
+    }
+    throw error;
+  }
+}
+
+/**
+ * The gallery names a photo after the file it is handed, and the cache file is
+ * `pages-<id>-<stamp>-<title>` (seen 2026-11-10: DCIM held
+ * `pages-3392-20261107001902756-IMG_2041.jpg`). So it is handed a copy under
+ * the file's own name, in a folder of its own, removed afterwards.
+ */
+async function intoGallery(node: PageNode): Promise<void> {
+  const cached = new File(await downloadToCache(node));
+  const folder = new Directory(Paths.cache, `gallery-${node.id}-${Date.now()}`);
+  folder.create();
+  try {
+    const named = new File(folder, safeFileName(node.title));
+    cached.copy(named);
+    await Asset.create(named.uri);
+  } finally {
+    try {
+      folder.delete();
+    } catch {
+      // A leftover in the cache is the system's to clear.
+    }
+  }
+}
+
 export const deviceDeps: DownloadDeps = {
   pickDirectory: async () => (await Directory.pickDirectoryAsync()).uri,
-  saveInto: async (directoryUri, node) => {
-    const cached = new File(await downloadToCache(node));
-    const target = new Directory(directoryUri).createFile(safeFileName(node.title), node.mimeType ?? null);
-    await cached.copy(target);
-  },
+  saveInto: streamInto,
   galleryPermission: async () => (await requestPermissionsAsync(true)).granted,
-  saveToGallery: async (node) => {
-    await Asset.create(await downloadToCache(node));
-  },
+  saveToGallery: intoGallery,
 };
 
 /**

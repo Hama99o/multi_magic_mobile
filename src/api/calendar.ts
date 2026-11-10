@@ -79,6 +79,17 @@ function parseColor(value: unknown): string | null {
   return raw && /^#[0-9a-fA-F]{3,8}$/.test(raw) ? raw : null;
 }
 
+/**
+ * The server's recurrence is a Rails enum (`CalendarApp::Event`: none, daily,
+ * weekly, monthly, yearly), so a one-off event arrives as the STRING "none".
+ * Kept as-is, every one-off event drew `EventRow`'s repeat icon (seen
+ * 2026-11-10). "none" and absent are both null: no recurrence.
+ */
+function parseRecurrence(value: unknown): string | null {
+  const recurrence = optStr(value);
+  return recurrence === "none" ? null : recurrence;
+}
+
 function parseEvent(payload: unknown): CalendarEvent {
   const record = obj(payload, "event");
   return {
@@ -87,7 +98,7 @@ function parseEvent(payload: unknown): CalendarEvent {
     description: optStr(record.description),
     location: optStr(record.location),
     kind: optStr(record.kind),
-    recurrence: optStr(record.recurrence),
+    recurrence: parseRecurrence(record.recurrence),
     color: parseColor(record.color),
   };
 }

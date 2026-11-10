@@ -167,3 +167,21 @@ describe("the window", () => {
     expect(mock.history.get[0].params).toEqual({ days: 7 });
   });
 });
+
+/**
+ * A ONE-OFF EVENT IS NOT A REPEATING ONE. The server's recurrence is a Rails
+ * enum (`CalendarApp::Event`, `none: 0, daily: 1, …`), so a one-off event
+ * arrives as the STRING "none", and `EventRow` draws the repeat icon for any
+ * recurrence at all. Seen 2026-11-10 on the emulator: "QA dentist", created
+ * once, carried the repeat icon (`event-repeats`).
+ */
+describe("recurrence", () => {
+  it('"none" is no recurrence', () => {
+    const occurrence = __parse.parseOccurrence({ ...standup, event: { ...standup.event, recurrence: "none" } });
+    expect(occurrence.event.recurrence).toBeNull();
+  });
+
+  it("a real one is kept", () => {
+    expect(__parse.parseOccurrence(standup).event.recurrence).toBe("weekly");
+  });
+});

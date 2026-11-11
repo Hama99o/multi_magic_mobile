@@ -108,3 +108,18 @@ npm run lint && npm run typecheck && npm test && npm run bundle
 
 Merge `1.1.1` into `main` once 1.1.0 is accepted. The push of this branch is
 also Hello's call.
+
+## State when MM was stopped (2026-11-10, ~11:05)
+
+- `npm test` is RED at its `pretest` gate. Jest itself (1530/1530), lint,
+  typecheck and bundle are green. Cause: `qa/flow_lint.py` reports 5 VERDICT
+  findings. Flows 07-notifications, 08-calendar, 13-profile, 20-refresh and
+  23-pages were changed in `b6e4866` (the 1.1.0 commit: Home-tile doors, a
+  360 dp swipe, the new Pages flow), and their `qa/FLOW_REGISTER.md` rows
+  still carry 2026-09/2026-11-06 dates.
+- The fix is to RE-RUN those 5 flows on one emulator
+  (`AVD=qa_phone USE_DEV_BUILD=1 ./qa/qa.sh flow <name>.yaml`) and write the
+  measured verdict with today's date. Never bump a date. Not done: stopped
+  before the emulator finished booting.
+- Earlier passes used `npx jest` directly, which skips `pretest`; that is how
+  this was missed. Build 11 went to App Store review without this gate.

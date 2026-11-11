@@ -1,7 +1,10 @@
 # Calendar — the second full app (2026-11-11)
 
-**Status: `IN PROGRESS`** — references read and decisions taken 2026-11-11;
-built test-first on `feat/calendar-app`; the device sweep (`docs/QA_REPORT_2026-11-11.md`) is the item outstanding.
+**Status: `DONE`** — 2026-11-11. `ours/` holds 360, 411 and 800 dp
+(light/dark, en/fr), `08-calendar` and `24-calendar-write` pass on a
+device, and `docs/QA_REPORT_2026-11-11.md` says what was NOT measured (RTL
+on a device, guests on a device, the assistant's real write). Server fix
+`calendar-dst` written, not deployed.
 
 The owner, 2026-11-11 (relayed by the supervisor session): *make Calendar the
 second full app inside MultiMagic mobile, after Pages: create, edit and delete

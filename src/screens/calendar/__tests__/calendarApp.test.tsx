@@ -171,6 +171,33 @@ describe("the calendar's main screen", () => {
     });
   });
 
+  it("SIMULATED assistant write: its reply on MessageChannel re-reads the list, nothing tapped", async () => {
+    // SIMULATED, said plainly (supervisor, 2026-11-11): no model was called.
+    // The frame is `MessageSerializer`'s shape with a `calendar_event` link,
+    // which is what `create_calendar_events` puts on the assistant's reply,
+    // delivered through the very handler the screen subscribed with.
+    const { subscribeToChannel } = jest.requireMock("@/lib/cable") as { subscribeToChannel: jest.Mock };
+    let served: unknown[] = [];
+    mock.onGet("/api/v1/calendar_app/events/upcoming").reply(() => [200, { occurrences: served }]);
+    renderScreen(<Calendar />);
+    await screen.findByTestId("calendar-nothing-today");
+
+    // The assistant has written the event on the server.
+    served = [occurrenceOf(serverEvent({ id: 90, title: "QA echo check" }), today)];
+    const handler = subscribeToChannel.mock.calls.filter(([name]) => name === "MessageChannel").pop()?.[1] as { onData: (frame: unknown) => void };
+    act(() =>
+      handler.onData({
+        message: {
+          id: 31, conversation_id: 4, user_id: null, role: "assistant", body: "Added it to your calendar.",
+          created_at: new Date().toISOString(), deleted: false, sent_by_me: false, edited_at: null, read_at: null,
+          reactions: [], links: [{ key: "calendar_event", label: "QA echo check", path: "/calendar?event=90" }],
+          sources: [], undoable: true, undone_at: null,
+        },
+      }),
+    );
+    expect(await screen.findByText("QA echo check")).toBeTruthy();
+  });
+
   it("a delete made on the detail page comes back with an Undo that restores it", async () => {
     mock.onGet("/api/v1/calendar_app/events/upcoming").reply(200, { occurrences: [] });
     mock.onPut("/api/v1/calendar_app/events/41/restore").reply(200, { event: serverEvent() });

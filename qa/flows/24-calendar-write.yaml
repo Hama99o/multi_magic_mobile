@@ -1,0 +1,170 @@
+# CALENDAR, WRITING — create, read back, edit, delete, undo, delete for good.
+#
+# Signed in as the QA account (`login.yaml`, `.env`), so every event written
+# here is the QA account's own and the flow removes what it made
+# (`RIG_CONTRACT.md` §3: never the owner's account, never a seed). The title
+# carries "QA calendar check" so a leftover from an interrupted run is
+# recognisable on the web and by the next run.
+#
+# ── FLOW_REGISTER note ──────────────────────────────────────────────────────
+# COVERS: the + opens a new event on today; a title typed with the keyboard;
+# the start TIME set with the wheel (no keyboard); Save lands back on the
+# agenda with the event in today's group (read back from the server, not from
+# the form); the detail page shows it; Edit opens the form filled in, a new
+# title saves and the detail shows it; Delete asks, then the list offers Undo,
+# Undo brings it back; the second Delete is the clean-up.
+#
+# CANNOT TELL YOU:
+#  · guests and RSVP: they need a SECOND account, and the rig has one. Jest
+#    covers owner / editor / viewer (`calendarApp.test.tsx`).
+#  · reminders actually firing: that is the server's sweep and an email.
+#  · a wheel FLING: Maestro taps rows; a fling's snap is a device judgement.
+appId: ${APP_ID}
+tags:
+  - people
+  - write
+---
+- runFlow: login.yaml
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
+- tapOn:
+    id: "home-tile-calendar"
+- extendedWaitUntil:
+    visible:
+      id: "calendar-list"
+    timeout: 60000
+
+# ── CREATE ────────────────────────────────────────────────────────────────
+- tapOn:
+    id: "calendar-new"
+- extendedWaitUntil:
+    visible:
+      id: "event-form-title"
+    timeout: 30000
+- inputText: "QA calendar check"
+# Enter on the single-line title submits and closes the keyboard; never
+# hideKeyboard here, which can reach this MODAL as BACK.
+- pressKey: Enter
+- tapOn:
+    id: "event-form-kind-appointment"
+# The pills TOGGLE, so Maestro's retry-on-no-change must be off: on a slow
+# emulator it tapped twice and closed the wheel it had just opened (seen
+# 2026-11-11 on qa_phone3, swiftshader).
+- tapOn:
+    id: "when-start-time"
+    retryTapIfNoChange: false
+- extendedWaitUntil:
+    visible:
+      id: "when-start-wheel"
+    timeout: 10000
+- takeScreenshot: reports/24-calendar-time-wheel
+# A row that is ON SCREEN in the five-row wheel at the default time (the hour
+# column shows the chosen hour ±2); any time today keeps it in today's group.
+# 00 sits in the band and 05 under it whatever the hour: a deterministic change.
+- tapOn:
+    id: "when-start-wheel-minute-5"
+    retryTapIfNoChange: false
+- assertVisible:
+    id: "when-start-time"
+    text: ".*:05.*"
+- runFlow:
+    when:
+      visible:
+        id: "when-start-wheel-period"
+    commands:
+      - tapOn:
+          id: "when-start-wheel-period-pm"
+          retryTapIfNoChange: false
+- tapOn:
+    id: "when-start-time"
+    retryTapIfNoChange: false
+- tapOn:
+    id: "event-form-location"
+- inputText: "QA room"
+# Enter moves on to Notes; Save sits in the header above the keyboard.
+- pressKey: Enter
+- takeScreenshot: reports/24-calendar-form-filled
+- tapOn:
+    id: "event-form-save"
+
+# READ BACK: the agenda re-read the server, and the row is in today's group.
+- extendedWaitUntil:
+    visible: "QA calendar check"
+    timeout: 30000
+- assertVisible:
+    id: "calendar-day-today"
+- takeScreenshot: reports/24-calendar-created
+
+# ── DETAIL ────────────────────────────────────────────────────────────────
+- tapOn: "QA calendar check"
+- extendedWaitUntil:
+    visible:
+      id: "event-title"
+    timeout: 30000
+- assertVisible: "QA room"
+- takeScreenshot: reports/24-calendar-detail
+
+# ── EDIT ──────────────────────────────────────────────────────────────────
+- tapOn:
+    id: "event-edit"
+- extendedWaitUntil:
+    visible:
+      id: "event-form-title"
+    timeout: 30000
+- tapOn:
+    id: "event-form-title"
+- eraseText: 40
+- inputText: "QA moved check"
+- pressKey: Enter
+- tapOn:
+    id: "event-form-save"
+- extendedWaitUntil:
+    visible: "QA moved check"
+    timeout: 30000
+
+# ── DELETE, UNDO ──────────────────────────────────────────────────────────
+- scrollUntilVisible:
+    element:
+      id: "event-delete"
+    direction: DOWN
+- tapOn:
+    id: "event-delete"
+# The confirm names the event: a destructive path asserts its WORDING.
+- assertVisible: "Delete “QA moved check”?"
+# The alert's own button, by its words (RN maps the destructive one to
+# Android's positive button; the node text keeps its case).
+- tapOn: "[Dd][Ee][Ll][Ee][Tt][Ee]"
+- extendedWaitUntil:
+    visible:
+      id: "calendar-undo"
+    timeout: 30000
+- takeScreenshot: reports/24-calendar-undo
+- tapOn:
+    id: "calendar-undo-button"
+- extendedWaitUntil:
+    visible: "QA moved check"
+    timeout: 30000
+
+# ── CLEAN-UP: delete it for this run ──────────────────────────────────────
+- tapOn: "QA moved check"
+- extendedWaitUntil:
+    visible:
+      id: "event-delete"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: "event-delete"
+    direction: DOWN
+- tapOn:
+    id: "event-delete"
+- tapOn: "[Dd][Ee][Ll][Ee][Tt][Ee]"
+- extendedWaitUntil:
+    visible:
+      id: "calendar-list"
+    timeout: 30000
+- assertNotVisible: "QA moved check"

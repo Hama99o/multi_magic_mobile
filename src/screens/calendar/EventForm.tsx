@@ -160,6 +160,15 @@ export function EventForm({
         </Pressable>
       </View>
 
+      {/* Under the header, OUTSIDE the scroll view: next to the Save that was
+          just tapped. At the bottom of the form (where it was) a failed
+          save looked like a Save that did nothing (device, 2026-11-11). */}
+      {saveError ? (
+        <Text testID="event-form-error" tone="danger" accessibilityLiveRegion="assertive" style={{ paddingBottom: metrics.space.sm }}>
+          {`${t("calendar.form.notSaved")} ${saveError}`}
+        </Text>
+      ) : null}
+
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingBottom: metrics.space.xl * 2 }} testID="event-form">
         {series ? (
           <Text testID="event-form-series-note" variant="caption" tone="muted" style={{ paddingBottom: metrics.space.sm }}>
@@ -347,11 +356,6 @@ export function EventForm({
           </View>
         </Section>
 
-        {saveError ? (
-          <Text testID="event-form-error" tone="danger" accessibilityLiveRegion="assertive" style={{ paddingBottom: metrics.space.md }}>
-            {saveError}
-          </Text>
-        ) : null}
       </ScrollView>
 
       <ChoiceSheet<Recurrence>

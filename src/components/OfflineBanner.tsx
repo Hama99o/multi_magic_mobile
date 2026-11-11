@@ -25,6 +25,7 @@ import type { ReactNode } from "react";
 import { useMemo } from "react";
 import { View } from "react-native";
 import { useTranslation } from "react-i18next";
+import { usePathname } from "expo-router";
 import { SafeAreaInsetsContext, useSafeAreaInsets } from "react-native-safe-area-context";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -36,6 +37,9 @@ export function OfflineBanner({ children }: { children?: ReactNode }) {
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const reachable = useReachability((s) => s.reachable);
+  // The sentence may not promise what the screen under it does not do: the
+  // chat queues, the calendar deliberately does not (its SPEC §C.9).
+  const onCalendar = /^\/calendar(\/|$)/.test(usePathname() ?? "");
   const below = useMemo(() => (reachable ? insets : { ...insets, top: 0 }), [reachable, insets]);
 
   return (
@@ -56,7 +60,7 @@ export function OfflineBanner({ children }: { children?: ReactNode }) {
           <View style={{ backgroundColor: colors.ink, borderRadius: metrics.radius.pill, paddingHorizontal: metrics.space.md, paddingVertical: 4, maxWidth: "90%" }}>
             {/* ONE line: at two it was a whole header's height (2026-11-07). */}
             <Text variant="caption" numberOfLines={1} style={{ color: colors.ground, textAlign: "center" }}>
-              {t("common.offlineBanner")}
+              {onCalendar ? t("calendar.offlineBanner") : t("common.offlineBanner")}
             </Text>
           </View>
         </View>

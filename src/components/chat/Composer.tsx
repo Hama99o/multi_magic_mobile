@@ -26,6 +26,7 @@
  * field stays editable — being unable to reach the server is no reason to stop
  * somebody writing their question.
  */
+import { useEffect, useRef, useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { ArrowUp, Mic, Plus, Square, X } from "@/components/icons";
@@ -61,6 +62,28 @@ export function Composer({
     // the rest must keep both halves.
     onChange(value ? `${value.trim()} ${final}` : final);
   });
+
+  // ── A PRE-FILL IS EDITED FROM ITS END (supervisor, 2026-11-11) ──────────
+  // `typed` is the last text the FIELD itself reported. A value that differs
+  // was written by the app (the calendar's "Ask", a notification, dictation),
+  // so its first focus puts the cursor at the end; a tap after that goes
+  // where the finger lands. The forced selection is RELEASED as soon as it
+  // has landed (or after 300 ms): a controlled selection that never lets go
+  // would pin the cursor, which is worse than the bug it fixes.
+  const typed = useRef("");
+  const placedFor = useRef<string | null>(null);
+  const [selection, setSelection] = useState<{ start: number; end: number } | undefined>(undefined);
+  useEffect(() => {
+    if (!selection) return;
+    const timer = setTimeout(() => setSelection(undefined), 300);
+    return () => clearTimeout(timer);
+  }, [selection]);
+  const onFocus = () => {
+    if (value && value !== typed.current && placedFor.current !== value) {
+      placedFor.current = value;
+      setSelection({ start: value.length, end: value.length });
+    }
+  };
 
   const canSend = value.trim().length > 0 && !busy && !offline && !isTooLong(value);
   // A file cannot be uploaded to a server that is not answering either.
@@ -160,7 +183,16 @@ export function Composer({
 
       <TextInput
         value={value}
-        onChangeText={onChange}
+        onChangeText={(text) => {
+          typed.current = text;
+          onChange(text);
+        }}
+        selection={selection}
+        onFocus={onFocus}
+        onSelectionChange={(event) => {
+          const at = event.nativeEvent.selection;
+          if (selection && at.start === selection.start && at.end === selection.end) setSelection(undefined);
+        }}
         // Short enough to stay on ONE line at 360 dp: the long version
         // wrapped, which made the pill taller and left the + floating against
         // two lines of grey text.

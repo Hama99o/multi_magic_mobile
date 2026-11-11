@@ -204,3 +204,58 @@ describe("a recogniser that exists but cannot work right now", () => {
     expect(onSend).toHaveBeenCalledTimes(1);
   });
 });
+
+/**
+ * ── A PRE-FILLED QUESTION IS EDITED FROM ITS END ─────────────────────────
+ * The calendar's "Ask the assistant about it" (and a notification) writes a
+ * question INTO the field. Tapping the field to add to it put the cursor
+ * where the finger landed, often mid-sentence, so the added words went into
+ * the middle of the question (supervisor, 2026-11-11, from the device sheet).
+ * So: the FIRST focus after the app wrote the text puts the cursor at the
+ * end; after that a tap goes where the finger lands, as in any text field,
+ * because somebody who taps mid-sentence the second time means it.
+ */
+describe("a pre-filled question", () => {
+  const question = 'Tell me about "QA dentist" (Wednesday, November 11, 2026).';
+  const end = { start: question.length, end: question.length };
+
+  it("puts the cursor at the END on the first focus", () => {
+    render(<Composer value={question} onChange={jest.fn()} onSend={jest.fn()} />);
+    fireEvent(screen.getByTestId("composer-input"), "focus");
+    expect(screen.getByTestId("composer-input").props.selection).toEqual(end);
+  });
+
+  it("then lets the finger decide: the forced selection is let go once it has landed", () => {
+    render(<Composer value={question} onChange={jest.fn()} onSend={jest.fn()} />);
+    const input = screen.getByTestId("composer-input");
+    fireEvent(input, "focus");
+    fireEvent(input, "selectionChange", { nativeEvent: { selection: end } });
+    expect(screen.getByTestId("composer-input").props.selection).toBeUndefined();
+    // A second focus on the SAME text does not drag the cursor back.
+    fireEvent(input, "blur");
+    fireEvent(input, "focus");
+    expect(screen.getByTestId("composer-input").props.selection).toBeUndefined();
+  });
+
+  it("never moves the cursor in text the person TYPED", () => {
+    const onChange = jest.fn();
+    const { rerender } = render(<Composer value="" onChange={onChange} onSend={jest.fn()} />);
+    fireEvent.changeText(screen.getByTestId("composer-input"), "What is on");
+    rerender(<Composer value="What is on" onChange={onChange} onSend={jest.fn()} />);
+    fireEvent(screen.getByTestId("composer-input"), "blur");
+    fireEvent(screen.getByTestId("composer-input"), "focus");
+    expect(screen.getByTestId("composer-input").props.selection).toBeUndefined();
+  });
+
+  it("a NEW pre-fill gets the same treatment again", () => {
+    const { rerender } = render(<Composer value={question} onChange={jest.fn()} onSend={jest.fn()} />);
+    const input = screen.getByTestId("composer-input");
+    fireEvent(input, "focus");
+    fireEvent(input, "selectionChange", { nativeEvent: { selection: end } });
+    fireEvent(input, "blur");
+    const next = "Tell me about the dinner.";
+    rerender(<Composer value={next} onChange={jest.fn()} onSend={jest.fn()} />);
+    fireEvent(screen.getByTestId("composer-input"), "focus");
+    expect(screen.getByTestId("composer-input").props.selection).toEqual({ start: next.length, end: next.length });
+  });
+});

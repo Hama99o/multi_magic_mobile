@@ -36,6 +36,17 @@ jest.mock("expo-crypto", () => ({
   randomUUID: jest.fn(() => "11111111-2222-3333-4444-555555555555"),
 }));
 
+// expo-media-library's classes extend a native object Jest has no stand-in
+// for, so IMPORTING it throws "Super expression must either be null or a
+// function" — and every screen that reaches Pages' Download
+// (screens/pages/downloadMany.ts) failed to load, its tests silently not
+// counted (2026-11-10: 2 suites, ~240 tests). A test that needs the gallery
+// overrides this with its own jest.mock.
+jest.mock("expo-media-library", () => ({
+  Asset: { create: jest.fn() },
+  requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
+}));
+
 export function __clearSecureStore(): void {
   for (const k of Object.keys(secureStore)) delete secureStore[k];
 }

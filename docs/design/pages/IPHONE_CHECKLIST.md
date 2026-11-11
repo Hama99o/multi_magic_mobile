@@ -87,6 +87,20 @@ On any Pages screen:
   below it, nothing covered. Airplane mode off, leave and come back: the line
   is gone and Pages fills in by itself, with no Try again tap.
 
+## 7 · Download several files at once (1.1.1)
+
+In a folder with a few photos and a PDF:
+- Long-press one, tap the others: the top bar has a **Download** button
+  (arrow down), beside star / move / trash.
+- Tap it: iOS opens **Files** to choose a folder. Choose one (e.g. "On My
+  iPhone → Downloads"). A line says "Downloading 1 of 3…", then a message
+  "3 files saved".
+- Open the Files app: the three files are there, with their own names, and
+  each opens.
+- Do it again and tap **Cancel** in Files: nothing happens, no message.
+- Select a folder together with a file: the message says the folder was
+  skipped.
+
 ---
 
 **Already checked on the emulator, no need to repeat:**

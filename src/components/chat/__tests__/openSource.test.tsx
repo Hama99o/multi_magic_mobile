@@ -69,6 +69,28 @@ describe("a link only the web has", () => {
   });
 });
 
+// docs/QA_FULL.md F3: since 2026-11-06 the app HAS Pages, and the server's
+// keys carry the ids (multi_magic `frontend_routes.rb`: page_space →
+// /pages/:space_id, page_node → /pages/:space_id?node=:node_id).
+describe("a link to Pages (F3)", () => {
+  it("a file opens in the app's viewer, not the browser", () => {
+    render(<Host link={{ label: "Itinerary.pdf", path: "/pages/315?node=900", key: "page_node" }} />);
+    fireEvent.press(screen.getByTestId("chip"));
+    expect(mockPush).toHaveBeenCalledWith({
+      pathname: "/pages/view",
+      params: { spaceId: "315", nodeId: "900", title: "Itinerary.pdf" },
+    });
+    expect(screen.queryByTestId("source-sheet")).toBeNull();
+  });
+
+  it("a whole space opens its folder screen", () => {
+    render(<Host link={{ label: "QA Pages", path: "/pages/315", key: "page_space" }} />);
+    fireEvent.press(screen.getByTestId("chip"));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/pages/folder", params: { spaceId: "315", title: "QA Pages" } });
+    expect(screen.queryByTestId("source-sheet")).toBeNull();
+  });
+});
+
 it("a link with no key at all falls back to the sheet", () => {
   render(<Host link={{ label: "Something", path: "/x/1", key: null }} />);
   fireEvent.press(screen.getByTestId("chip"));

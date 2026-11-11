@@ -407,6 +407,15 @@ describe("the server's error sentence", () => {
     expect(apiErrorMessage(page)).toBeNull();
   });
 
+  it("reads `message` as an ARRAY — the calendar share's shape", () => {
+    // `event_shares_controller.rb#find_recipient`:
+    //   render json: { message: [I18n.t('app_errors.no_account_with_email')] }, status: :not_found
+    // Read as string-only, an invite to an unknown address said "That did not
+    // work" instead of why (found by calendarApp.test.tsx, 2026-11-11).
+    expect(apiErrorMessage(refusal({ message: ["No account uses that email."] }))).toBe("No account uses that email.");
+    expect(apiErrorMessage(refusal({ message: ["Not allowed to update? this"] }))).toBeNull();
+  });
+
   it("reads the singular `error`", () => {
     expect(apiErrorMessage(refusal({ error: "Password is incorrect" }))).toBe("Password is incorrect");
   });

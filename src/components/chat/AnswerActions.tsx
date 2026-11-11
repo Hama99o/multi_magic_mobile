@@ -20,6 +20,7 @@ import { useEffect, useState } from "react";
 import * as Haptics from "expo-haptics";
 import { Pressable, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
+import { markdownToPlainText } from "@/lib/plainText";
 import { Copy, ThumbsDown, ThumbsUp, Undo2 } from "@/components/icons";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
@@ -61,7 +62,8 @@ export function AnswerActions({
 
   async function copy() {
     if (!message.body) return;
-    await Clipboard.setStringAsync(message.body);
+    // The text as it reads, not its markdown (src/lib/plainText.ts).
+    await Clipboard.setStringAsync(markdownToPlainText(message.body));
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }

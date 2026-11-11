@@ -16,6 +16,7 @@
  * document the model cannot see.
  */
 import { useCallback, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -88,6 +89,7 @@ export function rejectionFor(
 export function useAttachments(conversationId: number | null, uploadedCount: number) {
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const queryClient = useQueryClient();
 
   const upload = useCallback(
     async (file: { name: string; uri: string; mimeType: string; size: number }) => {
@@ -111,6 +113,12 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
         setPending((current) =>
           current.map((p) => (p.key === key ? { ...p, status: "done", document } : p)),
         );
+        // The chip's "Reading…" ends when the documents query (app/chat.tsx)
+        // sees this file ready, and that query polls only while IT holds a
+        // pending file. Without this refetch it never held the new one, so it
+        // never polled: seen 2026-11-10, "Reading…" for minutes on a photo
+        // the server had read in 5 s.
+        void queryClient.invalidateQueries({ queryKey: ["ai", "documents", conversationId] });
       } catch (e) {
         // Kept on screen as FAILED rather than removed: a file that vanishes
         // looks like one that uploaded.
@@ -123,7 +131,7 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
         );
       }
     },
-    [conversationId, uploadedCount, pending],
+    [conversationId, uploadedCount, pending, queryClient],
   );
 
   const pickDocument = useCallback(async () => {

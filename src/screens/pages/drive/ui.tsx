@@ -38,7 +38,6 @@ import {
   LayoutGrid,
   List,
   MoreVertical,
-  Play,
   Plus,
   Search,
   Star,
@@ -56,7 +55,7 @@ import { ProfileSheet } from "@/components/settings/ProfileSheet";
 import { useAuthStore } from "@/stores/auth.store";
 import { useUploads } from "@/stores/uploads.store";
 import type { PageNode } from "@/api/pages";
-import { formatBytes } from "../parts";
+import { PlayBadge, formatBytes } from "../parts";
 
 // ── Type: icon and colour ───────────────────────────────────────────────────
 
@@ -317,11 +316,7 @@ function Thumb({ node, size, radius }: { node: PageNode; size: number; radius: n
           recyclingKey={String(node.id)}
           transition={100}
         />
-        {family === "video" ? (
-          <View style={{ position: "absolute", left: 4, bottom: 4, borderRadius: 10, backgroundColor: "rgba(0,0,0,0.55)", padding: 3 }}>
-            <Play size={10} color="#FFFFFF" fill="#FFFFFF" />
-          </View>
-        ) : null}
+        {family === "video" ? <PlayBadge size={10} corner /> : null}
       </View>
     );
   }
@@ -476,11 +471,7 @@ export function GridCard({
                 recyclingKey={`g${node.id}`}
                 transition={100}
               />
-              {familyOf(node) === "video" ? (
-                <View style={{ position: "absolute", width: 36, height: 36, borderRadius: 18, backgroundColor: "rgba(0,0,0,0.55)", alignItems: "center", justifyContent: "center" }}>
-                  <Play size={16} color="#FFFFFF" fill="#FFFFFF" />
-                </View>
-              ) : null}
+              {familyOf(node) === "video" ? <PlayBadge size={16} /> : null}
             </>
           ) : (
             <FileTypeIcon node={node} size={Math.round(previewHeight * 0.4)} />

@@ -23,6 +23,7 @@ import {
   FileText,
   FileVideo,
   Folder,
+  Play,
   Star,
   type LucideIcon,
 } from "@/components/icons";
@@ -178,19 +179,51 @@ export function HeaderButton({
   );
 }
 
+/**
+ * "This plays": over a VIDEO'S FRAME only. Once the server makes video
+ * previews (multi_magic: ffmpeg in the production image) a clip shows a frame,
+ * and a frame alone reads as a photo. A video with no frame keeps its video
+ * icon instead, so it never gets a badge. White on a dark disc: drawn over a
+ * picture, so it reads the same in light and dark.
+ */
+export function PlayBadge({ size, corner = false }: { size: number; corner?: boolean }) {
+  const pad = corner ? 3 : 0;
+  const disc = corner ? undefined : size * 2.25;
+  return (
+    <View
+      pointerEvents="none"
+      style={{
+        position: "absolute",
+        ...(corner ? { left: 4, bottom: 4, padding: pad, borderRadius: 10 } : { width: disc, height: disc, borderRadius: (disc ?? 0) / 2 }),
+        backgroundColor: "rgba(0,0,0,0.55)",
+        alignItems: "center",
+        justifyContent: "center",
+      }}
+      testID="pages-play-badge"
+    >
+      <Play size={size} color="#FFFFFF" fill="#FFFFFF" />
+    </View>
+  );
+}
+
+export const isVideo = (node: PageNode): boolean => (node.mimeType ?? "").startsWith("video/");
+
 export function NodeGlyph({ node, size = 44 }: { node: PageNode; size?: number }) {
   const colors = useColors();
   const metrics = useMetrics();
   if (node.thumbnailUrl) {
     return (
-      <ExpoImage
-        source={{ uri: node.thumbnailUrl }}
-        style={{ width: size, height: size, borderRadius: metrics.radius.sm, backgroundColor: colors.surface }}
-        contentFit="cover"
-        recyclingKey={String(node.id)}
-        transition={120}
-        accessibilityIgnoresInvertColors
-      />
+      <View style={{ width: size, height: size }}>
+        <ExpoImage
+          source={{ uri: node.thumbnailUrl }}
+          style={{ width: size, height: size, borderRadius: metrics.radius.sm, backgroundColor: colors.surface }}
+          contentFit="cover"
+          recyclingKey={String(node.id)}
+          transition={120}
+          accessibilityIgnoresInvertColors
+        />
+        {isVideo(node) ? <PlayBadge size={size >= 72 ? 16 : 10} corner={size < 72} /> : null}
+      </View>
     );
   }
   return (

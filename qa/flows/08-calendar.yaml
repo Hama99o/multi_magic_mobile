@@ -13,8 +13,10 @@
 # present, with either its events or the single line "Nothing today." — his
 # instruction, and the one place this app disagrees with Teams and Google Home,
 # which print an empty line under every empty day; a day heading names the day
-# AND the date; tapping an event composes a question in the assistant and does
-# NOT send it; a recurring event carries the ↻ glyph WHEN one is in the window.
+# AND the date; tapping an event OPENS it (since 2026-11-11, the full app), and
+# its "Ask the assistant" composes a question and does NOT send it; a recurring
+# event carries the ↻ glyph WHEN one is in the window; the month toggle draws
+# the grid with today's day listed under it.
 #
 # CANNOT TELL YOU:
 #  · (RESOLVED 2026-09-18) It taps the real calendar icon, so reachability is
@@ -34,8 +36,8 @@
 #  · **Whether the ordering is right** — all-day before timed within a day. The
 #    server sorts it and the client is asserted not to re-sort, but a run only
 #    sees the order it was given.
-#  · Anything past seven days, or anything about creating an event: there is no
-#    create path in this app, deliberately.
+#  · Anything past seven days, and creating / editing / deleting: that is
+#    `24-calendar-write.yaml`.
 appId: ${APP_ID}
 tags:
   - people
@@ -79,17 +81,48 @@ tags:
       notVisible:
         id: "calendar-nothing-today"
     commands:
-      # ── Tapping an event asks about it, composed and not sent ───────────
+      # ── Tapping an event OPENS it; asking about it is a button there ───
       - tapOn:
           id: "calendar-event-.*"
       - extendedWaitUntil:
           visible:
+            id: "event-title"
+          timeout: 30000
+      - takeScreenshot: reports/21-event-detail
+      - scrollUntilVisible:
+          element: "Ask the assistant about it"
+          direction: DOWN
+      - tapOn: "Ask the assistant about it"
+      - extendedWaitUntil:
+          visible:
             id: "composer-input"
           timeout: 30000
-      - assertVisible: "Tell me about.*"
-      # The same negative as the notification tap: nothing was asked.
+      # Composed, NOT sent: the question is still IN the input field. (Was
+      # `assistant-answer` not visible, which assumed an empty conversation;
+      # on 2026-11-11 the QA account's history held earlier answers and the
+      # assertion failed on a question that had correctly not been sent.)
+      - assertVisible:
+          id: "composer-input"
+          text: "Tell me about.*"
       - assertNotVisible:
           id: "thinking"
-      - assertNotVisible:
-          id: "assistant-answer"
       - takeScreenshot: reports/21-event-question-composed-not-sent
+      - tapOn:
+          id: "chat-close"
+      - back
+
+# ── THE MONTH ─────────────────────────────────────────────────────────────
+- tapOn:
+    id: "calendar-view-toggle"
+- extendedWaitUntil:
+    visible:
+      id: "calendar-month"
+    timeout: 30000
+- assertVisible:
+    id: "calendar-picked-day"
+- takeScreenshot: reports/22-calendar-month
+# Back to the agenda, so the next run starts where a person's last choice was.
+- tapOn:
+    id: "calendar-view-toggle"
+- assertVisible:
+    id: "calendar-list"

@@ -12,8 +12,10 @@
  * ── THE COLOUR BAR IS DATA ────────────────────────────────────────────────
  * `event.color` is on the wire (`event_serializer.rb:7`), so the bar says
  * something rather than decorating — which is the only kind of colour
- * `IDENTITY.md` §1 permits from the icon's eight. When an event has none, the
- * fallback is `categoryColorFor(event.id)`, stable per event.
+ * `IDENTITY.md` §1 permits from the icon's eight. The web stores a key
+ * ("green"), resolved by `eventColor()`; with none, the kind decides, as on
+ * the web (2026-11-11; was `categoryColorFor(event.id)`, which ignored every
+ * colour chosen on the web).
  *
  * ── AND A REPEAT SAYS SO ──────────────────────────────────────────────────
  * Teams and Outlook both mark recurrence with a glyph. A weekly stand-up that
@@ -23,7 +25,7 @@ import { Pressable, View } from "react-native";
 import { MapPin, Repeat } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { categoryColorFor } from "@/theme/tokens";
+import { eventColor } from "@/screens/calendar/colors";
 import type { Occurrence } from "@/api/calendar";
 import i18n, { t } from "@/i18n";
 
@@ -72,7 +74,7 @@ export function EventRow({
   const metrics = useMetrics();
   const { event } = occurrence;
   const title = event.title ?? t("calendar.untitled");
-  const bar = event.color ?? categoryColorFor(event.id);
+  const bar = eventColor(event);
   const duration = durationLabel(occurrence);
 
   return (

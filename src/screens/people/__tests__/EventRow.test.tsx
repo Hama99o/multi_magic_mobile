@@ -23,26 +23,10 @@ import { render, screen } from "@testing-library/react-native";
 import i18n from "i18next";
 import { EventRow } from "../EventRow";
 import type { Occurrence } from "@/api/calendar";
+import { makeOccurrence } from "@/__tests__/calendarFixtures";
 
 function occurrence(over: Partial<Occurrence> = {}, event: Partial<Occurrence["event"]> = {}): Occurrence {
-  return {
-    key: "5:2026-09-20",
-    on: "2026-09-20",
-    startsAt: "2026-09-20T09:00:00Z",
-    endsAt: "2026-09-20T09:30:00Z",
-    allDay: false,
-    ...over,
-    event: {
-      id: 5,
-      title: "Dentist",
-      description: null,
-      location: null,
-      kind: null,
-      recurrence: null,
-      color: null,
-      ...event,
-    },
-  };
+  return makeOccurrence(over, event);
 }
 
 describe("the repeat glyph", () => {
@@ -130,12 +114,10 @@ describe("what a screen reader is told", () => {
     ).toMatch(/^Dentist, \d{1,2}:\d{2}/);
   });
 
-  it("says what a tap will do, because it composes a question rather than opening a record", () => {
+  it("says what a tap will do: since 2026-11-11 it opens the event (SPEC §C.2)", () => {
     render(<EventRow occurrence={occurrence()} onPress={jest.fn()} />);
 
-    expect(screen.getByTestId("calendar-event-5:2026-09-20").props.accessibilityHint).toBe(
-      "Opens the assistant with a question about this event",
-    );
+    expect(screen.getByTestId("calendar-event-5:2026-09-20").props.accessibilityHint).toBe("Opens the event");
   });
 });
 

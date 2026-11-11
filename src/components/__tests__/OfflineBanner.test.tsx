@@ -13,6 +13,9 @@ import { Text } from "react-native";
 import { SafeAreaInsetsContext, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useReachability } from "@/stores/reachability.store";
 
+let mockPath = "/home";
+jest.mock("expo-router", () => ({ usePathname: () => mockPath }));
+
 /* eslint-disable import/first */
 import { OfflineBanner } from "../OfflineBanner";
 
@@ -62,4 +65,32 @@ it("never remounts the screens when the connection comes and goes", () => {
   act(() => useReachability.setState({ reachable: false, unreachableSince: Date.now() }));
   act(() => useReachability.setState({ reachable: true, unreachableSince: null }));
   expect(mounts).toHaveBeenCalledTimes(1);
+});
+
+
+/**
+ * ── THE BANNER MAY NOT PROMISE WHAT A SCREEN DOES NOT DO ─────────────────
+ * "Offline · it'll all send when you're back" is true of the chat, which
+ * queues. The calendar deliberately does NOT queue a write (SPEC §C.9: a
+ * calendar change that lands an hour late at the wrong time is worse than a
+ * clear "not saved"), so on its screens the banner promised something the
+ * screen under it would not do (device, qa_phone3, 2026-11-11).
+ */
+describe("what the banner promises", () => {
+  beforeEach(() => act(() => useReachability.setState({ reachable: false, unreachableSince: Date.now() })));
+  afterEach(() => {
+    mockPath = "/home";
+  });
+
+  it.each(["/calendar", "/calendar/event", "/calendar/edit"])("on %s it says a calendar change needs a connection", (path) => {
+    mockPath = path;
+    render(<Phone><OfflineBanner><Screen /></OfflineBanner></Phone>);
+    expect(screen.getByTestId("offline-banner")).toHaveTextContent("Offline · calendar changes need a connection");
+  });
+
+  it("everywhere else it keeps the app's own sentence", () => {
+    mockPath = "/chat";
+    render(<Phone><OfflineBanner><Screen /></OfflineBanner></Phone>);
+    expect(screen.getByTestId("offline-banner")).toHaveTextContent("Offline · it’ll all send when you’re back");
+  });
 });

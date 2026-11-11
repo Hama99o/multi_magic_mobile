@@ -34,39 +34,53 @@ UX is judged as a user, out of 5:
 
 "–" means not yet judged.
 
+**1.1.1 device pass:** 2026-11-10, qa_phone (Android, emulator-5556), dev build of 1.1.1 · shots `q11/NN` = ~/mm-qa-1.1.1/NN-*.png (QA account only, not committed).
+
 | Area | Screen / feature | What is checked | Status | UX /5 · notes |
 |------|------------------|-----------------|--------|---------------|
-| Auth | Sign in (`app/sign-in.tsx`) | email+password, wrong password message, lands on **Home** | – | – |
-| Auth | Sign up | fields, validation, lands on Home | – | – |
+| Auth | Sign in (`app/sign-in.tsx`) | email+password, wrong password message, lands on **Home** | ✅ empty → "Enter your email and password."; wrong → "That email and password do not match."; right → Home (q11/96, 97, 105) | 4 |
+| Auth | Sign up | fields, validation, lands on Home | ◐ empty → "Fill in your name, email and a password"; bad email → "Email is invalid"; short password → "too short (minimum is 6…)" (q11/103, 104). Submitting a VALID form was not done: it creates a real user in the owner's dev DB. "Lands on Home" NM | 3.5 · the email/password errors are the server's English sentences (Rails), not ours |
 | Auth | Two-factor | code entry, back, lands on Home | NM: the QA account has no 2FA | – |
-| Auth | Forgot password | email, "sent" state | – | – |
-| Auth | Sign out → sign in | from Home's avatar sheet and from the assistant's; returns to Home | – | – |
+| Auth | Forgot password | email, "sent" state | ✅ empty → "Enter the email you signed up with."; QA email → "Check your email" + Back to sign in (q11/100, 101). Dev mail goes to a file, nothing sent | 4 |
+| Auth | Sign out → sign in | from Home's avatar sheet and from the assistant's; returns to Home | ✅ both sheets sign out to Sign in; signing in lands on Home (q11/95, 98, 105) | 4 · no "are you sure"; fine for a reversible action |
 | Shell | Home (`app/home.tsx`) | 6 tiles, greeting, unread badge, avatar sheet, AI button | ✅ en/fr, light/dark, 360 dp | 4 · clear; FR had two "Discussions" tiles (F5, fixed); FR Assistant tile text is cut at two lines (low) |
 | Shell | AI overlay | opens over any screen, X returns exactly there | ✅ Home, Pages, Chats (X back to Chats), Notifications, Calendar, a folder (`qa_sheets/2026-11-07_shell-assistant.png`) | 4 · one tap from everywhere now (F4); offline band on return to the app (top-10 #8) |
-| Assistant | Ask a question | question shows, thinking, answer arrives (socket) | – | – |
-| Assistant | Conversation history (sessions) | list, switch, new, delete (open + cancel) | – | – |
-| Assistant | Attach a file / photo | the attach sheet, upload, chip | – | – |
-| Assistant | Answer actions | copy, feedback, read aloud, sources | – | – |
-| Assistant | Dictation | mic, permission, text arrives | – | – |
-| Assistant | Keyboard | the composer stays above the keyboard | – | – |
-| People | Chats list | list, empty state, open a thread | – | – |
-| People | Thread | send, reactions (long press), retry on failure | – | – |
+| Assistant | Ask a question | question shows, thinking, answer arrives (socket) | ✅ new conversation, "Find Itinerary.pdf in my Pages" → answer + source chip (q11/42) | 4 |
+| Assistant | Conversation history (sessions) | list, switch, new, delete (open + cancel) | ✅ list, switch, New conversation, Delete opened → "Keep it"/Back keeps it (q11/36–41) | 4 |
+| Assistant | Attach a file / photo | the attach sheet, upload, chip | ✅ after fix: sheet → library → chip → ready in seconds (q11/56–62). **BUG found and fixed** (`60f5037`): the chip said "Reading…" for minutes after the server had read the file | 3.5 · the answer then searched Pages instead of reading the attached photo (server/AI side, not fixed here) |
+| Assistant | Answer actions | copy, feedback, read aloud, sources | ✅ thumbs-up stored (ai_feedbacks positive), read aloud goes busy, sources open (q11/47, 49). **BUG found and fixed** (`ef41162`): Copy pasted raw markdown and a `/rails/active_storage/…` path; now the text as it reads (q11/52, host clipboard checked) | 4 |
+| Assistant | Dictation | mic, permission, text arrives | ◐ mic → "Listening…" with stop and cancel (q11/53); permission already granted. "Text arrives" NM: the emulator has no speech input | – |
+| Assistant | Keyboard | the composer stays above the keyboard | ✅ keyboard up (mInputShown=true), composer and Send above it (q11/55) | 4 |
+| People | Chats list | list, empty state, open a thread | ✅ list (one QA thread) opens the thread (q11/65). Empty state NM: the QA account has a thread | 4 |
+| People | Thread | send, reactions (long press), retry on failure | ✅ sent ✓; long press → reaction sheet → 👍 shown; offline → "Not sent. Tap to retry." → online → Sent (q11/67–71) | 4 |
 | Notifications | List | empty / filled, mark read, tap opens the right place | ◐ empty state en/fr light/dark; the QA account has no notifications, so "filled" and "tap opens" are NOT MEASURED on the device (Jest covers them) | 4 · the bin showed on an empty list (F6, fixed) |
-| Calendar | Upcoming | empty / filled, tap composes a question | – | – |
+| Calendar | Upcoming | empty / filled, tap composes a question | ✅ empty "Nothing today." (q11/72); filled after the assistant added "QA dentist"; tap → "Tell me about \"QA dentist\" (Tomorrow · Wed, Nov 11)." in the composer (q11/76). **BUG found and fixed** (`2218191`): every one-off event showed the repeat icon (server sends "none") (q11/77) | 4 |
 | Account | Profile sheet | rows: Pages, profile, privacy and account, language, appearance, dictation language, sign out | ✅ 411 dp, Home avatar and the assistant | 4 |
-| Account | Profile | edit name, avatar, save | – | – |
-| Account | Change password | validation, wrong current password | – | – |
-| Account | Sessions (devices) | list, sign out other (open + cancel) | – | – |
-| Account | AI keys | add / replace / remove (open + cancel) | – | – |
-| Account | Privacy | text, back | – | – |
+| Account | Profile | edit name, avatar, save | ✅ last name → Saved. (server checked, then put back); avatar from library → crop → "Change photo" (q11/79–83) | 4 |
+| Account | Change password | validation, wrong current password | ✅ "These do not match."; wrong current → "That password is not right." (q11/85, 86) | 4 |
+| Account | Sessions (devices) | list, sign out other (open + cancel) | N/A: the app has no devices screen (`app/` has none, nothing routes to one); it is a web feature | – |
+| Account | AI keys | add / replace / remove (open + cancel) | ◐ list with "In use" key (q11/91). **BUG found and fixed** (`87bb042`): Remove deleted the key in ONE tap, no question; it now confirms (Jest 3 red first). On the device the QA account's gemini key was lost by that tap, so add/replace and the new confirm are NM until a key is re-added (needs a real key) | 3 · was a one-tap loss |
+| Account | Privacy | text, back | ✅ text, Back (q11/89) | 4 |
 | Account | Delete account | disclosure and gate, open + cancel only | ✅ 411 dp, opened then "Keep my account"; Maestro 18 | 4 · clear what goes and what stays |
 | Settings | Language en/fr | switches live, survives restart, reaches the server | ✅ switched live several times today; survives relaunch (measured) | 4 · F5 fixed the one French clash |
 | Settings | Appearance light/dark/system | live, survives restart | ✅ pane at 411 dp; dark used throughout batch 3 | 4 |
 | Pages | everything | `docs/design/pages/QA_DEEP.md` (21 rows) | ✅ see that file | – |
 | Pages | Share-in from another app | Save to Pages | ✅ 2026-11-06/07 | – |
 | Pages | Uploads | queue, background, kill, airplane | ✅ 2026-11-06 (SPEC §7); 2026-11-07: 107 MB clip, airplane cut mid-way → "Waiting for a connection" → resumed → ONE copy, sha256 identical, delete forever frees the server disk (`qa_sheets/2026-11-07_uploads.png`) | 3.5 · works and recovers; progress jumped 0 % → 99 % (U3); no sign anything happened while a big file is copied (U4) |
-| Links | AI answer links | open the in-app screen when there is one | – | – |
+| Links | AI answer links | open the in-app screen when there is one | ✅ calendar_event chip → Calendar; page_node chip → the in-app viewer (q11/45, 74). A file link written INSIDE the answer text (`/rails/active_storage/…`) opens the "opens outside MultiMagic" sheet, by design | 4 · the inline file link could open the in-app viewer (improvement) |
 | Links | Deep links / push | open the right screen with Home underneath | ✅ warm: chats, notifications, calendar, pages each open, Back → Home. Cold: Back CLOSED the app (F7, fixed, device-verified) | 4 |
+
+### 1.1.1 additions to check on the device
+
+| Area | Feature | What is checked | Status | Notes |
+|------|---------|-----------------|--------|-------|
+| Pages | Multi-select **Download**, mixed → Files | 2+ files (at least one not a photo/video) and a folder selected → Download → the system folder picker → "Downloading n of total…" → one message (saved / skipped); the files are in the chosen folder with their own names and open; Cancel in the picker says nothing | ✅ after fix: "4 files saved", names and sizes match the server (q11/09–10); picker Back says nothing (q11/11). **BUG found and fixed** (`432a2e7`): first run "3 files could not be saved" and three EMPTY files (q11/08) | First device check: copying into an Android SAF folder (`File.copy` into `Directory.createFile`) is proven only on a device |
+| Pages | **Empty trash** with a folder and its own child | trash a file, then its folder; Empty trash → everything goes, "emptied" message, no error | ✅ TrashQA + its Budget.xlsx + 4 older → "6 items deleted forever.", 5 DELETE calls (the child went with its folder), "The trash is empty." (q11/30–33) | The 2026-11-09 web bug in its mobile shape; Jest red first (`a5fab27`) |
+| Pages | **Play badge** over a video's frame | list, grid, item sheet; light and dark | NM on the local server | Badges appear only where the server sends a video frame, i.e. once ffmpeg is in the server image (multi_magic branch `video-previews`). The local dev server has no ffmpeg, so on the emulator videos keep their red icon and no badge: NOT MEASURED there, covered by `playBadge.test.tsx` (18 tests, red first). Check on the phone after the deploy. |
+| Pages | Video **playback** ("can't play video in Pages") | a Pages video plays | ✅ owner: resolved on device 2026-11-09 (iPhone 15 Pro Max) | closed, no work needed |
+| Pages | Download, all photos/videos → **Gallery** | only photos/videos selected → Download → permission asked once → "n files saved to your photos" → they are in Photos/Gallery; refused → the message offers "Save to Files" | ✅ 2 photos → "2 files saved to your photos"; video+photo+page → "2 files saved… 1 page or folder skipped", clip in DCIM at 3.8 MB (q11/12, 16). **BUG found and fixed** (`432a2e7`): names were the cache's (`pages-3392-…-IMG_2041.jpg`), now `IMG_2041.jpg`. Android 14 asks no permission to ADD to the gallery, so "refused" is NM here (iOS; Jest covers) | needs the NEW dev build (expo-media-library is a native module) |
+| Home | F2 Conversations tile | opens on the history | ✅ opens the Conversations sheet (q11/34) | fixed in code, Jest both halves |
+| Links | F3 Pages links in answers | a page_node / page_space link opens in the app | ✅ page_node chip → Itinerary.pdf in the in-app viewer (q11/45). page_space NM (no answer produced one) | fixed in code, Jest |
 
 ## 1b · Top 10 UX improvements, ranked by impact
 
@@ -141,8 +155,8 @@ compare against after changes, NOT the phone's smoothness.
 | # | Sev | Where | What | Cause | Status |
 |---|-----|-------|------|-------|--------|
 | F1 | High | QA flows | Every Maestro flow failed at sign-in after the Home shell (§2). | `login.yaml` took the composer as "signed in". | **Fixed**; 07 passes. |
-| F2 | Medium | Home | The **Conversations** tile ("Your past questions") opens the plain assistant, the same as the Assistant tile, not the history. | `router.push("/chat")` for both. | Open |
-| F3 | Medium | AI answers | A link to a **Page or a Pages file** (`page_space`, `page_node` keys) opens the browser, though the app now has Pages. | `inAppRoute` predates Pages. | Open |
+| F2 | Medium | Home | The **Conversations** tile ("Your past questions") opens the plain assistant, the same as the Assistant tile, not the history. | `router.push("/chat")` for both. | **Fixed in code** (in 1.1.0, `b6e4866`): the tile pushes `/chat?sessions=1`, which opens on the history. Jest: `app/__tests__/home.test.tsx` (sending half, planted red 2026-11-09) and `chat.session.test.tsx` (receiving half). Device: pending. |
+| F3 | Medium | AI answers | A link to a **Page or a Pages file** (`page_space`, `page_node` keys) opens the browser, though the app now has Pages. | `inAppRoute` predates Pages. | **Fixed in code** (in 1.1.0, `b6e4866`): `inAppRoute` maps `page_space` → `/pages/folder`, `page_node` → `/pages/view`. Jest: `inAppRoute.test.ts` and `openSource.test.tsx` "a link to Pages" (the chip press stays in the app; planted red 2026-11-09). Device: pending. |
 | U1 | High | + New → photos/videos, camera | A file the system could not read (a damaged or unusual video) made the picker throw: nothing uploaded, NOTHING said (only a developer error). | `launchImageLibraryAsync` rejected, uncaught. | **Fixed.** `pickMedia`/`takePhotoOrVideo` answer `{ failed: true }`; `explainPick` says "Could not open that file. Your phone could not read it. Try another one, or use Upload files." Device-verified; tests red first. |
 | U2 | Medium | Pages home → + New | A refused photo/camera permission was ignored in silence (the folder screen explained it). | `index.tsx` returned on `denied`. | **Fixed** (Jest; same `explainPick`). Not re-shot. |
 | U3 | Medium | Upload bar | Progress sat at **0 %** for ~19 s, then jumped to **99 %** (107 MB, LAN, single-request path). | Not found: the native progress events arrive late or the copy before sending is counted as 0 %. INFERRED. | **Fixed.** While no byte count is known the bar says "Uploading…", never "0 %"; the resumable path moves per confirmed 8 MB piece. Device: "Uploading · 50 %" with the bar moving a few seconds in (`ours/qa/360-u20-upload-progress-honest.png`). Tests red first. |

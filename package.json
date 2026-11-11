@@ -16,7 +16,7 @@
     "test:qa": "bash qa/app_checks_test.sh && python3 qa/fault_proxy_test.py",
     "lint:vocabulary": "python3 qa/vocabulary.py; s=$?; [ $s -eq 0 ] || [ $s -eq 3 ]",
     "pretest": "npm run lint:flows && npm run test:qa && npm run lint:vocabulary && python3 qa/board_check.py",
-    "test:west": "JEST_TZ=America/New_York jest src/components/settings/__tests__/BorrowedKeyRow.test.ts src/lib/__tests__/relativeTime.test.ts src/screens/people/__tests__/dayLabel.test.ts src/screens/people/__tests__/EventRow.test.tsx src/api/__tests__/calendar.test.ts src/screens/__tests__/screens.render.test.tsx app/__tests__/calendarHeading.test.ts",
+    "test:west": "JEST_TZ=America/New_York jest src/components/settings/__tests__/BorrowedKeyRow.test.ts src/lib/__tests__/relativeTime.test.ts src/screens/people/__tests__/dayLabel.test.ts src/screens/people/__tests__/EventRow.test.tsx src/api/__tests__/calendar.test.ts src/screens/__tests__/screens.render.test.tsx app/__tests__/calendarHeading.test.ts src/screens/calendar/__tests__/dates.test.ts src/screens/calendar/__tests__/draft.test.ts",
     "posttest": "npm run test:west",
     "postinstall": "patch-package"
   },
@@ -42,6 +42,7 @@
     "expo-image": "~57.0.5",
     "expo-image-picker": "~57.0.19",
     "expo-linking": "~57.0.10",
+    "expo-media-library": "~57.0.6",
     "expo-router": "~57.0.22",
     "expo-secure-store": "~57.0.4",
     "expo-share-intent": "8.0.1",

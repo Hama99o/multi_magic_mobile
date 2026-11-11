@@ -282,7 +282,7 @@ if [ "$fail" = 0 ]; then
     launcher) warn "the dev launcher is in front, waiting for a server: tap its $METRO_PORT entry before the first flow" ;;
     *)        bad "$APP_ID is NOT in front after the launch: nothing launched, so no crash check means anything" ;;
   esac
-  crash=$(adb -s "$SERIAL" logcat -d 2>/dev/null | grep -iE 'FATAL EXCEPTION|AndroidRuntime|Cannot find native module|Unable to load script|Could not connect to development server' | head -5)
+  crash=$(adb -s "$SERIAL" logcat -d 2>/dev/null | grep -iE 'FATAL EXCEPTION| E AndroidRuntime|Cannot find native module|Unable to load script|Could not connect to development server' | head -5)
   [ -z "$crash" ] && ok "no fatal errors in the 25 s after the launch" \
                   || { bad "errors after launch:"; echo "$crash" | sed 's/^/        /'; }
 fi

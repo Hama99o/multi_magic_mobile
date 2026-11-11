@@ -29,7 +29,7 @@
  * because being told you are running on somebody else's key is not optional.
  */
 import { useState } from "react";
-import { Pressable, TextInput, View } from "react-native";
+import { Alert, Pressable, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Check, ChevronLeft, KeyRound, Trash2 } from "@/components/icons";
@@ -232,7 +232,15 @@ export default function AiKeys() {
 
                 <Pressable
                   testID={`ai-key-remove-${key.provider}`}
-                  onPress={() => remove.mutate(key.id)}
+                  // ASKED FIRST (seen 2026-11-10): one tap removed the QA
+                  // account's key on the emulator, and a key cannot be shown
+                  // again — getting it back means finding it at the provider.
+                  onPress={() =>
+                    Alert.alert(t("aiKeys.removeTitle", { provider: key.provider }), t("aiKeys.removeBody"), [
+                      { text: t("common.cancel"), style: "cancel" },
+                      { text: t("aiKeys.remove"), style: "destructive", onPress: () => remove.mutate(key.id) },
+                    ])
+                  }
                   disabled={busy}
                   accessibilityRole="button"
                   accessibilityLabel={t("aiKeys.removeLabel", { provider: key.provider })}

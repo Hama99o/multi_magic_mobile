@@ -296,6 +296,13 @@ export function apiErrorMessage(error: unknown): string | null {
   if (typeof record.message === "string" && record.message.trim() && !isPolicyText(record.message)) {
     return record.message;
   }
+  // `message` as an ARRAY: what the calendar's share controller answers
+  // (`event_shares_controller.rb#find_recipient`). Read as string-only, an
+  // invite to an unknown address fell through to the generic fallback.
+  if (Array.isArray(record.message)) {
+    const said = record.message.filter((line): line is string => typeof line === "string" && Boolean(line.trim()) && !isPolicyText(line));
+    if (said.length) return said.join("\n");
+  }
   return lines[0] ?? null;
 }
 

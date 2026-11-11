@@ -22,6 +22,7 @@
  * is merely unreachable. `onError` branches on `KeyRefused` for exactly this,
  * and nothing had ever held the branch.
  */
+import { Alert } from "react-native";
 import { render, screen, fireEvent, waitFor } from "@testing-library/react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { testQueryClient } from "@/__tests__/queryClient";
@@ -50,7 +51,16 @@ function renderScreen() {
   );
 }
 
-beforeEach(() => jest.clearAllMocks());
+beforeEach(() => {
+  jest.clearAllMocks();
+  jest.spyOn(Alert, "alert").mockImplementation(() => {});
+});
+
+/** Presses the destructive button of the last Alert shown. */
+function confirmRemove() {
+  const buttons = (Alert.alert as jest.Mock).mock.calls.at(-1)?.[2] as { style?: string; onPress?: () => void }[];
+  buttons.find((b) => b.style === "destructive")?.onPress?.();
+}
 afterEach(() => jest.restoreAllMocks());
 
 async function pasteAndSave(key = "sk-whatever") {
@@ -118,6 +128,7 @@ describe("the request itself failing", () => {
     renderScreen();
     await waitFor(() => expect(screen.getByTestId("ai-key-remove-openai")).toBeTruthy());
     fireEvent.press(screen.getByTestId("ai-key-remove-openai"));
+    confirmRemove();
 
     await waitFor(() => expect(screen.getByTestId("ai-keys-error")).toBeTruthy());
     expect(screen.getByTestId("ai-key-openai")).toBeTruthy();
@@ -184,5 +195,44 @@ describe("a key somebody else lent you", () => {
     renderScreen();
     await waitFor(() => expect(screen.getByTestId("ai-keys-empty")).toBeTruthy());
     expect(screen.queryByTestId("ai-keys-borrowed")).toBeNull();
+  });
+});
+
+/**
+ * REMOVING A KEY IS ASKED FIRST. Seen 2026-11-10 on the emulator: one tap on
+ * Remove deleted the QA account's gemini key with no question, and a key is
+ * never shown again (only its last four), so getting it back means going to
+ * the provider for it.
+ */
+describe("removing a key", () => {
+  const withKey = () =>
+    jest.spyOn(aiKeysApi, "list").mockResolvedValue(
+      payload({ keys: [{ id: 1, provider: "openai", masked: "sk-…4f2a", active: true, verified: true, verifiedAt: null, verificationError: null }] }),
+    );
+
+  it("asks, and a cancel removes nothing", async () => {
+    withKey();
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const remove = jest.spyOn(aiKeysApi, "remove").mockResolvedValue(undefined as never);
+    renderScreen();
+    await waitFor(() => expect(screen.getByTestId("ai-key-remove-openai")).toBeTruthy());
+
+    fireEvent.press(screen.getByTestId("ai-key-remove-openai"));
+
+    expect(alert).toHaveBeenCalledWith("Remove your openai key?", expect.any(String), expect.any(Array));
+    expect(remove).not.toHaveBeenCalled();
+  });
+
+  it("removes once confirmed", async () => {
+    withKey();
+    jest.spyOn(Alert, "alert").mockImplementation(() => {});
+    const remove = jest.spyOn(aiKeysApi, "remove").mockResolvedValue(undefined as never);
+    renderScreen();
+    await waitFor(() => expect(screen.getByTestId("ai-key-remove-openai")).toBeTruthy());
+
+    fireEvent.press(screen.getByTestId("ai-key-remove-openai"));
+    confirmRemove();
+
+    await waitFor(() => expect(remove).toHaveBeenCalledWith(1));
   });
 });

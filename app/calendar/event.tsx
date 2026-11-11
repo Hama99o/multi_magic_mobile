@@ -31,7 +31,7 @@ import { aiApi } from "@/api/ai";
 import { failureMessage } from "@/api/failure";
 import { useDraft } from "@/hooks/useDraft";
 import { eventColor } from "@/screens/calendar/colors";
-import { dayKey, formatDayLong, yearsOn } from "@/screens/calendar/dates";
+import { dayKey, formatDayLong, timeRange, yearsOn } from "@/screens/calendar/dates";
 import { GuestsSection } from "@/screens/calendar/GuestsSection";
 import { useCalendarUndo } from "@/stores/calendarUndo.store";
 
@@ -49,10 +49,6 @@ function Row({ icon, label, children, testID }: { icon: ReactNode; label: string
       </View>
     </View>
   );
-}
-
-function clock(iso: string, language: string): string {
-  return new Date(iso).toLocaleTimeString(language, { hour: "numeric", minute: "2-digit" });
 }
 
 /** A maps search for a free-text place; Apple Maps on iOS, the geo intent's chooser on Android. */
@@ -145,14 +141,8 @@ export default function EventDetail() {
   const myShare = me ? event.shares.find((share) => share.sharedWithId === me.id) : undefined;
 
   const dayLine = shownOn ? formatDayLong(shownOn, language) : "";
-  let timeLine = t("calendar.allDay");
-  if (!event.allDay && event.startsAt) {
-    // The occurrence's own instants are not on this page; the event's carry
-    // the time of day, which is the same for every occurrence.
-    timeLine = event.endsAt ? `${clock(event.startsAt, language)} – ${clock(event.endsAt, language)}` : clock(event.startsAt, language);
-  } else if (event.allDay && event.endsOn && event.startsOn && event.endsOn !== event.startsOn) {
-    timeLine = t("calendar.detail.allDayUntil", { date: formatDayLong(event.endsOn, language) });
-  }
+  // The event's own times: every occurrence has the same time of day.
+  const timeLine = timeRange(event, language, t("calendar.allDay"));
 
   const ask = () => {
     setDraft(t("calendar.question", { title, when: dayLine }));
@@ -160,7 +150,9 @@ export default function EventDetail() {
   };
 
   const confirmDelete = () =>
-    Alert.alert(t("calendar.detail.deleteTitle", { title }), t("calendar.detail.deleteBody"), [
+    // A repeating event goes WHOLE: the web has no "this one only", and a
+    // confirm that did not say so would be a confirm of something else.
+    Alert.alert(t("calendar.detail.deleteTitle", { title }), event.recurrence ? t("calendar.detail.deleteSeriesBody") : t("calendar.detail.deleteBody"), [
       { text: t("common.cancel"), style: "cancel" },
       { text: t("common.delete"), style: "destructive", onPress: () => remove.mutate() },
     ]);

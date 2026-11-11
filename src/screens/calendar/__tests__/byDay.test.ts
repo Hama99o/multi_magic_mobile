@@ -1,10 +1,11 @@
 import { makeOccurrence } from "@/__tests__/calendarFixtures";
-import { byDay } from "../byDay";
+import { agendaGroups, byDay } from "../byDay";
+import { dayKey } from "../dates";
 
 describe("occurrences by day", () => {
   it("keeps the server's order within a day", () => {
     const a = makeOccurrence({ key: "1:2026-11-12", on: "2026-11-12", allDay: true, startsAt: null }, { id: 1, allDay: true, startsOn: "2026-11-12" });
-    const b = makeOccurrence({ key: "2:2026-11-12", on: "2026-11-12" }, { id: 2 });
+    const b = makeOccurrence({ key: "2:2026-11-12", on: "2026-11-12", startsAt: new Date(2026, 10, 12, 9).toISOString(), endsAt: null }, { id: 2 });
     expect(byDay([a, b]).get("2026-11-12")?.map((o) => o.key)).toEqual(["1:2026-11-12", "2:2026-11-12"]);
   });
 
@@ -30,5 +31,32 @@ describe("occurrences by day", () => {
   it("a span is capped, so a bad end date cannot draw a year of dots", () => {
     const bad = makeOccurrence({ key: "6:2026-01-01", on: "2026-01-01", allDay: true, startsAt: null }, { id: 6, allDay: true, startsOn: "2026-01-01", endsOn: "2030-01-01" });
     expect(byDay([bad]).size).toBe(62);
+  });
+});
+
+/**
+ * The agenda's days are the PHONE's days. The server files an occurrence
+ * under the ACCOUNT's day (`on`), while every time on screen is the phone's
+ * clock; with the phone in New York and the account in Paris, 00:30 Paris on
+ * the 12th is 18:30 on the 11th and was listed under the 12th. A timed row
+ * now sits under the day its displayed time is on; an all-day row keeps
+ * `on`, which is a date and has no zone. Valid in Paris AND New York
+ * (`test:west`): the expectation is computed with the same local clock.
+ */
+describe("the agenda's days", () => {
+  it("a timed occurrence sits under the local day of its start", () => {
+    const startsAt = "2026-11-11T23:30:00Z";
+    const late = makeOccurrence({ key: "7:2026-11-12", on: "2026-11-12", startsAt, endsAt: null }, { id: 7 });
+    const groups = agendaGroups([late]);
+    expect(groups.map(([day]) => day)).toEqual([dayKey(new Date(startsAt))]);
+  });
+
+  it("orders by day, all-day first, then by start, without losing anything", () => {
+    const allDay = makeOccurrence({ key: "1:2026-11-12", on: "2026-11-12", allDay: true, startsAt: null, endsAt: null }, { id: 1, allDay: true, startsOn: "2026-11-12" });
+    const morning = makeOccurrence({ key: "2:2026-11-12", on: "2026-11-12", startsAt: new Date(2026, 10, 12, 9).toISOString(), endsAt: null }, { id: 2 });
+    const earlier = makeOccurrence({ key: "3:2026-11-12", on: "2026-11-12", startsAt: new Date(2026, 10, 12, 8).toISOString(), endsAt: null }, { id: 3 });
+    const groups = agendaGroups([morning, allDay, earlier]);
+    expect(groups).toHaveLength(1);
+    expect(groups[0][1].map((o) => o.key)).toEqual(["1:2026-11-12", "3:2026-11-12", "2:2026-11-12"]);
   });
 });

@@ -138,3 +138,31 @@ export function yearsOn(event: Pick<CalendarEvent, "recurrence" | "allDay" | "st
   const years = parseDay(on).getFullYear() - (event.allDay ? parseDay(anchor) : new Date(anchor)).getFullYear();
   return years > 0 && years < 200 ? years : null;
 }
+
+/**
+ * The detail page's "when" line, on the phone's clock.
+ * - starts and ends at the same minute: ONE time ("10:00 – 10:00" says
+ *   nothing a single time does not);
+ * - ends on another day: the end NAMES its day ("22:00 → Sun 15 Nov 02:00"),
+ *   because "22:00 – 02:00" hides that it runs two nights;
+ * - an all-day span names its last day.
+ */
+export function timeRange(
+  event: { allDay: boolean; startsAt: string | null; endsAt: string | null; startsOn: string | null; endsOn: string | null },
+  language: string,
+  allDayLabel = "All day",
+): string {
+  if (event.allDay) {
+    return event.endsOn && event.startsOn && event.endsOn > event.startsOn
+      ? `${allDayLabel} → ${formatDay(event.endsOn, language)}`
+      : allDayLabel;
+  }
+  const start = event.startsAt ? clockOf(event.startsAt) : null;
+  if (!event.startsAt || !start) return "";
+  const startText = formatTime(start, language);
+  const end = event.endsAt ? clockOf(event.endsAt) : null;
+  if (!event.endsAt || !end || new Date(event.endsAt).getTime() <= new Date(event.startsAt).getTime()) return startText;
+  const endDay = dayKey(new Date(event.endsAt));
+  if (endDay !== dayKey(new Date(event.startsAt))) return `${startText} → ${formatDay(endDay, language)} ${formatTime(end, language)}`;
+  return `${startText} – ${formatTime(end, language)}`;
+}

@@ -91,8 +91,11 @@ export function EventForm({
   onSave,
   saving,
   saveError,
+  series = false,
 }: {
   mode: "create" | "edit";
+  /** Editing a repeating event changes EVERY occurrence (as on the web). */
+  series?: boolean;
   draft: Draft;
   onChange: (draft: Draft) => void;
   onCancel: () => void;
@@ -158,6 +161,11 @@ export function EventForm({
       </View>
 
       <ScrollView keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingBottom: metrics.space.xl * 2 }} testID="event-form">
+        {series ? (
+          <Text testID="event-form-series-note" variant="caption" tone="muted" style={{ paddingBottom: metrics.space.sm }}>
+            {t("calendar.form.seriesNote")}
+          </Text>
+        ) : null}
         <Section>
           <TextInput
             testID="event-form-title"

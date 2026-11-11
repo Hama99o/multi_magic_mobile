@@ -3,7 +3,8 @@
  *
  * Two views over the server's occurrences, one toggle, the last choice kept:
  *
- * - **Agenda** (the default): what is next, from today, grouped by day. Today
+ * - **Agenda** (the default): what is next, from today, grouped by the
+ *   phone's day (`agendaGroups`). Today
  *   always appears, with its events or one line saying it is free; later empty
  *   days are simply absent (§2.1 of the history below the full-app section).
  *   Seven days first, because the assistant's suggestions read the same
@@ -45,7 +46,7 @@ import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { LoadFailure, isStale } from "@/components/LoadFailure";
 import { EventRow } from "@/screens/people/EventRow";
 import { MonthGrid } from "@/screens/calendar/MonthGrid";
-import { byDay } from "@/screens/calendar/byDay";
+import { agendaGroups, byDay } from "@/screens/calendar/byDay";
 import { eventColor } from "@/screens/calendar/colors";
 import { addDays, dayKey, formatDayLong, gridWindow, startOfMonth, weekStartsOn } from "@/screens/calendar/dates";
 import { useCalendarView } from "@/stores/calendarView.store";
@@ -137,18 +138,15 @@ export default function Calendar() {
   const rows = useMemo<Row[]>(() => {
     const occurrences = agenda.data?.occurrences ?? [];
     const out: Row[] = [];
-    // Grouped in ARRIVAL order, not re-sorted: `Occurrence#sort_key` already
-    // puts all-day events before timed ones within a day.
-    let currentDay = "";
+    // Grouped by the PHONE's day (`agendaGroups`): every time on a row is the
+    // phone's clock, so its day has to be too. Same zone as the account: the
+    // server's own order, untouched.
     let todaySeen = false;
-    for (const occurrence of occurrences) {
-      if (occurrence.on !== currentDay) {
-        currentDay = occurrence.on;
-        const heading = headingFor(occurrence.on, today, t, i18n.language);
-        if (heading.isToday) todaySeen = true;
-        out.push({ kind: "day", key: `day-${occurrence.on}`, label: heading.label, isToday: heading.isToday });
-      }
-      out.push({ kind: "event", key: occurrence.key, occurrence });
+    for (const [day, list] of agendaGroups(occurrences)) {
+      const heading = headingFor(day, today, t, i18n.language);
+      if (heading.isToday) todaySeen = true;
+      out.push({ kind: "day", key: `day-${day}`, label: heading.label, isToday: heading.isToday });
+      for (const occurrence of list) out.push({ kind: "event", key: occurrence.key, occurrence });
     }
     // Today ALWAYS appears — the emptiness is the answer.
     if (!todaySeen) {

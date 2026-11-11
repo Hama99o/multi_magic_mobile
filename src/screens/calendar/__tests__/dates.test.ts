@@ -14,6 +14,7 @@ import {
   uses12h,
   weekStartsOn,
   weekdayLabels,
+  timeRange,
   yearsOn,
 } from "../dates";
 
@@ -96,5 +97,31 @@ describe("an age", () => {
   it("is nothing for an event that does not come round every year, or the first one", () => {
     expect(yearsOn({ ...birthday, recurrence: "weekly" }, "2026-04-03")).toBeNull();
     expect(yearsOn(birthday, "1990-04-03")).toBeNull();
+  });
+});
+
+/**
+ * The detail page's "when" line. Hard cases from the 2026-11-11 desk pass:
+ * a zero-minute event, and one that runs past midnight into another day.
+ */
+describe("a time range", () => {
+  const at = (d: number, h: number, m = 0) => new Date(2026, 10, d, h, m).toISOString();
+
+  it("is one time when it starts and ends at the same minute", () => {
+    expect(timeRange({ allDay: false, startsAt: at(20, 10), endsAt: at(20, 10), startsOn: null, endsOn: null }, "fr")).toBe("10:00");
+  });
+
+  it("is start – end on one day", () => {
+    expect(timeRange({ allDay: false, startsAt: at(20, 10), endsAt: at(20, 11, 30), startsOn: null, endsOn: null }, "fr")).toBe("10:00 – 11:30");
+  });
+
+  it("NAMES the end's day when it ends on another one", () => {
+    const line = timeRange({ allDay: false, startsAt: at(13, 22), endsAt: at(15, 2), startsOn: null, endsOn: null }, "fr");
+    expect(line).toMatch(/^22:00 → .*15.* 02:00$/);
+  });
+
+  it("an all-day span names its last day", () => {
+    expect(timeRange({ allDay: true, startsAt: null, endsAt: null, startsOn: "2026-11-13", endsOn: "2026-11-15" }, "fr", "Toute la journée")).toMatch(/^Toute la journée → .*15/);
+    expect(timeRange({ allDay: true, startsAt: null, endsAt: null, startsOn: "2026-11-13", endsOn: null }, "fr", "Toute la journée")).toBe("Toute la journée");
   });
 });

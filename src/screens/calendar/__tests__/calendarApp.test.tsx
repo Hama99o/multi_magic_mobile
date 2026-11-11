@@ -342,6 +342,19 @@ describe("editing an event", () => {
     mockParams.current = { id: "41" };
   });
 
+  it("a REPEATING event's form says the change applies to every occurrence", async () => {
+    mock.onGet("/api/v1/calendar_app/events/41").reply(200, { event: serverEvent({ recurrence: "weekly" }) });
+    renderScreen(<EditEvent />);
+    expect(await screen.findByTestId("event-form-series-note")).toBeTruthy();
+  });
+
+  it("a one-off event's form does not", async () => {
+    mock.onGet("/api/v1/calendar_app/events/41").reply(200, { event: serverEvent() });
+    renderScreen(<EditEvent />);
+    await screen.findByTestId("event-form-title");
+    expect(screen.queryByTestId("event-form-series-note")).toBeNull();
+  });
+
   it("fills the form from the event and PUTs the change, with an EMPTY reminder list when all are removed", async () => {
     mock.onGet("/api/v1/calendar_app/events/41").reply(200, { event: serverEvent() });
     mock.onPut("/api/v1/calendar_app/events/41").reply(200, { event: serverEvent({ title: "Dentist (moved)", reminders: [] }) });
@@ -381,6 +394,17 @@ describe("one event", () => {
     await waitFor(() => expect(mock.history.delete).toHaveLength(1));
     expect(useCalendarUndo.getState().trashed).toMatchObject({ id: 41, title: "Dentist" });
     await waitFor(() => expect(router.back).toHaveBeenCalled());
+    alert.mockRestore();
+  });
+
+  it("deleting a REPEATING event says every occurrence goes (the web has no 'this one only')", async () => {
+    mockParams.current = { id: "41", on: "2026-11-12" };
+    mock.onGet("/api/v1/calendar_app/events/41").reply(200, { event: serverEvent({ recurrence: "weekly" }) });
+    mock.onGet(/event_shares/).reply(200, { shares: [] });
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+    renderScreen(<EventDetail />);
+    fireEvent.press(await screen.findByTestId("event-delete"));
+    expect(alert).toHaveBeenCalledWith(expect.any(String), expect.stringMatching(/every occurrence/i), expect.any(Array));
     alert.mockRestore();
   });
 

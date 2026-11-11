@@ -127,6 +127,7 @@ export default function EditEvent() {
     <Screen avoidKeyboard>
       <EventForm
         mode={eventId == null ? "create" : "edit"}
+        series={Boolean(event?.recurrence)}
         draft={draft}
         onChange={setDraft}
         onCancel={() => router.back()}

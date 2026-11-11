@@ -53,14 +53,16 @@ function Section({ children }: { children: ReactNode }) {
   );
 }
 
-function Chip({ label, selected, onPress, testID }: { label: string; selected: boolean; onPress: () => void; testID: string }) {
+/** `radio` for a single choice (the kind), `checkbox` for several (the
+ *  reminders): the role is what a screen reader says the chip IS. */
+function Chip({ label, selected, onPress, testID, role = "checkbox" }: { label: string; selected: boolean; onPress: () => void; testID: string; role?: "radio" | "checkbox" }) {
   const colors = useColors();
   const metrics = useMetrics();
   return (
     <Pressable
       testID={testID}
       onPress={onPress}
-      accessibilityRole="checkbox"
+      accessibilityRole={role}
       accessibilityLabel={label}
       accessibilityState={{ checked: selected }}
       hitSlop={4}
@@ -179,7 +181,7 @@ export function EventForm({
 
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: metrics.space.sm, marginBottom: metrics.space.md }} accessibilityRole="radiogroup" accessibilityLabel={t("calendar.form.kindLabel")}>
           {KINDS.map((kind: EventKind) => (
-            <Chip key={kind} testID={`event-form-kind-${kind}`} label={t(`calendar.kind.${kind}`)} selected={draft.kind === kind} onPress={() => onChange(withKind(draft, kind))} />
+            <Chip key={kind} role="radio" testID={`event-form-kind-${kind}`} label={t(`calendar.kind.${kind}`)} selected={draft.kind === kind} onPress={() => onChange(withKind(draft, kind))} />
           ))}
         </View>
 

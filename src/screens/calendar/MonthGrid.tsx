@@ -40,8 +40,9 @@ export function MonthHeader({ month, today, onMonthChange, testID }: { month: st
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
   const isThisMonth = startOfMonth(month) === startOfMonth(today);
-  const Prev = I18nManager.isRTL ? ChevronRight : ChevronLeft;
-  const Next = I18nManager.isRTL ? ChevronLeft : ChevronRight;
+  const rtl = I18nManager.isRTL;
+  const Prev = rtl ? ChevronRight : ChevronLeft;
+  const Next = rtl ? ChevronLeft : ChevronRight;
   const arrow = { width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" } as const;
 
   return (
@@ -70,10 +71,10 @@ export function MonthHeader({ month, today, onMonthChange, testID }: { month: st
         </Pressable>
       )}
       <Pressable testID={`${testID}-prev`} onPress={() => onMonthChange(addMonths(month, -1))} accessibilityRole="button" accessibilityLabel={t("calendar.previousMonth")} style={arrow}>
-        <Prev size={22} color={colors.ink} />
+        <Prev testID={`${testID}-prev-glyph-${rtl ? "right" : "left"}`} size={22} color={colors.ink} />
       </Pressable>
       <Pressable testID={`${testID}-next`} onPress={() => onMonthChange(addMonths(month, 1))} accessibilityRole="button" accessibilityLabel={t("calendar.nextMonth")} style={arrow}>
-        <Next size={22} color={colors.ink} />
+        <Next testID={`${testID}-next-glyph-${rtl ? "left" : "right"}`} size={22} color={colors.ink} />
       </Pressable>
     </View>
   );
@@ -126,8 +127,10 @@ const DayCell = memo(function DayCell({
       >
         <Text
           variant="label"
+          // A neighbouring month's day is still tappable, so it keeps the
+          // muted tone's own contrast (~4.9:1); an extra 60% opacity put it
+          // near 2.6:1 on the light ground.
           tone={isSelected ? "onAccent" : inMonth ? (isToday ? "accent" : "default") : "muted"}
-          style={{ opacity: inMonth || isSelected ? 1 : 0.6 }}
         >
           {String(Number(day.slice(8)))}
         </Text>

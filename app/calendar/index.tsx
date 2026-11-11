@@ -27,7 +27,7 @@
  * glyph are the fallbacks, and "Updated just now" says how fresh the list is.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, RefreshControl, View } from "react-native";
+import { AccessibilityInfo, FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -55,8 +55,10 @@ import { useCalendarUndo } from "@/stores/calendarUndo.store";
 const WINDOW_DAYS = 7;
 const MORE_DAYS = 30;
 const MAX_DAYS = 365;
-/** How long the Undo stays offered. */
+/** How long the Undo stays offered — longer with a screen reader, who has to
+ *  hear it, find it and reach it (WCAG 2.2.1, adjustable timing). */
 const UNDO_MS = 8000;
+const UNDO_MS_SCREEN_READER = 30_000;
 
 type Row =
   | { kind: "day"; key: string; label: string; isToday: boolean }
@@ -174,12 +176,29 @@ export default function Calendar() {
   // once if it already is): `Date.now()` in render is impure and would make
   // the same props draw two different screens.
   const showUndo = trashed != null;
+  const [screenReader, setScreenReader] = useState(false);
+  useEffect(() => {
+    let live = true;
+    void AccessibilityInfo.isScreenReaderEnabled()
+      .then((on) => live && setScreenReader(on))
+      .catch(() => undefined);
+    const sub = AccessibilityInfo.addEventListener?.("screenReaderChanged", setScreenReader);
+    return () => {
+      live = false;
+      sub?.remove();
+    };
+  }, []);
+  // SAID, not only shown: `accessibilityLiveRegion` is Android-only, so on
+  // iOS a blind user never learnt the Undo was there.
+  useEffect(() => {
+    if (trashed) AccessibilityInfo.announceForAccessibility(`${t("calendar.movedToTrash", { title: trashed.title })} ${t("calendar.undo")}`);
+  }, [trashed, t]);
   useEffect(() => {
     if (!trashed) return;
-    const left = UNDO_MS - (Date.now() - trashed.at);
+    const left = (screenReader ? UNDO_MS_SCREEN_READER : UNDO_MS) - (Date.now() - trashed.at);
     const timer = setTimeout(() => clearTrashed(null), Math.max(0, left));
     return () => clearTimeout(timer);
-  }, [trashed, clearTrashed]);
+  }, [trashed, clearTrashed, screenReader]);
   const undo = async () => {
     if (!trashed || undoing) return;
     setUndoing(true);

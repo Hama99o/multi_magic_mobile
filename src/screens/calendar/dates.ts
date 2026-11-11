@@ -10,6 +10,7 @@
  * The SERVER decides which day an occurrence falls on (`occurrence.on`, in the
  * user's zone); this file only lays days out and labels them.
  */
+import type { CalendarEvent } from "@/api/calendar";
 
 export function dayKey(date: Date): string {
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -126,4 +127,14 @@ export function clockOf(iso: string): string | null {
   const date = new Date(iso);
   if (Number.isNaN(date.getTime())) return null;
   return `${String(date.getHours()).padStart(2, "0")}:${String(date.getMinutes()).padStart(2, "0")}`;
+}
+
+/** How old someone turns, or how many years an anniversary marks, on `on` —
+ *  the point of storing the year it began (`Event#years_on`). */
+export function yearsOn(event: Pick<CalendarEvent, "recurrence" | "allDay" | "startsOn" | "startsAt">, on: string): number | null {
+  if (event.recurrence !== "yearly") return null;
+  const anchor = event.allDay ? event.startsOn : event.startsAt;
+  if (!anchor) return null;
+  const years = parseDay(on).getFullYear() - (event.allDay ? parseDay(anchor) : new Date(anchor)).getFullYear();
+  return years > 0 && years < 200 ? years : null;
 }

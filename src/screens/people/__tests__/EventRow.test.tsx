@@ -114,12 +114,10 @@ describe("what a screen reader is told", () => {
     ).toMatch(/^Dentist, \d{1,2}:\d{2}/);
   });
 
-  it("says what a tap will do, because it composes a question rather than opening a record", () => {
+  it("says what a tap will do: since 2026-11-11 it opens the event (SPEC §C.2)", () => {
     render(<EventRow occurrence={occurrence()} onPress={jest.fn()} />);
 
-    expect(screen.getByTestId("calendar-event-5:2026-09-20").props.accessibilityHint).toBe(
-      "Opens the assistant with a question about this event",
-    );
+    expect(screen.getByTestId("calendar-event-5:2026-09-20").props.accessibilityHint).toBe("Opens the event");
   });
 });
 

@@ -117,10 +117,21 @@ const COMPOSED = [
   // `SessionEndReason` ("expired" | "revoked") in api/http.ts.
   "session.expired",
   "session.revoked",
+  // The calendar's enums, rendered as t(`calendar.<group>.${value}`). Each
+  // group is the server's own enum (`CalendarApp::Event`, `EventShare`,
+  // `Reminder::PRESETS`) or the web's colour keys (`EventDrawer.tsx`).
+  ...["event", "appointment", "birthday", "anniversary"].map((v) => `calendar.kind.${v}`),
+  ...["none", "daily", "weekly", "monthly", "yearly"].map((v) => `calendar.recurrence.${v}`),
+  ...["0", "15", "60", "1440", "10080"].map((v) => `calendar.lead.${v}`),
+  ...["blue", "green", "amber", "red", "grey"].map((v) => `calendar.color.${v}`),
+  ...["owner", "editor", "viewer"].map((v) => `calendar.permission.${v}`),
+  ...["pending", "accepted", "declined"].map((v) => `calendar.response.${v}`),
 ];
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
 const PLURAL = new Set([
+  "calendar.eventCount",
+  "calendar.detail.age",
   "pages.trash.emptied",
   "sessions.messages",
   "sessions.files",

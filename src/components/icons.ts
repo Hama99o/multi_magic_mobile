@@ -80,6 +80,8 @@ import FolderPlusIcon from "lucide-react-native/dist/esm/icons/folder-plus";
 import StarOffIcon from "lucide-react-native/dist/esm/icons/star-off";
 import SparklesIcon from "lucide-react-native/dist/esm/icons/sparkles";
 import HouseIcon from "lucide-react-native/dist/esm/icons/house";
+import UserPlusIcon from "lucide-react-native/dist/esm/icons/user-plus";
+import LogOutIcon from "lucide-react-native/dist/esm/icons/log-out";
 
 export type { LucideIcon };
 export const ArrowUp: LucideIcon = ArrowUpIcon;
@@ -148,3 +150,5 @@ export const FolderPlus: LucideIcon = FolderPlusIcon;
 export const StarOff: LucideIcon = StarOffIcon;
 export const Sparkles: LucideIcon = SparklesIcon;
 export const House: LucideIcon = HouseIcon;
+export const UserPlus: LucideIcon = UserPlusIcon;
+export const LogOut: LucideIcon = LogOutIcon;

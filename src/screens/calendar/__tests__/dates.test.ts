@@ -14,6 +14,7 @@ import {
   uses12h,
   weekStartsOn,
   weekdayLabels,
+  yearsOn,
 } from "../dates";
 
 describe("a day key", () => {
@@ -84,5 +85,16 @@ describe("the clock", () => {
     expect(formatTime("14:05", "fr")).toBe("14:05");
     expect(formatTime("14:05", "en")).toMatch(/^2:05\sPM$/);
     expect(formatTime("00:00", "en")).toMatch(/^12:00\sAM$/);
+  });
+});
+
+describe("an age", () => {
+  const birthday = { recurrence: "yearly", allDay: true, startsOn: "1990-04-03", startsAt: null };
+  it("is this occurrence's year minus the year it began", () => {
+    expect(yearsOn(birthday, "2026-04-03")).toBe(36);
+  });
+  it("is nothing for an event that does not come round every year, or the first one", () => {
+    expect(yearsOn({ ...birthday, recurrence: "weekly" }, "2026-04-03")).toBeNull();
+    expect(yearsOn(birthday, "1990-04-03")).toBeNull();
   });
 });

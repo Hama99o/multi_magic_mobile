@@ -1,4 +1,113 @@
-# Calendar — the important view only
+# Calendar — the second full app (2026-11-11)
+
+**Status: `IN PROGRESS`** — references read and decisions taken 2026-11-11;
+built test-first on `feat/calendar-app`; the device sweep (`docs/QA_REPORT_2026-11-11.md`) is the item outstanding.
+
+The owner, 2026-11-11 (relayed by the supervisor session): *make Calendar the
+second full app inside MultiMagic mobile, after Pages: create, edit and delete
+events (all-day, time, recurrence, reminders, location, notes), shared events,
+the web's views adapted to a phone; the assistant creating an event still
+refreshes the list.*
+
+**This supersedes "the important view only" below** (§0–§6, 2026-09-18). That
+section is kept because its §0 is still the rule every read here obeys:
+occurrences come from the server, already expanded, never from `/events`.
+What it decided *against* (no month grid, no writes, no event screen, a tap
+composes a question) was right for a four-screen assistant and is reversed
+on purpose now.
+
+## A · What the web has, and where each piece lands on the phone
+
+Read from `multi_magic/app/javascript/pages/calendar/` and the controllers,
+2026-11-11. **No server change is needed**: every call below already exists
+with request specs (`events_controller.rb`, `event_shares_controller.rb`).
+
+| Web | API | Phone |
+|---|---|---|
+| Agenda (phone default on the web, 60 days) | `GET events/upcoming?days=` | **Agenda** view, `app/calendar/index.tsx`, 7 days first (the assistant's suggestions read the same key, `["calendar","upcoming",7]`), "Show more" widens by 30 |
+| Month grid + day sheet | `GET events/occurrences?from=&to=` | **Month** view: `MonthGrid` + the picked day's list under it |
+| Drawer, view mode | `GET events/:id` | `app/calendar/event.tsx` |
+| Drawer, edit / create | `POST events`, `PUT events/:id` (+ `reminders: [min]`) | `app/calendar/edit.tsx` |
+| Delete (owner only) → trash | `DELETE events/:id`, `PUT events/:id/restore` | Delete asks first, then an **Undo** that restores |
+| Guests section | `event_shares` index/create/update/destroy, `respond` | `GuestsSection` on the detail page; a guest may also leave (`destroy` of their own share, which the policy allows) |
+
+Not taken: the web has no trash screen for events, so neither does the phone
+(Undo covers the mistake that matters, a delete a second ago).
+
+## B · Sources (Rule Zero) — 14 screens, images in `references/` (gitignored)
+
+| App | Screen | What we TAKE | What we REJECT |
+|---|---|---|---|
+| Todoist | [Upcoming](https://mobbin.com/screens/7e96cc10-7c91-4c3d-adf3-ef64e3231467) | month grid on top, the picked day's list under it, a round **+** bottom right | its pull-down sheet over the grid |
+| Binance | [Calendar](https://mobbin.com/screens/58844abc-3595-41b2-b1b0-35f6f4c13c6d) | **dots under a date** say "something here" without text in a 48 dp cell | "No more events today" under every day (same reason as §2.1 below) |
+| Weverse | [Calendar](https://mobbin.com/screens/5d94bb1b-51b2-4765-b836-b9a3ff2f4148) | `‹ Feb, 2026 ›` + a **Today** pill; an empty picked day says so in one line | the filter dropdown |
+| Amazon Alexa | [Calendar](https://mobbin.com/screens/98f123a2-d39b-4254-9f78-80b4faa497bc) | the **list ⇄ grid** two-icon toggle in the header | the full-width "Add Event" bar (our + does it) |
+| Outlook | [Month](https://mobbin.com/screens/5df44b2c-c249-49a6-989e-25f34a8267c9) | today as a filled circle in the accent | the 3-day timeline (a week of hours does not fit 360 dp legibly) |
+| Apple Invites | [New event](https://mobbin.com/screens/d27f0859-2096-4ed2-a084-9d42c208ae1f) | **Cancel · title · Save** header; `Starts [date][time]` / `Ends [date][time]` as two pills per row | travel time, show-as |
+| Saturn | [New event](https://mobbin.com/screens/ea3ab0e7-ae3b-46e8-9784-0fec6ed90c8b) | grouped rounded sections on a dark ground: when / repeat / guests / location / notes | "Guests can invite others" (no such permission on the server) |
+| Outlook | [New event](https://mobbin.com/screens/ab63469a-202d-4e0e-a954-f681b8f18376) | "Repeats daily until …" spelled out under Repeat; **Remind me** as a row | time zone row (the server owns the zone, §3 below) |
+| WhatsApp | [Create event](https://mobbin.com/screens/db5d5c9d-da95-4a58-967b-2bd86fe750a6) | the time **wheel opens inline under the row tapped**, no keyboard, no modal | — |
+| Evernote | [Time wheel](https://mobbin.com/screens/ac3007c1-4196-4f37-828a-b46c3d465677) | hour · minute · AM/PM columns when the locale is 12 h; two columns when 24 h | — |
+| Pangea | [When](https://mobbin.com/screens/7e2ca119-e688-41e1-a54b-a3864baab510) | the **date** opens as an inline month (the same `MonthGrid`), not a wheel of years | duration chips |
+| Joi | [Event](https://mobbin.com/screens/91561e9e-aa39-426f-b774-557819a529e6) | detail first: date · time → title, then two buttons **Edit** / **Delete** (delete in the danger tone) | the countdown pill |
+| Amie | [Event](https://mobbin.com/screens/c62cb2e7-3743-4105-a1ef-68f9c9ef5749) | labelled rows (GUESTS, LOCATION, DESCRIPTION) and RSVP at the bottom | per-row Edit links |
+| Strava | [Repeats](https://mobbin.com/screens/3156d7b7-d71d-4990-b6ad-860ce750f666) | repeat choices as a **sheet of radio rows** | weekday multi-select (the server's rule has none) |
+
+## C · Decisions
+
+1. **Two views, one toggle, the last one remembered.** Agenda stays the
+   default (the owner's 2026-09-18 "what is next", and the web's phone
+   default); Month is one tap away and the choice is kept per device
+   (`calendarView.store.ts`, AsyncStorage). Both read occurrences; neither
+   re-sorts what the server ordered.
+2. **A tap opens the event**, not the assistant. The old tap-to-ask moves to
+   an "Ask the assistant" button on the detail page, so nothing is lost.
+3. **Show before edit** (the web's three modes, `CALENDAR_APP.md`): detail is
+   read-only; Edit opens the form filled in; Save returns to the detail.
+4. **One form for every kind.** Picking *Birthday* or *Anniversary* turns on
+   all-day and yearly for you (web `pickKind`). Moving the start moves the end
+   with it (web `setStartTime`). An end before the start is dropped, not sent.
+5. **Pickers are ours, behind one boundary.** `src/screens/calendar/pickers/`
+   exports `DateField` and `TimeField`; nothing else in the app knows how a
+   date is picked, so the native `@react-native-community/datetimepicker` can
+   replace the inside at the next native build without touching a screen
+   (supervisor, 2026-11-11). Date = inline `MonthGrid`; time = inline wheel,
+   5-minute steps, 24 h or 12 h from the app language (`uses12h`), each column
+   an `adjustable` accessibility element (swipe up/down with a screen reader).
+   **The keyboard is never involved.**
+6. **Colour is the web's key** (`blue green amber red grey`), mapped to the
+   icon's accents in `eventColor()`; an unknown key falls back by kind as the
+   web's `colorKeyFor` does. (Until now the phone dropped every non-hex colour,
+   so every web colour was ignored.)
+7. **Permissions come from the server** (`current_user_permission`): Edit only
+   for owner/editor, Delete and guest management only for the owner, Accept /
+   Decline / Leave only for a guest. A control the server would refuse is not
+   drawn.
+8. **The assistant still refreshes it**: `useAssistantEcho(CALENDAR_KEYS)`
+   now invalidates every `["calendar", …]` read, month and detail included.
+9. **Offline**: a write that fails says so in the form and keeps the draft;
+   nothing is queued (a queued calendar write that lands later at the wrong
+   time is worse than a clear "not saved").
+
+## D · How we code it
+
+| Thing | Where |
+|---|---|
+| API (all reads and writes, strict parsing) | `src/api/calendar.ts` |
+| date arithmetic, grid days, week start, 12/24 h | `src/screens/calendar/dates.ts` |
+| draft ⇄ event ⇄ payload (pure, the form's brain) | `src/screens/calendar/draft.ts` |
+| colours | `src/screens/calendar/colors.ts` `eventColor()` |
+| month grid (view and date picker) | `src/screens/calendar/MonthGrid.tsx` |
+| pickers | `src/screens/calendar/pickers/{DateField,TimeField,Wheel}.tsx` |
+| main screen | `app/calendar/index.tsx` |
+| detail | `app/calendar/event.tsx` + `src/screens/calendar/GuestsSection.tsx` |
+| form | `app/calendar/edit.tsx` + `src/screens/calendar/EventForm.tsx` |
+| choice sheet (repeat) | `src/screens/calendar/ChoiceSheet.tsx` |
+
+---
+
+# (History) Calendar — the important view only
+
 
 **Status: `DONE`** — six references pulled and read, 2026-09-18. And the
 endpoint named in the earlier draft was **the wrong one**; §0 is why, and it is

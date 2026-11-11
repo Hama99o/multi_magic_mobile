@@ -23,26 +23,10 @@ import { render, screen } from "@testing-library/react-native";
 import i18n from "i18next";
 import { EventRow } from "../EventRow";
 import type { Occurrence } from "@/api/calendar";
+import { makeOccurrence } from "@/__tests__/calendarFixtures";
 
 function occurrence(over: Partial<Occurrence> = {}, event: Partial<Occurrence["event"]> = {}): Occurrence {
-  return {
-    key: "5:2026-09-20",
-    on: "2026-09-20",
-    startsAt: "2026-09-20T09:00:00Z",
-    endsAt: "2026-09-20T09:30:00Z",
-    allDay: false,
-    ...over,
-    event: {
-      id: 5,
-      title: "Dentist",
-      description: null,
-      location: null,
-      kind: null,
-      recurrence: null,
-      color: null,
-      ...event,
-    },
-  };
+  return makeOccurrence(over, event);
 }
 
 describe("the repeat glyph", () => {

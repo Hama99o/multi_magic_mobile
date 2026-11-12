@@ -15,7 +15,7 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { AiButton } from "@/components/AiButton";
 import { ProfileSheet } from "@/components/settings/ProfileSheet";
-import { Bell, BookUser, CalendarDays, FolderOpen, MessageSquareText, Sparkles, Users, type LucideIcon } from "@/components/icons";
+import { Bell, BookUser, CalendarDays, FolderOpen, MessageSquareText, NotebookPen, Sparkles, Users, type LucideIcon } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useAuthStore } from "@/stores/auth.store";
 import { Avatar } from "@/screens/people/Avatar";
@@ -110,6 +110,7 @@ export default function Home() {
         <Text tone="muted">{first ? t("home.greetingName", { name: first }) : t("home.greeting")}</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: metrics.space.md }}>
           <Tile icon={FolderOpen} title={t("pages.title")} body={t("home.pagesBody")} onPress={() => router.push("/pages")} testID="home-tile-pages" primary />
+          <Tile icon={NotebookPen} title={t("notes.title")} body={t("home.notesBody")} onPress={() => router.push("/notes")} testID="home-tile-notes" />
           <Tile icon={Sparkles} title={t("chat.title")} body={t("home.aiBody")} onPress={() => router.push("/chat")} testID="home-tile-ai" />
           <Tile icon={Users} title={t("chat.chats")} body={t("home.chatsBody")} onPress={() => router.push("/chats")} testID="home-tile-chats" />
           <Tile icon={Bell} title={t("chat.notifications")} body={t("home.notificationsBody")} onPress={() => router.push("/notifications")} testID="home-tile-notifications" badge={unread || undefined} />

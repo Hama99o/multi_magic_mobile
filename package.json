@@ -57,6 +57,7 @@
     "i18next": "^25.0.1",
     "lucide-react-native": "^0.475.0",
     "nativewind": "4.2.5",
+    "prosemirror-model": "1.25.4",
     "react": "19.2.3",
     "react-i18next": "^16.0.0",
     "react-native": "0.86.3",

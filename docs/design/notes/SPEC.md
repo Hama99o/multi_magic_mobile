@@ -431,16 +431,15 @@ screen wires those together.
 | local draft | `src/stores/noteDrafts.store.ts` |
 | list, editor, trash | `app/notes/{index,[id],trash}.tsx`; a Home tile |
 
-## G · Open questions for the owner
+## G · The owner's answers (2026-11-12, board approved: "it's good, attack")
 
-1. **Tablet layout:** a list beside the editor at ≥ 800 dp, or the
-   phone's single column at a 640 measure (the current decision)?
-2. **Conflict with a web edit:** the three-way choice in §C11, or "last save
-   wins" like the web does today?
-3. **Comments:** turn them on in MultiMagic web first, or keep them off
-   everywhere? Row 43 needs his answer by 2027-02.
-4. **Sharing on the phone:** view the people a note is shared with, or also
-   add and remove them (the web's `share_with_user_toggle`)?
-5. **Order of the notes list:** the server's "pinned, then last edited"
-   (decided here) against "newest created first". Is last edited right for
-   notes?
+1. **Tablet (≥ 800 dp):** the list and the editor side by side, as in Apple
+   Notes. This replaces the single-column decision.
+2. **Conflict with a web edit:** a version check on save. On a conflict, ask
+   "keep mine / keep the web's / keep both". "Keep both" is the default: it
+   saves a copy titled "… (conflict 12 Nov 15:40)". Never a silent
+   last-write-wins.
+3. **Comments:** off everywhere for now. Row 43 stays read-only.
+4. **Sharing on the phone:** view, and add or remove people (web parity),
+   in phase 3b.
+5. **Notes list:** last edited first (pinned on top).

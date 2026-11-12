@@ -1,6 +1,9 @@
 # Contacts — the third full app (2026-11-12)
 
-**Status: `IN PROGRESS`**
+**Status: `DONE`** — 2026-11-12. `ours/` holds 360, 411 and 800 dp
+(light/dark, en/fr), `25-contacts` passes on a device, and
+`docs/QA_REPORT_2026-11-12.md` says what was NOT measured (iOS share-in and
+limited access, a real WhatsApp chat). Server `contacts-api` awaits a deploy.
 
 The owner, 2026-11-12 (relayed by the supervisor session): *Contacts as the
 third full app, after Pages and Calendar. List with search, an A–Z index and

@@ -126,3 +126,30 @@ it("the gallery gets the photo under its own name, not the cache's", async () =>
   expect(galleryUris[0]).toMatch(/\/IMG_2041\.jpg$/);
   expect(galleryUris[0]).not.toMatch(/pages-3392/);
 });
+
+/**
+ * Android's gallery and the Files app decide what a file is from its
+ * extension: a photo saved as "IMG_2041" is not a photo there. The name gets
+ * the extension of its type when it has none (the owner, 2026-11-12).
+ */
+describe("a title with no extension", () => {
+  it("the gallery gets IMG_2041.jpg for a JPEG titled IMG_2041", async () => {
+    await deviceDeps.saveToGallery(node(3393, "IMG_2041", "image/jpeg"));
+    expect(galleryUris[0]).toMatch(/\/IMG_2041\.jpg$/);
+  });
+
+  it("a video titled 1000017023 is saved as 1000017023.mp4", async () => {
+    await deviceDeps.saveToGallery(node(3394, "1000017023", "video/mp4"));
+    expect(galleryUris[0]).toMatch(/\/1000017023\.mp4$/);
+  });
+
+  it("a folder picked in Files gets voice note.ogg for an Ogg voice note", async () => {
+    await deviceDeps.saveInto("content://tree/Documents", node(3395, "voice note", "audio/ogg"));
+    expect(created.map((f) => f.name)).toEqual(["voice note.ogg"]);
+  });
+
+  it("a name that already says what it is is left alone", async () => {
+    await deviceDeps.saveToGallery(node(3396, "clip.MOV", "video/quicktime"));
+    expect(galleryUris[0]).toMatch(/\/clip\.MOV$/);
+  });
+});

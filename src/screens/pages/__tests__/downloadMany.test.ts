@@ -201,3 +201,59 @@ describe("isPickerCancel: the codes expo-file-system throws on each platform", (
     expect(isPickerCancel(null)).toBe(false);
   });
 });
+
+/**
+ * The owner, 2026-11-12: a photo named "IMG_2041" or "1000017023" (no
+ * extension) that the server had stored as octet-stream was not offered to the
+ * gallery. The decision is the TYPE's; when the type says nothing, the
+ * file's first bytes decide (`deps.resolveType`), never its name.
+ */
+describe("a file whose type is missing or octet-stream", () => {
+  const unknown = (id: number, title: string, mimeType: string | null = "application/octet-stream") =>
+    node(id, "file", title, undefined, mimeType);
+
+  it("photos and videos found by their bytes go to the gallery, with their real type", async () => {
+    const found: Record<number, string> = { 1: "image/jpeg", 2: "video/mp4" };
+    const gallery: PageNode[] = [];
+    const { deps: d } = deps({
+      resolveType: jest.fn(async (n: PageNode) => found[n.id] ?? null),
+      saveToGallery: jest.fn(async (n: PageNode) => {
+        gallery.push(n);
+      }),
+    });
+
+    const result = await downloadMany([unknown(1, "IMG_2041"), unknown(2, "1000017023", null)], d);
+
+    expect(result).toEqual({ saved: 2, failed: 0, skipped: 0, destination: "gallery" });
+    expect(gallery.map((n) => [n.title, n.mimeType])).toEqual([
+      ["IMG_2041", "image/jpeg"],
+      ["1000017023", "video/mp4"],
+    ]);
+    expect(d.pickDirectory).not.toHaveBeenCalled();
+  });
+
+  it("a voice note found by its bytes is audio: it goes to Files, not the gallery", async () => {
+    const { deps: d, saved } = deps({ resolveType: jest.fn(async () => "audio/ogg") });
+    const result = await downloadMany([photo(1, "a.jpg"), unknown(2, "voice note")], d);
+    expect(result).toMatchObject({ destination: "files" });
+    expect(saved).toEqual(["a.jpg", "voice note"]);
+  });
+
+  it("bytes that say nothing: Files", async () => {
+    const { deps: d } = deps({ resolveType: jest.fn(async () => null) });
+    expect(await downloadMany([unknown(1, "IMG_2041")], d)).toMatchObject({ destination: "files" });
+  });
+
+  it("a file the server already typed is never probed", async () => {
+    const resolveType = jest.fn(async () => "image/jpeg");
+    const { deps: d } = deps({ resolveType });
+    await downloadMany([photo(1, "a.jpg"), clip(2, "b.MOV")], d);
+    expect(resolveType).not.toHaveBeenCalled();
+  });
+
+  it("a NAME with a photo's extension does not make a PDF a photo", async () => {
+    const { deps: d } = deps();
+    const result = await downloadMany([node(1, "file", "holiday.jpg", undefined, "application/pdf")], d);
+    expect(result).toMatchObject({ destination: "files" });
+  });
+});

@@ -79,11 +79,19 @@ const serverEvent = (over: Record<string, unknown> = {}) => ({
   ...over,
 });
 
+/** The occurrence on `on`, at the event's own clock time. The fixture event
+ *  is dated 12 Nov 2026; copying its instants made every occurrence fall on
+ *  that day, so a test meant for "tomorrow" broke on the day it was today. */
+const onDay = (iso: string, on: string) => {
+  const at = new Date(iso);
+  const [y, m, d] = on.split("-").map(Number);
+  return new Date(y, m - 1, d, at.getHours(), at.getMinutes()).toISOString();
+};
 const occurrenceOf = (event: ReturnType<typeof serverEvent>, on: string) => ({
   id: `${event.id}:${on}`,
   on,
-  starts_at: event.starts_at,
-  ends_at: event.ends_at,
+  starts_at: onDay(event.starts_at, on),
+  ends_at: onDay(event.ends_at, on),
   all_day: event.all_day,
   event,
 });
@@ -300,6 +308,10 @@ describe("a new event", () => {
   it("the wheel is ONE adjustable element a screen reader can swipe", async () => {
     renderScreen(<EditEvent />);
     fireEvent.press(screen.getByTestId("when-start-time"));
+    // A known hour first: a new event starts at the next full hour from NOW,
+    // so asserting "10 AM" straight away only held when run before 9.
+    fireEvent.press(screen.getByTestId("when-start-wheel-hour-9", HIDDEN_ROWS));
+    fireEvent.press(screen.getByTestId("when-start-wheel-period-am", HIDDEN_ROWS));
     const hours = screen.getByTestId("when-start-wheel-hour-adjust");
     expect(hours.props.accessibilityRole).toBe("adjustable");
     fireEvent(hours, "accessibilityAction", { nativeEvent: { actionName: "increment" } });

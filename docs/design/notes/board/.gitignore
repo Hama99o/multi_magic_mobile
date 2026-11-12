@@ -1,0 +1,4 @@
+# The board embeds other companies' app screenshots (from ../references/,
+# curated by Mobbin). This repo is PUBLIC, so the board is not committed either:
+# same rule as docs/design/**/references/ in the root .gitignore.
+*.png

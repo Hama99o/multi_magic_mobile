@@ -73,7 +73,7 @@ for i in range(N):
         cards.append(
             "BEGIN:VCARD\r\nVERSION:3.0\r\n"
             f"N:{last};{first};;;\r\nFN:{first} {last}\r\nTEL;TYPE=CELL:{tel}\r\n{extra}"
-            "NOTE:Synthetic QA contact\\, generated for the import test. This line is long enough that\r\n"
+            "NOTE:Synthetic QA contact\\, generated for the import test. This line is long enough that \r\n"
             " the phone folds it.\r\nEND:VCARD\r\n"
         )
 

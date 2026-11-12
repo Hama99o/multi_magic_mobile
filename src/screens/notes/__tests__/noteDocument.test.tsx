@@ -6,6 +6,7 @@
  * markdown, legacy markup).
  */
 import React from "react";
+import { StyleSheet } from "react-native";
 import { fireEvent, render, screen } from "@testing-library/react-native";
 
 import { TOKENS } from "@/theme/tokens";
@@ -97,5 +98,22 @@ describe("NoteDocument", () => {
     render(<NoteDocument doc={doc} colors={TOKENS.light} labels={labels} onLinkPress={jest.fn()} onViewOnWeb={jest.fn()} />);
     expect(screen.getByText("Unknown callout")).toBeTruthy();
     expect(screen.getByText("future block")).toBeTruthy();
+  });
+
+  // Device QA 2026-11-12, a real Pashto note: the text read right-to-left but
+  // its bullets, numbers and boxes stayed on the left. The marker follows
+  // the item's own direction, as the web's dir="auto" does (SPEC §C11 RTL).
+  it("puts list markers, boxes and the quote bar on the right of a right-to-left item", () => {
+    renderDoc(
+      '<ul><li><p>لومړی توکی</p></li><li><p>English item</p></li></ul>' +
+      '<ul data-type="taskList"><li data-checked="false" data-type="taskItem"><label><input type="checkbox"><span></span></label><div><p>دوهم توکی</p></div></li></ul>' +
+      "<blockquote><p>د سفر لپاره لیست</p></blockquote>",
+    );
+    const dirs = (id: string) => screen.getAllByTestId(id).map((el) => StyleSheet.flatten(el.props.style).flexDirection);
+    expect(dirs("note-list-item")).toEqual(["row-reverse", "row"]);
+    expect(dirs("note-task-item")).toEqual(["row-reverse"]);
+    const quote = StyleSheet.flatten(screen.getByTestId("note-quote").props.style);
+    expect(quote.borderRightWidth).toBe(3);
+    expect(quote.borderLeftWidth ?? 0).toBe(0);
   });
 });

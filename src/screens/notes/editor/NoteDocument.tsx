@@ -63,10 +63,15 @@ export function NoteDocument({ doc, colors, labels, dir = "ltr", onLinkPress, on
 
   const blocks = (nodes: DocNode[], depth: number): React.ReactNode[] => nodes.map((n, i) => block(n, depth, i))
 
+  // A row's marker sits on the side its text starts from: each item takes its
+  // direction from its first strong character, like the web's dir="auto".
+  const rowDirection = (node: DocNode) => (dirOf(textOf(node), dir) === "rtl" ? "row-reverse" : "row");
+
   function listItem(item: DocNode, marker: React.ReactNode, depth: number, key: React.Key) {
+    const rtl = rowDirection(item) === "row-reverse";
     return (
-      <View key={key} style={{ flexDirection: "row", gap: 8 }}>
-        <View style={{ minWidth: 22, alignItems: "flex-end" }}>{marker}</View>
+      <View key={key} testID="note-list-item" style={{ flexDirection: rowDirection(item), gap: 8 }}>
+        <View style={{ minWidth: 22, alignItems: rtl ? "flex-start" : "flex-end" }}>{marker}</View>
         <View style={{ flex: 1, gap: 6 }}>{blocks(item.content ?? [], depth + 1)}</View>
       </View>
     );
@@ -81,12 +86,22 @@ export function NoteDocument({ doc, colors, labels, dir = "ltr", onLinkPress, on
         const level = attrs.level === 2 ? "h2" : attrs.level === 3 ? "h3" : "h1";
         return textBlock(node, level, key, { marginTop: 6 });
       }
-      case "blockquote":
+      case "blockquote": {
+        // Physical sides: the bar goes where the quote's text starts.
+        const rtl = rowDirection(node) === "row-reverse";
         return (
-          <View key={key} style={{ borderStartWidth: 3, borderColor: colors.border, paddingStart: 12, gap: 6 }}>
+          <View
+            key={key}
+            testID="note-quote"
+            style={[
+              { borderColor: colors.border, gap: 6 },
+              rtl ? { borderRightWidth: 3, paddingRight: 12 } : { borderLeftWidth: 3, paddingLeft: 12 },
+            ]}
+          >
             {blocks(node.content ?? [], depth)}
           </View>
         );
+      }
       case "bulletList":
         return (
           <View key={key} style={{ gap: 6 }}>
@@ -126,7 +141,7 @@ export function NoteDocument({ doc, colors, labels, dir = "ltr", onLinkPress, on
                 </View>
               );
               return (
-                <View key={i} style={{ flexDirection: "row", gap: 10, opacity: checked ? 0.6 : 1 }}>
+                <View key={i} testID="note-task-item" style={{ flexDirection: rowDirection(item), gap: 10, opacity: checked ? 0.6 : 1 }}>
                   {box}
                   <View style={{ flex: 1, gap: 6 }}>{blocks(item.content ?? [], depth + 1)}</View>
                 </View>

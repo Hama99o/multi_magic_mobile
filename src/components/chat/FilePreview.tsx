@@ -7,6 +7,7 @@
  * is not always "hand it to the browser":
  *
  * - **an image opens inline**, because that is the whole of looking at it;
+ * - **audio and video play inline** (the owner's voice notes, 2026-11-12);
  * - **anything else offers to open it**, which hands it to whatever on the
  *   device reads that type. Expo Go carries no PDF viewer, so pretending to
  *   render one would be a blank sheet with a spinner.
@@ -16,8 +17,15 @@
  * browser that is not signed in and gets a redirect to the login page. The
  * signed blob path works without a session; anything else is offered as a plain
  * open and says where it is going.
+ *
+ * WHAT the file is comes from its type, asked of the server with one ranged
+ * request (`probeRemoteType`: the Content-Type, or the first bytes when that
+ * says octet-stream). Never the URL's extension: a photo named "IMG_2041" has
+ * none, and the owner renamed files by hand to get them shown (2026-11-12).
  */
-import { Image, Linking, Modal, Pressable, ScrollView, View } from "react-native";
+import { useEffect, useState } from "react";
+import { ActivityIndicator, Image, Linking, Modal, Pressable, ScrollView, View } from "react-native";
+import { useVideoPlayer, VideoView } from "expo-video";
 import { FILL } from "@/theme/fill";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "@/components/icons";
@@ -25,9 +33,42 @@ import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import { mediaKind, type MediaKind } from "@/lib/mediaKind";
+import { probeRemoteType } from "@/lib/probeMimeType";
 import type { AnswerLink } from "./AnswerMarkdown";
 
-const IMAGE = /\.(png|jpe?g|webp|gif|heic|heif)(\?|$)/i;
+type Shown = "probing" | MediaKind | "other";
+
+/** What the file at `url` is, from its type; "probing" until the server says. */
+function useShown(url: string | null): Shown {
+  const [shown, setShown] = useState<{ url: string | null; kind: Shown }>({ url: null, kind: "probing" });
+  useEffect(() => {
+    if (!url) return;
+    let live = true;
+    probeRemoteType(url)
+      .then((type) => live && setShown({ url, kind: mediaKind(type) ?? "other" }))
+      .catch(() => live && setShown({ url, kind: "other" }));
+    return () => {
+      live = false;
+    };
+  }, [url]);
+  return shown.url === url ? shown.kind : "probing";
+}
+
+function InlinePlayer({ uri, kind }: { uri: string; kind: "audio" | "video" }) {
+  const player = useVideoPlayer(uri, (p) => {
+    p.loop = false;
+  });
+  return (
+    <VideoView
+      player={player}
+      nativeControls
+      contentFit="contain"
+      style={{ width: "100%", height: kind === "video" ? 300 : 96 }}
+      testID={`file-preview-${kind}`}
+    />
+  );
+}
 
 export function FilePreview({
   link,
@@ -41,8 +82,9 @@ export function FilePreview({
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
 
+  const shown = useShown(link?.url ?? null);
   if (!link) return null;
-  const isImage = IMAGE.test(link.url);
+  const isImage = shown === "image";
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
@@ -106,6 +148,10 @@ export function FilePreview({
                 testID="file-preview-image"
               />
             </ScrollView>
+          ) : shown === "audio" || shown === "video" ? (
+            <InlinePlayer uri={link.url} kind={shown} />
+          ) : shown === "probing" ? (
+            <ActivityIndicator color={colors.inkMuted} testID="file-preview-probing" />
           ) : (
             <Text tone="muted">{t("files.opensOutside")}</Text>
           )}

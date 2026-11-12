@@ -59,14 +59,16 @@ import {
   type IncomingFile,
   type LastDestination,
 } from "@/stores/uploads.store";
+import { mediaKind } from "@/lib/mediaKind";
 
 const THUMB = 64;
 
 function Thumb({ file }: { file: IncomingFile }) {
   const colors = useColors();
   const metrics = useMetrics();
-  const isImage = (file.mimeType ?? "").startsWith("image/");
-  const isVideo = (file.mimeType ?? "").startsWith("video/");
+  const kind = mediaKind(file.mimeType);
+  const isImage = kind === "image";
+  const isVideo = kind === "video";
   return (
     <View
       style={{

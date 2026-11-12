@@ -4,14 +4,16 @@
  */
 import { Platform } from "react-native";
 import type { PageNode } from "@/api/pages";
+import { mediaKind } from "@/lib/mediaKind";
 
 export type Mode = "page" | "image" | "media" | "text" | "markdown" | "document" | "pdf" | "other";
 
 export function modeFor(node: Pick<PageNode, "kind" | "mimeType" | "title">, os: string = Platform.OS): Mode {
   if (node.kind === "page") return "page";
   const mime = node.mimeType ?? "";
-  if (mime.startsWith("image/")) return "image";
-  if (mime.startsWith("video/") || mime.startsWith("audio/")) return "media";
+  const kind = mediaKind(mime);
+  if (kind === "image") return "image";
+  if (kind === "video" || kind === "audio") return "media";
   if (mime === "text/markdown" || mime === "text/x-markdown" || /\.md$/i.test(node.title)) return "markdown";
   if (mime.startsWith("text/") || mime === "application/json") return "text";
   const document =

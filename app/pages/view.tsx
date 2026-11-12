@@ -19,6 +19,11 @@
  *
  * The node is re-read on open (`GET nodes/:id`), so the signed URL and the
  * html are current, not whatever the list had.
+ *
+ * Which of these it is comes from the file's TYPE, never its title. A file
+ * whose type is missing or octet-stream (stored before the server read types
+ * from the bytes: the owner's "IMG_2041", 2026-11-12) is asked first what its
+ * first bytes say (`probeRemoteType`), and shown as that.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
@@ -41,6 +46,8 @@ import { failureMessage } from "@/api/failure";
 import { shareNode } from "@/screens/pages/ItemSheet";
 import { HeaderButton, NodeGlyph, PagesHeader, metaLine } from "@/screens/pages/parts";
 import { modeFor, pageDocument } from "@/screens/pages/viewerModes";
+import { isUnknownType, mediaKind } from "@/lib/mediaKind";
+import { probeRemoteType } from "@/lib/probeMimeType";
 
 /**
  * Video fills the screen. Audio is a music card with its own controls under
@@ -167,10 +174,30 @@ export default function Viewer() {
   const [sharing, setSharing] = useState(false);
   const [shareError, setShareError] = useState<string | null>(null);
 
-  const { data: node, error, refetch, dataUpdatedAt } = useQuery({
+  const { data: stored, error, refetch, dataUpdatedAt } = useQuery({
     queryKey: ["pages", "node", spaceId, nodeId],
     queryFn: () => pagesApi.node(spaceId, nodeId),
   });
+
+  // A file whose type says nothing: what do its first bytes say?
+  const untyped = stored?.kind === "file" && Boolean(stored.attachmentUrl) && isUnknownType(stored.mimeType);
+  const probe = useQuery({
+    queryKey: ["pages", "probe", stored?.id, stored?.updatedAt],
+    queryFn: async () => {
+      try {
+        return await probeRemoteType(stored!.attachmentUrl!);
+      } catch {
+        return null; // Unreachable now: shown as a file to share, as before.
+      }
+    },
+    enabled: untyped,
+    staleTime: Infinity,
+  });
+  const probing = untyped && probe.isPending;
+  const node = useMemo(
+    () => (stored && untyped && probe.data ? { ...stored, mimeType: probe.data } : stored),
+    [stored, untyped, probe.data],
+  );
 
   useEffect(() => setShareError(null), [nodeId]);
   // A Pages link from an answer can point at a FOLDER (`page_node`,
@@ -196,7 +223,7 @@ export default function Viewer() {
     }
   }, [node, t]);
 
-  const mode = node ? modeFor(node) : null;
+  const mode = node && !probing ? modeFor(node) : null;
 
   // The photos beside this one, in the folder's default order (name), so a
   // swipe goes where Drive's does. Up to 4 pages (100 photos).
@@ -246,6 +273,8 @@ export default function Viewer() {
       />
       {!node ? (
         error ? null : <ActivityIndicator color={colors.inkMuted} style={{ marginTop: metrics.space.xl }} testID="pages-view-loading" />
+      ) : probing ? (
+        <ActivityIndicator color={colors.inkMuted} style={{ marginTop: metrics.space.xl }} testID="pages-view-probing" />
       ) : (
         <View style={{ flex: 1, paddingBottom: metrics.space.md }} testID={`pages-view-${mode}`}>
           {mode === "page" ? (
@@ -273,7 +302,7 @@ export default function Viewer() {
               />
             )
           ) : mode === "media" && node.attachmentUrl ? (
-            <Media uri={node.attachmentUrl} audio={(node.mimeType ?? "").startsWith("audio/")} node={node} />
+            <Media uri={node.attachmentUrl} audio={mediaKind(node.mimeType) === "audio"} node={node} />
           ) : (mode === "text" || mode === "markdown") && node.attachmentUrl ? (
             <TextFile uri={node.attachmentUrl} markdown={mode === "markdown"} />
           ) : mode === "pdf" && node.attachmentUrl ? (

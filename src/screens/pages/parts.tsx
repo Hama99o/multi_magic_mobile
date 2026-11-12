@@ -31,6 +31,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { relativeTime } from "@/lib/relativeTime";
 import type { PageNode } from "@/api/pages";
+import { mediaKind } from "@/lib/mediaKind";
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
 
@@ -62,9 +63,10 @@ export function iconFor(node: Pick<PageNode, "kind" | "mimeType">): LucideIcon {
   if (node.kind === "folder") return Folder;
   if (node.kind === "page") return FileText;
   const mime = node.mimeType ?? "";
-  if (mime.startsWith("image/")) return FileImage;
-  if (mime.startsWith("video/")) return FileVideo;
-  if (mime.startsWith("audio/")) return FileAudio;
+  const kind = mediaKind(mime);
+  if (kind === "image") return FileImage;
+  if (kind === "video") return FileVideo;
+  if (kind === "audio") return FileAudio;
   if (mime.includes("zip") || mime.includes("compressed") || mime.includes("tar")) return FileArchive;
   if (mime.includes("sheet") || mime.includes("excel") || mime === "text/csv") return FileSpreadsheet;
   if (mime === "application/pdf" || mime.startsWith("text/") || mime.includes("word")) return FileText;
@@ -206,7 +208,7 @@ export function PlayBadge({ size, corner = false }: { size: number; corner?: boo
   );
 }
 
-export const isVideo = (node: PageNode): boolean => (node.mimeType ?? "").startsWith("video/");
+export const isVideo = (node: PageNode): boolean => mediaKind(node.mimeType) === "video";
 
 export function NodeGlyph({ node, size = 44 }: { node: PageNode; size?: number }) {
   const colors = useColors();

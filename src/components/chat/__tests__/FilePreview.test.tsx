@@ -27,7 +27,11 @@ import { Linking } from "react-native";
 
 const mockProbe = jest.fn();
 jest.mock("@/lib/probeMimeType", () => ({ probeRemoteType: (url: string) => mockProbe(url) }));
-jest.mock("expo-video", () => ({ useVideoPlayer: () => ({ play: jest.fn(), pause: jest.fn() }), VideoView: () => null }));
+jest.mock("expo-video", () => ({
+  useVideoPlayer: () => ({ play: jest.fn(), pause: jest.fn() }),
+  // The player itself is native; what is checked is that one is put on screen.
+  VideoView: ({ testID }: { testID?: string }) => jest.requireActual("react").createElement(jest.requireActual("react-native").View, { testID }),
+}));
 
 /* eslint-disable import/first */
 import { FilePreview } from "../FilePreview";

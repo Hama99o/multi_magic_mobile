@@ -55,6 +55,7 @@ import { ProfileSheet } from "@/components/settings/ProfileSheet";
 import { useAuthStore } from "@/stores/auth.store";
 import { useUploads } from "@/stores/uploads.store";
 import type { PageNode } from "@/api/pages";
+import { mediaKind } from "@/lib/mediaKind";
 import { PlayBadge, formatBytes } from "../parts";
 
 // ── Type: icon and colour ───────────────────────────────────────────────────
@@ -67,9 +68,8 @@ export function familyOf(node: Pick<PageNode, "kind" | "mimeType" | "title">): F
   const mime = node.mimeType ?? "";
   const name = node.title.toLowerCase();
   if (mime === "application/pdf" || name.endsWith(".pdf")) return "pdf";
-  if (mime.startsWith("image/")) return "image";
-  if (mime.startsWith("video/")) return "video";
-  if (mime.startsWith("audio/")) return "audio";
+  const kind = mediaKind(mime);
+  if (kind) return kind;
   if (mime.includes("spreadsheet") || mime.includes("excel") || mime === "text/csv" || /\.(xlsx?|csv|ods)$/.test(name)) return "sheet";
   if (mime.includes("presentation") || mime.includes("powerpoint") || /\.(pptx?|odp|key)$/.test(name)) return "slides";
   if (mime.includes("word") || mime.includes("opendocument.text") || mime.startsWith("text/") || /\.(docx?|odt|rtf|txt|md)$/.test(name)) return "doc";

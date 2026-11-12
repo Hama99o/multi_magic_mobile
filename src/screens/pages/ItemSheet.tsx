@@ -13,6 +13,7 @@
 import { useCallback, useState } from "react";
 import { ActivityIndicator, Modal, Pressable, TextInput, View } from "react-native";
 import * as Sharing from "expo-sharing";
+import { Directory, File, Paths } from "expo-file-system";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FILL } from "@/theme/fill";
@@ -20,13 +21,33 @@ import { Download, Eye, FolderOpen, type LucideIcon } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { downloadToCache, type PageNode } from "@/api/pages";
+import { downloadToCache, safeFileName, type PageNode } from "@/api/pages";
+import { isUnknownType, withExtension } from "@/lib/mediaKind";
+import { sniffLocalFile } from "@/lib/probeMimeType";
 import { failureMessage } from "@/api/failure";
 import { NodeGlyph, metaLine } from "./parts";
 
+/**
+ * The type is the server's, or what the first bytes say when it says nothing
+ * (octet-stream); the shared file's name carries that type's extension, since
+ * iOS's "Save Image" and Android's apps read it. A title with no extension
+ * ("IMG_2041", the owner, 2026-11-12) is shared as a copy named
+ * "IMG_2041.jpg", in a folder of its own in the cache (the system clears it).
+ */
 export async function shareNode(node: PageNode): Promise<void> {
-  const uri = await downloadToCache(node);
-  await Sharing.shareAsync(uri, { mimeType: node.mimeType ?? undefined, dialogTitle: node.title });
+  const cached = await downloadToCache(node);
+  const mimeType = isUnknownType(node.mimeType) ? (sniffLocalFile(cached) ?? node.mimeType) : node.mimeType;
+  const title = safeFileName(node.title);
+  const name = withExtension(title, mimeType);
+  let uri = cached;
+  if (name !== title) {
+    const folder = new Directory(Paths.cache, `share-${node.id}-${node.updatedAt.replace(/\D/g, "")}`);
+    if (!folder.exists) folder.create();
+    const named = new File(folder, name);
+    if (!named.exists) new File(cached).copy(named);
+    uri = named.uri;
+  }
+  await Sharing.shareAsync(uri, { mimeType: mimeType ?? undefined, dialogTitle: node.title });
 }
 
 function Row({ icon: Icon, label, onPress, testID, busy }: { icon: LucideIcon; label: string; onPress: () => void; testID: string; busy?: boolean }) {

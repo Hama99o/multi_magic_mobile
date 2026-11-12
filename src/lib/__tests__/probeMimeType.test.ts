@@ -15,7 +15,7 @@ function respond(contentType: string | null, body: Uint8Array = new Uint8Array()
   return jest.fn(async (_url: string, _init?: { headers?: Record<string, string> }) => ({
     ok,
     headers: { get: (name: string) => (name.toLowerCase() === "content-type" ? contentType : null) },
-    arrayBuffer: jest.fn(async () => body.buffer.slice(body.byteOffset, body.byteOffset + body.byteLength)),
+    arrayBuffer: jest.fn(async () => Uint8Array.from(body).buffer as ArrayBuffer),
   }));
 }
 

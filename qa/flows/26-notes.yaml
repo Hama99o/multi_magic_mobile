@@ -1,0 +1,243 @@
+# NOTES, the read view (phase 2, 2026-11-12): the Home tile, the list
+# (pinned first, then last edited), and a note drawn natively from the web's
+# stored HTML. docs/design/notes/SPEC.md.
+#
+# Reads the QA account's 23 "[qa-notes]" notes: 20 real dev notes chosen to
+# cover every node and mark, plus emoji/sub/sup, a 2.3.1 image uploader and a
+# Pashto note. Legacy <img>/<iframe>, tables and code show as "view on web"
+# cards; nothing is dropped.
+#
+# It writes nothing.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: the door (Home tile); the list and its pinned section; opening a
+# note; every renderer on real content; the legacy cards; RTL per block; a
+# 914 KB note opening.
+# CANNOT TELL YOU: the colours of a highlight by eye (shots are looked at);
+# "View on web" opening a browser (left to the manual pass); editing (phase 3).
+appId: ${APP_ID}
+tags:
+  - notes
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-notes"
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 30000
+- assertVisible: "\\[qa-notes\\] 01.*"
+- takeScreenshot: reports/26-notes-list
+
+# 02: table, quote, rule
+- scrollUntilVisible:
+    element: "\\[qa-notes\\] 02.*"
+    direction: DOWN
+    timeout: 60000
+- tapOn: "\\[qa-notes\\] 02.*"
+- extendedWaitUntil:
+    visible:
+      id: "note-body"
+    timeout: 60000
+- assertNotVisible:
+    id: "note-load-failed"
+- takeScreenshot: reports/26-notes-02
+- scroll
+- takeScreenshot: reports/26-notes-02-b
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 15000
+
+# 03: to-do list
+- scrollUntilVisible:
+    element: "\\[qa-notes\\] 03.*"
+    direction: DOWN
+    timeout: 60000
+- tapOn: "\\[qa-notes\\] 03.*"
+- extendedWaitUntil:
+    visible:
+      id: "note-body"
+    timeout: 60000
+- assertNotVisible:
+    id: "note-load-failed"
+- takeScreenshot: reports/26-notes-03
+- scroll
+- takeScreenshot: reports/26-notes-03-b
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 15000
+
+# 04: code, h4-h6, rule
+- scrollUntilVisible:
+    element: "\\[qa-notes\\] 04.*"
+    direction: DOWN
+    timeout: 60000
+- tapOn: "\\[qa-notes\\] 04.*"
+- extendedWaitUntil:
+    visible:
+      id: "note-body"
+    timeout: 60000
+- assertNotVisible:
+    id: "note-load-failed"
+- takeScreenshot: reports/26-notes-04
+- scroll
+- takeScreenshot: reports/26-notes-04-b
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 15000
+
+# 05: nested lists, Pashto
+- scrollUntilVisible:
+    element: "\\[qa-notes\\] 05.*"
+    direction: DOWN
+    timeout: 60000
+- tapOn: "\\[qa-notes\\] 05.*"
+- extendedWaitUntil:
+    visible:
+      id: "note-body"
+    timeout: 60000
+- assertNotVisible:
+    id: "note-load-failed"
+- takeScreenshot: reports/26-notes-05
+- scroll
+- takeScreenshot: reports/26-notes-05-b
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 15000
+
+# 06: highlight
+- scrollUntilVisible:
+    element: "\\[qa-notes\\] 06.*"
+    direction: DOWN
+    timeout: 60000
+- tapOn: "\\[qa-notes\\] 06.*"
+- extendedWaitUntil:
+    visible:
+      id: "note-body"
+    timeout: 60000
+- assertNotVisible:
+    id: "note-load-failed"
+- takeScreenshot: reports/26-notes-06
+- scroll
+- takeScreenshot: reports/26-notes-06-b
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 15000
+
+# 07: YouTube iframe
+- scrollUntilVisible:
+    element: "\\[qa-notes\\] 07.*"
+    direction: DOWN
+    timeout: 60000
+- tapOn: "\\[qa-notes\\] 07.*"
+- extendedWaitUntil:
+    visible:
+      id: "note-body"
+    timeout: 60000
+- assertNotVisible:
+    id: "note-load-failed"
+- takeScreenshot: reports/26-notes-07
+- scroll
+- takeScreenshot: reports/26-notes-07-b
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 15000
+
+# 08: the longest dev note, 914 KB
+- scrollUntilVisible:
+    element: "\\[qa-notes\\] 08.*"
+    direction: DOWN
+    timeout: 60000
+- tapOn: "\\[qa-notes\\] 08.*"
+- extendedWaitUntil:
+    visible:
+      id: "note-body"
+    timeout: 60000
+- assertNotVisible:
+    id: "note-load-failed"
+- takeScreenshot: reports/26-notes-08
+- scroll
+- takeScreenshot: reports/26-notes-08-b
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 15000
+
+# 21–23 are the newest, so they sit at the top under Pinned: scroll back UP.
+# 21: emoji, sub/sup, colour
+- scrollUntilVisible:
+    element: "\\[qa-notes\\] 21.*"
+    direction: UP
+    timeout: 60000
+- tapOn: "\\[qa-notes\\] 21.*"
+- extendedWaitUntil:
+    visible:
+      id: "note-body"
+    timeout: 60000
+- assertNotVisible:
+    id: "note-load-failed"
+- takeScreenshot: reports/26-notes-21
+- scroll
+- takeScreenshot: reports/26-notes-21-b
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 15000
+
+# 22: image uploader 2.3.1
+- scrollUntilVisible:
+    element: "\\[qa-notes\\] 22.*"
+    direction: UP
+    timeout: 60000
+- tapOn: "\\[qa-notes\\] 22.*"
+- extendedWaitUntil:
+    visible:
+      id: "note-body"
+    timeout: 60000
+- assertNotVisible:
+    id: "note-load-failed"
+- takeScreenshot: reports/26-notes-22
+- scroll
+- takeScreenshot: reports/26-notes-22-b
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 15000
+
+# 23: Pashto RTL
+- scrollUntilVisible:
+    element: "\\[qa-notes\\] 23.*"
+    direction: UP
+    timeout: 60000
+- tapOn: "\\[qa-notes\\] 23.*"
+- extendedWaitUntil:
+    visible:
+      id: "note-body"
+    timeout: 60000
+- assertNotVisible:
+    id: "note-load-failed"
+- takeScreenshot: reports/26-notes-23
+- scroll
+- takeScreenshot: reports/26-notes-23-b
+- pressKey: Back
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 15000

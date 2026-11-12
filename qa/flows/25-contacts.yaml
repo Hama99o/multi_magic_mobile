@@ -1,0 +1,162 @@
+# CONTACTS — create with two phones and two emails, read back, act, delete,
+# undo, delete for good.
+#
+# Signed in as the QA account (`login.yaml`, `.env`): every contact written
+# here is the QA account's own and the flow removes what it made
+# (`RIG_CONTRACT.md` §3). The name carries "Qa Contactcheck" so a leftover
+# from an interrupted run is recognisable on the web and by the next run.
+#
+# ── FLOW_REGISTER note ──────────────────────────────────────────────────────
+# COVERS: Home → Contacts; the + opens the form; first name typed; a second
+# phone and a second email added; Save opens the new contact's CARD, read back
+# from the server, showing BOTH emails (the owner's second-email bug) and both
+# numbers; the WhatsApp button on a number, which on this emulator (no
+# WhatsApp installed) must SAY so and offer the browser; Delete asks with the
+# name, the list offers Undo, Undo brings it back; delete again, then delete
+# for ever from the Trash — the clean-up.
+#
+# CANNOT TELL YOU:
+#  · the dialer or a WhatsApp chat actually opening: another app's screen.
+#    The device pass checks the dialer by `dumpsys activity` (QA report).
+#  · import from the phone, share-in: the system picker and the share sheet
+#    are other apps' UI — by hand, in the QA report.
+appId: ${APP_ID}
+tags:
+  - people
+  - write
+---
+- runFlow: login.yaml
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
+- tapOn:
+    id: "home-tile-contacts"
+# An empty QA book shows the empty state; a book with rows shows the list.
+- extendedWaitUntil:
+    visible:
+      id: "contacts-title"
+    timeout: 60000
+- takeScreenshot: reports/25-contacts-list
+
+# ── CREATE ────────────────────────────────────────────────────────────────
+- runFlow:
+    when:
+      visible:
+        id: "contacts-empty-new"
+    commands:
+      - tapOn:
+          id: "contacts-empty-new"
+- runFlow:
+    when:
+      visible:
+        id: "contacts-new"
+    commands:
+      - tapOn:
+          id: "contacts-new"
+- extendedWaitUntil:
+    visible:
+      id: "contact-form-firstname"
+    timeout: 30000
+- inputText: "Qa"
+- tapOn:
+    id: "contact-form-lastname"
+- inputText: "Contactcheck"
+- tapOn:
+    id: "contact-form-phones-0"
+- inputText: "0701234567"
+- tapOn:
+    id: "contact-form-add-phones"
+- tapOn:
+    id: "contact-form-phones-1"
+- inputText: "+33639981234"
+- scrollUntilVisible:
+    element:
+      id: "contact-form-emails-0"
+    direction: DOWN
+- tapOn:
+    id: "contact-form-emails-0"
+- inputText: "qa.first@example.test"
+- tapOn:
+    id: "contact-form-add-emails"
+- tapOn:
+    id: "contact-form-emails-1"
+- inputText: "qa.second@example.test"
+- takeScreenshot: reports/25-contacts-form-filled
+- tapOn:
+    id: "contact-form-save"
+
+# READ BACK: the card is the server's answer, not the form.
+- extendedWaitUntil:
+    visible:
+      id: "contact-name"
+    timeout: 30000
+- assertVisible: "Qa Contactcheck"
+- assertVisible: "qa.first@example.test"
+- assertVisible: "qa.second@example.test"
+- assertVisible: "0701234567"
+- assertVisible: "\\+33639981234"
+- takeScreenshot: reports/25-contacts-card
+
+# ── WHATSAPP, NOT INSTALLED ───────────────────────────────────────────────
+- tapOn:
+    id: "contact-phone-0-whatsapp"
+- extendedWaitUntil:
+    visible: "WhatsApp isn’t on this phone"
+    timeout: 15000
+- takeScreenshot: reports/25-contacts-no-whatsapp
+- tapOn: "[Cc][Aa][Nn][Cc][Ee][Ll]"
+
+# ── DELETE, UNDO ──────────────────────────────────────────────────────────
+- scrollUntilVisible:
+    element:
+      id: "contact-delete"
+    direction: DOWN
+- tapOn:
+    id: "contact-delete"
+- assertVisible: "Delete Qa Contactcheck\\?"
+- tapOn: "[Dd][Ee][Ll][Ee][Tt][Ee]"
+- extendedWaitUntil:
+    visible:
+      id: "contacts-undo"
+    timeout: 30000
+- takeScreenshot: reports/25-contacts-undo
+- tapOn:
+    id: "contacts-undo-button"
+- extendedWaitUntil:
+    visible: "Qa Contactcheck"
+    timeout: 30000
+
+# ── CLEAN-UP: delete, then delete for ever from the Trash ─────────────────
+- tapOn: "Qa Contactcheck"
+- extendedWaitUntil:
+    visible:
+      id: "contact-name"
+    timeout: 30000
+- scrollUntilVisible:
+    element:
+      id: "contact-delete"
+    direction: DOWN
+- tapOn:
+    id: "contact-delete"
+- tapOn: "[Dd][Ee][Ll][Ee][Tt][Ee]"
+- extendedWaitUntil:
+    visible:
+      id: "contacts-title"
+    timeout: 30000
+- tapOn:
+    id: "contacts-more"
+- tapOn:
+    id: "contacts-menu-trash"
+- extendedWaitUntil:
+    visible: "Qa Contactcheck"
+    timeout: 30000
+- tapOn: "Delete Qa Contactcheck for ever"
+- assertVisible: "Delete Qa Contactcheck for ever\\?"
+- tapOn: "[Dd][Ee][Ll][Ee][Tt][Ee] [Ff][Oo][Rr] [Ee][Vv][Ee][Rr]"
+- extendedWaitUntil:
+    notVisible: "Qa Contactcheck"
+    timeout: 30000

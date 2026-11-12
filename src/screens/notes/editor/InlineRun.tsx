@@ -12,6 +12,7 @@ import { Text, type TextStyle } from "react-native";
 
 import { EMOJI } from "@/vendor/tiptop-schema/emoji";
 
+import { readableInk } from "./color";
 import type { DocMark, DocNode, EditorColors } from "./types";
 
 /** tiptop's default <mark> background when a highlight has no colour. */
@@ -35,8 +36,12 @@ export function markStyle(mark: DocMark, colors: EditorColors): TextStyle {
       return { color: colors.accent, textDecorationLine: "underline" };
     case "textStyle":
       return typeof attrs.color === "string" && attrs.color ? { color: attrs.color } : {};
-    case "highlight":
-      return { backgroundColor: typeof attrs.color === "string" && attrs.color ? attrs.color : DEFAULT_HIGHLIGHT };
+    case "highlight": {
+      // The web's highlight colours are fixed in both its themes; the text on
+      // them takes the mode's ink or ground, whichever reads better (SPEC §C11).
+      const bg = typeof attrs.color === "string" && attrs.color ? attrs.color : DEFAULT_HIGHLIGHT;
+      return { backgroundColor: bg, color: readableInk(bg, colors.ink, colors.ground) };
+    }
     case "subscript":
       return { fontSize: 11, lineHeight: 16 };
     case "superscript":
@@ -44,6 +49,12 @@ export function markStyle(mark: DocMark, colors: EditorColors): TextStyle {
     default:
       return {};
   }
+}
+
+/** The style of a run of text with these marks. An author's text colour wins over a highlight's ink. */
+export function runStyle(marks: DocMark[], colors: EditorColors): TextStyle {
+  const ordered = [...marks.filter((m) => m.type !== "textStyle"), ...marks.filter((m) => m.type === "textStyle")];
+  return mergeStyles(ordered.map((m) => markStyle(m, colors)));
 }
 
 /** Underline and strike both live in textDecorationLine: combine them. */
@@ -77,7 +88,7 @@ export function InlineRun({ content, colors, onLinkPress, onRawPress, rawLabel }
     <>
       {content.map((node, i) => {
         const marks = node.marks ?? [];
-        const style = mergeStyles(marks.map((m) => markStyle(m, colors)));
+        const style = runStyle(marks, colors);
         const link = marks.find((m) => m.type === "link")?.attrs?.href;
         const onPress = typeof link === "string" && link ? () => onLinkPress(link) : undefined;
         const sub = marks.some((m) => m.type === "subscript");

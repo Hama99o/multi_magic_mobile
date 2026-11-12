@@ -27,7 +27,7 @@ import { File } from "expo-file-system";
 import { useShareIntentContext } from "@/lib/shareIntent";
 import { useAuthStore } from "@/stores/auth.store";
 import { useSharedIntoContacts } from "@/stores/sharedIntoContacts.store";
-import { classifyShare, parseCard } from "@/screens/contacts/shareIn";
+import { classifyShare, parseCard, unknownType } from "@/screens/contacts/shareIn";
 import { splitCards } from "@/screens/contacts/importer";
 import { usePendingImport } from "./addFiles";
 import type { IncomingFile } from "@/stores/uploads.store";
@@ -74,6 +74,37 @@ export function ShareIntentBridge() {
     if (route.kind === "nothing") {
       resetShareIntent();
       if (fromLanding) router.replace("/");
+      return;
+    }
+
+    // A file with no useful type or name may still be a contact card: read
+    // its first bytes before handing it to Pages (device, 2026-11-12).
+    const shared = shareIntent.files ?? [];
+    if (route.kind === "files" && shared.length && shared.every((f) => unknownType({ path: f.path, mimeType: f.mimeType, fileName: f.fileName }))) {
+      const key = `sniff:${shared.map((f) => f.path).join("|")}`;
+      if (handled.current === key) return;
+      handled.current = key;
+      void (async () => {
+        let cards: string[] = [];
+        try {
+          cards = await readCards(shared.map((f) => asFileUri(f.path)));
+        } catch {
+          cards = [];
+        }
+        handled.current = null;
+        if (cards.length) {
+          setShared(cards.length === 1 ? { kind: "card", card: parseCard(cards[0]) } : { kind: "cards", cards });
+          resetShareIntent();
+          go(cards.length === 1 ? { pathname: "/contacts/edit", params: { shared: "1" } } : { pathname: "/contacts/import", params: { shared: "1" } }, fromLanding);
+          return;
+        }
+        // Not a card (or unreadable): Pages, as before.
+        setPending(shared.map((file) => ({ uri: asFileUri(file.path), name: file.fileName ?? null, mimeType: file.mimeType ?? null, size: typeof file.size === "number" ? file.size : null })), () => {
+          handled.current = null;
+          resetShareIntent();
+        });
+        if (where.current !== "/pages/save") go("/pages/save", fromLanding);
+      })();
       return;
     }
 

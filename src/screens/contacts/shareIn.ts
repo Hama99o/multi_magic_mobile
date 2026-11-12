@@ -33,6 +33,20 @@ export function isVcardFile(f: SharedFile): boolean {
   return VCARD_TYPES.test(f.mimeType ?? "") || /\.vcf$/i.test(f.fileName ?? f.path);
 }
 
+const GENERIC_TYPES = /^(application\/octet-stream|\*\/\*|application\/unknown)?$/i;
+
+/** A file the sharing app described with nothing useful: a generic type and
+ *  a name with no extension (seen on the device: a content URI named
+ *  "1000000058", `application/octet-stream`). Only its bytes can say. */
+export function unknownType(f: SharedFile): boolean {
+  return GENERIC_TYPES.test(f.mimeType ?? "") && !/\.[a-z0-9]{2,5}$/i.test(f.fileName ?? f.path);
+}
+
+/** The first bytes of a vCard, whatever the case, after a BOM and blanks. */
+export function looksLikeVcard(head: string): boolean {
+  return /^BEGIN:VCARD/i.test(head.replace(/^\uFEFF/, "").trimStart());
+}
+
 function asUri(path: string): string {
   return /^[a-z]+:\/\//i.test(path) ? path : `file://${path}`;
 }

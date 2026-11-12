@@ -4,7 +4,7 @@
  * holding a number or an email → "add as a contact", files → Pages, and
  * plain text with neither → nowhere (never dumped into Pages).
  */
-import { classifyShare, detectContactBits, mergeInto, parseCard, sameContact } from "../shareIn";
+import { classifyShare, detectContactBits, looksLikeVcard, mergeInto, parseCard, sameContact, unknownType } from "../shareIn";
 
 const card = (body: string) => `BEGIN:VCARD\r\nVERSION:3.0\r\n${body}END:VCARD\r\n`;
 
@@ -129,5 +129,20 @@ describe("mergeInto", () => {
       phones: [{ label: "mobile", value: "+93 70 123 4567" }, { label: "work", value: "020 555 1234" }],
       emails: [{ label: "home", value: "a@x.test" }, { label: "work", value: "b@x.test" }],
     });
+  });
+});
+
+describe("a file shared with no useful type (seen on the device, 2026-11-12)", () => {
+  it("is 'unknown' when the type is generic AND the name has no known extension", () => {
+    expect(unknownType({ path: "content://x/1000000058", mimeType: "application/octet-stream", fileName: "1000000058" })).toBe(true);
+    expect(unknownType({ path: "content://x/1", mimeType: null, fileName: null })).toBe(true);
+    expect(unknownType({ path: "/tmp/a.jpg", mimeType: "application/octet-stream", fileName: "a.jpg" })).toBe(false);
+    expect(unknownType({ path: "/tmp/a", mimeType: "image/jpeg", fileName: "a" })).toBe(false);
+  });
+
+  it("is a vCard when its first bytes say so", () => {
+    expect(looksLikeVcard("\uFEFF  BEGIN:VCARD\r\nFN:A")).toBe(true);
+    expect(looksLikeVcard("begin:vcard")).toBe(true);
+    expect(looksLikeVcard("%PDF-1.7")).toBe(false);
   });
 });

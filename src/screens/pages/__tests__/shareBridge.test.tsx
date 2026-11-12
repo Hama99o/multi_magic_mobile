@@ -114,3 +114,18 @@ it("waits while signed out, then acts", async () => {
   view.rerender(<ShareIntentBridge />);
   await waitFor(() => expect(router.push).toHaveBeenCalledWith("/contacts/shared"));
 });
+
+it("a file with NO useful type that holds a vCard still goes to Contacts (device, 2026-11-12)", async () => {
+  fs.__files.set("content://media/external/file/1000000058", card("Zoe"));
+  mockIntent.current = { files: [{ path: "content://media/external/file/1000000058", mimeType: "application/octet-stream", fileName: "1000000058" }], text: null };
+  render(<ShareIntentBridge />);
+  await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: "/contacts/edit", params: { shared: "1" } }));
+  expect(router.push).not.toHaveBeenCalledWith("/pages/save");
+});
+
+it("a file with no useful type that is NOT a vCard still goes to Pages", async () => {
+  fs.__files.set("content://media/external/file/77", "%PDF-1.7 binary");
+  mockIntent.current = { files: [{ path: "content://media/external/file/77", mimeType: "application/octet-stream", fileName: "77" }], text: null };
+  render(<ShareIntentBridge />);
+  await waitFor(() => expect(router.push).toHaveBeenCalledWith("/pages/save"));
+});

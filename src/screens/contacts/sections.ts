@@ -67,3 +67,11 @@ export function initials(c: Pick<Contact, "firstname" | "lastname" | "nickname" 
     .join("");
   return letters || "?";
 }
+
+/** The line under the name — never the name again: a card imported with no
+ *  name is named after its number, and its row read "+93 71…, +93 71…"
+ *  (device, 2026-11-12). */
+export function subtitleOf(c: Contact): string {
+  const line = [c.jobTitle, c.company].filter(Boolean).join(" · ") || c.phones[0]?.value || c.emails[0]?.value || "";
+  return line === displayName(c) ? "" : line;
+}

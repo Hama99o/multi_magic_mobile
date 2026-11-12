@@ -34,7 +34,7 @@ import { failureMessage } from "@/api/failure";
 import { ContactAvatar } from "@/screens/contacts/ContactAvatar";
 import { ActionSheet, type SheetAction } from "@/screens/contacts/ActionSheet";
 import { AzIndex } from "@/screens/contacts/AzIndex";
-import { FAVOURITES, sectionsOf, type Section } from "@/screens/contacts/sections";
+import { FAVOURITES, sectionsOf, subtitleOf, type Section } from "@/screens/contacts/sections";
 import { useContactActions } from "@/screens/contacts/useContactActions";
 import { COUNTRIES, countryByCode } from "@/screens/contacts/phone";
 import { useContactsUndo } from "@/stores/contactsUndo.store";
@@ -65,9 +65,6 @@ function layoutOf(sections: Section[]) {
   return out;
 }
 
-function subtitleOf(c: Contact): string {
-  return [c.jobTitle, c.company].filter(Boolean).join(" · ") || c.phones[0]?.value || c.emails[0]?.value || "";
-}
 
 export default function Contacts() {
   const colors = useColors();

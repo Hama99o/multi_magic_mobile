@@ -3,7 +3,7 @@
  * sorted the way a person scans — accents and case ignored, first name then
  * last name.
  */
-import { sectionsOf, sortKey, letterOf, initials } from "../sections";
+import { sectionsOf, sortKey, letterOf, initials, subtitleOf } from "../sections";
 import type { Contact } from "@/api/contacts";
 
 function c(id: number, firstname: string, lastname = "", favorite = false): Contact {
@@ -77,5 +77,16 @@ describe("initials", () => {
     [c(1, ""), "?"],
   ])("%o → %s", (contact, expected) => {
     expect(initials(contact)).toBe(expected);
+  });
+});
+
+describe("subtitleOf", () => {
+  it("is the job and company, else the first number", () => {
+    expect(subtitleOf({ ...c(1, "Ali"), jobTitle: "Driver", company: "Acme" })).toBe("Driver · Acme");
+    expect(subtitleOf({ ...c(1, "Ali"), phones: [{ label: "mobile", value: "0700" }] })).toBe("0700");
+  });
+
+  it("never repeats the name (a card named after its number)", () => {
+    expect(subtitleOf({ ...c(1, "+93 71 999 326"), phones: [{ label: "mobile", value: "+93 71 999 326" }] })).toBe("");
   });
 });

@@ -9,6 +9,7 @@
  *   explains why): a binary built before expo-contacts was added has no
  *   native side, and must show "update the app", not lose the route.
  */
+import { Platform } from "react-native";
 import type { PhoneContact } from "./vcard";
 
 type Access = "all" | "limited" | "denied";
@@ -31,11 +32,27 @@ try {
   native = null;
 }
 
-/** What `toVcard` reads. */
-export const FIELDS = [
-  "givenName", "middleName", "familyName", "nickname", "company", "jobTitle", "note", "birthday",
+/** What `toVcard` reads — per platform. Android's native `ContactField` has
+ *  no "birthday" (the TypeScript types do): asking for it rejected the whole
+ *  read on a device, 2026-11-12. On Android a birthday is a date labelled
+ *  "birthday" (`EventLabelMapper.kt`), so Android asks for "dates". */
+const COMMON = [
+  "givenName", "middleName", "familyName", "nickname", "company", "jobTitle", "note",
   "phones", "emails", "addresses", "urlAddresses",
 ] as const;
+
+export function fieldsFor(os: string): readonly string[] {
+  return os === "android" ? [...COMMON, "dates"] : [...COMMON, "birthday"];
+}
+
+type ContactDate = { year?: number; month: number; day: number };
+
+export function birthdayFromDates(dates: unknown): ContactDate | null {
+  if (!Array.isArray(dates)) return null;
+  const hit = dates.find((d) => /birthday/i.test(String((d as { label?: unknown })?.label ?? "")));
+  const date = (hit as { date?: ContactDate } | undefined)?.date;
+  return date && date.month && date.day ? date : null;
+}
 
 export class PhoneBookUnavailable extends Error {
   constructor() {
@@ -51,7 +68,8 @@ function need(): ContactsModule {
 
 function asPhoneContact(raw: Record<string, unknown>, fallbackId: string): PhoneContact {
   const id = typeof raw.id === "string" && raw.id ? raw.id : fallbackId;
-  return { ...(raw as Omit<PhoneContact, "id">), id };
+  const birthday = (raw.birthday as ContactDate | null | undefined) ?? birthdayFromDates(raw.dates);
+  return { ...(raw as Omit<PhoneContact, "id">), id, ...(birthday ? { birthday } : {}) };
 }
 
 export const phoneBook = {
@@ -76,12 +94,12 @@ export const phoneBook = {
   pickOne: async (): Promise<PhoneContact | null> => {
     const picked = await need().Contact.presentPicker();
     if (!picked) return null;
-    const details = await picked.getDetails(FIELDS);
+    const details = await picked.getDetails(fieldsFor(Platform.OS));
     return asPhoneContact({ ...details, id: picked.id }, picked.id);
   },
 
   readAll: async (): Promise<PhoneContact[]> => {
-    const rows = await need().Contact.getAllDetails(FIELDS);
+    const rows = await need().Contact.getAllDetails(fieldsFor(Platform.OS));
     return rows.map((row, i) => asPhoneContact(row, `phone-${i}`));
   },
 

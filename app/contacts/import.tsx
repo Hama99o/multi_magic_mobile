@@ -48,8 +48,11 @@ export default function ImportContacts() {
   const [filter, setFilter] = useState("");
   const [showNames, setShowNames] = useState(false);
 
-  const fail = (e: unknown) =>
+  const fail = (e: unknown) => {
+    // The sentence the person sees is generic; the cause goes to the dev log.
+    if (__DEV__) console.warn("[contacts-import]", e instanceof Error ? `${e.name}: ${e.message} / cause: ${String((e as { cause?: unknown }).cause ?? "")} / ${String((e as { code?: unknown }).code ?? "")}` : e);
     setStage({ kind: "choose", note: e instanceof PhoneBookUnavailable ? t("contacts.phone.unavailable") : failureMessage(e, t("contacts.import.failed")) });
+  };
 
   const send = async (cards: string[], resume?: Extract<ImportOutcome, { status: "stopped" }>) => {
     if (!cards.length) {

@@ -3,7 +3,8 @@
  * asked at the tap, never at launch; denied and iOS 18 "limited" each said;
  * and a binary built before expo-contacts existed renders a sentence, not a crash.
  */
-import { phoneBook } from "../phoneBook";
+import { Platform } from "react-native";
+import { phoneBook, fieldsFor, birthdayFromDates } from "../phoneBook";
 
 jest.mock("expo-contacts", () => ({
   Contact: { presentPicker: jest.fn(), getAllDetails: jest.fn(), presentCreateForm: jest.fn(), presentAccessPicker: jest.fn() },
@@ -56,7 +57,7 @@ describe("reading", () => {
     mockContact.getAllDetails.mockResolvedValueOnce([{ id: "1", givenName: "A" }, { givenName: "no id" }]);
     const all = await phoneBook.readAll();
     expect(all).toEqual([{ id: "1", givenName: "A" }, { id: "phone-1", givenName: "no id" }]);
-    expect(mockContact.getAllDetails.mock.calls[0][0]).toEqual(expect.arrayContaining(["givenName", "familyName", "phones", "emails", "addresses", "birthday", "note"]));
+    expect(mockContact.getAllDetails.mock.calls[0][0]).toEqual(expect.arrayContaining(["givenName", "familyName", "phones", "emails", "addresses", "note"]));
   });
 });
 
@@ -72,5 +73,36 @@ describe("saving to the phone", () => {
       givenName: "Jamil", familyName: "Safi", company: "Acme", jobTitle: "Driver", note: "n",
       phones: [{ label: "mobile", number: "0700" }], emails: [{ label: "work", address: "j@w.test" }],
     });
+  });
+});
+
+describe("the fields asked for, per platform (device, 2026-11-12)", () => {
+  // Android's native ContactField has no "birthday": asking for it rejected
+  // the whole read ("Couldn't convert 'birthday' to ContactField"), and
+  // "Choose from this phone" failed every time. Birthdays come in "dates".
+  it("Android asks for dates, never birthday", () => {
+    const f = fieldsFor("android");
+    expect(f).toContain("dates");
+    expect(f).not.toContain("birthday");
+  });
+
+  it("iOS asks for birthday", () => {
+    expect(fieldsFor("ios")).toContain("birthday");
+  });
+
+  it("reads an Android birthday out of the dates", () => {
+    expect(birthdayFromDates([{ label: "anniversary", date: { year: 2010, month: 6, day: 1 } }, { label: "birthday", date: { year: 1990, month: 4, day: 5 } }]))
+      .toEqual({ year: 1990, month: 4, day: 5 });
+    expect(birthdayFromDates([])).toBeNull();
+  });
+
+  it("reads the whole book on Android with dates, and fills birthday from them", async () => {
+    const original = Platform.OS;
+    Object.defineProperty(Platform, "OS", { value: "android", configurable: true });
+    mockContact.getAllDetails.mockResolvedValueOnce([{ id: "1", givenName: "A", dates: [{ label: "birthday", date: { year: 1990, month: 4, day: 5 } }] }]);
+    const [one] = await phoneBook.readAll();
+    expect(mockContact.getAllDetails.mock.calls.at(-1)?.[0]).not.toContain("birthday");
+    expect(one.birthday).toEqual({ year: 1990, month: 4, day: 5 });
+    Object.defineProperty(Platform, "OS", { value: original, configurable: true });
   });
 });

@@ -50,6 +50,16 @@ describe("rawInfo", () => {
   it("a YouTube embed leads to the watch page", () => {
     expect(rawInfo("iframe", '<iframe src="https://www.youtube.com/embed/abc123XYZ"></iframe>')).toEqual({ kind: "embed", url: "https://www.youtube.com/watch?v=abc123XYZ" });
   });
+  // Device QA 2026-11-12: real dev notes hold pictures pasted as data URIs;
+  // they showed as "content the phone cannot show". A raster data image is
+  // safe to draw; anything else stays a card.
+  it("draws a legacy image embedded as a raster data URI", () => {
+    const uri = "data:image/png;base64,iVBORw0KGgo=";
+    expect(rawInfo("img", `<img src="${uri}">`)).toEqual({ kind: "legacyImage", imageUri: uri });
+    expect(rawInfo("img", '<img src="data:image/jpeg;base64,/9j/4AAQ">').kind).toBe("legacyImage");
+    expect(rawInfo("img", '<img src="data:image/svg+xml;base64,PHN2Zz4=">')).toEqual({ kind: "unknown" });
+    expect(rawInfo("img", '<img src="data:text/html;base64,PHA+">')).toEqual({ kind: "unknown" });
+  });
   it("never opens a non-http source", () => {
     expect(rawInfo("img", '<img src="javascript:alert(1)">')).toEqual({ kind: "unknown" });
     expect(rawInfo("iframe", "<iframe src=\"data:text/html,x\"></iframe>")).toEqual({ kind: "embed", url: undefined });

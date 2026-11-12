@@ -7,7 +7,7 @@
  * Props only (SPEC §E): the screen passes the document, colours, strings and
  * callbacks.
  */
-import React from "react";
+import React, { useState } from "react";
 import { Text, View, type TextStyle } from "react-native";
 import { Image } from "expo-image";
 
@@ -192,15 +192,7 @@ export function NoteDocument({ doc, colors, labels, dir = "ltr", onLinkPress, on
             </View>
           );
         }
-        return (
-          <Image
-            key={key}
-            source={{ uri: src }}
-            accessibilityIgnoresInvertColors
-            style={{ width: "100%", aspectRatio: 4 / 3, borderRadius: 12, backgroundColor: colors.surface }}
-            contentFit="contain"
-          />
-        );
+        return <NoteImage key={key} src={src} colors={colors} unavailable={labels.imageUnavailable} />;
       }
       case "rawBlock": {
         const html = String(attrs.html ?? "");
@@ -235,4 +227,26 @@ export function NoteDocument({ doc, colors, labels, dir = "ltr", onLinkPress, on
   }
 
   return <View style={{ gap: 12 }}>{blocks(doc.content ?? [], 0)}</View>;
+}
+
+/** An uploaded picture; a load failure (server copy gone) says so instead of a blank box. */
+function NoteImage({ src, colors, unavailable }: { src: string; colors: EditorColors; unavailable: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <View style={{ borderRadius: 12, borderWidth: 1, borderColor: colors.border, padding: 16 }}>
+        <Text style={{ color: colors.inkMuted }}>{unavailable}</Text>
+      </View>
+    );
+  }
+  return (
+    <Image
+      testID="note-image"
+      source={{ uri: src }}
+      accessibilityIgnoresInvertColors
+      style={{ width: "100%", aspectRatio: 4 / 3, borderRadius: 12, backgroundColor: colors.surface }}
+      contentFit="contain"
+      onError={() => setFailed(true)}
+    />
+  );
 }

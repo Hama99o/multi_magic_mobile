@@ -30,6 +30,10 @@ function attr(html: string, name: string): string | null {
 /** Only http(s) URLs are shown or opened. */
 const httpUrl = (url: string | null): string | null => (url && /^https?:\/\//i.test(url) ? url : null);
 
+/** A raster picture inlined as a data URI (pasted into old notes). SVG is not drawn. */
+const dataImage = (url: string | null): string | null =>
+  url && /^data:image\/(png|jpe?g|gif|webp);base64,/i.test(url) ? url : null;
+
 export interface RawInfo {
   kind: "legacyImage" | "embed" | "unknown";
   imageUri?: string;
@@ -42,7 +46,8 @@ const YOUTUBE_EMBED = /^https?:\/\/(?:www\.)?youtube(?:-nocookie)?\.com\/embed\/
 /** What a raw element is, from its tag and markup. */
 export function rawInfo(tag: string, html: string): RawInfo {
   if (tag === "img" || tag === "picture") {
-    const src = httpUrl(attr(html, "src"));
+    const raw = attr(html, "src");
+    const src = httpUrl(raw) ?? dataImage(raw);
     return src ? { kind: "legacyImage", imageUri: src } : { kind: "unknown" };
   }
   if (tag === "iframe" || tag === "video" || tag === "embed" || tag === "object" || tag === "audio") {

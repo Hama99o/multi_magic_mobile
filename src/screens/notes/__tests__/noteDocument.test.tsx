@@ -7,12 +7,20 @@
  */
 import React from "react";
 import { StyleSheet } from "react-native";
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { act, fireEvent, render, screen } from "@testing-library/react-native";
 
 import { TOKENS } from "@/theme/tokens";
 import { NoteDocument } from "../editor/NoteDocument";
 import type { DocNode, EditorLabels } from "../editor/types";
 import { parseNoteHtml } from "../document";
+
+// expo-image's native view has no host component under Jest: a plain View
+// with the same props, so a test can fire its onError.
+jest.mock("expo-image", () => {
+  const { View } = jest.requireActual("react-native");
+  const ReactActual = jest.requireActual("react");
+  return { Image: (props: Record<string, unknown>) => ReactActual.createElement(View, props) };
+});
 
 const labels: EditorLabels = {
   viewOnWeb: "View on web",
@@ -115,5 +123,12 @@ describe("NoteDocument", () => {
     const quote = StyleSheet.flatten(screen.getByTestId("note-quote").props.style);
     expect(quote.borderRightWidth).toBe(3);
     expect(quote.borderLeftWidth ?? 0).toBe(0);
+  });
+
+  // Device QA 2026-11-12: an image whose server copy is gone drew a blank box.
+  it("says the image is unavailable when it fails to load", () => {
+    renderDoc('<div data-type="image-uploader" src="https://example.com/gone.png" uploading="false"></div>');
+    act(() => screen.getByTestId("note-image").props.onError({ error: "404" }));
+    expect(screen.getByText("No image")).toBeTruthy();
   });
 });

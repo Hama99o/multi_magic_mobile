@@ -80,6 +80,11 @@ tags:
 - tapOn:
     id: "contact-form-emails-0"
 - inputText: "qa.first@example.test"
+# The keyboard is up and covers the rows under the field (seen 2026-11-12).
+- scrollUntilVisible:
+    element:
+      id: "contact-form-add-emails"
+    direction: DOWN
 - tapOn:
     id: "contact-form-add-emails"
 - tapOn:
@@ -104,6 +109,14 @@ tags:
 # ── WHATSAPP, NOT INSTALLED ───────────────────────────────────────────────
 - tapOn:
     id: "contact-phone-0-whatsapp"
+# The emulator's region is US (no trunk 0), so a national 07… number has no
+# country: the app ASKS rather than guess (SPEC §C.4). Afghanistan, and it
+# becomes the default for the next local number.
+- extendedWaitUntil:
+    visible: "Which country is this number in\\?"
+    timeout: 15000
+- takeScreenshot: reports/25-contacts-which-country
+- tapOn: "Afghanistan \\(\\+93\\)"
 - extendedWaitUntil:
     visible: "WhatsApp isn’t on this phone"
     timeout: 15000

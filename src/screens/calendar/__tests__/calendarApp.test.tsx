@@ -287,6 +287,11 @@ describe("a new event", () => {
   });
 
   it("the time wheel sets the start, and the end follows it (24 h in French)", async () => {
+    // A new event starts at the next full hour from NOW, and the end only
+    // follows a start that passes it (the web's rule). So "14:00 → 15:00"
+    // held only before 13:00 — red on main every afternoon (2026-11-12).
+    // The clock is pinned to 09:00; only Date is faked, not the timers.
+    jest.useFakeTimers({ now: new Date(2026, 10, 12, 9, 0), doNotFake: ["setTimeout", "clearTimeout", "setInterval", "clearInterval", "setImmediate", "clearImmediate", "queueMicrotask", "nextTick", "requestAnimationFrame", "cancelAnimationFrame", "requestIdleCallback", "cancelIdleCallback", "performance", "hrtime"] });
     await i18n.changeLanguage("fr");
     renderScreen(<EditEvent />);
     fireEvent.press(screen.getByTestId("when-start-time"));
@@ -295,6 +300,7 @@ describe("a new event", () => {
     expect(screen.getByTestId("when-end-time")).toHaveTextContent("15:00");
     // French has no AM/PM column.
     expect(screen.queryByTestId("when-start-wheel-period")).toBeNull();
+    jest.useRealTimers();
   });
 
   it("in English the wheel has an AM/PM column, and PM means the afternoon", async () => {

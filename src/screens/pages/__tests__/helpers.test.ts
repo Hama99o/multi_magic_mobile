@@ -56,8 +56,8 @@ describe("asFileUri — the extension hands over paths, the uploader wants uris"
 });
 
 describe("redirectSystemPath — the share extension's link is not a route", () => {
-  it("sends the extension's link to Save to Pages", () => {
-    expect(redirectSystemPath({ path: "multimagic://dataUrl=multimagicShareKey#media", initial: true })).toBe("/pages/save");
+  it("sends the extension's link to the share landing, which routes it (Contacts or Pages)", () => {
+    expect(redirectSystemPath({ path: "multimagic://dataUrl=multimagicShareKey#media", initial: true })).toBe("/share");
   });
   it("leaves every other link where it was going", () => {
     expect(redirectSystemPath({ path: "/chat", initial: false })).toBe("/chat");

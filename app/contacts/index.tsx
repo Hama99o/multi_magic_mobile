@@ -34,11 +34,12 @@ import { failureMessage } from "@/api/failure";
 import { ContactAvatar } from "@/screens/contacts/ContactAvatar";
 import { ActionSheet, type SheetAction } from "@/screens/contacts/ActionSheet";
 import { AzIndex } from "@/screens/contacts/AzIndex";
-import { FAVOURITES, sectionsOf, sortKey, type Section } from "@/screens/contacts/sections";
+import { FAVOURITES, sectionsOf, type Section } from "@/screens/contacts/sections";
 import { useContactActions } from "@/screens/contacts/useContactActions";
 import { COUNTRIES, countryByCode } from "@/screens/contacts/phone";
 import { useContactsUndo } from "@/stores/contactsUndo.store";
 import { useContactsCountry } from "@/stores/contactsCountry.store";
+import { localMatch } from "@/screens/contacts/search";
 
 const ROW = 64;
 const HEADER = 32;
@@ -62,20 +63,6 @@ function layoutOf(sections: Section[]) {
     out.push({ length: 0, offset });
   }
   return out;
-}
-
-function fold(value: string): string {
-  return value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
-}
-
-/** The instant answer while the server's search runs: names, and numbers by digits. */
-export function localMatch(contact: Contact, term: string): boolean {
-  const q = fold(term.trim());
-  if (!q) return true;
-  if (sortKey(contact).includes(q) || fold(contact.company ?? "").includes(q)) return true;
-  const digits = q.replace(/\D/g, "");
-  if (digits.length >= 3 && contact.phones.some((p) => p.value.replace(/\D/g, "").includes(digits))) return true;
-  return contact.emails.some((e) => e.value.toLowerCase().includes(q));
 }
 
 function subtitleOf(c: Contact): string {

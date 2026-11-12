@@ -86,7 +86,8 @@
           "iosActivationRules": {
             "NSExtensionActivationSupportsImageWithMaxCount": 100,
             "NSExtensionActivationSupportsMovieWithMaxCount": 100,
-            "NSExtensionActivationSupportsFileWithMaxCount": 100
+            "NSExtensionActivationSupportsFileWithMaxCount": 100,
+            "NSExtensionActivationSupportsText": true
           },
           "androidIntentFilters": [
             "*/*"

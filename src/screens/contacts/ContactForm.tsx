@@ -46,6 +46,7 @@ export function ContactForm({
   contactId,
   onPickPhoto,
   onRemovePhoto,
+  notice,
 }: {
   mode: "create" | "edit";
   draft: Draft;
@@ -59,6 +60,8 @@ export function ContactForm({
   contactId: number;
   onPickPhoto: (from: "camera" | "library") => void;
   onRemovePhoto: () => void;
+  /** Above the form, under the header: e.g. "already in your contacts". */
+  notice?: ReactNode;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -208,6 +211,8 @@ export function ContactForm({
           {`${t("contacts.form.notSaved")} ${saveError}`}
         </Text>
       ) : null}
+
+      {notice}
 
       <ScrollView testID="contact-form" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingBottom: metrics.space.xl * 3 }}>
         <View style={{ alignItems: "center", paddingVertical: metrics.space.md }}>

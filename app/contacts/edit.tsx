@@ -13,7 +13,7 @@
  *   undo a save that worked.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, View } from "react-native";
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -21,10 +21,44 @@ import * as ImagePicker from "expo-image-picker";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
-import { contactsApi } from "@/api/contacts";
+import { File, Paths } from "expo-file-system";
+import { useColors, useMetrics } from "@/hooks/useColors";
+import { contactsApi, displayName } from "@/api/contacts";
 import { failureMessage } from "@/api/failure";
 import { ContactForm, type PhotoChange } from "@/screens/contacts/ContactForm";
 import { draftFrom, emptyDraft, isDirty, toPayload, type Draft } from "@/screens/contacts/draft";
+import { mergeInto, sameContact, type ParsedCard } from "@/screens/contacts/shareIn";
+import { useSharedIntoContacts } from "@/stores/sharedIntoContacts.store";
+
+/** A card shared from another app → the form's draft. */
+function draftFromCard(card: ParsedCard): Draft {
+  const base = emptyDraft();
+  return {
+    ...base,
+    firstname: card.firstname, lastname: card.lastname, nickname: card.nickname, company: card.company,
+    jobTitle: card.jobTitle, website: card.website, notes: card.notes, birthDate: card.birthDate,
+    phones: card.phones.length ? card.phones : base.phones,
+    emails: card.emails.length ? card.emails : base.emails,
+    addresses: card.addresses,
+  };
+}
+
+/** The card's inline photo, written to the cache so it uploads like a picked one. */
+function photoFromCard(card: ParsedCard): PhotoChange {
+  if (!card.photo || typeof globalThis.atob !== "function") return null;
+  try {
+    const raw = globalThis.atob(card.photo.base64.replace(/\s+/g, ""));
+    const bytes = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i);
+    const ext = card.photo.mimeType.split("/")[1] ?? "jpg";
+    const file = new File(Paths.cache, `shared-contact-${Date.now()}.${ext}`);
+    file.create();
+    file.write(bytes);
+    return { kind: "set", uri: file.uri, name: `photo.${ext}`, mimeType: card.photo.mimeType };
+  } catch {
+    return null;
+  }
+}
 
 function parseId(raw: string | undefined): number | null {
   return raw && /^\d+$/.test(raw) ? Number(raw) : null;
@@ -32,8 +66,16 @@ function parseId(raw: string | undefined): number | null {
 
 export default function EditContact() {
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useLocalSearchParams<{ id?: string; shared?: string }>();
   const contactId = parseId(params.id);
+  const colors = useColors();
+  const metrics = useMetrics();
+  // A card shared from another app, taken once (`ShareIntentBridge`).
+  const [shared] = useState<ParsedCard | null>(() => {
+    if (params.shared !== "1" || contactId != null) return null;
+    const pending = useSharedIntoContacts.getState().take();
+    return pending?.kind === "card" ? pending.card : null;
+  });
   const queryClient = useQueryClient();
   const navigation = useNavigation();
 
@@ -44,12 +86,34 @@ export default function EditContact() {
   });
 
   const [initial, setInitial] = useState<Draft | null>(() => (contactId == null ? emptyDraft() : null));
-  const [draft, setDraft] = useState<Draft | null>(initial);
-  const [photo, setPhoto] = useState<PhotoChange>(null);
+  const [draft, setDraft] = useState<Draft | null>(() => (shared ? draftFromCard(shared) : initial));
+  const [photo, setPhoto] = useState<PhotoChange>(() => (shared ? photoFromCard(shared) : null));
+
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const inFlight = useRef(false);
   const leaving = useRef(false);
+
+  // Someone already in the book with one of these numbers or emails?
+  const book = useQuery({ queryKey: ["contacts", "list"], queryFn: contactsApi.list, enabled: shared != null });
+  const twin = shared && draft && book.data ? sameContact(toPayload(draft), book.data) : null;
+  const [merging, setMerging] = useState(false);
+  const mergeIntoTwin = async () => {
+    if (!twin || !draft || merging) return;
+    setMerging(true);
+    setSaveError(null);
+    try {
+      const merged = mergeInto(twin, toPayload(draft));
+      await contactsApi.update(twin.id, merged);
+      await queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      leaving.current = true;
+      router.replace({ pathname: "/contacts/contact", params: { id: String(twin.id) } });
+    } catch (e) {
+      setSaveError(failureMessage(e, t("contacts.form.saveFailed")));
+    } finally {
+      setMerging(false);
+    }
+  };
 
   // Filled ONCE from the full view: a background refetch must not throw away
   // what is being typed.
@@ -163,6 +227,34 @@ export default function EditContact() {
         contactId={contactId ?? 0}
         onPickPhoto={(from) => void pickPhoto(from)}
         onRemovePhoto={() => setPhoto({ kind: "remove" })}
+        notice={
+          twin ? (
+            <View testID="contact-form-duplicate" accessibilityLiveRegion="polite" style={{ gap: metrics.space.sm, padding: metrics.space.md, marginBottom: metrics.space.sm, borderRadius: metrics.radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.accent }}>
+              <Text>{t("contacts.share.alreadyThere", { name: displayName(twin) || t("contacts.noName") })}</Text>
+              <View style={{ flexDirection: "row", flexWrap: "wrap", gap: metrics.space.md }}>
+                <Pressable testID="contact-form-merge" onPress={() => void mergeIntoTwin()} disabled={merging} accessibilityRole="button" accessibilityLabel={t("contacts.share.addTo", { name: displayName(twin) })} style={{ minHeight: 40, justifyContent: "center" }}>
+                  <Text tone="accent" variant="label">
+                    {merging ? t("common.saving") : t("contacts.share.addTo", { name: displayName(twin) })}
+                  </Text>
+                </Pressable>
+                <Pressable
+                  testID="contact-form-open-twin"
+                  onPress={() => {
+                    leaving.current = true;
+                    router.replace({ pathname: "/contacts/contact", params: { id: String(twin.id) } });
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("contacts.share.open", { name: displayName(twin) })}
+                  style={{ minHeight: 40, justifyContent: "center" }}
+                >
+                  <Text tone="accent" variant="label">
+                    {t("contacts.share.open", { name: displayName(twin) })}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null
+        }
       />
     </Screen>
   );

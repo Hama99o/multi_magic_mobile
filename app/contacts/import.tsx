@@ -8,9 +8,9 @@
  * tapped, never before. Denied → a sentence and Open Settings. iOS 18
  * "limited" → we import what was shared, and say how to share more.
  */
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, FlatList, Linking, Pressable, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import * as DocumentPicker from "expo-document-picker";
@@ -25,6 +25,7 @@ import { failureMessage } from "@/api/failure";
 import { phoneBook, PhoneBookUnavailable } from "@/screens/contacts/phoneBook";
 import { displayOf, toVcard, toVcards, type PhoneContact } from "@/screens/contacts/vcard";
 import { runImport, splitCards, type ImportOutcome } from "@/screens/contacts/importer";
+import { useSharedIntoContacts } from "@/stores/sharedIntoContacts.store";
 
 type Stage =
   | { kind: "choose"; note?: string }
@@ -34,7 +35,7 @@ type Stage =
   | { kind: "done"; outcome: ImportOutcome; cards: string[] };
 
 function fold(value: string): string {
-  return value.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 }
 
 export default function ImportContacts() {
@@ -66,6 +67,19 @@ export default function ImportContacts() {
     setShowNames(false);
     setStage({ kind: "done", outcome, cards });
   };
+
+  // Several cards shared from another app (`ShareIntentBridge`): straight to
+  // the bulk import, the same bar and summary as a file.
+  const params = useLocalSearchParams<{ shared?: string }>();
+  const started = useRef(false);
+  useEffect(() => {
+    if (params.shared !== "1" || started.current) return;
+    started.current = true;
+    const pending = useSharedIntoContacts.getState().take();
+    if (pending?.kind === "cards") void send(pending.cards);
+    // `send` is a plain function of this render; the import starts once.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [params.shared]);
 
   const pickOne = async () => {
     try {

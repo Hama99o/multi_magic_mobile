@@ -70,7 +70,7 @@ export function countryByCode(code: CountryCode | null | undefined): Country | n
 }
 
 function fold(value: string): string {
-  return value.normalize("NFD").replace(/[̀-ͯ]/g, "").trim().toLowerCase();
+  return value.normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim().toLowerCase();
 }
 
 /** The country an address names, in English, French or as its code. */

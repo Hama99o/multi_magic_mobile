@@ -21,7 +21,7 @@ function fold(value: string): string {
     .replace(/[Øø]/g, "o")
     .replace(/[Łł]/g, "l")
     .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
+    .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .trim();
 }

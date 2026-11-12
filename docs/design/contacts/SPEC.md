@@ -162,3 +162,34 @@ master: a master push deploys production):**
   pattern.
 - Native: `expo-contacts` (READ/WRITE_CONTACTS; `NSContactsUsageDescription`
   en/fr). Needs a native build — asked for, not done at the desk.
+
+## F · Share INTO MultiMagic (owner, 2026-11-12)
+
+The phone's own Contacts app → a contact → Share → **MultiMagic**; or any
+text (an SMS, a WhatsApp message, a note) holding a number or an email. One
+share door (`expo-share-intent`, already there for Pages), with a router in
+front of it — `classifyShare` in `src/screens/contacts/shareIn.ts`, used by
+`src/screens/pages/ShareIntentBridge.tsx`:
+
+| What arrives | Where it goes |
+|---|---|
+| one vCard (a `.vcf` file, or vCard text) | `/contacts/edit?shared=1`: the form filled in (names, every phone and email, company, job, birthday, address, notes, the photo when the card has one). If a number (last nine digits, the server's rule) or an email is already someone's: a banner "Jamil Safi already has this number or email." with **Add to Jamil Safi** (the new numbers/emails merged into theirs, none twice) and **Open Jamil Safi** |
+| several vCards | `/contacts/import?shared=1`: straight into the bulk import — bar, summary (added / already there / failed) |
+| text with a phone number or an email | `/contacts/shared`: what was found, the text it was found in, then **Add as a new contact** or **Add to someone already here** (search, tap, merged) |
+| photos, videos, documents | Save to Pages, unchanged |
+| a vCard together with a photo | Pages (the photo is not dropped) |
+| plain text with neither | let go — Pages keeps files, not sentences |
+
+A cold start from the extension lands on `/share` (`app/+native-intent.tsx`),
+which the bridge REPLACES with the destination; with nothing to route it
+goes home after four seconds.
+
+Detection (`detectContactBits`): a run of digits with the separators people
+type (spaces, dots, dashes, brackets, a leading `+` or `00`), 7 to 15
+digits; NOT a date (`2026-11-12`, `12/11/2026`), a time, or an amount
+written in groups of three (`1 250 000`). Emails by the usual shape.
+
+Native: Android already accepts every type (`androidIntentFilters: */*`);
+iOS gains `NSExtensionActivationSupportsText`. A `.vcf` from iOS Contacts is
+shared as a file; whether the extension's file rule takes it is **NOT
+MEASURED** (no iOS device on this box).

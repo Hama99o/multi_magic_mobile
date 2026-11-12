@@ -25,6 +25,9 @@ import Contacts from "../../../../app/contacts";
 import ContactDetail from "../../../../app/contacts/contact";
 import EditContact from "../../../../app/contacts/edit";
 import ImportContacts from "../../../../app/contacts/import";
+import SharedIntoContacts from "../../../../app/contacts/shared";
+import { useSharedIntoContacts } from "@/stores/sharedIntoContacts.store";
+import { parseCard } from "../shareIn";
 
 const mockParams: { current: Record<string, string> } = { current: {} };
 const mockBeforeRemove: { handler: ((e: { preventDefault: () => void; data: { action: unknown } }) => void) | null } = { handler: null };
@@ -503,5 +506,76 @@ describe("import", () => {
     fireEvent.press(screen.getByTestId("contacts-import-resume"));
     expect(await screen.findByText("117 contacts added")).toBeTruthy();
     expect(mock.history.post).toHaveLength(4);
+  });
+});
+
+// ── SHARED INTO MULTIMAGIC ─────────────────────────────────────────────────
+describe("shared from another app", () => {
+  const sharedCard = parseCard(
+    "BEGIN:VCARD\r\nVERSION:3.0\r\nN:Safi;Jamil;;;\r\nORG:Acme\r\nTEL;TYPE=CELL:0701234567\r\nTEL;TYPE=WORK:020 555 1234\r\n" +
+      "EMAIL:new@x.test\r\nPHOTO;ENCODING=b;TYPE=JPEG:/9j/4AAQSkZJRg==\r\nEND:VCARD\r\n",
+  );
+
+  it("a shared card opens the form filled in, and its photo is uploaded after the save", async () => {
+    mockParams.current = { shared: "1" };
+    useSharedIntoContacts.setState({ pending: { kind: "card", card: sharedCard } });
+    mock.onGet(BASE).reply(200, page([]));
+    mock.onPost(BASE).reply(201, { contact: contact({ id: 9 }) });
+    mock.onPost(`${BASE}/9/upload_photo`).reply(200, { contact: contact({ id: 9 }) });
+    renderScreen(<EditContact />);
+
+    expect(screen.getByTestId("contact-form-firstname").props.value).toBe("Jamil");
+    expect(screen.getByTestId("contact-form-phones-1").props.value).toBe("020 555 1234");
+    expect(screen.getByTestId("contact-form-company").props.value).toBe("Acme");
+    fireEvent.press(screen.getByTestId("contact-form-save"));
+    await waitFor(() => expect(mock.history.post.some((r) => r.url === `${BASE}/9/upload_photo`)).toBe(true));
+    expect(useSharedIntoContacts.getState().pending).toBeNull();
+  });
+
+  it("warns when the number is already someone's, and merges the new details into them", async () => {
+    mockParams.current = { shared: "1" };
+    useSharedIntoContacts.setState({ pending: { kind: "card", card: sharedCard } });
+    mock.onGet(BASE).reply(200, page([contact({ id: 3, firstname: "Jamil", phones: [{ label: "mobile", value: "+93 70 123 4567" }], emails: [] })]));
+    mock.onPut(`${BASE}/3`).reply(200, { contact: contact({ id: 3 }) });
+    renderScreen(<EditContact />);
+
+    expect(await screen.findByTestId("contact-form-duplicate")).toHaveTextContent(/Jamil Safi already has this number or email\./);
+    fireEvent.press(screen.getByTestId("contact-form-merge"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith({ pathname: "/contacts/contact", params: { id: "3" } }));
+    const body = JSON.parse(mock.history.put[0].data);
+    expect(body.contact.phones).toEqual([{ label: "mobile", value: "+93 70 123 4567" }, { label: "work", value: "020 555 1234" }]);
+    expect(body.contact.emails).toEqual([{ label: "home", value: "new@x.test" }]);
+    expect(mock.history.post.filter((r) => r.url === BASE)).toHaveLength(0);
+  });
+
+  it("a number from a text: shown, then added to an existing contact", async () => {
+    useSharedIntoContacts.setState({ pending: { kind: "bits", text: "Ali: 06 12 34 56 78", phones: ["06 12 34 56 78"], emails: [] } });
+    mock.onGet(BASE).reply(200, page([contact({ id: 5, firstname: "Ali", lastname: "", phones: [], emails: [] })]));
+    mock.onPut(`${BASE}/5`).reply(200, { contact: contact({ id: 5 }) });
+    renderScreen(<SharedIntoContacts />);
+    expect(screen.getByTestId("contacts-shared-phone-06 12 34 56 78")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("contacts-shared-existing"));
+    fireEvent.press(await screen.findByTestId("contacts-shared-pick-5"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith({ pathname: "/contacts/contact", params: { id: "5" } }));
+    expect(JSON.parse(mock.history.put[0].data).contact.phones).toEqual([{ label: "mobile", value: "06 12 34 56 78" }]);
+  });
+
+  it("a number from a text: 'Add as a new contact' opens the form with it", async () => {
+    useSharedIntoContacts.setState({ pending: { kind: "bits", text: "x", phones: [], emails: ["a@x.test"] } });
+    mock.onGet(BASE).reply(200, page([]));
+    renderScreen(<SharedIntoContacts />);
+    fireEvent.press(screen.getByTestId("contacts-shared-new"));
+    expect(router.replace).toHaveBeenCalledWith({ pathname: "/contacts/edit", params: { shared: "1" } });
+    const pending = useSharedIntoContacts.getState().pending;
+    expect(pending?.kind === "card" && pending.card.emails).toEqual([{ label: "home", value: "a@x.test" }]);
+  });
+
+  it("several shared cards start the bulk import at once", async () => {
+    mockParams.current = { shared: "1" };
+    const cards = ["BEGIN:VCARD\r\nFN:A\r\nEND:VCARD\r\n", "BEGIN:VCARD\r\nFN:B\r\nEND:VCARD\r\n"];
+    useSharedIntoContacts.setState({ pending: { kind: "cards", cards } });
+    mock.onPost(`${BASE}/import_vcard`).reply(201, { summary: { created: 2, skipped: 0, failed: 0, total: 2 }, skipped: [], failed: [] });
+    renderScreen(<ImportContacts />);
+    expect(await screen.findByTestId("contacts-import-summary")).toHaveTextContent("2 contacts added");
   });
 });

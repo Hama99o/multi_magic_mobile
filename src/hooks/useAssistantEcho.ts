@@ -31,6 +31,8 @@ import { messagesApi } from "@/api/ai";
 
 /** `FrontendRoutes::ROUTES` keys, per screen. Never a path prefix. */
 export const CALENDAR_KEYS = ["calendar_event"] as const;
+/** The assistant adding or changing a contact (`create_contacts`, `update_records`). */
+export const CONTACT_KEYS = ["contact"] as const;
 /**
  * A notification is not something the assistant creates directly — the server
  * raises it — so this list is empty and the screen relies on

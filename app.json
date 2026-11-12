@@ -16,7 +16,8 @@
         "NSSpeechRecognitionUsageDescription": "Speech recognition converts what you say into text using your phone's own speech engine. For some languages Apple processes the audio to do it.",
         "NSPhotoLibraryUsageDescription": "Choose photos and videos to save in your Pages, or attach one to a conversation so the assistant can read it.",
         "NSCameraUsageDescription": "Take a photo of a document to attach it to a conversation.",
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSContactsUsageDescription": "MultiMagic uses your contacts to import or save the ones you choose. Nothing is read until you tap Import or Save."
       }
     },
     "android": {
@@ -60,13 +61,22 @@
       "expo-status-bar",
       "expo-asset",
       "expo-sharing",
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "MultiMagic uses your contacts to import or save the ones you choose. Nothing is read until you tap Import or Save."
+        }
+      ],
       "expo-video",
       [
         "expo-media-library",
         {
           "photosPermission": "Choose photos and videos to save in your Pages, or attach one to a conversation so the assistant can read it.",
           "savePhotosPermission": "Save the photos and videos you download from your Pages to your photo library.",
-          "granularPermissions": ["photo", "video"]
+          "granularPermissions": [
+            "photo",
+            "video"
+          ]
         }
       ],
       [
@@ -76,7 +86,8 @@
           "iosActivationRules": {
             "NSExtensionActivationSupportsImageWithMaxCount": 100,
             "NSExtensionActivationSupportsMovieWithMaxCount": 100,
-            "NSExtensionActivationSupportsFileWithMaxCount": 100
+            "NSExtensionActivationSupportsFileWithMaxCount": 100,
+            "NSExtensionActivationSupportsText": true
           },
           "androidIntentFilters": [
             "*/*"
@@ -96,6 +107,9 @@
         "projectId": "6aae9901-e7f6-462f-96c1-da7d5ebe3e88"
       }
     },
-    "owner": "hama990"
+    "owner": "hama990",
+    "locales": {
+      "fr": "./locales/ios-fr.json"
+    }
   }
 }

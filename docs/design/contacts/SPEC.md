@@ -1,0 +1,164 @@
+# Contacts — the third full app (2026-11-12)
+
+**Status: `IN PROGRESS`**
+
+The owner, 2026-11-12 (relayed by the supervisor session): *Contacts as the
+third full app, after Pages and Calendar. List with search, an A–Z index and
+favourites; every phone and email with call, WhatsApp, SMS and email; create,
+edit, delete and restore; several phones and emails, company, job, notes,
+photo; family and upcoming birthdays; import from the phone and from a .vcf,
+single and bulk, and export the same way. He must never find a bug himself.*
+
+That reverses the design rule "this app has no contact screen, it composes a
+question" (`CLAUDE.md`, Design) for contacts, on the owner's explicit request
+(`docs/MISSING_FEATURES.md` row 2). The detail keeps an **Ask the assistant**
+button, as the Calendar did, so nothing the old rule gave is lost.
+
+## A · What the web and the API have, and where it lands on the phone
+
+Read from `multi_magic/app/javascript/pages/contacts/` and
+`Api::V1::ContactApp::ContactsController` (+ concerns, relations), 2026-11-12.
+
+| Web | API | Phone |
+|---|---|---|
+| Card grid, search, favourites first | `GET contacts?search=&page=&per_page=` (≤100 a page) | `app/contacts/index.tsx`: every page loaded, sorted A–Z on the phone (`sortKey`, accent-blind), favourites as their own first section, A–Z index on the edge |
+| Drawer: every field, documents, family | `GET contacts/:id` (full view) | `app/contacts/[id].tsx` |
+| Drawer edit | `POST contacts`, `PUT contacts/:id` (`phones/emails/addresses: [{label,value…}]`) | `app/contacts/edit.tsx` (modal) |
+| Photo | `POST :id/upload_photo` (multipart `photo`), `DELETE :id/remove_photo` | the edit form's avatar: take / choose / remove (`expo-image-picker`) |
+| Delete → trash, Trash tab, restore, delete forever | `DELETE :id`, `GET trashes`, `PUT :id/restore`, `DELETE :id/destroy_permanently` | Delete with Undo; `app/contacts/trash.tsx` |
+| Family section + add member | `GET/POST/PATCH/DELETE :id/relations` | detail "Family & relationships"; add = pick a contact + a role |
+| Birthdays modal | `GET upcoming_birthdays?within=` | a "Birthdays soon" strip at the top of the list, and a full list |
+| Duplicates modal | `GET duplicates` | `app/contacts/duplicates.tsx` (groups; tap opens the contact) |
+| Import vCard | `POST import_vcard` (`file` or `vcf`), **every card since multi_magic 485e2db1** | `app/contacts/import.tsx`: from the phone (one / chosen / all) or a .vcf |
+| Export | `GET :id/export_vcard`, `GET export_multiple_contacts?ids[]=` or `?all=true` | share one from the detail; select mode on the list → share; Export all |
+
+**Server gaps found and closed on the `contacts-api` branch (NOT merged into
+master: a master push deploys production):**
+- `a0222268`: the list and the MCP returned only the FIRST email/phone (the
+  owner's bug of 2026-11-12: one contact's second email was invisible). The
+  list now carries `phones`/`emails`; the MCP record has `emails`/`phones`;
+  search finds a second email or number.
+- `485e2db1`: `import_vcard` read ONE card; it now reads every card
+  (Android 2.1 quoted-printable, iOS item labels, folded lines, photos),
+  skips people already there, and answers a summary.
+
+## B · Sources (Rule Zero) — 20 screens, images in `references/` (gitignored)
+
+| App | Screen | What we TAKE | What we REJECT |
+|---|---|---|---|
+| WhatsApp | [Contact info](https://mobbin.com/screens/a3e9d4e5-2fb5-4bb7-8f65-c34e0e8786ff) | big round avatar, name, the number under it, then **three equal action tiles** in a row | Video/Search (no such thing here) |
+| WhatsApp | [Contact info, bottom](https://mobbin.com/screens/6d61bbf7-3044-4d48-a4f4-cc61ef3f95b0) | secondary actions as a **plain list of tinted text rows** (Share contact, Add to Favourites) and the destructive one alone in red at the end | block / report |
+| Telegram | [Contact](https://mobbin.com/screens/19fa286e-c101-4f24-8aa1-2b3c737fc3bb) | label **above** value in each card row ("mobile" / +1 650…); the value in the accent = tappable | the gifts strip |
+| Beside | [Contact](https://mobbin.com/screens/f6ab0ee0-a578-4897-b604-3366ec4fb254) | initials avatar when there is no photo; **round** quick-action buttons with the word under them | "Add company / Add address" rows on the detail (they belong in Edit) |
+| Quo | [Contact](https://mobbin.com/screens/5bbde933-f170-44fc-93c6-290406469f58) | company under the name; icon per row (phone, mail, briefcase) | Details/Notes tabs (one scroll is enough on a phone) |
+| Apple Messages | [Contact](https://mobbin.com/screens/58aa81c0-14d0-448a-be21-d9820344435b) | disabled-looking circle when an action has no target (no email → Email greyed, not hidden) | — |
+| TextNow | [Contact](https://mobbin.com/screens/4e721c87-a0e3-43cf-b840-3476ab308259) | Edit at the top right, back at the left | two-button bar only |
+| Apple Mail | [Contact card](https://mobbin.com/screens/21893e6f-7181-4de4-9453-cb13a1ee1b97) | "Share Contact" as a full-width row | the gradient ground |
+| Outlook | [All contacts](https://mobbin.com/screens/02e7c925-3718-4c2d-8542-9c3bab846129) | letter section headers, search on top, the **A–Z index on the trailing edge**, round **+** bottom right, ★ next to a favourite | the tag chip under the name |
+| Telegram | [Contacts](https://mobbin.com/screens/b1f60825-edc1-40e4-92ed-0c2d8a79fe60) | coloured initials avatars; index in the accent | "last seen" subtitle (ours: company or first number) |
+| WhatsApp | [Pick members](https://mobbin.com/screens/7484a21f-a674-4421-b796-8d3f4acd81f5) | **select mode**: a round check at the row's end and "n selected" in the header — used for export and phone import | — |
+| Lyft | [Phone contacts](https://mobbin.com/screens/6e95399a-0023-43b1-a837-80a79fa2c832) | the phone's own address book listed with name + number, searchable, before anything is sent | chevrons (ours are checks) |
+| Snapchat | [Friends](https://mobbin.com/screens/1371f8be-5d19-4d0b-87ef-75f2c1bfc8b7) | rows as rounded cards on the grouped ground in dark mode too | emoji badges |
+| Jobber | [New client](https://mobbin.com/screens/d7a84448-a508-4ae4-b77d-86a5819321a1) | each phone row = number + **label picker**; "**Add another phone number**" link under the list | "receives texts" toggle |
+| Mesh | [New person](https://mobbin.com/screens/9a099900-4561-480b-89d0-6dea0e35afcf) | avatar with a small edit badge at the top of the form; first/last grouped in one card | ✓-only header (we say Save) |
+| Garmin | [Create contact, dark](https://mobbin.com/screens/7a31addd-ed22-44c6-a493-9fb4a5927604) | **Cancel · title · Save** and ⊕ "Add phone" / "Add email" rows; how the form looks on a dark ground | — |
+| Outlook | [New contact](https://mobbin.com/screens/04cd5c75-230c-4115-8aca-c35abb6d9079) | company, address, website, birthday, notes as further labelled rows | categories |
+| Tinder | [Adding contacts](https://mobbin.com/screens/d7c5f6cf-4c49-46b4-8cb2-2bb584ff49b4) | one sentence + a **determinate bar** while contacts upload | the full-screen takeover with nothing else |
+| Brink | [Import](https://mobbin.com/screens/3c5dd482-99f8-4a6f-b8fb-68e03a885e2b) | "Found 13 so far" — a **count** under the bar, not only a percentage | — |
+| Phantom | [Import done](https://mobbin.com/screens/e0b4f795-8c2e-4f11-8746-78a867723c59) | a result screen with a check, one line of what happened, and one primary button | — |
+
+## C · Decisions
+
+1. **One list, A–Z, favourites first.** Every page of `GET contacts` is read
+   (100 a page) and sorted on the phone by first name then last name,
+   accent- and case-blind (`sortKey`), because the server orders by
+   favourite + last update, which is no order a person scans. Sections: ★
+   Favourites, then A…Z, then `#` (a name starting with a digit or symbol, or
+   in a script with no A–Z letter — Arabic, Persian — kept in its own `#`
+   group rather than mis-filed). The index on the trailing edge jumps to a
+   section; it shows only letters that exist.
+2. **Search is the server's** (`?search=`, which since `a0222268` matches any
+   email and any number by its digits), debounced 250 ms; the list filters
+   the loaded rows by name instantly while the request runs, so typing never
+   shows an empty screen.
+3. **The detail is a contact card, not a form.** Avatar (photo or initials
+   on a colour from the id), name, job · company, then four round actions:
+   **Call · WhatsApp · Message · Email**. An action with no target is shown
+   disabled, not hidden (Apple Messages). With several numbers, Call /
+   WhatsApp / Message ask which one first (a sheet listing label + number).
+   Then cards: phones (each row: tap = call, a WhatsApp button, long-press =
+   copy), emails (tap = mail, long-press = copy), addresses (tap = maps),
+   birthday (date, age, "in 12 days"), family, website, notes. Then rows:
+   Share contact (.vcf), Save to phone contacts, Favourite, Ask the
+   assistant, Delete (red, last).
+4. **WhatsApp opens a chat, never guesses silently.** `whatsappNumber()`
+   turns a stored number into international digits: `+…` and `00…` are
+   already international; a national `0…` (07xx in Afghanistan, 06xx in
+   France) takes the country of the contact's address when that names a
+   known country, else the **default country** set in Contacts (pre-filled
+   from the phone's region, changeable, remembered). With no country at all
+   the app asks for one rather than open a chat with the wrong person. The
+   app opens `whatsapp://send?phone=<digits>`; if no app answers, it says
+   *WhatsApp isn't on this phone* and offers **Open in the browser**
+   (`https://wa.me/<digits>`).
+5. **Every outside action can fail, and says so.** `tel:`, `sms:`, `mailto:`
+   and maps go through one `openOutside()`; a tablet with no phone app gets
+   "This device can't make calls" and a **Copy number**, never a silent
+   nothing.
+6. **The form is the Calendar's pattern.** Modal, Cancel · title · Save,
+   discard prompt on leave, Save guarded against a double tap by a ref,
+   errors under the header. Phones and emails are lists: value + a label chip
+   (mobile / home / work / other), ⊕ to add, ✕ to remove. Birthday uses the
+   Calendar's date picker (`src/screens/calendar/pickers/`), with "no year"
+   impossible on the server (a date column) — said, not hidden.
+7. **Import: the server decides what is a duplicate.** Phone and file both
+   become vCard text and go to `import_vcard` in **chunks of 50**, so the
+   bar is real progress (cards sent / total) and one slow request never
+   holds 300 contacts. The summary adds the chunks: added · already there ·
+   failed, with the names of the failed and skipped ones on demand.
+   - *One from the phone*: the system contact picker
+     (`Contacts.presentContactPickerAsync`): no permission needed on iOS.
+   - *Several or all*: the phone's address book in a select list (search,
+     Select all), after asking for permission **at that tap, never at
+     launch**. Denied → a sentence + **Open Settings**. iOS 18 *limited
+     access* → we import what was shared and say so, with a way to share more.
+   - *A .vcf file*: `expo-document-picker`.
+8. **Export: the server writes the vCard.** One contact → `export_vcard`;
+   several or all → `export_multiple_contacts` (`?all=true`). The text is
+   written to the cache dir and handed to the share sheet (`expo-sharing`);
+   the file is deleted after. **Save to phone contacts** uses
+   `Contacts.presentFormAsync` (the system's own "new contact" form,
+   pre-filled), so the user confirms in the system UI.
+9. **Delete → trash with Undo** (the Calendar's `UNDO_MS`, 30 s with a
+   screen reader); the Trash screen restores or deletes forever (asks, with
+   the name in the question).
+10. **Offline**: reads come from the cache with the usual banner; writes are
+    not queued (the Calendar's rule: a write that lands later at the wrong
+    moment is worse than a clear "not saved"). The banner says so on contact
+    screens.
+
+## D · Not taken (and why)
+
+- The web's **family tree drawing** (`FamilyTreeView`, 783 lines): a phone
+  shows the list of ties on the detail; the tree is a desk thing.
+- **Documents** (ID card, passport) on a contact: shown read-only as a count
+  on the detail; upload stays on the web for now (owner can ask).
+- **Merging duplicates**: the web lists them and does not merge; so does the
+  phone.
+
+## E · How we code it
+
+- `src/api/contacts.ts` — `contactsApi` {list(all pages), show, create,
+  update, remove, restore, destroyForever, trash, uploadPhoto, removePhoto,
+  relations…, birthdays, duplicates, importVcf(chunk), exportOne,
+  exportMany}; types `Contact`, `LabelledValue`, `Address`, `Relation`.
+- `src/screens/contacts/` — `sections.ts` (sortKey, sectionsOf), `phone.ts`
+  (digits, whatsappNumber, COUNTRIES), `outside.ts` (openOutside,
+  openWhatsApp), `vcard.ts` (phone contact → vCard text), `draft.ts`,
+  `ContactForm.tsx`, `Avatar.tsx`, `AzIndex.tsx`, `QuickActions.tsx`,
+  `NumberChooser.tsx`.
+- `app/contacts/{index,[id],edit,trash,import,duplicates}.tsx`; a Home tile.
+- Stores: `contactsCountry.store.ts` (default country), the Calendar's undo
+  pattern.
+- Native: `expo-contacts` (READ/WRITE_CONTACTS; `NSContactsUsageDescription`
+  en/fr). Needs a native build — asked for, not done at the desk.

@@ -126,6 +126,13 @@ const COMPOSED = [
   ...["blue", "green", "amber", "red", "grey"].map((v) => `calendar.color.${v}`),
   ...["owner", "editor", "viewer"].map((v) => `calendar.permission.${v}`),
   ...["pending", "accepted", "declined"].map((v) => `calendar.response.${v}`),
+  // Contacts: t(`contacts.choose.${channel}`) (`useContactActions.tsx`),
+  // t(`contacts.family.kinds.${kind}`) over the server's `Relation` kinds,
+  // and t(`contacts.labels.${label}`) over a phone/email label — ours, plus
+  // the vCard TYPEs the server's reader keeps (`VcardReader::TYPE_LABELS`).
+  ...["call", "whatsapp", "sms", "email"].map((v) => `contacts.choose.${v}`),
+  ...["parent", "child", "spouse", "sibling", "friend", "colleague", "neighbour", "other"].map((v) => `contacts.family.kinds.${v}`),
+  ...["mobile", "home", "work", "other", "main", "fax"].map((v) => `contacts.labels.${v}`),
 ];
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
@@ -150,6 +157,18 @@ const PLURAL = new Set([
   "pages.download.failed",
   "pages.download.skipped",
   "pages.download.savedGallery",
+  "contacts.birthdays.inDays",
+  "contacts.birthdays.inDaysShort",
+  "contacts.detail.age",
+  "contacts.detail.documents",
+  "contacts.import.done",
+  "contacts.import.go",
+  "contacts.import.pickTitle",
+  "contacts.import.resume",
+  "contacts.list.exportSelected",
+  "contacts.list.searchPlaceholder",
+  "contacts.list.selected",
+  "contacts.phone.limited",
 ]);
 
 const CALLED = calledKeys();

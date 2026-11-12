@@ -16,6 +16,8 @@
 | dark · 360 dp · fr | PASS. The first try was NOT MEASURED: a native Fabric crash (`MountingCoordinator::pullTransaction`, SIGSEGV) right after `wm density` changed under a running app. It is in React Native, not in Notes, and the re-run was clean. |
 | dark · 800 dp · en | PASS, after the highlight fix |
 
+**About the Fabric crash.** The SIGSEGV in `facebook::react::MountingCoordinator::pullTransaction` happened on React Native 0.86.3 (New Architecture, Expo 57). It was a dev build, and the crash came right after `wm density` changed under the running app. The Contacts session saw the same crash on a relaunch. It has only been seen on dev builds, under a display change or a relaunch, and never in a Notes path.
+
 ## Found and fixed, test-first (red evidence kept)
 
 | # | What the device showed | Fix |

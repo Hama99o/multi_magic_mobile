@@ -62,6 +62,20 @@ describe("noteSnippet", () => {
   });
   it("is empty for an empty note", () => expect(noteSnippet("<p></p>")).toBe(""));
   it("cuts long text", () => expect(noteSnippet(`<p>${"x".repeat(300)}</p>`, 20)).toHaveLength(20));
+  // Device QA 2026-11-12: the notes list hung forever on real dev notes (a
+  // 914 KB note, runs of empty paragraphs): the separator clean-up regexes
+  // backtracked exponentially. Each case must finish in well under a second.
+  it("stays fast on many empty paragraphs followed by text", () => {
+    const t0 = Date.now();
+    expect(noteSnippet(`${"<p></p>".repeat(40)}<p>end</p>${"<p></p>".repeat(40)}x`)).toBe("end · x");
+    expect(Date.now() - t0).toBeLessThan(500);
+  });
+  it("stays fast on a megabyte note with an inline image", () => {
+    const t0 = Date.now();
+    const html = `<p><img src="data:image/png;base64,${"A".repeat(1_000_000)}"></p>${"<p>a</p><p></p>".repeat(5000)}`;
+    expect(noteSnippet(html).startsWith("a · a")).toBe(true);
+    expect(Date.now() - t0).toBeLessThan(1000);
+  });
 });
 
 describe("textOf", () => {

@@ -443,3 +443,13 @@ screen wires those together.
 4. **Sharing on the phone:** view, and add or remove people (web parity),
    in phase 3b.
 5. **Notes list:** last edited first (pinned on top).
+
+## H · Engine B: what the phone inherits (decision of 2026-11-12, plan §11)
+
+- **Glue rules** (`editor/engineGlue.ts`, tested):
+  - a deep copy goes in;
+  - the text colour travels as `fgColor`;
+  - code blocks and tables travel as read-only atoms.
+- **Known limitation: hardware keyboard.** With key events (a hardware keyboard, or `adb input`), Return in a list item desyncs the caret: the next characters land in another block, and one is lost. The on-screen keyboard (Gboard) is correct. A tablet with a keyboard must be checked before release. The upstream issue is ready and waits for the owner's "oui".
+- **Not drawn while editing:** highlight, sub and sup. The read view draws them.
+- **Long notes:** the 914 KB dev note types about 3× slower than a small one on the emulator. Measure on a real phone before choosing a size limit for read-only.

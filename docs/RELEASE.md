@@ -11,6 +11,31 @@ stops before any upload if the tree cannot make a release (SDK below 57, or a
 native dependency missing). The same guard is the `eas-build-pre-install`
 hook, which is unverified as a stop; this wrapper is the certain one.
 
+## The next store build adds a contacts permission (2026-11-12)
+
+The Contacts app (`feat/contacts-app`, `docs/design/contacts/SPEC.md`) adds
+`expo-contacts`, a native module: **no build made before it has it**, and the
+app says "update the app" instead of importing from the phone
+(`phoneBook.ts`, `PhoneBookUnavailable`).
+
+What changes in the store listings:
+
+- **Android**: `READ_CONTACTS` and `WRITE_CONTACTS` (added by the
+  `expo-contacts` plugin). Play's Data safety form must now say the app
+  accesses contacts: *collected only when the user imports them, sent to the
+  user's own MultiMagic account, not shared, not used for anything else*.
+- **iOS**: `NSContactsUsageDescription` — "MultiMagic uses your contacts to
+  import or save the ones you choose. Nothing is read until you tap Import
+  or Save." (French in `locales/ios-fr.json`). App Store privacy labels:
+  Contacts → App Functionality, linked to the user, not used for tracking.
+- **Review note (both stores)**: permission is asked only when the user taps
+  *Import from this phone* or *Save to this phone's contacts* in Contacts;
+  never at launch. A reviewer reaches it from Home → Contacts → ⋮ → Import
+  contacts → Choose from this phone.
+- **iOS share extension**: now also accepts text
+  (`NSExtensionActivationSupportsText`), so a phone number shared from
+  Messages can become a contact.
+
 ## Profiles (`eas.json`)
 
 | profile      | what it is                                        | API                          |

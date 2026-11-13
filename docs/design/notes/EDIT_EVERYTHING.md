@@ -97,3 +97,34 @@ calls it after each typing step.
    deletable.
 6. Comment markup kept as an invisible mark (no UI).
 7. Keyboard occlusion QA plus flow 27 on two sizes, then the full device pass.
+
+## Parity: web editor feature → phone control (keep it green)
+
+The source of truth is `WEB_PARITY` in `src/screens/notes/editor/toolbarModel.ts`.
+`toolbarModel.test.ts` fails if a web feature has no control. "Where" says
+how it is reached; the last column is the state on the device.
+
+| Web feature (tiptop-editor) | Phone control | Where | Device |
+|---|---|---|---|
+| Paragraph, Heading 1–3 (slash, turn into) | block chips | `+`, `Aa`, block-type key | NOT MEASURED |
+| Bulleted / numbered / to-do list | list keys | main row, `Aa`, `+` | NOT MEASURED |
+| Blockquote | block chip | `Aa`, `+` | NOT MEASURED |
+| Code block (create, convert, language, edit) | block chip + language chip | `Aa`, `+`, on the block | step 2 |
+| Separator | insert item | `+` | NOT MEASURED |
+| Image | insert item + picker | main row, `+` | step 5 |
+| Table (insert 3 × 3 with header) | insert item | `+` | step 4 |
+| Table rows / columns / header / delete | Edit table sheet | the cell's ⋮ handle | step 4 |
+| Bold, italic, underline, strike, inline code | mark keys | selection row, `Aa` | NOT MEASURED |
+| Subscript, superscript | mark keys | selection row, `Aa` | drawn after the B patch (step 3) |
+| Link | link key + address dialog | selection row | NOT MEASURED |
+| Text colour (10 web colours) | colour panel | selection row, `Aa` | NOT MEASURED |
+| Highlight (10 web colours) | colour panel | selection row, `Aa` | drawn after the B patch (step 3) |
+| Align left / centre / right / justify | align keys | `Aa` | NOT MEASURED |
+| Indent / outdent (lists) | keys | main row, `Aa` | NOT MEASURED |
+| Undo / redo | keys | main row | NOT MEASURED |
+| H4–H6 | not offered: the web has only levels 1–3; stored h4–h6 are kept | — | — |
+| Comments | not offered: off on the web (decision 4); markup kept | — | — |
+
+**iOS:** none of this is measured on an iPhone yet. This Linux box has no
+simulator. The owner's iPhone checklist is in the QA report when the build
+reaches TestFlight.

@@ -12,12 +12,12 @@
  *  - a change that cannot become valid HTML is never sent;
  *  - a web edit made meanwhile asks, and "Keep both" saves a copy.
  */
-import { act, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import MockAdapter from "axios-mock-adapter";
 import { Alert } from "react-native";
 
-const mockEngine: { props: Record<string, any> | null; init: any; refuse: boolean } = { props: null, init: null, refuse: false };
+const mockEngine: { props: Record<string, any> | null; init: any; refuse: boolean; calls: unknown[][] } = { props: null, init: null, refuse: false, calls: [] };
 jest.mock("@apollohg/react-native-rich-text-editor", () => {
   const ReactActual = jest.requireActual("react");
   const { View } = jest.requireActual("react-native");
@@ -30,10 +30,14 @@ jest.mock("@apollohg/react-native-rich-text-editor", () => {
       mockEngine.init = JSON.parse(JSON.stringify(config.initialization.json));
       return { destroy: () => undefined };
     },
-    RichTextEditor: (props: Record<string, unknown>) => {
+    // The ref records every command the screen sends to the engine.
+    RichTextEditor: ReactActual.forwardRef((props: Record<string, unknown>, ref: unknown) => {
       mockEngine.props = props;
+      ReactActual.useImperativeHandle(ref, () =>
+        new Proxy({}, { get: (_t: unknown, name: string) => (...args: unknown[]) => { mockEngine.calls.push([name, ...args]); return Promise.resolve(); } }),
+      );
       return ReactActual.createElement(View, { testID: "engine-b" });
-    },
+    }),
   };
 });
 jest.mock("expo-router", () => ({
@@ -79,6 +83,7 @@ beforeEach(() => {
   __resetFingerprintCache();
   mockEngine.props = null;
   mockEngine.refuse = false;
+  mockEngine.calls = [];
   server = note();
   mock.onGet("/api/v1/note_app/notes/7").reply(() => [200, { note: server }]);
   mock.onPut("/api/v1/note_app/notes/7").reply((cfg) => {
@@ -171,4 +176,55 @@ it("a web edit meanwhile asks; Keep both saves a dated copy and leaves the web's
   expect(copy.title).toMatch(/^Plan \(conflict \d+ \w+ \d\d:\d\d\)$/);
   expect(copy.description).toBe(`<p>hello!</p>${TABLE}${CODE}${CHEM}${COMMENT}`);
   expect(server.description).toBe("<p>from the web</p>");
+});
+
+describe("our toolbar (owner, 2026-11-13: full editing from a bar on the keyboard)", () => {
+  it("replaces the engine's own toolbar and sits under the body", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(mockEngine.props!.showToolbar).toBe(false);
+    expect(screen.getByTestId("note-toolbar")).toBeTruthy();
+    expect(screen.getByTestId("tb-undo")).toBeTruthy();
+  });
+
+  it("follows the engine's selection: a selection shows the marks, an active mark is selected", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    act(() => {
+      mockEngine.props!.onSelectionChange({ type: "text", anchor: 2, head: 6 });
+      mockEngine.props!.onActiveStateChange({ marks: { bold: true }, markAttrs: {}, nodes: { paragraph: true }, commands: {}, allowedMarks: [], insertableNodes: [] });
+    });
+    expect(screen.getByTestId("tb-bold").props.accessibilityState).toMatchObject({ selected: true });
+    fireEvent.press(screen.getByTestId("tb-italic"));
+    expect(mockEngine.calls).toContainEqual(["toggleMark", "italic"]);
+  });
+
+  it("undo follows the engine's history and runs the engine's undo", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(screen.getByTestId("tb-undo").props.accessibilityState).toMatchObject({ disabled: true });
+    act(() => mockEngine.props!.onHistoryStateChange({ canUndo: true, canRedo: false }));
+    fireEvent.press(screen.getByTestId("tb-undo"));
+    expect(mockEngine.calls).toContainEqual(["undo"]);
+  });
+
+  it("Aa opens the Format panel; a colour from it is the web's colour string", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    fireEvent.press(screen.getByTestId("tb-format"));
+    expect(screen.getByTestId("tb-align:center")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("tb-textColor"));
+    fireEvent.press(screen.getByTestId("tb-textColor:blue"));
+    expect(mockEngine.calls).toContainEqual(["setMark", "fgColor", { color: "hsl(202, 64%, 52%)" }]);
+  });
+
+  it("Link asks for the address and sets it", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    act(() => mockEngine.props!.onSelectionChange({ type: "text", anchor: 0, head: 5 }));
+    fireEvent.press(screen.getByTestId("tb-link"));
+    fireEvent.changeText(screen.getByTestId("note-link-input"), "https://example.com");
+    fireEvent.press(screen.getByTestId("note-link-save"));
+    expect(mockEngine.calls).toContainEqual(["setLink", "https://example.com"]);
+  });
 });

@@ -10,11 +10,11 @@
  * phone (plan §11 condition 1). No web link anywhere (owner, 2026-11-13).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { createNativeEditorDocumentHandle, RichTextEditor } from "@apollohg/react-native-rich-text-editor";
+import { createNativeEditorDocumentHandle, RichTextEditor, type RichTextEditorRef } from "@apollohg/react-native-rich-text-editor";
 
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -31,6 +31,10 @@ import { notesEngineAtoms, notesEngineSchema } from "@/screens/notes/editor/engi
 import { engineTheme } from "@/screens/notes/editor/engineTheme";
 import { createNoteSaver, type NoteSaver, type SaverState, type ServerNote } from "@/screens/notes/editor/noteSaver";
 import type { DocNode, EditorLabels } from "@/screens/notes/editor/types";
+import { EditorToolbar } from "@/screens/notes/editor/EditorToolbar";
+import { buildToolbar, type Command, type Panel } from "@/screens/notes/editor/toolbarModel";
+import { runCommand, type EngineRef } from "@/screens/notes/editor/engineCommands";
+import { toolbarLabels } from "@/screens/notes/toolbarLabels";
 
 interface Opened {
   title: string;
@@ -181,6 +185,40 @@ export default function NoteEditScreen() {
     ], { cancelable: false });
   }, [state.kind]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Our toolbar (SPEC §C3, owner 2026-11-13): the engine's state drives it.
+  const editorRef = useRef<RichTextEditorRef | null>(null);
+  const [active, setActive] = useState<{ marks: Record<string, boolean>; nodes: Record<string, boolean> }>({ marks: {}, nodes: { paragraph: true } });
+  const [history, setHistory] = useState({ canUndo: false, canRedo: false });
+  const [hasSelection, setHasSelection] = useState(false);
+  const [panel, setPanel] = useState<Panel | null>(null);
+  const [linkDraft, setLinkDraft] = useState<string | null>(null);
+  const labelsForToolbar = useMemo(() => toolbarLabels(t), [t]);
+  const toolbarKeys = buildToolbar({ ...active, ...history, hasSelection, panel }).keys;
+
+  const onCommand = (command: Command) => {
+    const ref = editorRef.current as unknown as EngineRef | null;
+    if (command.kind === "panel") {
+      setPanel(command.panel);
+      return;
+    }
+    if (command.kind === "link") {
+      setLinkDraft("");
+      return;
+    }
+    if (!ref) return;
+    runCommand(ref, command, { nodes: active.nodes });
+    if (command.kind === "color") setPanel(null);
+  };
+  const saveLink = () => {
+    const ref = editorRef.current;
+    const href = (linkDraft ?? "").trim();
+    if (ref) {
+      if (href) ref.setLink(/^[a-z][a-z0-9+.-]*:/i.test(href) ? href : `https://${href}`);
+      else ref.unsetLink();
+    }
+    setLinkDraft(null);
+  };
+
   const stateLabels: Record<SaverState["kind"], string> = {
     saved: t("notes.edit.state.saved"),
     unsaved: t("notes.edit.state.unsaved"),
@@ -241,7 +279,7 @@ export default function NoteEditScreen() {
   }
 
   return (
-    <Screen>
+    <Screen avoidKeyboard>
       {header}
       {opened.restored ? (
         <Text testID="note-edit-restored" tone="muted" style={{ fontSize: 13 }}>{t("notes.edit.restored")}</Text>
@@ -268,13 +306,16 @@ export default function NoteEditScreen() {
       <ReadOnlyAtomProvider value={{ colors, labels, onLinkPress: openLink }}>
         <View style={{ flex: 1 }} testID="note-edit-body">
           <RichTextEditor
+            ref={editorRef}
             key={`body-${generation}`}
             documentHandle={engine.handle}
             atoms={notesEngineAtoms}
             theme={engineTheme(colors) as never}
             placeholder={t("notes.edit.bodyPlaceholder")}
-            showToolbar
-            toolbarPlacement="keyboard"
+            showToolbar={false}
+            onActiveStateChange={(state) => setActive({ marks: { ...state.marks }, nodes: { ...state.nodes } })}
+            onHistoryStateChange={(h) => setHistory({ canUndo: h.canUndo, canRedo: h.canRedo })}
+            onSelectionChange={(sel) => setHasSelection(sel.type === "text" && sel.anchor !== sel.head)}
             heightBehavior="fixed"
             style={{ flex: 1 }}
             containerStyle={{ flex: 1 }}
@@ -283,6 +324,37 @@ export default function NoteEditScreen() {
           />
         </View>
       </ReadOnlyAtomProvider>
+      <View style={{ marginHorizontal: -metrics.space.lg }}>
+        <EditorToolbar keys={toolbarKeys} labels={labelsForToolbar} colors={colors} onCommand={onCommand} />
+      </View>
+      <Modal visible={linkDraft !== null} transparent animationType="fade" onRequestClose={() => setLinkDraft(null)}>
+        <View style={{ flex: 1, justifyContent: "center", padding: metrics.space.lg, backgroundColor: "rgba(0,0,0,0.4)" }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: metrics.space.lg, gap: metrics.space.md }}>
+            <Text style={{ fontWeight: "700", fontSize: 17 }}>{t("notes.toolbar.link")}</Text>
+            <TextInput
+              testID="note-link-input"
+              value={linkDraft ?? ""}
+              onChangeText={setLinkDraft}
+              autoFocus
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+              placeholder="https://"
+              placeholderTextColor={colors.inkMuted}
+              onSubmitEditing={saveLink}
+              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.ink, fontSize: 16 }}
+            />
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: metrics.space.md }}>
+              <Pressable testID="note-link-cancel" onPress={() => setLinkDraft(null)} hitSlop={8} style={{ padding: 10 }}>
+                <Text tone="muted">{t("common.cancel")}</Text>
+              </Pressable>
+              <Pressable testID="note-link-save" onPress={saveLink} hitSlop={8} style={{ padding: 10 }}>
+                <Text style={{ color: colors.accent, fontWeight: "700" }}>{t("common.save")}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </Screen>
   );
 }

@@ -89,6 +89,8 @@ const SAME_IN_BOTH = new Set([
   "pages.family.archive",
   "pages.family.page",
   "pages.family.folder",
+  // The note toolbar's Image key: the same word in both, as pages.types.image.
+  "notes.toolbar.image",
   // The product name.
   "home.title",
 ]);

@@ -557,3 +557,21 @@ describe("lock (owner, 2026-11-13: stops editing for that note)", () => {
     await waitFor(() => expect(mockEngine.props!.editable).toBe(true));
   });
 });
+
+describe("the bar follows our document's block under the caret (device finding, 2026-11-13)", () => {
+  it("after a conversion to code, the language key shows from the caret's block even if the engine's active state is stale", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    act(() => {
+      mockEngine.props!.onSelectionChange({ type: "text", anchor: 3, head: 3, anchorScalar: 2, headScalar: 2 });
+      mockEngine.props!.onActiveStateChange({ marks: {}, markAttrs: {}, nodes: { paragraph: true }, commands: {}, allowedMarks: [], insertableNodes: [] });
+      mockEngine.props!.onFocus();
+    });
+    fireEvent.press(screen.getByTestId("tb-format"));
+    fireEvent.press(screen.getByTestId("tb-block:codeBlock"));
+    fireEvent.press(screen.getByTestId("tb-closePanel"));
+    // The engine reports the caret back inside the block; no new active state.
+    act(() => mockEngine.props!.onSelectionChange({ type: "text", anchor: 3, head: 3, anchorScalar: 2, headScalar: 2 }));
+    expect(screen.getByTestId("tb-codeLanguage")).toBeTruthy();
+  });
+});

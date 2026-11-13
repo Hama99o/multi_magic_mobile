@@ -243,7 +243,10 @@ export default function NoteEditScreen() {
   const headingLevel = caretBlock?.node.type === "heading" ? Number(caretBlock.node.attrs?.level ?? 1) : undefined;
   const codeLanguage = caretBlock?.node.type === "codeBlock" ? ((caretBlock.node.attrs?.language as string | null) ?? null) : undefined;
   // Locked: every edit key is off; ⋮ (delete, copy, send, labels) stays.
-  const toolbarKeys = buildToolbar({ ...active, ...history, hasSelection, panel: locked ? null : panel, headingLevel, codeLanguage, focused: focused && !locked })
+  // Our document's block under the caret decides "in code" (B's active state
+  // can lag behind a whole-document replace; seen on the device).
+  const nodesForBar = caretBlock ? { ...active.nodes, codeBlock: caretBlock.node.type === "codeBlock" } : active.nodes;
+  const toolbarKeys = buildToolbar({ ...active, nodes: nodesForBar, ...history, hasSelection, panel: locked ? null : panel, headingLevel, codeLanguage, focused: focused && !locked })
     .keys.map((k) => (locked && k.id !== "more" && k.id !== "spacer" ? { ...k, disabled: true } : k));
 
   /** Replace the engine's document with a structural edit of it (B has no command for these). */
@@ -295,7 +298,7 @@ export default function NoteEditScreen() {
       if (caretBlock && caretBlock.node.type !== "codeBlock") applyStructural(toCodeBlockAt);
       return;
     }
-    if (command.kind === "block" && active.nodes.codeBlock && caretBlock?.node.type === "codeBlock") {
+    if (command.kind === "block" && caretBlock?.node.type === "codeBlock") {
       applyStructural(toParagraphAt);
       if (command.value === "paragraph") return;
     }
@@ -309,7 +312,7 @@ export default function NoteEditScreen() {
     }
     if (command.kind === "none") return;
     if (!ref) return;
-    runCommand(ref, command, { nodes: active.nodes, headingLevel });
+    runCommand(ref, command, { nodes: nodesForBar, headingLevel });
     if (command.kind === "color") setPanel(null);
   };
   const [actionFailed, setActionFailed] = useState(false);

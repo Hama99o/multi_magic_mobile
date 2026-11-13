@@ -33,12 +33,20 @@ function mapNode(node: DocNode, visit: (n: DocNode) => DocNode | null): DocNode 
   } as DocNode;
 }
 
+const atom = (n: DocNode): DocNode => ({ type: READ_ONLY_ATOM, attrs: { kind: n.type, node: JSON.stringify(n) } });
+
+export interface ToEngineOptions {
+  /** Also send this top-level block as a read-only atom (sub/sup, comments: see editSession). */
+  lock?: (node: DocNode, index: number) => boolean;
+}
+
 /** The document the engine is given. Never shares an object with `doc`. */
-export function toEngine(doc: DocNode): DocNode {
-  return mapNode(doc, (n) => {
-    if (READ_ONLY_TYPES.has(n.type)) {
-      return { type: READ_ONLY_ATOM, attrs: { kind: n.type, node: JSON.stringify(n) } };
-    }
+export function toEngine(doc: DocNode, options: ToEngineOptions = {}): DocNode {
+  const { lock } = options;
+  const top = lock && doc.content ? { ...doc, content: doc.content.map((n, i) => (lock(n, i) ? atom(n) : n)) } : doc;
+  return mapNode(top, (n) => {
+    if (n.type === READ_ONLY_ATOM) return { type: n.type, attrs: { ...n.attrs } };
+    if (READ_ONLY_TYPES.has(n.type)) return atom(n);
     if (n.marks) {
       const { marks, ...rest } = n;
       return mapNode({ ...rest, marks: renameMark(marks, "textStyle", ENGINE_COLOR_MARK) } as DocNode, () => null);

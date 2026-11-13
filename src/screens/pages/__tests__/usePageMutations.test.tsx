@@ -125,7 +125,8 @@ describe("rename and empty the trash", () => {
 
   it("empty the trash: empty at once; back on a refusal", async () => {
     const g = gated(500);
-    mock.onAny(/trash/).reply(g.reply);
+    // emptyTrash first READS the trash (GET drive/nodes?view=trash), then deletes each.
+    mock.onGet(/drive\/nodes/).reply(g.reply);
     const { result } = renderHook(() => useEmptyTrash(), { wrapper });
     act(() => result.current.mutate());
     await waitFor(() => expect(rows(TRASH)).toHaveLength(0));

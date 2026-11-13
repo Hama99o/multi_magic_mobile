@@ -6,7 +6,7 @@
  * French option says "Français" in an English app and the English one says
  * "English" in a French one. The web's own switcher does the same.
  */
-import { fireEvent, render, screen } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { LanguageRow } from "../LanguageRow";
 import { __resetLanguage, useLanguage } from "@/stores/language.store";
 import i18n from "@/i18n";
@@ -52,13 +52,14 @@ describe("the row", () => {
     expect(screen.getByTestId("language-fr").props.accessibilityState.selected).toBe(false);
   });
 
-  it("switches the app and saves it for the web too", () => {
+  it("switches the app and saves it for the web too", async () => {
     render(<LanguageRow userId={7} />, { wrapper: withClient });
 
     fireEvent.press(screen.getByTestId("language-fr"));
 
     expect(useLanguage.getState().language).toBe("fr");
-    expect(profileApi.update).toHaveBeenCalledWith(7, { lang: "fr" });
+    // Told through a mutation (useChooseLanguage), which starts after its onMutate.
+    await waitFor(() => expect(profileApi.update).toHaveBeenCalledWith(7, { lang: "fr" }));
   });
 
   it("still reads in the other language once switched", async () => {

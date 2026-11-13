@@ -17,11 +17,18 @@
  * These assert the SPOKEN half only. Whether TalkBack or VoiceOver actually
  * voices them in the order a person wants is a device question.
  */
-import { render, screen, act } from "@testing-library/react-native";
+import { render as rntlRender, screen, act } from "@testing-library/react-native";
 import { AccessibilityInfo } from "react-native";
 import { ThinkingDots } from "../ThinkingDots";
 import { MessageRow } from "../MessageRow";
 import type { ChatMessage } from "@/api/ai";
+import type { ReactElement } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { testQueryClient } from "@/__tests__/queryClient";
+
+/** The answer's actions write through mutations (docs/DATA_LAYER.md), so every
+ *  render here gets a fresh test client, as the app always has one. */
+const render = (ui: ReactElement) => rntlRender(<QueryClientProvider client={testQueryClient()}>{ui}</QueryClientProvider>);
 
 const message = (over: Partial<ChatMessage> = {}): ChatMessage =>
   ({

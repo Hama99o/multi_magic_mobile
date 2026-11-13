@@ -11,6 +11,14 @@ import { LanguageRow } from "../LanguageRow";
 import { __resetLanguage, useLanguage } from "@/stores/language.store";
 import i18n from "@/i18n";
 import { profileApi } from "@/api/profile";
+import type React from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { testQueryClient } from "@/__tests__/queryClient";
+/** The language row tells the server through a mutation (useChooseLanguage), so it needs a client. */
+function withClient({ children }: { children: React.ReactNode }) {
+  return <QueryClientProvider client={testQueryClient()}>{children}</QueryClientProvider>;
+}
+
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -29,7 +37,7 @@ afterEach(async () => {
 
 describe("the row", () => {
   it("offers both languages, each written in itself", () => {
-    render(<LanguageRow userId={7} />);
+    render(<LanguageRow userId={7} />, { wrapper: withClient });
 
     expect(screen.getByTestId("language-en")).toBeTruthy();
     expect(screen.getByTestId("language-fr")).toBeTruthy();
@@ -38,14 +46,14 @@ describe("the row", () => {
   });
 
   it("marks the one in force", () => {
-    render(<LanguageRow userId={7} />);
+    render(<LanguageRow userId={7} />, { wrapper: withClient });
 
     expect(screen.getByTestId("language-en").props.accessibilityState.selected).toBe(true);
     expect(screen.getByTestId("language-fr").props.accessibilityState.selected).toBe(false);
   });
 
   it("switches the app and saves it for the web too", () => {
-    render(<LanguageRow userId={7} />);
+    render(<LanguageRow userId={7} />, { wrapper: withClient });
 
     fireEvent.press(screen.getByTestId("language-fr"));
 
@@ -56,7 +64,7 @@ describe("the row", () => {
   it("still reads in the other language once switched", async () => {
     await i18n.changeLanguage("fr");
     useLanguage.setState({ language: "fr" });
-    render(<LanguageRow userId={7} />);
+    render(<LanguageRow userId={7} />, { wrapper: withClient });
 
     // The way back is legible from inside French.
     expect(screen.getByText("English")).toBeTruthy();

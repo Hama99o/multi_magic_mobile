@@ -32,33 +32,15 @@ afterEach(async () => {
 const state = () => useLanguage.getState();
 
 describe("choosing on this phone", () => {
-  it("applies it, remembers it, and tells the server", async () => {
-    state().setLanguage("fr", 7);
+  // Telling the server is no longer the store's job (docs/DATA_LAYER.md):
+  // `src/hooks/__tests__/useChooseLanguage.test.tsx` has those three cases.
+  it("applies it and remembers it, and the store sends nothing", async () => {
+    state().setLanguage("fr");
 
     expect(state().language).toBe("fr");
     expect(i18n.language).toBe("fr");
     expect(await AsyncStorage.getItem("mm-language")).toBe("fr");
-    // The same field the web's switcher writes.
-    expect(update).toHaveBeenCalledWith(7, { lang: "fr" });
-  });
-
-  it("still applies it when nobody is signed in yet", () => {
-    state().setLanguage("fr", null);
-
-    expect(state().language).toBe("fr");
     expect(update).not.toHaveBeenCalled();
-  });
-
-  // The label is already changed by the time the request goes out; a failed
-  // write costs the other clients not knowing, which is recoverable.
-  it("does not undo the choice when the server write fails", async () => {
-    update.mockRejectedValue(new Error("offline"));
-
-    state().setLanguage("fr", 7);
-    await Promise.resolve();
-
-    expect(state().language).toBe("fr");
-    expect(i18n.language).toBe("fr");
   });
 });
 
@@ -73,7 +55,7 @@ describe("what the server has", () => {
   // The race this closes: the profile request lands a moment after somebody
   // pressed English, and must not put them back into French.
   it("NEVER overrides a choice made on this phone", () => {
-    state().setLanguage("en", null);
+    state().setLanguage("en");
 
     state().applyFromServer("fr");
 

@@ -15,16 +15,15 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, t
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
 import { Text } from "@/components/reusables/text";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
 import { Download, FolderInput, Star, Trash2 } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { pagesApi, type PageNode } from "@/api/pages";
+import type { PageNode } from "@/api/pages";
 import { failureMessage } from "@/api/failure";
 import { NameDialog, shareNode } from "../ItemSheet";
 import { downloadMany } from "../downloadMany";
 import { ActionsSheet, DetailsSheet, MoveSheet } from "./sheets";
 import { GridCard, IconButton, ListRow, SelectionBar, useViewPrefs } from "./ui";
-import { pagesKeys } from "@/api/keys";
+import { useMoveNodes, useRenameNode, useRestoreNodes, useStarNodes, useTrashNodes } from "@/screens/pages/usePageMutations";
 
 const GAP = 12;
 
@@ -76,7 +75,6 @@ export function NodeCollection({
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const mode = useViewPrefs((s) => s.mode);
   const [width, setWidth] = useState(0);
 
@@ -94,7 +92,6 @@ export function NodeCollection({
   const [renameError, setRenameError] = useState<string | null>(null);
   const [moving, setMoving] = useState<PageNode[] | null>(null);
 
-  const refresh = useCallback(() => void queryClient.invalidateQueries({ queryKey: pagesKeys.all }), [queryClient]);
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
   const chosen = useMemo(() => [...selected].map((id) => byId.get(id)).filter((n): n is PageNode => Boolean(n)), [selected, byId]);
 
@@ -122,18 +119,9 @@ export function NodeCollection({
     [t],
   );
 
-  const setStar = useCallback(
-    async (targets: PageNode[], starred: boolean) => {
-      try {
-        for (const n of targets) await pagesApi.update(n.spaceId, n.id, { starred });
-      } catch (e) {
-        Alert.alert(failureMessage(e, t("pages.actions.failed")));
-      } finally {
-        refresh();
-      }
-    },
-    [refresh, t],
-  );
+  const failed = useCallback((e: unknown) => Alert.alert(failureMessage(e, t("pages.actions.failed"))), [t]);
+  const starring = useStarNodes({ onError: failed });
+  const setStar = useCallback((targets: PageNode[], starred: boolean) => starring.mutate({ nodes: targets, starred }), [starring]);
 
   // MOVE TO TRASH GOES AT ONCE, WITH UNDO (docs/QA_FULL.md top-10 #7), as
   // Drive does: no "are you sure" in the way, and a mistake costs one tap.
@@ -144,63 +132,49 @@ export function NodeCollection({
     if (undoTimer.current) clearTimeout(undoTimer.current);
   }, []);
 
+  const trashing = useTrashNodes({
+    onDone: (done) => {
+      if (!done.length) return;
+      setTrashed(done);
+      if (undoTimer.current) clearTimeout(undoTimer.current);
+      undoTimer.current = setTimeout(() => setTrashed(null), UNDO_MS);
+    },
+    onError: failed,
+  });
   const trash = useCallback(
     (targets: PageNode[]) => {
       setSelected(new Set());
-      void (async () => {
-        const done: PageNode[] = [];
-        try {
-          for (const n of targets) {
-            await pagesApi.trash(n.spaceId, n.id);
-            done.push(n);
-          }
-        } catch (e) {
-          Alert.alert(failureMessage(e, t("pages.actions.failed")));
-        } finally {
-          refresh();
-          if (done.length) {
-            setTrashed(done);
-            if (undoTimer.current) clearTimeout(undoTimer.current);
-            undoTimer.current = setTimeout(() => setTrashed(null), UNDO_MS);
-          }
-        }
-      })();
+      trashing.mutate(targets);
     },
-    [refresh, t],
+    [trashing],
   );
 
+  const restoring = useRestoreNodes({ onError: (e) => Alert.alert(failureMessage(e, t("pages.trash.restoreFailed"))) });
   const undo = useCallback(() => {
     const back = trashed;
     setTrashed(null);
     if (undoTimer.current) clearTimeout(undoTimer.current);
-    if (!back) return;
-    void (async () => {
-      try {
-        for (const n of back) await pagesApi.restore(n.spaceId, n.id);
-      } catch (e) {
-        Alert.alert(failureMessage(e, t("pages.trash.restoreFailed")));
-      } finally {
-        refresh();
-      }
-    })();
-  }, [trashed, refresh, t]);
+    if (back) restoring.mutate(back);
+  }, [trashed, restoring]);
 
+  const renamer = useRenameNode({
+    onDone: () => setRenaming(null),
+    onError: (e) => setRenameError(failureMessage(e, t("pages.actions.failed"))),
+  });
   const rename = useCallback(
     async (name: string) => {
       if (!renaming) return;
       setRenameBusy(true);
       setRenameError(null);
       try {
-        await pagesApi.update(renaming.spaceId, renaming.id, { title: name });
-        setRenaming(null);
-        refresh();
-      } catch (e) {
-        setRenameError(failureMessage(e, t("pages.actions.failed")));
+        await renamer.mutateAsync({ node: renaming, title: name });
+      } catch {
+        // Said by onError, against the field.
       } finally {
         setRenameBusy(false);
       }
     },
-    [renaming, refresh, t],
+    [renaming, renamer],
   );
 
   // docs/MISSING_FEATURES.md #1. One folder asked for once, then each file in
@@ -247,18 +221,15 @@ export function NodeCollection({
     [t],
   );
 
+  const mover = useMoveNodes({ onDone: () => setSelected(new Set()) });
   const move = useCallback(
     async (to: { spaceId: number; parentId: number | null }) => {
       if (!moving) return;
-      try {
-        // Only where it goes: the label is for the sheet, not the server.
-        for (const n of moving) await pagesApi.move(n.spaceId, n.id, { spaceId: to.spaceId, parentId: to.parentId });
-        setSelected(new Set());
-      } finally {
-        refresh();
-      }
+      // Only where it goes: the label is for the sheet, not the server. A
+      // failure reaches the sheet, which says so.
+      await mover.mutateAsync({ nodes: moving, to: { spaceId: to.spaceId, parentId: to.parentId } });
     },
-    [moving, refresh],
+    [moving, mover],
   );
 
   // ── Render ────────────────────────────────────────────────────────────────

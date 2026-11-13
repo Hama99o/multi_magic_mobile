@@ -11,7 +11,7 @@
 import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
@@ -23,14 +23,13 @@ import { EmptyLine } from "../parts";
 import { BottomSheet, SheetRow } from "./sheets";
 import { ListRow } from "./ui";
 import { pagesKeys } from "@/api/keys";
+import { useDestroyNodes, useEmptyTrash, useRestoreNodes } from "@/screens/pages/usePageMutations";
 
 export function TrashView() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const [chosen, setChosen] = useState<PageNode | null>(null);
-  const [emptying, setEmptying] = useState(false);
 
   const trash = useInfiniteQuery({
     queryKey: pagesKeys.drive("trash", ""),
@@ -39,17 +38,21 @@ export function TrashView() {
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
   });
   const nodes = useMemo(() => (trash.data?.pages ?? []).flatMap((p) => p.rows), [trash.data]);
-  const refresh = useCallback(() => queryClient.invalidateQueries({ queryKey: pagesKeys.all }), [queryClient]);
+  // Optimistic (out of the trash at once, back on a refusal): usePageMutations.ts.
+  const restoring = useRestoreNodes({ onError: (e) => Alert.alert(failureMessage(e, t("pages.trash.restoreFailed"))) });
+  const destroying = useDestroyNodes({ onError: (e) => Alert.alert(failureMessage(e, t("pages.trash.deleteFailed"))) });
+  const emptying_ = useEmptyTrash({
+    onDone: (count) => Alert.alert(t("pages.trash.emptied", { count })),
+    onError: (e) => Alert.alert(failureMessage(e, t("pages.trash.emptyFailed"))),
+  });
+  const emptying = emptying_.isPending;
 
   const restore = useCallback(
     (node: PageNode) => {
       setChosen(null);
-      void pagesApi
-        .restore(node.spaceId, node.id)
-        .then(refresh)
-        .catch((e: unknown) => Alert.alert(failureMessage(e, t("pages.trash.restoreFailed"))));
+      restoring.mutate([node]);
     },
-    [refresh, t],
+    [restoring],
   );
 
   const destroy = useCallback(
@@ -57,40 +60,18 @@ export function TrashView() {
       setChosen(null);
       Alert.alert(t("pages.trash.deleteTitle", { title: node.title }), t("pages.trash.deleteBody"), [
         { text: t("common.cancel"), style: "cancel" },
-        {
-          text: t("pages.trash.deleteForever"),
-          style: "destructive",
-          onPress: () =>
-            void pagesApi
-              .destroyForever(node.spaceId, node.id)
-              .then(refresh)
-              .catch((e: unknown) => Alert.alert(failureMessage(e, t("pages.trash.deleteFailed")))),
-        },
+        { text: t("pages.trash.deleteForever"), style: "destructive", onPress: () => destroying.mutate([node]) },
       ]);
     },
-    [refresh, t],
+    [destroying, t],
   );
 
   const empty = useCallback(() => {
     Alert.alert(t("pages.trash.emptyTitle"), t("pages.trash.emptyBody"), [
       { text: t("common.cancel"), style: "cancel" },
-      {
-        text: t("pages.trash.empty"),
-        style: "destructive",
-        onPress: () => {
-          setEmptying(true);
-          void pagesApi
-            .emptyTrash()
-            .then((count) => Alert.alert(t("pages.trash.emptied", { count })))
-            .catch((e: unknown) => Alert.alert(failureMessage(e, t("pages.trash.emptyFailed"))))
-            .finally(() => {
-              setEmptying(false);
-              void refresh();
-            });
-        },
-      },
+      { text: t("pages.trash.empty"), style: "destructive", onPress: () => emptying_.mutate() },
     ]);
-  }, [refresh, t]);
+  }, [emptying_, t]);
 
   return (
     <View style={{ flex: 1 }}>

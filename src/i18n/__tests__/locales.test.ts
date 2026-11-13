@@ -59,6 +59,8 @@ const SAME_IN_BOTH = new Set([
   // Contacts: the same word in both ("Contacts", "Notes", "fax", "parent",
   // "Photo") and one product name (WhatsApp).
   "contacts.title",
+  // SafeZone: the product's name.
+  "safezone.title",
   "contacts.labels.fax",
   "contacts.actions.whatsapp",
   "contacts.list.exportTitle",

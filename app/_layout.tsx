@@ -20,6 +20,7 @@ import { queryClient } from "@/lib/queryClient";
 import * as SplashScreen from "expo-splash-screen";
 import { wireAuthStore, useAuthStore } from "@/stores/auth.store";
 import { wireReachability } from "@/stores/reachability.store";
+import { wireClipboardSweep } from "@/screens/safezone/clipboardGuard";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useLanguage } from "@/stores/language.store";
 import { useThemeStore } from "@/stores/theme.store";
@@ -39,6 +40,9 @@ void SplashScreen.preventAutoHideAsync();
 
 wireAuthStore();
 wireReachability();
+// A SafeZone copy left on the clipboard by a killed app is cleared on the next
+// open, wherever the app opens (device pass D12, `SECURITY.md` §9).
+wireClipboardSweep();
 
 /**
  * A DEEP LINK OPENS ON TOP OF HOME. Measured 2026-11-07 on qa_phone: a cold

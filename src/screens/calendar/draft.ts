@@ -60,9 +60,8 @@ export function newDraft(day: string, now: Date = new Date()): Draft {
     kind: "event",
     allDay: false,
     day,
-    endDay: "",
     startTime,
-    endTime: plusOneHour(startTime),
+    ...hourAfter(day, startTime),
     recurrence: "none",
     recurrenceUntil: "",
     color: "blue",
@@ -109,12 +108,37 @@ export function withAllDay(draft: Draft, allDay: boolean): Draft {
   return { ...draft, allDay };
 }
 
+/**
+ * An hour after `time` on `day`: the end time, and the end DAY when that hour
+ * crosses midnight ("" means the same day). Device QA 2026-11-13: at 23:20 the
+ * form proposed 11:00 PM → 12:00 AM on the SAME day, and the save dropped the
+ * end as "before the start", silently.
+ */
+function hourAfter(day: string, time: string): { endTime: string; endDay: string } {
+  const endTime = plusOneHour(time);
+  return { endTime, endDay: day && endTime <= time ? addDays(day, 1) : "" };
+}
+
+/** The end is still the one the form proposed (an hour after the start). */
+function untouchedEnd(draft: Draft): boolean {
+  const auto = hourAfter(draft.day, draft.startTime);
+  return draft.endTime === auto.endTime && (draft.endDay || "") === auto.endDay;
+}
+
+/** The end, as set, is not after the start (a timed event). */
+function endNotAfterStart(draft: Draft): boolean {
+  if (draft.allDay || !draft.endTime || !draft.day) return false;
+  return instant(draft.endDay || draft.day, draft.endTime).getTime() <= instant(draft.day, draft.startTime || "09:00").getTime();
+}
+
 /** Moving the start moves an end that would be behind it — without this an
- *  event set to start at 00:15 silently kept a 10:00 end (the web's bug). */
+ *  event set to start at 00:15 silently kept a 10:00 end (the web's bug) —
+ *  and an end still at its proposed hour follows the start, across midnight
+ *  when it must. */
 export function withStartTime(draft: Draft, startTime: string): Draft {
-  const sameDay = !draft.endDay || draft.endDay === draft.day;
-  const behind = !draft.endTime || (sameDay && draft.endTime <= startTime);
-  return { ...draft, startTime, endTime: behind ? plusOneHour(startTime) : draft.endTime };
+  const moved = { ...draft, startTime };
+  if (!draft.endTime || untouchedEnd(draft) || endNotAfterStart(moved)) return { ...moved, ...hourAfter(draft.day, startTime) };
+  return moved;
 }
 
 /** Moving the start day carries a multi-day end by the same distance. */
@@ -166,13 +190,15 @@ export function toPayload(draft: Draft): EventPayload {
   };
 }
 
-export type Problem = "title" | "day" | "until";
+export type Problem = "title" | "day" | "end" | "until";
 
 /** What stops a save, named so the form can point at the field. */
 export function problems(draft: Draft): Problem[] {
   const found: Problem[] = [];
   if (!draft.title.trim()) found.push("title");
   if (!draft.day) found.push("day");
+  // Saved as it was, an end before the start became NO end (`toPayload`).
+  if (endNotAfterStart(draft)) found.push("end");
   if (draft.recurrence !== "none" && draft.recurrenceUntil && draft.day && draft.recurrenceUntil < draft.day) found.push("until");
   return found;
 }

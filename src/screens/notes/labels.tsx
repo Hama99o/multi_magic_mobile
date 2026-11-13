@@ -15,12 +15,13 @@ import { noteTagsApi } from "@/api/noteTags";
 import type { Note, NoteTag } from "@/api/notes";
 import TagIcon from "lucide-react-native/dist/esm/icons/tag";
 import ArchiveIcon from "lucide-react-native/dist/esm/icons/archive";
+import BellIcon from "lucide-react-native/dist/esm/icons/bell";
 
 export const TAGS_KEY = ["notes", "tags"] as const;
 export const useNoteTags = (enabled = true) => useQuery({ queryKey: TAGS_KEY, queryFn: () => noteTagsApi.list(), enabled });
 
 /** Keep's drawer: Notes (current when no label), then every label; Edit labels. */
-export type NotesView = "notes" | "archive" | "trash";
+export type NotesView = "notes" | "reminders" | "archive" | "trash";
 
 export function NotesDrawer({
   visible, currentTagId, view = "notes", onClose, onPick, onEditLabels, onPickView,
@@ -63,6 +64,7 @@ export function NotesDrawer({
           </Text>
           <ScrollView>
             {row("drawer-notes", t("notes.title"), <NotebookPen size={22} color={colors.ink} />, view === "notes" && currentTagId === null, () => onPick(null))}
+            {onPickView ? row("drawer-reminders", t("notes.views.reminders"), <BellIcon size={22} color={colors.ink} />, view === "reminders", () => onPickView("reminders")) : null}
             <Text tone="muted" style={{ fontSize: 12, fontWeight: "600", letterSpacing: 0.6, paddingHorizontal: 20, marginTop: metrics.space.lg, marginBottom: metrics.space.xs }}>
               {t("notes.labels.title").toUpperCase()}
             </Text>

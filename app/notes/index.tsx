@@ -43,6 +43,7 @@ import ArchiveIcon from "lucide-react-native/dist/esm/icons/archive";
 import ArchiveRestore from "lucide-react-native/dist/esm/icons/archive-restore";
 import RotateCcwIcon from "lucide-react-native/dist/esm/icons/rotate-ccw";
 import Flame from "lucide-react-native/dist/esm/icons/flame";
+import BellIcon from "lucide-react-native/dist/esm/icons/bell";
 
 /** The web's empty to-do list (tiptop 2.3.1 taskList markup), for "new checklist". */
 const EMPTY_CHECKLIST =
@@ -182,7 +183,7 @@ export default function NotesScreen() {
           <Text testID="notes-selection-count" style={{ flex: 1, fontSize: 18, fontWeight: "600" }}>
             {t("notes.grid.selected", { count: selected.length })}
           </Text>
-          {view === "notes"
+          {view === "notes" || view === "reminders"
             ? iconKey(
                 "notes-selection-pin",
                 allPinned ? t("notes.grid.unpin") : t("notes.grid.pin"),
@@ -191,7 +192,7 @@ export default function NotesScreen() {
               )
             : null}
           {view !== "trash" ? iconKey("notes-selection-color", t("notes.grid.color"), () => setColorOpen(true), <Palette size={22} color={colors.ink} />) : null}
-          {view === "notes"
+          {view === "notes" || view === "reminders"
             ? iconKey("notes-selection-archive", t("notes.views.archiveAction"), () => void runOnSelection((n) => notesApi.archive(n.id)), <ArchiveIcon size={22} color={colors.ink} />)
             : null}
           {view === "archive"
@@ -241,7 +242,7 @@ export default function NotesScreen() {
       {view !== "notes" ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: metrics.space.xs }}>
           <Text testID="notes-view-title" style={{ flex: 1, fontSize: 18, fontWeight: "600" }} accessibilityRole="header">
-            {view === "archive" ? t("notes.views.archive") : t("notes.views.trash")}
+            {view === "archive" ? t("notes.views.archive") : view === "reminders" ? t("notes.views.reminders") : t("notes.views.trash")}
           </Text>
           {iconKey("notes-view-close", t("notes.labels.clearFilter"), () => setView("notes"), <X size={20} color={colors.inkMuted} />)}
         </View>
@@ -449,6 +450,14 @@ function NoteCard({
         </View>
       ) : null}
       {body ? <Text style={{ fontSize: 14, lineHeight: 20, color: colors.ink }}>{body}</Text> : null}
+      {note.reminder ? (
+        <View testID={`note-card-${note.id}-reminder`} style={{ flexDirection: "row", alignItems: "center", gap: 4, alignSelf: "flex-start", borderRadius: 999, paddingHorizontal: 8, paddingVertical: 2, backgroundColor: `${colors.ink}1f` }}>
+          <BellIcon size={12} color={colors.ink} />
+          <Text style={{ fontSize: 12, color: colors.ink }}>
+            {note.reminder.at.toLocaleString(undefined, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}
+          </Text>
+        </View>
+      ) : null}
       {note.tags.length ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
           {note.tags.map((tag) => (

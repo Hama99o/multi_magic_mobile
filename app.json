@@ -97,7 +97,13 @@
           ]
         }
       ],
-      "@apollohg/react-native-rich-text-editor"
+      "@apollohg/react-native-rich-text-editor",
+      [
+        "expo-notifications",
+        {
+          "color": "#2f8a83"
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true

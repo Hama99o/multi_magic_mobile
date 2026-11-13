@@ -283,3 +283,24 @@ describe("selection on the main grid can archive", () => {
     await waitFor(() => expect(mock.history.put.map((r) => r.url)).toEqual(["/api/v1/note_app/notes/3/archive"]));
   });
 });
+
+describe("Reminders view and chips", () => {
+  beforeEach(() => {
+    mock.onGet("/api/v1/note_app/tags").reply(200, { tags: [], meta: { pagy: { page: 1, pages: 1 } } });
+  });
+
+  it("a card shows its reminder", async () => {
+    server = [note(5, { data: { launch_time: "2030-01-01T08:00:00Z" } })];
+    open();
+    expect(await screen.findByTestId("note-card-5-reminder")).toBeTruthy();
+  });
+
+  it("the drawer's Reminders lists the notes with a reminder (?reminders=true)", async () => {
+    open();
+    await screen.findByText("Pinned seed");
+    fireEvent.press(screen.getByTestId("notes-menu"));
+    fireEvent.press(await screen.findByTestId("drawer-reminders"));
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === "/api/v1/note_app/notes" && r.params?.reminders === "true")).toBe(true));
+    expect(screen.getByTestId("notes-view-title")).toHaveTextContent("Reminders");
+  });
+});

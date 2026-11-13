@@ -436,3 +436,45 @@ describe("archive from the note (the header pill)", () => {
     await waitFor(() => expect(router.back).toHaveBeenCalled());
   });
 });
+
+describe("reminders (Keep's bell; local notifications, Hello 2026-11-13)", () => {
+  const resync = jest.fn(async () => undefined);
+  // In beforeEach: the file's afterEach restores every spy.
+  beforeEach(() => {
+    resync.mockClear();
+    jest.spyOn(jest.requireActual("@/screens/notes/reminderNotifications"), "resyncReminders").mockImplementation(resync);
+    jest.spyOn(jest.requireActual("@/screens/notes/reminderNotifications"), "ensureReminderPermission").mockResolvedValue(true);
+  });
+
+  it("the bell opens the reminder sheet; Tomorrow + repeat weekly saves to the server and reschedules", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply((cfg) => {
+      const body = JSON.parse(cfg.data);
+      server = { ...server, data: { launch_time: body.launch_time, repeat_frequency: body.repeat_frequency } };
+      return [200, { note: server }];
+    });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    fireEvent.press(screen.getByTestId("note-edit-reminder"));
+    fireEvent.press(await screen.findByTestId("reminder-quick-tomorrow"));
+    fireEvent.press(screen.getByTestId("reminder-repeat-weekly"));
+    fireEvent.press(screen.getByTestId("reminder-save"));
+    await waitFor(() => expect(mock.history.put.some((r) => JSON.parse(r.data).repeat_frequency === "weekly")).toBe(true));
+    const body = JSON.parse(mock.history.put.find((r) => JSON.parse(r.data).launch_time)!.data);
+    const at = new Date(body.launch_time);
+    expect(at.getHours()).toBe(8);
+    await waitFor(() => expect(resync).toHaveBeenCalled());
+    expect(await screen.findByTestId("note-edit-reminder-chip")).toBeTruthy();
+  });
+
+  it("an existing reminder can be removed", async () => {
+    server = note({ data: { launch_time: "2030-01-01T08:00:00Z", repeat_frequency: "daily" } });
+    mock.onPut("/api/v1/note_app/notes/7").reply((cfg) => [200, { note: { ...server, data: {} , ...JSON.parse(cfg.data) } }]);
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(screen.getByTestId("note-edit-reminder").props.accessibilityState).toMatchObject({ selected: true });
+    fireEvent.press(screen.getByTestId("note-edit-reminder"));
+    fireEvent.press(await screen.findByTestId("reminder-remove"));
+    await waitFor(() => expect(mock.history.put.some((r) => JSON.parse(r.data).launch_time === "")).toBe(true));
+    await waitFor(() => expect(resync).toHaveBeenCalled());
+  });
+});

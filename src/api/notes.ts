@@ -18,6 +18,7 @@ import { http } from "./http";
 import { arr, id, num, obj, optStr, readableRows, str } from "./parse";
 import { StaleNoteError } from "@/lib/staleNote";
 import { isNoteColorKey, type NoteColorKey } from "@/screens/notes/editor/noteColors";
+import type { NoteReminder } from "@/screens/notes/reminders";
 
 /** `owner`, or a share role (`note_app/share.rb`: viewer, contributor, administrator). */
 export type NoteRole = "owner" | "administrator" | "contributor" | "viewer";
@@ -34,6 +35,8 @@ export type NoteStatus = "published" | "archived" | "trashed";
 export interface Note {
   id: number;
   status: NoteStatus;
+  /** A reminder set on any device (data.launch_time + repeat_frequency), or null. */
+  reminder: NoteReminder | null;
   /** The note's colour key (data.color, or a label's colour as the server falls back), null for none. */
   color: NoteColorKey | null;
   title: string;
@@ -56,6 +59,16 @@ export interface NoteList {
   total: number;
 }
 
+function parseReminder(data: unknown): NoteReminder | null {
+  if (!data || typeof data !== "object") return null;
+  const d = data as Record<string, unknown>;
+  if (typeof d.launch_time !== "string" || !d.launch_time) return null;
+  const at = new Date(d.launch_time);
+  if (Number.isNaN(at.getTime())) return null;
+  const repeat = d.repeat_frequency === "daily" || d.repeat_frequency === "weekly" || d.repeat_frequency === "monthly" ? d.repeat_frequency : null;
+  return { at, repeat };
+}
+
 const colorKey = (v: unknown): NoteColorKey | null => (isNoteColorKey(v) && v !== "no_color" ? v : null);
 
 const ROLES: readonly NoteRole[] = ["owner", "administrator", "contributor", "viewer"];
@@ -72,6 +85,7 @@ export function parseNote(value: unknown): Note {
     id: id(note.id, "note.id"),
     color: colorKey(note.color),
     status: note.status === "archived" || note.status === "trashed" ? note.status : "published",
+    reminder: parseReminder(note.data),
     title: optStr(note.title) ?? "",
     html: optStr(note.description) ?? "",
     pinned: note.pinned === true,
@@ -86,10 +100,10 @@ export function parseNote(value: unknown): Note {
 
 export const notesApi = {
   /** Published notes the reader can see (their own and shared), pinned first, then last edited. */
-  list: async (page = 1, search?: string, tagId?: number, view: "notes" | "archive" | "trash" = "notes"): Promise<NoteList> => {
+  list: async (page = 1, search?: string, tagId?: number, view: "notes" | "archive" | "trash" | "reminders" = "notes"): Promise<NoteList> => {
     const path = view === "archive" ? "/api/v1/note_app/notes/archives" : view === "trash" ? "/api/v1/note_app/notes/trashes" : "/api/v1/note_app/notes";
     const res = await http.get(path, {
-      params: { page, ...(search ? { search } : {}), ...(tagId ? { tag_id: tagId } : {}) },
+      params: { page, ...(search ? { search } : {}), ...(tagId ? { tag_id: tagId } : {}), ...(view === "reminders" ? { reminders: "true" } : {}) },
     });
     const record = obj(res.data, "notes");
     const meta = obj(record.meta, "notes.meta");
@@ -145,6 +159,15 @@ export const notesApi = {
   /** Make a copy (the web's duplicate: the caller's own copy, "(copy)" title, colour kept, no shares or tags). */
   duplicate: async (noteId: number): Promise<Note> => {
     const res = await http.post(`/api/v1/note_app/notes/${noteId}/duplicate`);
+    return parseNote(obj(res.data, "note").note);
+  },
+
+  /** Set (or with null, remove) the note's reminder; the phone schedules it (reminders.ts). */
+  setReminder: async (noteId: number, reminder: NoteReminder | null): Promise<Note> => {
+    const res = await http.put(`/api/v1/note_app/notes/${noteId}`, {
+      launch_time: reminder ? reminder.at.toISOString() : "",
+      repeat_frequency: reminder?.repeat ?? "",
+    });
     return parseNote(obj(res.data, "note").note);
   },
 

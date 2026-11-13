@@ -21,6 +21,10 @@ import { Text } from "@/components/reusables/text";
 import { ChevronLeft, Copy, Pin, Share2, Trash2 } from "@/components/icons";
 import TagIcon from "lucide-react-native/dist/esm/icons/tag";
 import ArchiveIcon from "lucide-react-native/dist/esm/icons/archive";
+import BellIcon from "lucide-react-native/dist/esm/icons/bell";
+import { ReminderSheet, reminderLabel } from "@/screens/notes/ReminderSheet";
+import { ensureReminderPermission, resyncReminders } from "@/screens/notes/reminderNotifications";
+import type { NoteReminder } from "@/screens/notes/reminders";
 import { NoteLabelsSheet } from "@/screens/notes/labels";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
 import { notesApi, type Note } from "@/api/notes";
@@ -210,7 +214,9 @@ export default function NoteEditScreen() {
   const [caretPos, setCaretPos] = useState<number | null>(null);
   const scheme = useScheme();
   const [focused, setFocused] = useState(false);
-  const [sheet, setSheet] = useState<"noteColor" | "more" | "confirmDelete" | "labels" | null>(null);
+  const [sheet, setSheet] = useState<"noteColor" | "more" | "confirmDelete" | "labels" | "reminder" | null>(null);
+  const [reminder, setReminder] = useState<NoteReminder | null | undefined>(undefined);
+  const [reminderDenied, setReminderDenied] = useState(false);
   const [noteTags, setNoteTags] = useState<Note["tags"] | null>(null);
   const [pinned, setPinned] = useState<boolean | null>(null);
   const [color, setColor] = useState<NoteColorKey | null | undefined>(undefined);
@@ -284,10 +290,22 @@ export default function NoteEditScreen() {
       const saved = await notesApi.setPinned(noteId, !notePinned);
       setPinned(saved.pinned);
     });
+  const noteReminder = reminder === undefined ? (note?.reminder ?? null) : reminder;
+  const resync = () => void resyncReminders({ untitled: t("notes.untitled") }).catch(() => undefined);
+  const saveReminder = (next: NoteReminder | null) => {
+    setSheet(null);
+    void act(async () => {
+      if (next) setReminderDenied(!(await ensureReminderPermission()));
+      const saved = await notesApi.setReminder(noteId, next);
+      setReminder(saved.reminder);
+      resync();
+    });
+  };
   const archiveNote = () =>
     void act(async () => {
       await saverRef.current?.flush();
       await notesApi.archive(noteId);
+      resync();
     }).then((ok) => {
       if (ok) router.back();
     });
@@ -303,6 +321,7 @@ export default function NoteEditScreen() {
     void act(async () => {
       await saverRef.current?.flush();
       await notesApi.trash(noteId);
+      resync();
     }).then((ok) => {
       if (ok) router.back();
     });
@@ -377,6 +396,17 @@ export default function NoteEditScreen() {
             style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
           >
             <Pin size={20} color={notePinned ? colors.accent : colors.ink} fill={notePinned ? colors.accent : "none"} />
+          </Pressable>
+          <Pressable
+            testID="note-edit-reminder"
+            onPress={() => setSheet("reminder")}
+            accessibilityRole="button"
+            accessibilityLabel={t("notes.reminder.bell")}
+            accessibilityState={{ selected: Boolean(noteReminder) }}
+            hitSlop={4}
+            style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+          >
+            <BellIcon size={20} color={noteReminder ? colors.accent : colors.ink} />
           </Pressable>
           {note.role === "owner" || note.role === "administrator" ? (
             <Pressable
@@ -456,6 +486,22 @@ export default function NoteEditScreen() {
         style={{ fontSize: 28, lineHeight: 36, fontWeight: "400", color: colors.ink, paddingVertical: metrics.space.sm }}
         accessibilityLabel={t("notes.edit.titlePlaceholder")}
       />
+      {noteReminder ? (
+        <Pressable
+          testID="note-edit-reminder-chip"
+          onPress={() => setSheet("reminder")}
+          accessibilityRole="button"
+          style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 999, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 4, marginBottom: metrics.space.xs }}
+        >
+          <BellIcon size={14} color={colors.ink} />
+          <Text style={{ fontSize: 13 }}>
+            {reminderLabel(noteReminder, i18n.language, (r) => t(`notes.reminder.${r}`))}
+          </Text>
+        </Pressable>
+      ) : null}
+      {reminderDenied ? (
+        <Text testID="note-edit-reminder-denied" tone="muted" style={{ fontSize: 12 }}>{t("notes.reminder.denied")}</Text>
+      ) : null}
       <ReadOnlyAtomProvider value={{ colors, labels, onLinkPress: openLink }}>
         <View style={{ flex: 1 }} testID="note-edit-body">
           <RichTextEditor
@@ -522,6 +568,13 @@ export default function NoteEditScreen() {
           ))}
         </View>
       </Modal>
+      <ReminderSheet
+        visible={sheet === "reminder"}
+        value={noteReminder}
+        onSave={(r) => saveReminder(r)}
+        onRemove={() => saveReminder(null)}
+        onClose={() => setSheet(null)}
+      />
       <NoteLabelsSheet
         visible={sheet === "labels"}
         note={{ id: noteId, tags: noteTags ?? note.tags }}

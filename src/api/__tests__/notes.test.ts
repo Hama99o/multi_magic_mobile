@@ -208,3 +208,30 @@ describe("archive and trash (Keep, owner 2026-11-13)", () => {
     expect(mock.history.delete[0].url).toBe("/api/v1/note_app/notes/7/destroy_permanently");
   });
 });
+
+describe("reminders (data.launch_time, data.repeat_frequency; multi_magic PR #22)", () => {
+  it("reads a note's reminder from its data", async () => {
+    mock.onGet("/api/v1/note_app/notes/7").reply(200, { note: note({ data: { launch_time: "2026-11-20T09:00:00Z", repeat_frequency: "weekly", color: "teal" } }) });
+    const n = await notesApi.get(7);
+    expect(n.reminder).toEqual({ at: new Date("2026-11-20T09:00:00Z"), repeat: "weekly" });
+  });
+
+  it("no reminder, or an unreadable one, is null", async () => {
+    mock.onGet("/api/v1/note_app/notes/7").reply(200, { note: note({ data: { launch_time: "soon" } }) });
+    expect((await notesApi.get(7)).reminder).toBeNull();
+  });
+
+  it("sets and removes a reminder", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note() });
+    await notesApi.setReminder(7, { at: new Date("2026-11-20T09:00:00Z"), repeat: "daily" });
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ launch_time: "2026-11-20T09:00:00.000Z", repeat_frequency: "daily" });
+    await notesApi.setReminder(7, null);
+    expect(JSON.parse(mock.history.put[1].data)).toEqual({ launch_time: "", repeat_frequency: "" });
+  });
+
+  it("lists the notes that have a reminder (?reminders=true)", async () => {
+    mock.onGet("/api/v1/note_app/notes").reply(200, { notes: [], meta: { pagy: { page: 1, pages: 1 }, total_count: 0 } });
+    await notesApi.list(1, undefined, undefined, "reminders");
+    expect(mock.history.get[0].params).toEqual({ page: 1, reminders: "true" });
+  });
+});

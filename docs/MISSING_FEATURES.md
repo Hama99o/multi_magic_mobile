@@ -24,4 +24,5 @@ Rule: the phone does what the web does, with no invented fields. These Keep feat
 - **Voice notes**: no audio-note type on the web.
 - **Drawing notes**: no drawing type on the web.
 - **Sort options in the grid**: the server orders `pinned desc, updated_at desc` and takes no sort parameter.
-- **Archive**: being added on a multi_magic branch (status plus API plus MCP plus minimal web), with PR and no merge (owner's decision, 2026-11-13). Until it lands, there is no archive key on the phone.
+- **Archive**: added in multi_magic PR #21 (not merged). On the phone, behind the dev flag.
+- **Reminder delivery from the server** (email or push). Reminders are local notifications on each phone (multi_magic PR #22 stores them). A phone that has not opened the app since the reminder was set does not ring.

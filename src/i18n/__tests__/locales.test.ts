@@ -47,6 +47,7 @@ const SAME_IN_BOTH = new Set([
   "chat.title", // "Assistant"
   "chat.assistantSpeaker", // "Assistant" — spoken, and the same word as chat.title
   "chat.notifications", // "Notifications"
+  "notes.title", // "Notes"
   "files.document", // "Document"
   "thread.message", // "Message"
   "language.english",

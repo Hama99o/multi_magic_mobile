@@ -299,6 +299,9 @@ const config = {
     ".expo/",
     "docs/",
     "*.config.js",
+    // A hashed copy of tiptop-editor/schema, linted and tested in tiptop-editor;
+    // src/__tests__/vendorTiptopSchema.test.ts keeps it untouched.
+    "src/vendor/",
     // Files that exist to FAIL these rules. `src/__tests__/eslintRules.test.ts`
     // lints them explicitly with `--no-ignore` and fails if a rule has gone
     // quiet. See `eslint-fixtures/README.md`.

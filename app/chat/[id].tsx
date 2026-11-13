@@ -337,6 +337,18 @@ export default function PersonThread() {
     });
   }, [conversationId]);
 
+  /**
+   * The thread's writes are mutations (docs/DATA_LAYER.md). NOT optimistic,
+   * on purpose, and unchanged: an outgoing message waits in the OUTBOX (local
+   * UI state, shown as sending) and stays on screen if it fails (BRIEF.md
+   * §5); reaction counts come back from the server, never guessed. Each
+   * answer is merged into the thread's cache by `mergeMessage`.
+   */
+  const sending = useMutation({ mutationFn: (body: string) => threadApi.send(conversationId, body) });
+  const editing_ = useMutation({ mutationFn: ({ id, body }: { id: number; body: string }) => threadApi.edit(conversationId, id, body) });
+  const reacting = useMutation({ mutationFn: ({ id, emoji }: { id: number; emoji: string }) => threadApi.react(conversationId, id, emoji) });
+  const removing = useMutation({ mutationFn: (id: number) => threadApi.remove(conversationId, id) });
+
   const send = useCallback(async () => {
     const body = draft.trim();
     if (!body || !Number.isFinite(conversationId)) return;
@@ -348,7 +360,7 @@ export default function PersonThread() {
       setEditing(null);
       setDraft("");
       try {
-        mergeMessage(await threadApi.edit(conversationId, target.id, body));
+        mergeMessage(await editing_.mutateAsync({ id: target.id, body }));
       } catch (e) {
         // Put it back in the composer rather than losing the words, AND say
         // so: the text silently reappearing read as the tap not working.
@@ -364,7 +376,7 @@ export default function PersonThread() {
     setOutbox((current) => [...current, { key, body, failed: false }]);
 
     try {
-      const saved = await threadApi.send(conversationId, body);
+      const saved = await sending.mutateAsync(body);
       // Merged by the server's own id, so the MessageChannel echo of the same
       // message lands on top of it rather than appearing twice.
       mergeMessage(saved);
@@ -381,7 +393,7 @@ export default function PersonThread() {
         ),
       );
     }
-  }, [draft, conversationId, editing, mergeMessage, queryClient, t]);
+  }, [draft, conversationId, editing, mergeMessage, queryClient, t, sending, editing_]);
 
   const retry = useCallback(
     async (item: Outgoing) => {
@@ -389,7 +401,7 @@ export default function PersonThread() {
         current.map((row) => (row.key === item.key ? { ...row, failed: false } : row)),
       );
       try {
-        mergeMessage(await threadApi.send(conversationId, item.body));
+        mergeMessage(await sending.mutateAsync(item.body));
         setOutbox((current) => current.filter((row) => row.key !== item.key));
       } catch (e) {
         setOutbox((current) =>
@@ -399,7 +411,7 @@ export default function PersonThread() {
         );
       }
     },
-    [conversationId, mergeMessage],
+    [mergeMessage, sending],
   );
 
   const react = useCallback(
@@ -411,13 +423,13 @@ export default function PersonThread() {
         // One endpoint both adds and removes — the same emoji twice takes it
         // back (`routes.rb:295`). The response is the whole updated message,
         // so the counts come back rather than being guessed at.
-        mergeMessage(await threadApi.react(conversationId, target.id, emoji));
+        mergeMessage(await reacting.mutateAsync({ id: target.id, emoji }));
       } catch {
         // The chip simply does not change. A failed reaction is not worth an
         // error banner over somebody's conversation.
       }
     },
-    [sheetFor, conversationId, mergeMessage],
+    [sheetFor, mergeMessage, reacting],
   );
 
   const removeMessage = useCallback(async () => {
@@ -427,13 +439,13 @@ export default function PersonThread() {
     try {
       // Comes back `deleted: true` with `body: null` — the row keeps its place,
       // because "a hole in the thread reads as a bug".
-      mergeMessage(await threadApi.remove(conversationId, target.id));
+      mergeMessage(await removing.mutateAsync(target.id));
     } catch (e) {
       // The message stays, which is the truth, and now it says why: the
       // sheet closing with nothing changed read as a missed tap.
       setThreadError(failureMessage(e, t("thread.deleteFailed")));
     }
-  }, [sheetFor, conversationId, mergeMessage, t]);
+  }, [sheetFor, mergeMessage, removing, t]);
 
   /**
    * The message the UNREAD divider sits above, fixed on first load.

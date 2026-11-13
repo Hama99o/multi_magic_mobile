@@ -1012,6 +1012,12 @@ export const en = {
       unchecked: "Not done",
     },
   },
+  shareDoor: {
+    unreadableTitle_one: "Couldn't read this file",
+    unreadableTitle_other: "Couldn't read {{count}} files",
+    unreadableBody_one: "Try sharing it again.",
+    unreadableBody_other: "Try sharing them again.",
+  },
   pages: {
     modified: "Modified {{when}}",
     menu: { title: "More" },

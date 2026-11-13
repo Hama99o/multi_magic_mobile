@@ -220,6 +220,17 @@ import, not Pages."*
   Tapping it opens Save to Pages with them, where the person picks a place.
   **A banner, not a toast:** a toast is gone before the person has
   decided, and the files would vanish without a word;
+- **a file that could not be read is said, never saved** (device pass,
+  2026-11-13): no path, an empty file by the sender's own word, or a cache
+  copy that is missing or empty (`unreadableFile`, `shareIn.ts`). An alert,
+  "Couldn't read this file · Try sharing it again." (`shareDoor.*`); the
+  rest of the share goes on; a share with nothing readable goes nowhere,
+  and from the cold-start landing goes Home. Found on the dev build: with
+  the app stopped, a lone `.vcf` reached Save to Pages as "1 file · 0 B"
+  and MediaProvider refused the read. That the read grant is lost in the
+  dev launcher's hop is INFERRED; the release-build check is the
+  measurement. `expo-share-intent` already copies each shared file into the
+  cache natively, on arrival, so there is no earlier moment for JS;
 - no card at all: Pages, at once, without reading anything (as before);
 - signed out: the share waits and acts after sign-in (as before, tested
   for a mixed share too).

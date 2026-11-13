@@ -1028,6 +1028,12 @@ export const fr: Translations = {
       unchecked: "À faire",
     },
   },
+  shareDoor: {
+    unreadableTitle_one: "Impossible de lire ce fichier",
+    unreadableTitle_other: "Impossible de lire {{count}} fichiers",
+    unreadableBody_one: "Essayez de le partager à nouveau.",
+    unreadableBody_other: "Essayez de les partager à nouveau.",
+  },
   pages: {
     modified: "Modifié {{when}}",
     menu: { title: "Plus" },

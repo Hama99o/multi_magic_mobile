@@ -3,6 +3,7 @@
  * Contacts, several to the bulk import, a number in a text to "add as a
  * contact", files to Pages as before, and a plain sentence nowhere.
  */
+import { Alert } from "react-native";
 import { render, waitFor } from "@testing-library/react-native";
 import { router as mockedRouter, usePathname } from "expo-router";
 import { ShareIntentBridge } from "../ShareIntentBridge";
@@ -19,23 +20,32 @@ jest.mock("@/lib/shareIntent", () => ({
     resetShareIntent: mockReset,
   }),
 }));
+jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
 jest.mock("expo-router", () => ({ router: { push: jest.fn(), replace: jest.fn() }, usePathname: jest.fn(() => "/home") }));
 jest.mock("expo-file-system", () => {
   const files = new Map<string, string>();
+  // A file the test names in __missing is not on disk (its copy failed).
+  const missing = new Set<string>();
   class File {
     uri: string;
     constructor(uri: string) {
       this.uri = uri;
     }
+    get exists() {
+      return !missing.has(this.uri);
+    }
+    get size() {
+      return missing.has(this.uri) ? 0 : (files.get(this.uri) ?? "x").length;
+    }
     async text() {
       return files.get(this.uri) ?? "";
     }
   }
-  return { File, Paths: { cache: { uri: "file:///cache" } }, __files: files };
+  return { File, Paths: { cache: { uri: "file:///cache" } }, __files: files, __missing: missing };
 });
 
 const router = mockedRouter as unknown as { push: jest.Mock; replace: jest.Mock };
-const fs = jest.requireMock("expo-file-system") as { __files: Map<string, string> };
+const fs = jest.requireMock("expo-file-system") as { __files: Map<string, string>; __missing: Set<string> };
 const card = (n: string) => `BEGIN:VCARD\r\nVERSION:3.0\r\nN:;${n};;;\r\nTEL:0701234567\r\nEND:VCARD\r\n`;
 
 beforeEach(() => {
@@ -46,6 +56,8 @@ beforeEach(() => {
   useAuthStore.setState({ status: "signedIn" });
   useSharedIntoContacts.setState({ pending: null });
   fs.__files.clear();
+  fs.__missing.clear();
+  (Alert.alert as jest.Mock).mockClear();
 });
 
 it("one contact card shared as a FILE opens a filled-in new contact", async () => {
@@ -198,5 +210,62 @@ describe("a plain-text file is read before it is sent anywhere", () => {
     mockIntent.current = { files: [{ path: "/tmp/notes.txt", mimeType: "text/plain", fileName: "notes.txt" }], text: null };
     render(<ShareIntentBridge />);
     await waitFor(() => expect(router.push).toHaveBeenCalledWith("/pages/save"));
+  });
+});
+
+// A share whose file could not be read (device pass, 2026-11-13: a cold
+// start on the dev build gave "Save to Pages · 1 file · 0 B", and MediaProvider
+// refused the read). Never shown or saved silently: said, and let go.
+describe("a file that could not be read", () => {
+  beforeEach(() => usePendingImport.getState().clear());
+
+  it("0 B: no Contacts, no Pages, nothing pending; the person is told", async () => {
+    mockIntent.current = { files: [{ path: "/cache/vcf-devpass.vcf", mimeType: "text/x-vcard", fileName: "vcf-devpass.vcf", size: 0 }], text: null };
+    render(<ShareIntentBridge />);
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith("Couldn't read this file", "Try sharing it again."));
+    expect(router.push).not.toHaveBeenCalled();
+    expect(usePendingImport.getState().files).toHaveLength(0);
+    expect(useSharedIntoContacts.getState().pending).toBeNull();
+    expect(mockReset).toHaveBeenCalled();
+  });
+
+  it("its copy is not on disk: the same", async () => {
+    fs.__missing.add("file:///cache/p.jpg");
+    mockIntent.current = { files: [{ path: "/cache/p.jpg", mimeType: "image/jpeg", fileName: "p.jpg" }], text: null };
+    render(<ShareIntentBridge />);
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalled());
+    expect(router.push).not.toHaveBeenCalled();
+    expect(usePendingImport.getState().files).toHaveLength(0);
+  });
+
+  it("from the cold-start landing it goes home rather than leave a blank screen", async () => {
+    (usePathname as jest.Mock).mockReturnValue("/share");
+    mockIntent.current = { files: [{ path: "/cache/x.vcf", mimeType: "text/x-vcard", fileName: "x.vcf", size: 0 }], text: null };
+    render(<ShareIntentBridge />);
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith("/"));
+  });
+
+  it("one unreadable among readable ones: the rest goes on, and two are counted in the message", async () => {
+    fs.__files.set("file:///tmp/Jamil.vcf", card("Jamil"));
+    mockIntent.current = {
+      files: [
+        { path: "/tmp/Jamil.vcf", mimeType: "text/x-vcard", fileName: "Jamil.vcf" },
+        { path: "/cache/a.jpg", mimeType: "image/jpeg", fileName: "a.jpg", size: 0 },
+        { path: "/cache/b.jpg", mimeType: "image/jpeg", fileName: "b.jpg", size: 0 },
+      ],
+      text: null,
+    };
+    render(<ShareIntentBridge />);
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: "/contacts/edit", params: { shared: "1" } }));
+    expect(Alert.alert).toHaveBeenCalledWith("Couldn't read 2 files", "Try sharing them again.");
+    expect(usePendingImport.getState().files).toHaveLength(0);
+  });
+
+  it("a readable photo with no size in its metadata still goes to Pages (it is checked on disk)", async () => {
+    fs.__files.set("file:///tmp/p.jpg", "jpegbytes");
+    mockIntent.current = { files: [{ path: "/tmp/p.jpg", mimeType: "image/jpeg", fileName: "p.jpg", size: null }], text: null };
+    render(<ShareIntentBridge />);
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/pages/save"));
+    expect(Alert.alert).not.toHaveBeenCalled();
   });
 });

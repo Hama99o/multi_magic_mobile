@@ -22,12 +22,14 @@
  * he is still choosing a folder.
  */
 import { useEffect, useRef } from "react";
+import { Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import { router, usePathname } from "expo-router";
 import { File } from "expo-file-system";
 import { useShareIntentContext } from "@/lib/shareIntent";
 import { useAuthStore } from "@/stores/auth.store";
 import { useSharedIntoContacts } from "@/stores/sharedIntoContacts.store";
-import { classifyShare, looksLikeVcard, parseCard, partitionShare, planShare } from "@/screens/contacts/shareIn";
+import { classifyShare, looksLikeVcard, parseCard, partitionShare, planShare, unreadableFile } from "@/screens/contacts/shareIn";
 import { splitCards } from "@/screens/contacts/importer";
 import { usePendingImport } from "./addFiles";
 import type { IncomingFile } from "@/stores/uploads.store";
@@ -37,6 +39,16 @@ export function asFileUri(path: string): string {
 }
 
 /** From the cold-start landing, replace it; from anywhere else, push. */
+/** The cached copy of a shared file: there, and how big, as far as the file system can say. */
+function onDisk(path: string): { exists: boolean; size: number | null } {
+  try {
+    const file = new File(asFileUri(path));
+    return { exists: file.exists, size: typeof file.size === "number" ? file.size : null };
+  } catch {
+    return { exists: false, size: null };
+  }
+}
+
 function go(target: Parameters<typeof router.push>[0], fromLanding: boolean) {
   if (fromLanding) router.replace(target);
   else router.push(target);
@@ -52,6 +64,7 @@ export function ShareIntentBridge() {
   const { hasShareIntent, shareIntent, resetShareIntent } = useShareIntentContext();
   const signedIn = useAuthStore((s) => s.status === "signedIn");
   const setPending = usePendingImport((s) => s.set);
+  const { t } = useTranslation();
   const setShared = useSharedIntoContacts((s) => s.set);
   const handled = useRef<string | null>(null);
   // A cold start from the extension lands on `/share` (`app/+native-intent.tsx`);
@@ -95,12 +108,27 @@ export function ShareIntentBridge() {
       if (handled.current === key) return;
       handled.current = key;
 
+      // A file that could not be read is said, and let go: never a silent
+      // "1 file · 0 B" in Save to Pages, never an empty contact. The rest of
+      // the share goes on (`unreadableFile`, device pass 2026-11-13).
+      const unreadable = shared.filter((f) => unreadableFile({ path: f.path, size: typeof f.size === "number" ? f.size : null }, onDisk(f.path)));
+      if (unreadable.length) {
+        Alert.alert(t("shareDoor.unreadableTitle", { count: unreadable.length }), t("shareDoor.unreadableBody", { count: unreadable.length }));
+      }
+      const readable = shared.filter((f) => !unreadable.includes(f));
+      if (!readable.length) {
+        handled.current = null;
+        resetShareIntent();
+        if (fromLanding) router.replace("/");
+        return;
+      }
+
       // Contact cards to Contacts, everything else to Pages (contacts SPEC
       // §F.3). Nothing to read: no card, not even a possible one, so it is
       // Pages, at once, exactly as before.
-      const parts = partitionShare(shared.map((f) => ({ ...f, mimeType: f.mimeType ?? null, fileName: f.fileName ?? null })));
+      const parts = partitionShare(readable.map((f) => ({ ...f, mimeType: f.mimeType ?? null, fileName: f.fileName ?? null })));
       if (!parts.cards.length && !parts.sniff.length) {
-        toPages(shared);
+        toPages(readable);
         if (where.current !== "/pages/save") go("/pages/save", fromLanding);
         return;
       }
@@ -115,7 +143,7 @@ export function ShareIntentBridge() {
             // Unreadable: not a card, so it goes to Pages with the rest.
           }
         }
-        const plan = planShare(shared, sniffed);
+        const plan = planShare(readable, sniffed);
         let cards: string[] = [];
         try {
           cards = await readCards(plan.cards);
@@ -123,7 +151,7 @@ export function ShareIntentBridge() {
           cards = [];
         }
         if (!cards.length) {
-          toPages(shared);
+          toPages(readable);
           if (where.current !== "/pages/save") go("/pages/save", fromLanding);
           return;
         }
@@ -175,7 +203,7 @@ export function ShareIntentBridge() {
         resetShareIntent();
       }
     })();
-  }, [hasShareIntent, shareIntent, signedIn, setPending, setShared, resetShareIntent]);
+  }, [hasShareIntent, shareIntent, signedIn, setPending, setShared, resetShareIntent, t]);
 
   return null;
 }

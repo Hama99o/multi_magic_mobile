@@ -76,6 +76,18 @@ export function planShare<F extends SharedFile>(files: F[], sniffed: ReadonlySet
   };
 }
 
+/**
+ * A shared file that could not be read, so it must be neither shown nor
+ * saved (device pass, 2026-11-13: a cold start gave "Save to Pages · 1 file ·
+ * 0 B" while MediaProvider refused the read). No path, an empty file by the
+ * sharing app's own word, or a cache copy that is missing or empty.
+ * `onDisk` is that copy; a size the file system cannot give is not a verdict.
+ */
+export function unreadableFile(f: { path?: string | null; size?: number | null }, onDisk: { exists: boolean; size: number | null }): boolean {
+  if (!f.path || f.size === 0) return true;
+  return !onDisk.exists || onDisk.size === 0;
+}
+
 /** The first bytes of a vCard, whatever the case, after a BOM and blanks. */
 export function looksLikeVcard(head: string): boolean {
   return /^BEGIN:VCARD/i.test(head.replace(/^\uFEFF/, "").trimStart());

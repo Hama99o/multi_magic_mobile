@@ -156,3 +156,12 @@ stays NOT MEASURED: not a pass, and not a failure.
 | D12 | Kill the app with a copied secret pending: the copy stays (known gap) | both | confirm the gap |
 | D13 | The pad, the vault and an item at 360 / 411 / 800 dp, light and dark, en and fr: shots into `ours/` | Android | the `DONE` bar |
 | D14 | The heap: a dropped secret is unreachable, not overwritten (SECURITY §9). Not measurable with our tools; listed so nobody counts it | | none |
+
+## H · Branches (2026-11-13)
+
+| Branch | State |
+|---|---|
+| `feat/safezone-app` | SafeZone itself: **current** |
+| `feat/safezone-qa-capture-v2` | the QA-only screenshot switch (`qaCapture.ts`, SECURITY §7), rebased on `feat/safezone-app` 361df40: **current**. It joins main only if the device shots really come out black |
+| `feat/safezone-qa-capture` | the same switch on the OLDER SafeZone (400e51c): **superseded by v2, kept as it was**. Not force-pushed (a pushed branch is not rewritten), not used |
+

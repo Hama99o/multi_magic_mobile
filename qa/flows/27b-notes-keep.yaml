@@ -5,9 +5,9 @@
 #
 # ── FLOW_REGISTER note ─────────────────────────────────────────────────────
 # COVERS: A → Format panel and back; Code block → language sheet → Python;
-# ⋮ → Edited …, Labels; the bell → reminder sheet (Tomorrow morning, saved);
-# the lock → read-only with its chip, then unlocked;
+# ⋮ → Edited …, Labels;
 # the drawer: Reminders, Archive, Trash, back to Notes.
+# The reminder and the lock are in 27e (they need multi_magic PRs #22/#23).
 # CANNOT TELL YOU: a reminder actually ringing (the device pass waits for it
 # separately); iOS.
 appId: ${APP_ID}
@@ -59,32 +59,6 @@ tags:
 - tapOn:
     id: "note-labels-close"
 - tapOn:
-    id: "note-edit-reminder"
-- tapOn:
-    id: "reminder-quick-tomorrow"
-- takeScreenshot: reports/27b-reminder-sheet
-- tapOn:
-    id: "reminder-save"
-- extendedWaitUntil:
-    visible:
-      id: "note-edit-reminder-chip"
-    timeout: 15000
-- takeScreenshot: reports/27b-reminder-chip
-# Lock: read-only with a chip, then unlocked again (the note stays editable).
-- tapOn:
-    id: "note-edit-lock"
-- extendedWaitUntil:
-    visible:
-      id: "note-edit-locked-chip"
-    timeout: 15000
-- takeScreenshot: reports/27b-locked
-- tapOn:
-    id: "note-edit-lock"
-- extendedWaitUntil:
-    notVisible:
-      id: "note-edit-locked-chip"
-    timeout: 15000
-- tapOn:
     id: "note-edit-back"
 - extendedWaitUntil:
     visible:
@@ -95,7 +69,6 @@ tags:
 - takeScreenshot: reports/27b-drawer
 - tapOn:
     id: "drawer-reminders"
-- assertVisible: "\\[qa-edit\\] scratch.*"
 - takeScreenshot: reports/27b-reminders-view
 - tapOn:
     id: "notes-menu"

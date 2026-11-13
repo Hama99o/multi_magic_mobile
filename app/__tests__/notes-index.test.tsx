@@ -217,7 +217,15 @@ describe("the drawer and labels (the web's note tags)", () => {
     await screen.findByText("Pinned seed");
     fireEvent.press(screen.getByTestId("notes-menu"));
     fireEvent.press(await screen.findByTestId("drawer-edit-labels"));
-    fireEvent.changeText(await screen.findByTestId("labels-new"), "ideas");
+    // Above the keyboard, like every notes sheet with a field (device, 2026-11-13).
+    const field = await screen.findByTestId("labels-new");
+    let lifted = false;
+    for (let node = field.parent; node && !lifted; node = node.parent) {
+      lifted = node.children.some((c) => typeof c !== "string" && c.props.testID === "keyboard-padding");
+      if ("onRequestClose" in node.props && "transparent" in node.props) break;
+    }
+    expect(lifted).toBe(true);
+    fireEvent.changeText(field, "ideas");
     fireEvent.press(screen.getByTestId("labels-create"));
     await waitFor(() => expect(JSON.parse(mock.history.post[0].data)).toEqual({ tag: { name: "ideas" } }));
     fireEvent.changeText(screen.getByTestId("labels-name-4"), "house");

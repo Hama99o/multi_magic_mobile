@@ -18,6 +18,7 @@ import { createNativeEditorDocumentHandle, RichTextEditor, type RichTextEditorRe
 
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
+import { KeyboardPadding } from "@/components/KeyboardPadding";
 import { ChevronLeft, Copy, Pin, Share2, Trash2 } from "@/components/icons";
 import TagIcon from "lucide-react-native/dist/esm/icons/tag";
 import ArchiveIcon from "lucide-react-native/dist/esm/icons/archive";
@@ -670,83 +671,87 @@ export default function NoteEditScreen() {
         </View>
       </Modal>
       <Modal visible={linkDraft !== null} transparent animationType="fade" onRequestClose={() => setLinkDraft(null)}>
-        <View style={{ flex: 1, justifyContent: "center", padding: metrics.space.lg, backgroundColor: "rgba(0,0,0,0.4)" }}>
-          <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: metrics.space.lg, gap: metrics.space.md }}>
-            <Text style={{ fontWeight: "700", fontSize: 17 }}>{t("notes.toolbar.link")}</Text>
-            <TextInput
-              testID="note-link-input"
-              value={linkDraft ?? ""}
-              onChangeText={setLinkDraft}
-              autoFocus
-              autoCapitalize="none"
-              autoCorrect={false}
-              keyboardType="url"
-              placeholder="https://"
-              placeholderTextColor={colors.inkMuted}
-              onSubmitEditing={saveLink}
-              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.ink, fontSize: 16 }}
-            />
-            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: metrics.space.md }}>
-              <Pressable testID="note-link-cancel" onPress={() => setLinkDraft(null)} hitSlop={8} style={{ padding: 10 }}>
-                <Text tone="muted">{t("common.cancel")}</Text>
-              </Pressable>
-              <Pressable testID="note-link-save" onPress={saveLink} hitSlop={8} style={{ padding: 10 }}>
-                <Text style={{ color: colors.accent, fontWeight: "700" }}>{t("common.save")}</Text>
-              </Pressable>
+        <KeyboardPadding>
+          <View style={{ flex: 1, justifyContent: "center", padding: metrics.space.lg, backgroundColor: "rgba(0,0,0,0.4)" }}>
+            <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: metrics.space.lg, gap: metrics.space.md }}>
+              <Text style={{ fontWeight: "700", fontSize: 17 }}>{t("notes.toolbar.link")}</Text>
+              <TextInput
+                testID="note-link-input"
+                value={linkDraft ?? ""}
+                onChangeText={setLinkDraft}
+                autoFocus
+                autoCapitalize="none"
+                autoCorrect={false}
+                keyboardType="url"
+                placeholder="https://"
+                placeholderTextColor={colors.inkMuted}
+                onSubmitEditing={saveLink}
+                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.ink, fontSize: 16 }}
+              />
+              <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: metrics.space.md }}>
+                <Pressable testID="note-link-cancel" onPress={() => setLinkDraft(null)} hitSlop={8} style={{ padding: 10 }}>
+                  <Text tone="muted">{t("common.cancel")}</Text>
+                </Pressable>
+                <Pressable testID="note-link-save" onPress={saveLink} hitSlop={8} style={{ padding: 10 }}>
+                  <Text style={{ color: colors.accent, fontWeight: "700" }}>{t("common.save")}</Text>
+                </Pressable>
+              </View>
             </View>
           </View>
-        </View>
+        </KeyboardPadding>
       </Modal>
       <Modal visible={codeSheet} transparent animationType="slide" onRequestClose={() => setCodeSheet(false)}>
-        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" }}>
-          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: metrics.space.lg, gap: metrics.space.md, maxHeight: "75%" }}>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Text style={{ flex: 1, fontWeight: "700", fontSize: 17 }}>{t("notes.code.title")}</Text>
-              <Pressable testID="note-code-done" onPress={() => setCodeSheet(false)} hitSlop={8} style={{ padding: 8 }}>
-                <Text style={{ color: colors.accent, fontWeight: "700" }}>{t("common.close")}</Text>
+        <KeyboardPadding>
+          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" }}>
+            <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: metrics.space.lg, gap: metrics.space.md, maxHeight: "75%" }}>
+              <View style={{ flexDirection: "row", alignItems: "center" }}>
+                <Text style={{ flex: 1, fontWeight: "700", fontSize: 17 }}>{t("notes.code.title")}</Text>
+                <Pressable testID="note-code-done" onPress={() => setCodeSheet(false)} hitSlop={8} style={{ padding: 8 }}>
+                  <Text style={{ color: colors.accent, fontWeight: "700" }}>{t("common.close")}</Text>
+                </Pressable>
+              </View>
+              <TextInput
+                testID="note-code-language-search"
+                autoFocus
+                value={languageQuery}
+                onChangeText={setLanguageQuery}
+                placeholder={t("notes.code.search")}
+                placeholderTextColor={colors.inkMuted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.ink, fontSize: 16 }}
+              />
+              <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }}>
+                {CODE_LANGUAGES.filter((l) => (l.id === null ? t("notes.code.plain") : l.name).toLowerCase().includes(languageQuery.trim().toLowerCase())).map((l) => (
+                  <Pressable
+                    key={l.id ?? "plain"}
+                    testID={`note-code-language-${l.id ?? "plain"}`}
+                    onPress={() => {
+                      applyStructural((doc, path) => setCodeLanguageAt(doc, path, l.id));
+                      setCodeSheet(false);
+                    }}
+                    accessibilityRole="button"
+                    accessibilityState={{ selected: (codeLanguage ?? null) === l.id }}
+                    style={{ minHeight: 48, justifyContent: "center", borderBottomWidth: 1, borderColor: colors.border }}
+                  >
+                    <Text style={{ fontWeight: (codeLanguage ?? null) === l.id ? "700" : "400" }}>{l.id === null ? t("notes.code.plain") : l.name}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+              <Pressable
+                testID="note-code-delete"
+                onPress={() => {
+                  applyStructural(deleteBlockAt);
+                  setCodeSheet(false);
+                }}
+                accessibilityRole="button"
+                style={{ minHeight: 48, justifyContent: "center" }}
+              >
+                <Text style={{ color: colors.danger, fontWeight: "600" }}>{t("notes.code.delete")}</Text>
               </Pressable>
             </View>
-            <TextInput
-              testID="note-code-language-search"
-              autoFocus
-              value={languageQuery}
-              onChangeText={setLanguageQuery}
-              placeholder={t("notes.code.search")}
-              placeholderTextColor={colors.inkMuted}
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.ink, fontSize: 16 }}
-            />
-            <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }}>
-              {CODE_LANGUAGES.filter((l) => (l.id === null ? t("notes.code.plain") : l.name).toLowerCase().includes(languageQuery.trim().toLowerCase())).map((l) => (
-                <Pressable
-                  key={l.id ?? "plain"}
-                  testID={`note-code-language-${l.id ?? "plain"}`}
-                  onPress={() => {
-                    applyStructural((doc, path) => setCodeLanguageAt(doc, path, l.id));
-                    setCodeSheet(false);
-                  }}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: (codeLanguage ?? null) === l.id }}
-                  style={{ minHeight: 48, justifyContent: "center", borderBottomWidth: 1, borderColor: colors.border }}
-                >
-                  <Text style={{ fontWeight: (codeLanguage ?? null) === l.id ? "700" : "400" }}>{l.id === null ? t("notes.code.plain") : l.name}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-            <Pressable
-              testID="note-code-delete"
-              onPress={() => {
-                applyStructural(deleteBlockAt);
-                setCodeSheet(false);
-              }}
-              accessibilityRole="button"
-              style={{ minHeight: 48, justifyContent: "center" }}
-            >
-              <Text style={{ color: colors.danger, fontWeight: "600" }}>{t("notes.code.delete")}</Text>
-            </Pressable>
           </View>
-        </View>
+        </KeyboardPadding>
       </Modal>
     </Screen>
   );

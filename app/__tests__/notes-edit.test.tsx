@@ -578,3 +578,35 @@ describe("the bar follows our document's block under the caret (device finding, 
     expect(screen.getByTestId("tb-codeLanguage")).toBeTruthy();
   });
 });
+
+/** True when, between the field and its Modal, a KeyboardPadding lifts the sheet. */
+function liftedAboveKeyboard(field: ReturnType<typeof screen.getByTestId>): boolean {
+  for (let node = field.parent; node; node = node.parent) {
+    if (node.children.some((c) => typeof c !== "string" && c.props.testID === "keyboard-padding")) return true;
+    if ("onRequestClose" in node.props && "transparent" in node.props) return false;
+  }
+  return false;
+}
+
+describe("sheets with a text field sit above the keyboard (device, flow 27b: the language list opened under it)", () => {
+  it("the code language sheet and the Labels sheet", async () => {
+    mock.onGet("/api/v1/note_app/tags").reply(200, { tags: [], meta: { pagy: { page: 1, pages: 1 } } });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    act(() => {
+      mockEngine.props!.onSelectionChange({ type: "text", anchor: 3, head: 3, anchorScalar: 2, headScalar: 2 });
+      mockEngine.props!.onFocus();
+    });
+    fireEvent.press(screen.getByTestId("tb-format"));
+    fireEvent.press(screen.getByTestId("tb-block:codeBlock"));
+    fireEvent.press(screen.getByTestId("tb-closePanel"));
+    act(() => mockEngine.props!.onSelectionChange({ type: "text", anchor: 3, head: 3, anchorScalar: 2, headScalar: 2 }));
+    fireEvent.press(screen.getByTestId("tb-codeLanguage"));
+    expect(liftedAboveKeyboard(screen.getByTestId("note-code-language-search"))).toBe(true);
+    fireEvent.press(screen.getByTestId("note-code-done"));
+
+    fireEvent.press(screen.getByTestId("tb-more"));
+    fireEvent.press(screen.getByTestId("note-more-labels"));
+    expect(liftedAboveKeyboard(await screen.findByTestId("note-labels-search"))).toBe(true);
+  });
+});

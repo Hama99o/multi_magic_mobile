@@ -124,7 +124,9 @@ Entries:
   - **Limits, by design:**
     - a reminder fires only on a phone that has opened MultiMagic since it
       was set;
-    - the server sends no email or push (MISSING: server delivery);
+    - the server sends no email and no in-app notification yet (deferred by
+      the owner on 2026-11-13; the design is in `docs/MISSING_FEATURES.md`,
+      "Reminder delivery from the server");
     - if notifications are off for the app, the note says so and the
       reminder is still saved.
   - `expo-notifications` is a native module: it arrives with the next

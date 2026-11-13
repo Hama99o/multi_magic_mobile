@@ -8,6 +8,7 @@ import { Modal, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
 import { Text } from "@/components/reusables/text";
+import { KeyboardPadding } from "@/components/KeyboardPadding";
 import { Check, NotebookPen, Pencil, Plus, Square, Trash2, X } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useCreateTag, useCreateTagOnNote, useNoteTags, useRemoveTag, useRenameTag, useToggleNoteTag } from "./api/queries";
@@ -111,52 +112,54 @@ export function EditLabelsSheet({ visible, onClose }: { visible: boolean; onClos
   };
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" }}>
-        <View testID="labels-edit" style={{ backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: metrics.space.lg, gap: metrics.space.sm, maxHeight: "85%" }}>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text style={{ flex: 1, fontSize: 17, fontWeight: "700" }}>{t("notes.labels.edit")}</Text>
-            <Pressable testID="labels-close" onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("common.close")} style={{ padding: 8 }}>
-              <X size={22} color={colors.ink} />
-            </Pressable>
+      <KeyboardPadding>
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" }}>
+          <View testID="labels-edit" style={{ backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: metrics.space.lg, gap: metrics.space.sm, maxHeight: "85%" }}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Text style={{ flex: 1, fontSize: 17, fontWeight: "700" }}>{t("notes.labels.edit")}</Text>
+              <Pressable testID="labels-close" onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("common.close")} style={{ padding: 8 }}>
+                <X size={22} color={colors.ink} />
+              </Pressable>
+            </View>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              <TextInput
+                testID="labels-new"
+                value={draft}
+                onChangeText={setDraft}
+                onSubmitEditing={create}
+                placeholder={t("notes.labels.create")}
+                placeholderTextColor={colors.inkMuted}
+                style={{ flex: 1, borderBottomWidth: 1, borderColor: colors.border, paddingVertical: 10, color: colors.ink, fontSize: 16 }}
+              />
+              <Pressable testID="labels-create" onPress={create} accessibilityRole="button" accessibilityLabel={t("notes.labels.create")} hitSlop={8} style={{ padding: 10 }}>
+                <Plus size={22} color={colors.accent} />
+              </Pressable>
+            </View>
+            {failed ? <Text style={{ color: colors.danger, fontSize: 13 }}>{t("notes.grid.actionFailed")}</Text> : null}
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {tags.map((tag) => (
+                <View key={tag.id} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 52 }}>
+                  <TagIcon size={20} color={colors.inkMuted} />
+                  <TextInput
+                    testID={`labels-name-${tag.id}`}
+                    value={names[tag.id] ?? tag.name}
+                    onChangeText={(v) => setNames((n) => ({ ...n, [tag.id]: v }))}
+                    onSubmitEditing={() => {
+                      const name = (names[tag.id] ?? tag.name).trim();
+                      if (name && name !== tag.name) void run(() => renameTag.mutateAsync({ id: tag.id, name }));
+                    }}
+                    accessibilityLabel={tag.name}
+                    style={{ flex: 1, color: colors.ink, fontSize: 16, paddingVertical: 8 }}
+                  />
+                  <Pressable testID={`labels-delete-${tag.id}`} onPress={() => setToDelete(tag)} accessibilityRole="button" accessibilityLabel={t("notes.grid.delete")} hitSlop={8} style={{ padding: 8 }}>
+                    <Trash2 size={20} color={colors.inkMuted} />
+                  </Pressable>
+                </View>
+              ))}
+            </ScrollView>
           </View>
-          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-            <TextInput
-              testID="labels-new"
-              value={draft}
-              onChangeText={setDraft}
-              onSubmitEditing={create}
-              placeholder={t("notes.labels.create")}
-              placeholderTextColor={colors.inkMuted}
-              style={{ flex: 1, borderBottomWidth: 1, borderColor: colors.border, paddingVertical: 10, color: colors.ink, fontSize: 16 }}
-            />
-            <Pressable testID="labels-create" onPress={create} accessibilityRole="button" accessibilityLabel={t("notes.labels.create")} hitSlop={8} style={{ padding: 10 }}>
-              <Plus size={22} color={colors.accent} />
-            </Pressable>
-          </View>
-          {failed ? <Text style={{ color: colors.danger, fontSize: 13 }}>{t("notes.grid.actionFailed")}</Text> : null}
-          <ScrollView keyboardShouldPersistTaps="handled">
-            {tags.map((tag) => (
-              <View key={tag.id} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 52 }}>
-                <TagIcon size={20} color={colors.inkMuted} />
-                <TextInput
-                  testID={`labels-name-${tag.id}`}
-                  value={names[tag.id] ?? tag.name}
-                  onChangeText={(v) => setNames((n) => ({ ...n, [tag.id]: v }))}
-                  onSubmitEditing={() => {
-                    const name = (names[tag.id] ?? tag.name).trim();
-                    if (name && name !== tag.name) void run(() => renameTag.mutateAsync({ id: tag.id, name }));
-                  }}
-                  accessibilityLabel={tag.name}
-                  style={{ flex: 1, color: colors.ink, fontSize: 16, paddingVertical: 8 }}
-                />
-                <Pressable testID={`labels-delete-${tag.id}`} onPress={() => setToDelete(tag)} accessibilityRole="button" accessibilityLabel={t("notes.grid.delete")} hitSlop={8} style={{ padding: 8 }}>
-                  <Trash2 size={20} color={colors.inkMuted} />
-                </Pressable>
-              </View>
-            ))}
-          </ScrollView>
         </View>
-      </View>
+      </KeyboardPadding>
       <Modal visible={toDelete !== null} transparent animationType="fade" onRequestClose={() => setToDelete(null)}>
         <View style={{ flex: 1, justifyContent: "center", padding: metrics.space.lg, backgroundColor: "rgba(0,0,0,0.45)" }}>
           <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: metrics.space.lg, gap: metrics.space.md }}>
@@ -216,60 +219,62 @@ export function NoteLabelsSheet({
   };
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" }}>
-        <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: metrics.space.lg, gap: metrics.space.sm, maxHeight: "85%" }}>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text style={{ flex: 1, fontSize: 17, fontWeight: "700" }}>{t("notes.labels.title")}</Text>
-            <Pressable testID="note-labels-close" onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("common.close")} style={{ padding: 8 }}>
-              <X size={22} color={colors.ink} />
-            </Pressable>
-          </View>
-          <TextInput
-            testID="note-labels-search"
-            value={query}
-            onChangeText={setQuery}
-            placeholder={t("notes.labels.search")}
-            placeholderTextColor={colors.inkMuted}
-            style={{ borderBottomWidth: 1, borderColor: colors.border, paddingVertical: 10, color: colors.ink, fontSize: 16 }}
-          />
-          {failed ? <Text style={{ color: colors.danger, fontSize: 13 }}>{t("notes.grid.actionFailed")}</Text> : null}
-          <ScrollView keyboardShouldPersistTaps="handled">
-            {q && !exact ? (
-              <Pressable
-                testID="note-labels-create"
-                onPress={() => {
-                  const name = query.trim();
-                  setQuery("");
-                  void run(() => createOnNote.mutateAsync({ id: note.id, name }));
-                }}
-                accessibilityRole="button"
-                style={{ minHeight: 52, flexDirection: "row", alignItems: "center", gap: 16 }}
-              >
-                <Plus size={22} color={colors.accent} />
-                <Text style={{ color: colors.accent }}>{t("notes.labels.createNamed", { name: query.trim() })}</Text>
+      <KeyboardPadding>
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" }}>
+          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: metrics.space.lg, gap: metrics.space.sm, maxHeight: "85%" }}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Text style={{ flex: 1, fontSize: 17, fontWeight: "700" }}>{t("notes.labels.title")}</Text>
+              <Pressable testID="note-labels-close" onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("common.close")} style={{ padding: 8 }}>
+                <X size={22} color={colors.ink} />
               </Pressable>
-            ) : null}
-            {shown.map((tag) => {
-              const checked = on.has(tag.id);
-              return (
+            </View>
+            <TextInput
+              testID="note-labels-search"
+              value={query}
+              onChangeText={setQuery}
+              placeholder={t("notes.labels.search")}
+              placeholderTextColor={colors.inkMuted}
+              style={{ borderBottomWidth: 1, borderColor: colors.border, paddingVertical: 10, color: colors.ink, fontSize: 16 }}
+            />
+            {failed ? <Text style={{ color: colors.danger, fontSize: 13 }}>{t("notes.grid.actionFailed")}</Text> : null}
+            <ScrollView keyboardShouldPersistTaps="handled">
+              {q && !exact ? (
                 <Pressable
-                  key={tag.id}
-                  testID={`note-label-${tag.id}`}
-                  onPress={() => void run(() => toggleTag.mutateAsync({ id: note.id, tag }))}
-                  accessibilityRole="checkbox"
-                  accessibilityState={{ checked }}
-                  accessibilityLabel={tag.name}
+                  testID="note-labels-create"
+                  onPress={() => {
+                    const name = query.trim();
+                    setQuery("");
+                    void run(() => createOnNote.mutateAsync({ id: note.id, name }));
+                  }}
+                  accessibilityRole="button"
                   style={{ minHeight: 52, flexDirection: "row", alignItems: "center", gap: 16 }}
                 >
-                  <TagIcon size={20} color={colors.inkMuted} />
-                  <Text style={{ flex: 1, fontSize: 16 }}>{tag.name}</Text>
-                  {checked ? <Check size={22} color={colors.accent} /> : <Square size={22} color={colors.inkMuted} />}
+                  <Plus size={22} color={colors.accent} />
+                  <Text style={{ color: colors.accent }}>{t("notes.labels.createNamed", { name: query.trim() })}</Text>
                 </Pressable>
-              );
-            })}
-          </ScrollView>
+              ) : null}
+              {shown.map((tag) => {
+                const checked = on.has(tag.id);
+                return (
+                  <Pressable
+                    key={tag.id}
+                    testID={`note-label-${tag.id}`}
+                    onPress={() => void run(() => toggleTag.mutateAsync({ id: note.id, tag }))}
+                    accessibilityRole="checkbox"
+                    accessibilityState={{ checked }}
+                    accessibilityLabel={tag.name}
+                    style={{ minHeight: 52, flexDirection: "row", alignItems: "center", gap: 16 }}
+                  >
+                    <TagIcon size={20} color={colors.inkMuted} />
+                    <Text style={{ flex: 1, fontSize: 16 }}>{tag.name}</Text>
+                    {checked ? <Check size={22} color={colors.accent} /> : <Square size={22} color={colors.inkMuted} />}
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
         </View>
-      </View>
+      </KeyboardPadding>
     </Modal>
   );
 }

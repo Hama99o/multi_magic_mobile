@@ -25,4 +25,10 @@ Rule: the phone does what the web does, with no invented fields. These Keep feat
 - **Drawing notes**: no drawing type on the web.
 - **Sort options in the grid**: the server orders `pinned desc, updated_at desc` and takes no sort parameter.
 - **Archive**: added in multi_magic PR #21 (not merged). On the phone, behind the dev flag.
-- **Reminder delivery from the server** (email or push). Reminders are local notifications on each phone (multi_magic PR #22 stores them). A phone that has not opened the app since the reminder was set does not ring.
+- **Reminder delivery from the server: email + in-app notification** (owner, 2026-11-13: deferred, "we note it, we'll do it later"). Today reminders are local notifications on each phone (multi_magic PR #22 stores them). A phone that has not opened the app since the reminder was set does not ring. Design, ready to pick up:
+  - **Scheduler** (multi_magic branch on top of PR #22; no merge, no deploy). The app's existing job system runs a periodic sweep, e.g. every minute: reminders that are due and not yet sent for this occurrence. It delivers at `launch_time`, then re-arms per `repeat_frequency` (daily/weekly/monthly). It is idempotent: a `last_sent_at` or occurrence key prevents double sends. The timezone is the user's.
+  - **Email:** the existing mailer and layout, localized (en/fr), with the note title, a snippet and a link that opens the note.
+  - **In-app notification:** a record in the existing notifications model, the one the mobile Notifications screen and the web bell read. Tapping it opens the note, on mobile and on the web.
+  - **Cancel or skip** when the note is archived, trashed or deleted, or the reminder is removed.
+  - **Specs first** (request + job, red→green): due → 1 email + 1 notification; repeat re-arms; no duplicate on a second sweep; trashed → nothing.
+  - **Mobile:** keep the local notification as the offline fallback, without double notifications. Once the server has delivered, the next sync cancels the local one for that occurrence (or dedupes by occurrence id). The notification row deep-links to the note.

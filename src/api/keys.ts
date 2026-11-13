@@ -42,6 +42,11 @@ export const conversationKeys = {
   list: () => ["conversations", "list"] as const,
   unreadCount: () => ["conversations", "unreadCount"] as const,
   thread: <C extends number>(conversationId: C) => ["conversation", conversationId] as const,
+  /** A transcript (useConversation): the messages, assistant's or a thread's.
+   *  Its own root, so refetching a conversation's details does not re-read it. */
+  transcript: <C extends number | null>(conversationId: C) => ["messages", conversationId] as const,
+  /** One page of history before a message, read on scroll (merged into the transcript). */
+  olderPage: <C extends number, B extends number>(conversationId: C, before: B) => ["messages", conversationId, "before", before] as const,
 };
 
 export const notificationKeys = {

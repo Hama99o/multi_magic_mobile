@@ -129,3 +129,74 @@ it("a file with no useful type that is NOT a vCard still goes to Pages", async (
   render(<ShareIntentBridge />);
   await waitFor(() => expect(router.push).toHaveBeenCalledWith("/pages/save"));
 });
+
+// ── mixed shares and plain-text vCards (the owner, 2026-11-13) ──────────────
+describe("a share mixing contact cards and other files", () => {
+  beforeEach(() => usePendingImport.getState().clear());
+
+  it("opens Contacts with the card, and keeps the photo for Pages", async () => {
+    fs.__files.set("file:///tmp/Ali.vcf", card("Ali"));
+    mockIntent.current = {
+      files: [
+        { path: "/tmp/Ali.vcf", mimeType: "text/x-vcard", fileName: "Ali.vcf" },
+        { path: "/tmp/p.jpg", mimeType: "image/jpeg", fileName: "p.jpg" },
+      ],
+      text: null,
+    };
+    render(<ShareIntentBridge />);
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: "/contacts/edit", params: { shared: "1", rest: "1" } }));
+    expect(router.push).not.toHaveBeenCalledWith("/pages/save");
+    expect(usePendingImport.getState().files.map((x) => x.name)).toEqual(["p.jpg"]);
+  });
+
+  it("several cards and two photos: the bulk import, two left for Pages", async () => {
+    fs.__files.set("file:///tmp/a.vcf", card("A"));
+    fs.__files.set("file:///tmp/b.vcf", card("B"));
+    mockIntent.current = {
+      files: [
+        { path: "/tmp/a.vcf", mimeType: "text/vcard", fileName: "a.vcf" },
+        { path: "/tmp/b.vcf", mimeType: "text/vcard", fileName: "b.vcf" },
+        { path: "/tmp/1.jpg", mimeType: "image/jpeg", fileName: "1.jpg" },
+        { path: "/tmp/2.mp4", mimeType: "video/mp4", fileName: "2.mp4" },
+      ],
+      text: null,
+    };
+    render(<ShareIntentBridge />);
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: "/contacts/import", params: { shared: "1", rest: "2" } }));
+    expect(usePendingImport.getState().files).toHaveLength(2);
+  });
+
+  it("signed out: waits, then does the same once signed in", async () => {
+    useAuthStore.setState({ status: "signedOut" });
+    fs.__files.set("file:///tmp/Ali.vcf", card("Ali"));
+    mockIntent.current = {
+      files: [
+        { path: "/tmp/Ali.vcf", mimeType: "text/x-vcard", fileName: "Ali.vcf" },
+        { path: "/tmp/p.jpg", mimeType: "image/jpeg", fileName: "p.jpg" },
+      ],
+      text: null,
+    };
+    const view = render(<ShareIntentBridge />);
+    await new Promise((r) => setTimeout(r, 50));
+    expect(router.push).not.toHaveBeenCalled();
+    useAuthStore.setState({ status: "signedIn" });
+    view.rerender(<ShareIntentBridge />);
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: "/contacts/edit", params: { shared: "1", rest: "1" } }));
+  });
+});
+
+describe("a plain-text file is read before it is sent anywhere", () => {
+  it("one whose bytes are a vCard goes to Contacts", async () => {
+    fs.__files.set("file:///tmp/contact.txt", card("Mina"));
+    mockIntent.current = { files: [{ path: "/tmp/contact.txt", mimeType: "text/plain", fileName: "contact.txt" }], text: null };
+    render(<ShareIntentBridge />);
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: "/contacts/edit", params: { shared: "1" } }));
+  });
+
+  it("one that is just text goes to Pages, as before", async () => {
+    fs.__files.set("file:///tmp/notes.txt", "a shopping list");
+    mockIntent.current = { files: [{ path: "/tmp/notes.txt", mimeType: "text/plain", fileName: "notes.txt" }], text: null };
+    render(<ShareIntentBridge />);
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith("/pages/save"));
+  });
+});

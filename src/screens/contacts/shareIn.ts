@@ -42,6 +42,40 @@ export function unknownType(f: SharedFile): boolean {
   return GENERIC_TYPES.test(f.mimeType ?? "") && !/\.[a-z0-9]{2,5}$/i.test(f.fileName ?? f.path);
 }
 
+/** A file that MAY hold a vCard and must be read to know: a generic type
+ *  with no extension (`unknownType`), or plain text, which is how some apps
+ *  hand over a contact they exported as `.txt` (owner, 2026-11-13). */
+export function mayHoldVcard(f: SharedFile): boolean {
+  return !isVcardFile(f) && (unknownType(f) || /^text\/plain$/i.test(f.mimeType ?? ""));
+}
+
+/**
+ * A share of files, split three ways BEFORE anything is read (SPEC §F.3):
+ * `cards` are contact cards by type or extension; `sniff` may be and their
+ * first bytes decide (`looksLikeVcard`); `others` go to Pages.
+ */
+export function partitionShare<F extends SharedFile>(files: F[]): { cards: F[]; sniff: F[]; others: F[] } {
+  const out = { cards: [] as F[], sniff: [] as F[], others: [] as F[] };
+  for (const f of files) (isVcardFile(f) ? out.cards : mayHoldVcard(f) ? out.sniff : out.others).push(f);
+  return out;
+}
+
+/**
+ * Where each file goes once the possible cards have been read: `sniffed`
+ * holds the paths whose bytes WERE a vCard. Cards open Contacts (as `file://`
+ * URIs to read); everything else is kept, in order, for Pages. A share with
+ * no card is exactly what it was before: all of it to Pages.
+ */
+export function planShare<F extends SharedFile>(files: F[], sniffed: ReadonlySet<string>): { cards: string[]; pages: F[] } {
+  const { cards, sniff } = partitionShare(files);
+  const read = sniff.filter((f) => sniffed.has(f.path));
+  const isCard = new Set([...cards, ...read]);
+  return {
+    cards: files.filter((f) => isCard.has(f)).map((f) => asUri(f.path)),
+    pages: files.filter((f) => !isCard.has(f)),
+  };
+}
+
 /** The first bytes of a vCard, whatever the case, after a BOM and blanks. */
 export function looksLikeVcard(head: string): boolean {
   return /^BEGIN:VCARD/i.test(head.replace(/^\uFEFF/, "").trimStart());

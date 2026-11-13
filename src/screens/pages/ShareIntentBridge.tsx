@@ -27,7 +27,7 @@ import { File } from "expo-file-system";
 import { useShareIntentContext } from "@/lib/shareIntent";
 import { useAuthStore } from "@/stores/auth.store";
 import { useSharedIntoContacts } from "@/stores/sharedIntoContacts.store";
-import { classifyShare, parseCard, unknownType } from "@/screens/contacts/shareIn";
+import { classifyShare, looksLikeVcard, parseCard, partitionShare, planShare } from "@/screens/contacts/shareIn";
 import { splitCards } from "@/screens/contacts/importer";
 import { usePendingImport } from "./addFiles";
 import type { IncomingFile } from "@/stores/uploads.store";
@@ -77,56 +77,73 @@ export function ShareIntentBridge() {
       return;
     }
 
-    // A file with no useful type or name may still be a contact card: read
-    // its first bytes before handing it to Pages (device, 2026-11-12).
     const shared = shareIntent.files ?? [];
-    if (route.kind === "files" && shared.length && shared.every((f) => unknownType({ path: f.path, mimeType: f.mimeType, fileName: f.fileName }))) {
-      const key = `sniff:${shared.map((f) => f.path).join("|")}`;
-      if (handled.current === key) return;
-      handled.current = key;
-      void (async () => {
-        let cards: string[] = [];
-        try {
-          cards = await readCards(shared.map((f) => asFileUri(f.path)));
-        } catch {
-          cards = [];
-        }
-        handled.current = null;
-        if (cards.length) {
-          setShared(cards.length === 1 ? { kind: "card", card: parseCard(cards[0]) } : { kind: "cards", cards });
-          resetShareIntent();
-          go(cards.length === 1 ? { pathname: "/contacts/edit", params: { shared: "1" } } : { pathname: "/contacts/import", params: { shared: "1" } }, fromLanding);
-          return;
-        }
-        // Not a card (or unreadable): Pages, as before.
-        setPending(shared.map((file) => ({ uri: asFileUri(file.path), name: file.fileName ?? null, mimeType: file.mimeType ?? null, size: typeof file.size === "number" ? file.size : null })), () => {
-          handled.current = null;
-          resetShareIntent();
-        });
-        if (where.current !== "/pages/save") go("/pages/save", fromLanding);
-      })();
-      return;
-    }
-
-    if (route.kind === "files") {
-      const files: IncomingFile[] = (shareIntent.files ?? []).map((file) => ({
+    if (shared.length) {
+      const asIncoming = (file: (typeof shared)[number]): IncomingFile => ({
         uri: asFileUri(file.path),
         name: file.fileName ?? null,
         mimeType: file.mimeType ?? null,
         size: typeof file.size === "number" ? file.size : null,
-      }));
-      const key = files.map((f) => f.uri).join("|");
+      });
+      const toPages = (files: typeof shared) => {
+        setPending(files.map(asIncoming), () => {
+          handled.current = null;
+          resetShareIntent();
+        });
+      };
+      const key = `files:${shared.map((f) => f.path).join("|")}`;
       if (handled.current === key) return;
       handled.current = key;
-      setPending(files, () => {
-        handled.current = null;
-        resetShareIntent();
-      });
-      if (where.current !== "/pages/save") go("/pages/save", fromLanding);
+
+      // Contact cards to Contacts, everything else to Pages (contacts SPEC
+      // §F.3). Nothing to read: no card, not even a possible one, so it is
+      // Pages, at once, exactly as before.
+      const parts = partitionShare(shared.map((f) => ({ ...f, mimeType: f.mimeType ?? null, fileName: f.fileName ?? null })));
+      if (!parts.cards.length && !parts.sniff.length) {
+        toPages(shared);
+        if (where.current !== "/pages/save") go("/pages/save", fromLanding);
+        return;
+      }
+      void (async () => {
+        // The possible cards: a generic type or plain text. Their first bytes
+        // decide (device, 2026-11-12: a content URI named "1000000058").
+        const sniffed = new Set<string>();
+        for (const f of parts.sniff) {
+          try {
+            if (looksLikeVcard((await new File(asFileUri(f.path)).text()).slice(0, 64))) sniffed.add(f.path);
+          } catch {
+            // Unreadable: not a card, so it goes to Pages with the rest.
+          }
+        }
+        const plan = planShare(shared, sniffed);
+        let cards: string[] = [];
+        try {
+          cards = await readCards(plan.cards);
+        } catch {
+          cards = [];
+        }
+        if (!cards.length) {
+          toPages(shared);
+          if (where.current !== "/pages/save") go("/pages/save", fromLanding);
+          return;
+        }
+        setShared(cards.length === 1 ? { kind: "card", card: parseCard(cards[0]) } : { kind: "cards", cards });
+        // The rest waits for Pages; the Contacts screen offers it (SharedRestToPages).
+        if (plan.pages.length) toPages(plan.pages);
+        else {
+          handled.current = null;
+          resetShareIntent();
+        }
+        const params: Record<string, string> = { shared: "1" };
+        if (plan.pages.length) params.rest = String(plan.pages.length);
+        go({ pathname: cards.length === 1 ? "/contacts/edit" : "/contacts/import", params }, fromLanding);
+      })();
       return;
     }
 
-    const key = route.kind === "vcards" ? route.files.join("|") : route.text;
+    // Every file share returned above; what is left is text.
+    if (route.kind === "files" || route.kind === "vcards") return;
+    const key = route.text;
     if (handled.current === key) return;
     handled.current = key;
 
@@ -140,7 +157,7 @@ export function ShareIntentBridge() {
 
     void (async () => {
       try {
-        const cards = route.kind === "vcards" ? await readCards(route.files) : splitCards(route.text);
+        const cards = splitCards(route.text);
         if (cards.length === 1) {
           setShared({ kind: "card", card: parseCard(cards[0]) });
           go({ pathname: "/contacts/edit", params: { shared: "1" } }, fromLanding);

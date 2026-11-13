@@ -169,6 +169,7 @@ const PLURAL = new Set([
   "contacts.list.searchPlaceholder",
   "contacts.list.selected",
   "contacts.phone.limited",
+  "contacts.share.restBody",
 ]);
 
 const CALLED = calledKeys();

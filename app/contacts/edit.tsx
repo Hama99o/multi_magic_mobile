@@ -29,6 +29,7 @@ import { ContactForm, type PhotoChange } from "@/screens/contacts/ContactForm";
 import { draftFrom, emptyDraft, isDirty, toPayload, type Draft } from "@/screens/contacts/draft";
 import { mergeInto, sameContact, type ParsedCard } from "@/screens/contacts/shareIn";
 import { useSharedIntoContacts } from "@/stores/sharedIntoContacts.store";
+import { SharedRestToPages } from "@/screens/contacts/SharedRestToPages";
 
 /** A card shared from another app → the form's draft. */
 function draftFromCard(card: ParsedCard): Draft {
@@ -66,7 +67,7 @@ function parseId(raw: string | undefined): number | null {
 
 export default function EditContact() {
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ id?: string; shared?: string }>();
+  const params = useLocalSearchParams<{ id?: string; shared?: string; rest?: string }>();
   const contactId = parseId(params.id);
   const colors = useColors();
   const metrics = useMetrics();
@@ -214,6 +215,7 @@ export default function EditContact() {
 
   return (
     <Screen avoidKeyboard>
+      <SharedRestToPages rest={params.rest} />
       <ContactForm
         mode={contactId == null ? "create" : "edit"}
         draft={draft}

@@ -117,6 +117,14 @@ secrets (`lockEpoch` increments; `useSecretFields` clears on change). It runs:
 - **iOS**: nothing blocks or detects a screenshot yet. The `inactive` cover
   hides the app-switcher snapshot only. Screen-recording detection
   (`isCapturedAsync`, `addScreenshotListener`) is **not built**; see §9.
+- **A QA-only exception, for `ours/` shots** (supervisor, 2026-11-13):
+  `EXPO_PUBLIC_QA_ALLOW_CAPTURE=1` skips the block, but only when ALL three
+  hold: a development build (`__DEV__`; false in every release, EAS preview
+  included), the flag exactly "1" inlined at build time, and an API on a
+  local machine (`src/screens/safezone/qaCapture.ts`). `qaCapture.test.ts`
+  proves a release build with the flag still blocks, and that removing the
+  `__DEV__` lock turns it red. The D1/D2 checks (screenshots black) run with
+  Metro started WITHOUT the flag.
 - It is a **native module**: a build without it must still open SafeZone and
   say so. It is required with a literal inside a `try` (as for
   `readAloud.store.ts` and `phoneBook.ts`), and `secureScreen.ts` reports

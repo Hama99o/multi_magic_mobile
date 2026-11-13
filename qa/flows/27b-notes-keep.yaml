@@ -1,0 +1,91 @@
+# NOTES, Keep's parts after the editor is open (2026-11-13): the Format panel
+# (A), a code block and its language sheet, the ⋮ sheet, the reminder sheet,
+# the drawer with labels, Archive and Trash. Starts in "[qa-edit] scratch"
+# with the keyboard up (after 27-notes-edit). Writes only to that dev note.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: A → Format panel and back; Code block → language sheet → Python;
+# ⋮ → Edited …, Labels; the bell → reminder sheet (Tomorrow morning, saved);
+# the drawer: Reminders, Archive, Trash, back to Notes.
+# CANNOT TELL YOU: a reminder actually ringing (the device pass waits for it
+# separately); iOS.
+appId: ${APP_ID}
+tags:
+  - notes
+  - writes
+---
+- tapOn:
+    id: "tb-format"
+- extendedWaitUntil:
+    visible:
+      id: "tb-closePanel"
+    timeout: 10000
+- takeScreenshot: reports/27b-format-panel
+- tapOn:
+    id: "tb-block:codeBlock"
+- extendedWaitUntil:
+    visible:
+      id: "tb-codeLanguage"
+    timeout: 10000
+- tapOn:
+    id: "tb-codeLanguage"
+- inputText: "pyth"
+- tapOn:
+    id: "note-code-language-python"
+- takeScreenshot: reports/27b-code-python
+- tapOn:
+    id: "tb-format"
+- tapOn:
+    id: "tb-block:paragraph"
+- tapOn:
+    id: "tb-closePanel"
+- tapOn:
+    id: "tb-more"
+- extendedWaitUntil:
+    visible:
+      id: "note-more-edited"
+    timeout: 10000
+- takeScreenshot: reports/27b-more-sheet
+- tapOn:
+    id: "note-more-labels"
+- takeScreenshot: reports/27b-labels-sheet
+- tapOn:
+    id: "note-labels-close"
+- tapOn:
+    id: "note-edit-reminder"
+- tapOn:
+    id: "reminder-quick-tomorrow"
+- takeScreenshot: reports/27b-reminder-sheet
+- tapOn:
+    id: "reminder-save"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-reminder-chip"
+    timeout: 15000
+- takeScreenshot: reports/27b-reminder-chip
+- tapOn:
+    id: "note-edit-back"
+- extendedWaitUntil:
+    visible:
+      id: "notes-menu"
+    timeout: 15000
+- tapOn:
+    id: "notes-menu"
+- takeScreenshot: reports/27b-drawer
+- tapOn:
+    id: "drawer-reminders"
+- assertVisible: "\\[qa-edit\\] scratch.*"
+- takeScreenshot: reports/27b-reminders-view
+- tapOn:
+    id: "notes-menu"
+- tapOn:
+    id: "drawer-trash"
+- takeScreenshot: reports/27b-trash
+- tapOn:
+    id: "notes-menu"
+- tapOn:
+    id: "drawer-notes"
+- extendedWaitUntil:
+    visible:
+      id: "notes-grid-others-col-0"
+    timeout: 15000

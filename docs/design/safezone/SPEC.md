@@ -1,9 +1,12 @@
 # SafeZone: the fourth full app (2026-11-13)
 
-**Status: `IN PROGRESS`**. Specified and researched; the API layer, the lock
-state and the reveal/copy logic are being built test-first on
-`feat/safezone-app`. Device QA has not run (no emulator slot yet), so nothing
-in `ours/` yet.
+**Status: `IN PROGRESS`**. Specified, researched and built test-first on
+`feat/safezone-app`: the API layer, the lock state, the gate (Set a PIN /
+PIN pad / lockout), the masked vault, and the item with reveal and copy.
+Jest proves that no secret is shown unless asked for (planted leaks go
+red). **Not yet measured:** a device pass (no emulator slot yet, so
+nothing in `ours/`), and FLAG_SECURE, which needs a native build with
+`expo-screen-capture`.
 
 The owner, 2026-11-12 (relayed by the supervisor session): *SafeZone as the
 fourth full app: the passwords, payment cards and identity documents, behind

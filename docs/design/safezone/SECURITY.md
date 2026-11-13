@@ -28,10 +28,11 @@ a rollback would send plaintext again. So:
 
 | Rule | Where | Test |
 |---|---|---|
-| The PIN exists only as the six digits being typed, in the keypad's local state, and is cleared the moment it is sent, whether it succeeds or fails | `src/screens/safezone/PinPad.tsx` | `PinPad.test.tsx`: after submit, the dots are empty |
-| Never stored: not in SecureStore, not in AsyncStorage, not in zustand, not in the query cache | `src/api/safezone.ts` `unlock()` takes it as an argument and returns only the token | `safezone.api.test.ts`: the mock storage modules are never called |
-| Never logged: the http logger prints `method path status` only (`src/api/http.ts:453`); the PIN goes in a POST body, never in a URL | `safezoneApi.unlock` | `safezone.api.test.ts`: the request URL has no digits from the PIN; `console.*` spies stay silent |
-| The keypad is a custom pad, not a `TextInput`: no keyboard suggestions, no autofill or keyboard learning, no accessibility value that reads the digits aloud | `PinPad.tsx` | `PinPad.test.tsx`: the label says "3 of 6 digits", never a digit |
+| The PIN exists only as the six digits being typed, in the keypad's local state, and is cleared the moment it is sent, whether it succeeds or fails | `src/screens/safezone/PinPad.tsx` | `safezoneApp.test.tsx`: after the sixth digit, the dots read "0 of 6" |
+| Never stored: not in SecureStore, not in AsyncStorage, not in zustand, not in the query cache | `src/api/safezone.ts` `unlock()` takes it as an argument and returns only the token | `rules.test.ts`: no SafeZone file imports a storage module |
+| Never logged: the http logger prints `method path status` only (`src/api/http.ts:453`); the PIN goes in a POST body, never in a URL | `safezoneApi.unlock` | `src/api/__tests__/safezone.test.ts`: the URL holds no PIN; `console.*` spies hear no PIN, token or secret |
+| The keypad is a custom pad, not a `TextInput`: no keyboard suggestions, no autofill or keyboard learning, no accessibility value that reads the digits aloud | `PinPad.tsx` | `safezoneApp.test.tsx`: the label is "5 of 6 digits entered", never a digit |
+| Setting a PIN (`SetUpPin`) uses two `secureTextEntry` fields with autofill, suggestions and the context menu off; they are emptied once the server accepts | `SafeZoneGate.tsx` | `safezoneApp.test.tsx`: the enable body, and a mismatch refused before sending |
 
 ## 2 · The unlock token (the server's real gate)
 
@@ -126,9 +127,9 @@ secrets (`lockEpoch` increments; `useSecretFields` clears on change). It runs:
 
 | Where | Rule | Test |
 |---|---|---|
-| React Query | list rows go through `stripSecrets` inside the API function, so the cache holds stripped rows. A detail **never** goes through `useQuery` | `safezone.api.test.ts`: a plaintext server answer comes out with no `password`/`card_number`/`cvv`/`code`/`document_number`; `stripSecrets` is planted out and the test goes red |
-| zustand | the lock store holds the token and the state only. No `persist` | `safezoneLock.store.test.ts`: no `persist` key; the token is gone after `lock()` |
-| AsyncStorage / SecureStore | not imported anywhere under `src/screens/safezone/`, `src/api/safezone.ts` or the lock store | `safezone.nostorage.test.ts`: a grep of those files |
+| React Query | list rows go through `stripSecrets` inside the API function, so the cache holds stripped rows. A detail **never** goes through `useQuery` | `src/api/__tests__/safezone.test.ts`: a plaintext server answer comes out with no `password`/`card_number`/`cvv`/`code`/`document_number`; `stripSecrets` is planted out and the test goes red |
+| zustand | the lock store holds the token and the state only. No `persist` | `src/stores/__tests__/safezoneLock.store.test.ts`: no `persist` key; the token is gone after `lock()` |
+| AsyncStorage / SecureStore | not imported anywhere under `src/screens/safezone/`, `src/api/safezone.ts` or the lock store | `rules.test.ts`: a read of those files |
 | logs | `http.ts` logs path + status. SafeZone code has no `console.*` (lint: tests grep) | the same grep |
 | assistant echo / search | SafeZone screens never hand a secret to the chat composer or the global search | (structural: no import of those modules from `src/screens/safezone/`) |
 | notifications / share sheet | no Share action for a secret, ever | (structural) |

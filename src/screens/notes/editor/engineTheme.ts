@@ -19,6 +19,9 @@ export function engineTheme(colors: EditorColors, page: string = colors.ground) 
     link: { color: colors.accent },
     inlineCode: { backgroundColor: colors.surface },
     placeholder: { color: colors.inkMuted },
+    // B paints a header row #F3F4F6 by default, under our light text in dark
+    // mode (device, 2026-11-13): our tokens instead.
+    table: { headerBackgroundColor: colors.surface, borderColor: colors.border, selectionColor: colors.accent, resizeHandleColor: colors.accent },
     toolbar: {
       backgroundColor: colors.surface,
       borderColor: colors.border,

@@ -326,6 +326,14 @@ export default function NoteEditScreen() {
 
   const onCommand = (command: Command) => {
     const ref = editorRef.current as unknown as EngineRef | null;
+    // The current document, typing included, decides; and the change this
+    // command makes is converted at once so the bar shows it.
+    exporterRef.current?.flush();
+    exporterRef.current?.urgent();
+    const doc = engineDocRef.current;
+    const caretBlock = caretPos !== null && doc ? textblockAt(doc, caretPos) : null;
+    const headingLevel = caretBlock?.node.type === "heading" ? Number(caretBlock.node.attrs?.level ?? 1) : undefined;
+    const nodesForBar = caretBlock ? { ...active.nodes, codeBlock: caretBlock.node.type === "codeBlock" } : active.nodes;
     if (command.kind === "panel") {
       if (command.panel === "codeLanguage") {
         setLanguageQuery("");

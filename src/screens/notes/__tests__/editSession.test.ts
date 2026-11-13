@@ -160,6 +160,23 @@ describe("openForEditing → saveFromEngine", () => {
 });
 
 describe("tables are edited on the phone (owner, 2026-11-13)", () => {
+  it("a big paste (a 10x10 table and 300 paragraphs, as B holds them after a paste) saves for the web", () => {
+    // B parses a paste against our engine schema; what it holds afterwards is
+    // made of the same nodes as an opened note, so take them from one.
+    const rows = Array.from({ length: 10 }, (_, r) => `<tr>${Array.from({ length: 10 }, (_, c) => `<td colspan="1" rowspan="1"><p>r${r}c${c}</p></td>`).join("")}</tr>`).join("");
+    const pasted = openForEditing(`<table><tbody>${rows}</tbody></table>${Array.from({ length: 300 }, (_, i) => `<p>pasted <em>line</em> ${i}</p>`).join("")}`);
+    const s = openForEditing("<p>before</p><p>after</p>");
+    const engine = JSON.parse(JSON.stringify(s.engineDoc)) as DocNode;
+    engine.content!.splice(1, 0, ...(JSON.parse(JSON.stringify(pasted.engineDoc)) as DocNode).content!);
+    const out = saveFromEngine(engine, s);
+    if (!out.ok) throw new Error(out.message);
+    expect(out.html.startsWith("<p>before</p><table")).toBe(true);
+    expect(out.html).toContain("<p>r9c9</p>");
+    expect(out.html).toContain("<p>pasted <em>line</em> 299</p>");
+    expect(out.html.endsWith("<p>after</p>")).toBe(true);
+    expect(validate(fromHTML(out.html)).valid).toBe(true);
+  });
+
   it("an edit in a cell writes the web's table, spans and widths kept", () => {
     const table = '<table style="min-width: 50px"><colgroup><col style="width: 120px"><col style="min-width: 25px"></colgroup><tbody><tr><th colspan="2" rowspan="1" colwidth="120"><p>Head</p></th></tr><tr><td colspan="1" rowspan="1" colwidth="120"><p>a</p></td><td colspan="1" rowspan="1"><p>b</p></td></tr></tbody></table>';
     const s = openForEditing(table);

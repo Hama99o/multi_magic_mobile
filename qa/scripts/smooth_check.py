@@ -159,6 +159,10 @@ def check_typing(serial, tok, note_id, n):
 def check_undo(serial, tok, note_id, n):
     before, _ = server_text(tok, note_id)
     b = bounds(serial)
+    if "tb-closePanel" in b:  # a panel left open replaces undo/redo
+        tap(serial, "tb-closePanel", b)
+        time.sleep(0.5)
+        b = bounds(serial)
     for _ in range(n):
         tap(serial, "tb-undo", b)
         time.sleep(0.15)
@@ -234,11 +238,13 @@ def check_imetaps(serial, tok, note_id, gap_ms):
     adb(serial, "shell", "input", "tap", *map(str, GBOARD[" "]))
     script = "; ".join(f"input tap {GBOARD[ch][0]} {GBOARD[ch][1]}; sleep {gap_ms / 1000:.3f}" for ch in word)
     adb(serial, "shell", script, timeout=120)
-    # Back closes the keyboard and commits the composing word as typed.
-    adb(serial, "shell", "input", "keyevent", "KEYCODE_BACK")
+    # Moving the caret to the title commits the composing word as typed
+    # (Back would leave the screen when the keyboard is already down).
+    tap(serial, "note-edit-title")
     saved = wait_saved(tok, note_id, word, timeout=30)
     ok = word in saved
     i = saved.rfind("aab")
+    tap(serial, "note-edit-body")  # the caret and the keyboard back, for the next check
     print(json.dumps({"check": "imetaps", "gap_ms": gap_ms, "sent": word, "got": saved[i:i + len(word) + 4] if i >= 0 else None, "pass": ok}))
     return ok
 

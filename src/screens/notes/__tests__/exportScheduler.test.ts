@@ -69,3 +69,15 @@ it("dispose drops the timer", () => {
   jest.advanceTimersByTime(1000);
   expect(runs).toHaveLength(1);
 });
+
+it("after a toolbar command (urgent), the next change runs at once even when costly (device: the bar showed ¶ after H3)", () => {
+  const { s, runs } = rig(300);
+  s.dirty();
+  expect(runs).toHaveLength(1);
+  s.urgent();
+  s.dirty();
+  expect(runs).toHaveLength(2);
+  // Typing after it waits for a pause again.
+  s.dirty();
+  expect(runs).toHaveLength(2);
+});

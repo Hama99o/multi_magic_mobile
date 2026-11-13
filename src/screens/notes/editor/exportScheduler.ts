@@ -10,11 +10,15 @@
  *    normal note behaves exactly as it did;
  *  - otherwise once per pause, `pauseMs` after the last change;
  *  - `flush` runs a pending one now: before leaving, locking, archiving and
- *    any edit that needs the current document.
+ *    any edit that needs the current document;
+ *  - `urgent` makes the next change run at once: a toolbar command is one
+ *    discrete edit, and the bar must show its result (device: ¶ stayed lit
+ *    after H3 while the conversion waited for a pause).
  */
 export interface ExportScheduler {
   dirty(): void;
   flush(): void;
+  urgent(): void;
   dispose(): void;
 }
 
@@ -29,6 +33,7 @@ export function createExportScheduler(o: {
   const pauseMs = o.pauseMs ?? 400;
   let pending = false;
   let lastCost = 0;
+  let nextAtOnce = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
 
   const stop = () => {
@@ -46,7 +51,8 @@ export function createExportScheduler(o: {
   return {
     dirty() {
       pending = true;
-      if (lastCost < cheapMs) {
+      if (lastCost < cheapMs || nextAtOnce) {
+        nextAtOnce = false;
         runNow();
         return;
       }
@@ -55,6 +61,9 @@ export function createExportScheduler(o: {
     },
     flush() {
       if (pending) runNow();
+    },
+    urgent() {
+      nextAtOnce = true;
     },
     dispose() {
       stop();

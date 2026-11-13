@@ -42,6 +42,7 @@ import { NoteDocument } from "@/screens/notes/editor/NoteDocument";
 import { ReadOnlyAtomProvider } from "@/screens/notes/editor/ReadOnlyAtom";
 import { openForEditing, saveFromEngine, type EditSession } from "@/screens/notes/editor/editSession";
 import { createExportScheduler, type ExportScheduler } from "@/screens/notes/editor/exportScheduler";
+import { engineHolds } from "@/screens/notes/editor/engineHolds";
 import { notesEngineAtoms, notesEngineSchema } from "@/screens/notes/editor/engineSchema";
 import { engineTheme } from "@/screens/notes/editor/engineTheme";
 import { createNoteSaver, type NoteSaver, type SaverState, type ServerNote } from "@/screens/notes/editor/noteSaver";
@@ -137,6 +138,12 @@ export default function NoteEditScreen() {
         schema: notesEngineSchema,
         policy: { allowBase64Images: true },
       } as never);
+      const held = engineHolds((handle as unknown as { bridge?: Parameters<typeof engineHolds>[0] }).bridge, session.engineDoc);
+      if (!held.ok) {
+        console.warn("[notes] engine B did not keep the note:", held.reason);
+        handle.destroy();
+        return { session, handle: null, failed: true as const };
+      }
       return { session, handle, failed: false as const };
     } catch (e) {
       // Why the engine refused (it names the node or attribute): visible in

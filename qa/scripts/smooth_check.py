@@ -25,8 +25,9 @@ whole path: keyboard → engine → codec → saver → API.
             exactly (to the typed text and back again).
   offline   airplane mode, type a marker, back online: the marker is saved
             exactly once.
-  kill      type a marker and kill the app before the debounce: the draft is
-            on the phone (noteDrafts) for the next open.
+  kill      offline, type a marker, kill the app: the draft is on the phone
+            (noteDrafts), not on the server. Then reopen (flow 27) and run
+  restored  the draft reached the server, once.
   rotate    rotate with the keyboard up, then back: the app is still alive.
   locktype  type while toggling the lock: the app is still alive.
 
@@ -195,15 +196,33 @@ def check_offline(serial, tok, note_id):
 
 
 def check_kill(serial, tok, note_id):
+    """Killed mid-edit, offline so the text is on the phone only: the draft is
+    on disk. The runner then reopens the note (flow 27) and checks `restored`."""
     marker = mark("kil")
+    adb(serial, "shell", "cmd", "connectivity", "airplane-mode", "enable")
+    time.sleep(2)
     type_text(serial, f" {marker}")
+    time.sleep(2)  # past the keystrokes; the draft is written at once
     adb(serial, "shell", "am", "force-stop", PKG)
+    adb(serial, "shell", "cmd", "connectivity", "airplane-mode", "disable")
     saved, _ = server_text(tok, note_id)
     names = adb(serial, "shell", "run-as", PKG, "ls", "files/note-drafts").split()
     drafts = "".join(adb(serial, "exec-out", "run-as", PKG, "cat", f"files/note-drafts/{n}") for n in names)
     on_phone = marker in drafts
-    print(json.dumps({"check": "kill", "reached_server_before_kill": marker in saved, "draft_on_phone": on_phone, "marker": marker, "pass": on_phone or marker in saved}))
-    return on_phone or marker in saved
+    ok = on_phone and marker not in saved
+    print(json.dumps({"check": "kill", "draft_on_phone": on_phone, "on_server_before_reopen": marker in saved, "marker": marker, "pass": ok}))
+    with open(os.path.join(os.environ.get("SMOOTH_OUT", "/tmp"), "kill-marker"), "w") as f:
+        f.write(marker)
+    return ok
+
+
+def check_restored(tok, note_id):
+    """After the reopen: the killed draft reached the server, once."""
+    marker = open(os.path.join(os.environ.get("SMOOTH_OUT", "/tmp"), "kill-marker")).read().strip()
+    saved = wait_saved(tok, note_id, marker, timeout=60)
+    count = saved.count(marker)
+    print(json.dumps({"check": "restored", "marker": marker, "saved_times": count, "pass": count == 1}))
+    return count == 1
 
 
 def check_repeat(serial, tok, note_id):
@@ -238,13 +257,12 @@ def check_imetaps(serial, tok, note_id, gap_ms):
     adb(serial, "shell", "input", "tap", *map(str, GBOARD[" "]))
     script = "; ".join(f"input tap {GBOARD[ch][0]} {GBOARD[ch][1]}; sleep {gap_ms / 1000:.3f}" for ch in word)
     adb(serial, "shell", script, timeout=120)
-    # Moving the caret to the title commits the composing word as typed
-    # (Back would leave the screen when the keyboard is already down).
-    tap(serial, "note-edit-title")
+    # A tap back in the body commits the composing word as typed (Back would
+    # leave the screen once the keyboard is down; the title may be scrolled off).
+    tap(serial, "note-edit-body")
     saved = wait_saved(tok, note_id, word, timeout=30)
     ok = word in saved
     i = saved.rfind("aab")
-    tap(serial, "note-edit-body")  # the caret and the keyboard back, for the next check
     print(json.dumps({"check": "imetaps", "gap_ms": gap_ms, "sent": word, "got": saved[i:i + len(word) + 4] if i >= 0 else None, "pass": ok}))
     return ok
 
@@ -290,6 +308,7 @@ def main():
         "undo": lambda: check_undo(serial, tok, note_id, arg or 30),
         "offline": lambda: check_offline(serial, tok, note_id),
         "kill": lambda: check_kill(serial, tok, note_id),
+        "restored": lambda: check_restored(tok, note_id),
         "repeat": lambda: check_repeat(serial, tok, note_id),
         "imetaps": lambda: check_imetaps(serial, tok, note_id, arg or 120),
         "rotate": lambda: check_rotate(serial),

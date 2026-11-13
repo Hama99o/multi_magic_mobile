@@ -18,7 +18,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import MockAdapter from "axios-mock-adapter";
 import { Alert, Share } from "react-native";
 
-const mockEngine: { props: Record<string, any> | null; init: any; doc: any; refuse: boolean; calls: unknown[][]; selections: unknown[] } = { props: null, init: null, doc: null, refuse: false, calls: [], selections: [] };
+const mockEngine: { props: Record<string, any> | null; init: any; doc: any; refuse: boolean; holds: "all" | "nothing" | "part"; calls: unknown[][]; selections: unknown[] } = { props: null, init: null, doc: null, refuse: false, holds: "all", calls: [], selections: [] };
 /** The person typed: B now holds `json` and says so (it exports only when asked). */
 const engineChanged = (json: unknown) => {
   mockEngine.doc = json;
@@ -40,6 +40,15 @@ jest.mock("@apollohg/react-native-rich-text-editor", () => {
         destroy: () => undefined,
         bridge: {
           getState: () => ({ documentRevision: "7" }),
+          // What B really holds after accepting the document (device,
+          // 2026-11-13: a 900 KB note was accepted and shown EMPTY).
+          getDocumentIsEmpty: () => mockEngine.holds === "nothing",
+          getDocumentJson: () =>
+            mockEngine.holds === "all"
+              ? JSON.parse(JSON.stringify(mockEngine.init))
+              : mockEngine.holds === "part"
+                ? { ...mockEngine.init, content: mockEngine.init.content.slice(0, 1) }
+                : { type: "doc", content: [{ type: "paragraph" }] },
           setSelection: (req: unknown) => void mockEngine.selections.push(req),
         },
       };
@@ -112,6 +121,7 @@ beforeEach(() => {
   __resetFingerprintCache();
   mockEngine.props = null;
   mockEngine.refuse = false;
+  mockEngine.holds = "all";
   mockEngine.calls = [];
   mockEngine.selections = [];
   server = note();
@@ -173,6 +183,16 @@ it("when engine B refuses the note, the read view shows and nothing is sent", as
   expect(await screen.findByTestId("note-edit-cannot-open")).toBeTruthy();
   expect(screen.getByText("hello")).toBeTruthy();
   expect(screen.queryByText(/web/i)).toBeNull();
+  expect(mock.history.put).toHaveLength(0);
+});
+
+it.each(["nothing", "part"] as const)("when engine B accepts the note but holds %s of it, the read view shows and nothing is ever sent", async (holds) => {
+  server = note({ description: "<p>hello</p><ul><li><p>one</p></li></ul><p>end</p>" });
+  mockEngine.holds = holds;
+  open();
+  expect(await screen.findByTestId("note-edit-cannot-open")).toBeTruthy();
+  expect(screen.getByText("hello")).toBeTruthy();
+  await new Promise((r) => setTimeout(r, 700));
   expect(mock.history.put).toHaveLength(0);
 });
 

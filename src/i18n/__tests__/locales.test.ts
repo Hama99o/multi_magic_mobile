@@ -91,6 +91,8 @@ const SAME_IN_BOTH = new Set([
   "pages.family.folder",
   // The note toolbar's Image key: the same word in both, as pages.types.image.
   "notes.toolbar.image",
+  // "Orange" is the colour's name in both.
+  "notes.grid.colors.orange",
   // The product name.
   "home.title",
 ]);

@@ -17,17 +17,22 @@
 import { http } from "./http";
 import { arr, id, num, obj, optStr, readableRows, str } from "./parse";
 import { StaleNoteError } from "@/lib/staleNote";
+import { isNoteColorKey, type NoteColorKey } from "@/screens/notes/editor/noteColors";
 
 /** `owner`, or a share role (`note_app/share.rb`: viewer, contributor, administrator). */
 export type NoteRole = "owner" | "administrator" | "contributor" | "viewer";
 
 export interface NoteTag {
+  /** The label's colour key (tag.rb enum), null for none. */
+  color: NoteColorKey | null;
   id: number;
   name: string;
 }
 
 export interface Note {
   id: number;
+  /** The note's colour key (data.color, or a label's colour as the server falls back), null for none. */
+  color: NoteColorKey | null;
   title: string;
   /** The stored HTML body, exactly as the server sent it ("" for an empty note). */
   html: string;
@@ -48,11 +53,13 @@ export interface NoteList {
   total: number;
 }
 
+const colorKey = (v: unknown): NoteColorKey | null => (isNoteColorKey(v) && v !== "no_color" ? v : null);
+
 const ROLES: readonly NoteRole[] = ["owner", "administrator", "contributor", "viewer"];
 
 function parseTag(value: unknown): NoteTag {
   const tag = obj(value, "note.tag");
-  return { id: id(tag.id, "note.tag.id"), name: str(tag.name, "note.tag.name") };
+  return { id: id(tag.id, "note.tag.id"), name: str(tag.name, "note.tag.name"), color: colorKey(tag.color) };
 }
 
 export function parseNote(value: unknown): Note {
@@ -60,6 +67,7 @@ export function parseNote(value: unknown): Note {
   const role = optStr(note.role);
   return {
     id: id(note.id, "note.id"),
+    color: colorKey(note.color),
     title: optStr(note.title) ?? "",
     html: optStr(note.description) ?? "",
     pinned: note.pinned === true,
@@ -113,6 +121,23 @@ export const notesApi = {
       if (res?.status === 409) throw new StaleNoteError(parseNote(obj(res.data, "note").note));
       throw e;
     }
+  },
+
+  /** Pin or unpin (the web's update with `pinned`). */
+  setPinned: async (noteId: number, pinned: boolean): Promise<Note> => {
+    const res = await http.put(`/api/v1/note_app/notes/${noteId}`, { pinned });
+    return parseNote(obj(res.data, "note").note);
+  },
+
+  /** The note's colour key (data.color); null clears it with the web's `no_color`. */
+  setColor: async (noteId: number, color: NoteColorKey | null): Promise<Note> => {
+    const res = await http.put(`/api/v1/note_app/notes/${noteId}`, { color: color ?? "no_color" });
+    return parseNote(obj(res.data, "note").note);
+  },
+
+  /** To the trash: the server's destroy sets status trashed (restore and delete forever exist). */
+  trash: async (noteId: number): Promise<void> => {
+    await http.delete(`/api/v1/note_app/notes/${noteId}`);
   },
 
   /** A new published note of the caller's (used by "Keep both" on a conflict, SPEC §G2). */

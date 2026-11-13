@@ -133,3 +133,42 @@ describe("notesApi.update and the server's version check", () => {
     });
   });
 });
+
+describe("Keep grid fields (colour, label colours)", () => {
+  it("reads the note's colour key and each label's colour", async () => {
+    mock.onGet("/api/v1/note_app/notes/7").reply(200, { note: note({ color: "orange", tags: [{ id: 3, name: "dev-stuff", color: "teal" }] }) });
+    const n = await notesApi.get(7);
+    expect(n.color).toBe("orange");
+    expect(n.tags).toEqual([{ id: 3, name: "dev-stuff", color: "teal" }]);
+  });
+
+  it("a missing or unknown colour is no colour", async () => {
+    mock.onGet("/api/v1/note_app/notes/7").reply(200, { note: note({ color: "chartreuse", tags: [{ id: 3, name: "x" }] }) });
+    const n = await notesApi.get(7);
+    expect(n.color).toBeNull();
+    expect(n.tags[0].color).toBeNull();
+  });
+});
+
+describe("grid actions (pin, colour, trash)", () => {
+  it("pins and unpins with the web's update", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note({ pinned: false }) });
+    await notesApi.setPinned(7, false);
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ pinned: false });
+  });
+
+  it("sets a colour key, and clears it with the web's no_color", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note({ color: "teal" }) });
+    const n = await notesApi.setColor(7, "teal");
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ color: "teal" });
+    expect(n.color).toBe("teal");
+    await notesApi.setColor(7, null);
+    expect(JSON.parse(mock.history.put[1].data)).toEqual({ color: "no_color" });
+  });
+
+  it("delete moves the note to the trash (the server's destroy trashes)", async () => {
+    mock.onDelete("/api/v1/note_app/notes/7").reply(200, { id: 7, status: "trashed" });
+    await notesApi.trash(7);
+    expect(mock.history.delete).toHaveLength(1);
+  });
+});

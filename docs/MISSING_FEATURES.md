@@ -16,3 +16,12 @@ Build them when MultiMagic work resumes. Newest at the bottom. Mark an item done
 ## BUG (owner, 2026-11-10, web): sharing a space with an email that has no account shows "Something went wrong"
 - The server answers 404 {"message": "User not found with that email"} (Api::V1::PageApp::SharesController#find_share_recipient), but the web share dialog only shows the generic toast.
 - Fix: show the server's message ("No MultiMagic account uses this email yet"), and ideally offer "Send an invitation to sign up" (an email with a sign-up link that applies the share once the account exists). Server + web; check mobile too.
+
+## Notes, Keep-style (owner, 2026-11-13): what Google Keep has and MultiMagic does not
+
+Rule: the phone does what the web does, with no invented fields. These Keep features have nothing behind them on the web or server, so they are not built:
+
+- **Voice notes**: no audio-note type on the web.
+- **Drawing notes**: no drawing type on the web.
+- **Sort options in the grid**: the server orders `pinned desc, updated_at desc` and takes no sort parameter.
+- **Archive**: being added on a multi_magic branch (status plus API plus MCP plus minimal web), with PR and no merge (owner's decision, 2026-11-13). Until it lands, there is no archive key on the phone.

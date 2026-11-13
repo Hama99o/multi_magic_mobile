@@ -27,9 +27,25 @@ describe("no storage, no logs, nowhere else", () => {
     expect(SAFEZONE_FILES.length).toBeGreaterThanOrEqual(12);
   });
 
+  // ONE reasoned exception (device pass D12, 2026-11-13): the clipboard guard
+  // hands the secure store to the clipboard marker, so a copy left by a killed
+  // app is cleared at the next open. What goes in is a random per-install key
+  // and {HMAC of the copy, deadline}: never a secret, and never a bare hash
+  // (clipboardMarker.test.ts reads the stored bytes). It may do nothing else
+  // with the store: the name appears in the import and the hand-over only.
+  const MAY_HOLD_THE_MARKER = join(ROOT, "src/screens/safezone/clipboardGuard.ts");
+
+  it("the marker's file uses the secure store for the marker and nothing else", () => {
+    const source = readFileSync(MAY_HOLD_THE_MARKER, "utf8");
+    expect(source).toMatch(/^import \* as SecureStore from "expo-secure-store";$/m);
+    expect(source).toMatch(/createClipboardMarker\(\{\s*store: SecureStore,/);
+    expect(source.match(/\bSecureStore\b/g)).toHaveLength(2);
+  });
+
   it.each(SAFEZONE_FILES.map((f) => [f.replace(ROOT + "/", ""), f]))("%s", (_name, file) => {
     const source = readFileSync(file, "utf8");
-    expect(source).not.toMatch(/async-storage|expo-secure-store|zustand\/middleware|\bpersist\(/);
+    if (file === MAY_HOLD_THE_MARKER) expect(source).not.toMatch(/async-storage|zustand\/middleware|\bpersist\(/);
+    else expect(source).not.toMatch(/async-storage|expo-secure-store|zustand\/middleware|\bpersist\(/);
     expect(source).not.toMatch(/\bconsole\./);
     expect(source).not.toMatch(/expo-sharing|useAssistantEcho|composer/i);
   });

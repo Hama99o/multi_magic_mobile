@@ -32,8 +32,16 @@ jest.mock("expo-secure-store", () => ({
   }),
 }));
 
+// digest and getRandomBytes back SafeZone's clipboard marker
+// (screens/safezone/clipboardMarker.ts): Node's own SHA-256, and fixed bytes.
 jest.mock("expo-crypto", () => ({
   randomUUID: jest.fn(() => "11111111-2222-3333-4444-555555555555"),
+  CryptoDigestAlgorithm: { SHA256: "SHA-256" },
+  digest: jest.fn(async (_algorithm: string, data: Uint8Array) => {
+    const out: Buffer = require("crypto").createHash("sha256").update(Buffer.from(data)).digest();
+    return out.buffer.slice(out.byteOffset, out.byteOffset + out.byteLength);
+  }),
+  getRandomBytes: jest.fn((n: number) => new Uint8Array(n).fill(9)),
 }));
 
 // expo-media-library's classes extend a native object Jest has no stand-in

@@ -107,6 +107,18 @@ secrets (`lockEpoch` increments; `useSecretFields` clears on change). It runs:
   person pasted elsewhere in the meantime has already been pasted, and that is
   the point of copying.
 - **Lock clears it too**: `lock()` runs the pending clear immediately.
+- **A killed app clears it at the next open** (`clipboardMarker.ts`, wired by
+  `wireClipboardSweep()` in `app/_layout.tsx`). Each copy also writes a marker
+  to the secure store: `{ mac, until }`, where `mac` is an HMAC-SHA256 of the
+  copied text under a random 32-byte key made once per install (also in the
+  secure store). Never the secret, and never a bare hash: a short password's
+  SHA-256 falls to an offline guess, a keyed MAC does not without the key. At
+  launch and on every return to the foreground, wherever the app opens, a
+  due marker clears the clipboard (Android: only if its HMAC still matches;
+  iOS: without reading) and is deleted; one not yet due is cleared at its
+  deadline. Every ordinary clear deletes it too. This is the one place a
+  SafeZone file touches the secure store, and `rules.test.ts` holds it to
+  that.
 
 ## 7 · Screenshots and recording
 
@@ -138,10 +150,15 @@ secrets (`lockEpoch` increments; `useSecretFields` clears on change). It runs:
 
 - **A JS process is not a vault.** The plaintext lives in the JS heap until
   the GC collects it. "Dropped from state" means unreachable, not overwritten.
-- **iOS clipboard**: no expiration date (`UIPasteboard`'s `expirationDate` and
-  `localOnly` are not exposed by `expo-clipboard`). If the app is killed
-  before the clear runs, the copy stays. Fixing it needs a native module;
-  logged in `docs/MISSING_FEATURES.md`.
+- **A copy outlives a killed app until MultiMagic is opened again, on both
+  platforms.** Measured on Android 2026-11-13 (device pass D12): a password
+  copied, the app force-stopped 3 s later, and the password still pasted in
+  another app (Settings search). The marker (§6) clears it at the next open,
+  not before: a phone that never reopens the app keeps the copy. No platform
+  clipboard expiry is reachable from `expo-clipboard` (iOS `UIPasteboard`'s
+  `expirationDate`/`localOnly` are not exposed); closing that last gap needs
+  a native module, logged in `docs/MISSING_FEATURES.md`. (An earlier note here
+  said iOS only; it was written from the code, not a device, and was wrong.)
 - **Android 13+ "sensitive" clip flag** (`ClipDescription.EXTRA_IS_SENSITIVE`,
   which hides the clipboard preview): not exposed by `expo-clipboard` either.
   Same follow-up.

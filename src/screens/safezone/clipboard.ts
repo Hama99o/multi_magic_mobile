@@ -10,6 +10,8 @@
  *   is cleared without reading. Something the person copied elsewhere in
  *   those 30 s is cleared too; that is the trade-off, written down.
  */
+import type { ClipboardMarker, Marker } from "./clipboardMarker";
+
 export const CLIPBOARD_CLEAR_MS = 30_000;
 
 export interface ClipboardLike {
@@ -39,11 +41,15 @@ export function createClipboardGuard(opts: {
   ms?: number;
   now?: () => number;
   setTimer?: SetTimer;
+  /** Keeps the pending clear across a killed app (`clipboardMarker.ts`). */
+  marker?: ClipboardMarker;
 }) {
   const ms = opts.ms ?? CLIPBOARD_CLEAR_MS;
   const now = opts.now ?? (() => Date.now());
   const setTimer = opts.setTimer ?? defaultTimer;
-  let pending: { until: number; mark: number } | null = null;
+  // `mark` while this process made the copy; `saved` when it came from a
+  // marker left by a process that was killed before its timer ran.
+  let pending: { until: number; mark?: number; saved?: Marker } | null = null;
   let cancel: (() => void) | null = null;
 
   const clear = async () => {
@@ -55,11 +61,14 @@ export function createClipboardGuard(opts: {
     try {
       if (opts.platform === "android") {
         const current = await opts.clipboard.getStringAsync();
-        if (fingerprint(current) !== was.mark) return;
+        const ours = was.saved ? await (opts.marker?.matches(current, was.saved) ?? false) : fingerprint(current) === was.mark;
+        if (!ours) return;
       }
       await opts.clipboard.setStringAsync("");
     } catch {
       // A clipboard that cannot be read or written: nothing more to do here.
+    } finally {
+      await opts.marker?.remove();
     }
   };
 
@@ -69,6 +78,22 @@ export function createClipboardGuard(opts: {
       await opts.clipboard.setStringAsync(value);
       pending = { until: now() + ms, mark: fingerprint(value) };
       cancel = setTimer(() => void clear(), ms);
+      await opts.marker?.write(value, pending.until);
+    },
+    /**
+     * On launch and on return to the foreground: a copy left by a killed
+     * process is cleared once due (`SECURITY.md` §9, device pass D12).
+     */
+    sweep: async () => {
+      if (pending) {
+        if (now() >= pending.until) await clear();
+        return;
+      }
+      const saved = await opts.marker?.read();
+      if (!saved || pending) return;
+      pending = { until: saved.until, saved };
+      if (now() >= saved.until) await clear();
+      else cancel = setTimer(() => void clear(), saved.until - now());
     },
     clearIfDue: async () => {
       if (pending && now() >= pending.until) await clear();

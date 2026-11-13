@@ -21,8 +21,7 @@ This replaces SPEC §C8 ("read-only blocks are a view-on-web card"), the
 | Evernote | [Code language list](https://mobbin.com/screens/c5ca7850-e863-4999-9fdd-b962f6a08ded) | the code block shows its language as a chip on the block; the chip opens the list | a dropdown over the text (it hides the code on a phone) |
 | Notion | [Language search](https://mobbin.com/screens/12781a0c-9ef3-4086-8581-252bda8c0bf7) | **a sheet with a search field** for the language, Done on the right | — |
 | Craft | [Edit code](https://mobbin.com/screens/611f805b-52e9-4dc8-90f1-a15a307a8367) | monospace, line numbers off by default, a Copy action on the block | a separate full-screen code editor (ours is inline) |
-| Attio | [Comment actions](https://mobbin.com/screens/78060571-5f36-4a6a-aaf6-899e4b992a0c) | a comment's sheet: **Reply**, **Mark as resolved**, then Delete in red | emoji reactions, Copy link |
-| Dropbox | [Thread sheet](https://mobbin.com/screens/6e634f22-a53f-4071-ae37-b7f5fcc00487) | the thread in a bottom sheet over the note, replies indented, the input at the bottom | Mark unread |
+| Attio, Dropbox | [Comment actions](https://mobbin.com/screens/78060571-5f36-4a6a-aaf6-899e4b992a0c), [thread sheet](https://mobbin.com/screens/6e634f22-a53f-4071-ae37-b7f5fcc00487) | kept for when the web turns comments on (decision 4) | everything, for now |
 
 ## Decisions
 
@@ -49,16 +48,14 @@ This replaces SPEC §C8 ("read-only blocks are a view-on-web card"), the
    fallback is the owner's: a table whose cells span opens in a **table
    editor sheet** (a native grid of cell inputs over our JSON). The inline
    path stays for plain tables.
-4. **Comments are visible and editable** on the phone: commented text is
-   tinted; tapping it opens the thread sheet (Dropbox, Attio) with Reply,
-   Resolve, and Add on a selection. **Storage: open question for the
-   owner.** The web stores nothing today: MultiMagic web does not turn
-   comments on, and there is no comments table for notes on the server.
-   tiptop-editor hands comments to the host (`CommentsProvider`
-   `onCommentsChange`, `TiptopComment[]`). Proposal: store that same array
-   in the note's `data.comments` (already permitted by `notes#update`), and
-   turn comments on in the web editor in the same multi_magic branch, so
-   both sides read one store. It's a web change, so the owner decides.
+4. **Comments: off on the web, so off on the phone** (Hello's decision,
+   2026-11-13; revisit if the web turns them on). There is no comments UI,
+   no store and no web toggle, and multi_magic is not touched. Comment
+   markup already in a stored note is kept: the codec reads it with its
+   comments profile, and the comment travels through engine B as an
+   invisible mark (and `commentId` on blocks). So it survives edits around
+   it, even in the same paragraph, and is written back as the web wrote it.
+   Deleting the commented text deletes it. It is drawn as plain text.
 5. **Legacy content becomes normal blocks when we know its type**: a legacy
    `<img data-width>` is an image block (replace, delete, move). A YouTube
    `<iframe>` is an embed block (change the link, delete, move). `h4–h6`
@@ -98,5 +95,5 @@ calls it after each typing step.
    the sheet editor if needed.
 5. Legacy img / iframe / h4–h6 as normal blocks; unknown markup moveable and
    deletable.
-6. Comments, once the owner picks the storage.
+6. Comment markup kept as an invisible mark (no UI).
 7. Keyboard occlusion QA plus flow 27 on two sizes, then the full device pass.

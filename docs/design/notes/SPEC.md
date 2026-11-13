@@ -442,8 +442,8 @@ screen wires those together.
    saves a copy titled "… (conflict 12 Nov 15:40)". Never a silent
    last-write-wins.
 3. **Comments:** off everywhere for now. Row 43 stays read-only.
-   **Changed 2026-11-13:** comments are visible and editable on the phone
-   (add, reply, resolve). The storage is an open question for the owner
+   **Confirmed 2026-11-13:** off on the web, so off on the phone; existing
+   comment markup is kept byte for byte as an invisible mark
    (`EDIT_EVERYTHING.md` §4).
 4. **Sharing on the phone:** view, and add or remove people (web parity),
    in phase 3b.

@@ -108,6 +108,23 @@ export interface UnlockGrant {
   expiresIn: number;
 }
 
+// ── cache keys ───────────────────────────────────────────────────────────
+
+/**
+ * SafeZone's React Query keys (`docs/DATA_LAYER.md`; the other apps' are in
+ * `src/api/keys.ts`, on main). The STRIPPED lists and the PIN status only.
+ * An item's detail NEVER has a key: React Query caches the RAW response
+ * BEFORE `select`, so even a `select` that strips the secrets would leave
+ * them in the cache (SECURITY.md §8). Lists sit under their own prefix so a
+ * lock can drop them without dropping the PIN status.
+ */
+export const safezoneKeys = {
+  all: ["safezone"] as const,
+  pin: () => ["safezone", "pin"] as const,
+  lists: () => ["safezone", "list"] as const,
+  list: <K extends SafeZoneKind, S extends string>(kind: K, search: S) => ["safezone", "list", kind, search] as const,
+};
+
 // ── refusals ─────────────────────────────────────────────────────────────
 
 export type SafeZoneErrorKind =

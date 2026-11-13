@@ -15,12 +15,12 @@
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, AppState, Pressable, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Lock } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { safezoneApi, SafeZoneError } from "@/api/safezone";
+import { safezoneApi, safezoneKeys, SafeZoneError } from "@/api/safezone";
 import { failureMessage } from "@/api/failure";
 import { onSafezoneLock, useSafezoneLock } from "@/stores/safezoneLock.store";
 import { clipboardGuard } from "./clipboardGuard";
@@ -35,24 +35,29 @@ export function SafeZoneGate({ children, lockOnLeave = false }: { children: Reac
   const status = useSafezoneLock((s) => s.status);
   const queryClient = useQueryClient();
   const [covered, setCovered] = useState(false);
-  const [statusError, setStatusError] = useState<unknown>(null);
 
   useSecureScreen("safezone");
 
-  const loadStatus = useCallback(() => {
-    setStatusError(null);
-    safezoneApi
-      .pinStatus()
-      .then((pin) => useSafezoneLock.getState().fromPinStatus(pin))
-      .catch((e: unknown) => setStatusError(e));
-  }, []);
-
+  // The PIN status is server data: a query, enabled while the vault is not
+  // open (docs/DATA_LAYER.md). The lock store is the gate's own state
+  // machine (token, locked, lockout); it follows the query's answer here, in
+  // an effect that makes no request.
+  const pin = useQuery({
+    queryKey: safezoneKeys.pin(),
+    queryFn: safezoneApi.pinStatus,
+    enabled: status.kind !== "unlocked",
+    retry: false,
+    gcTime: 0,
+  });
   useEffect(() => {
-    if (useSafezoneLock.getState().status.kind !== "unlocked") loadStatus();
-  }, [loadStatus]);
+    if (pin.data) useSafezoneLock.getState().fromPinStatus(pin.data);
+  }, [pin.data, pin.dataUpdatedAt]);
+  const { refetch } = pin;
+  const loadStatus = useCallback(() => void refetch(), [refetch]);
+  const statusError = pin.error;
 
   // Locking drops even the stripped lists.
-  useEffect(() => onSafezoneLock(() => queryClient.removeQueries({ queryKey: ["safezone"] })), [queryClient]);
+  useEffect(() => onSafezoneLock(() => queryClient.removeQueries({ queryKey: safezoneKeys.lists() })), [queryClient]);
 
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next) => {
@@ -78,22 +83,23 @@ export function SafeZoneGate({ children, lockOnLeave = false }: { children: Reac
     () => () => {
       if (!lockOnLeave) return;
       useSafezoneLock.getState().lock();
-      queryClient.removeQueries({ queryKey: ["safezone"] });
+      queryClient.removeQueries({ queryKey: safezoneKeys.lists() });
     },
     [lockOnLeave, queryClient],
   );
 
+  // A refused refresh has already locked the vault (safezone_pin_locked); a
+  // network failure leaves the token to expire on its own.
+  const refreshing = useMutation({
+    mutationFn: safezoneApi.refresh,
+    onSuccess: (grant) => useSafezoneLock.getState().unlocked(grant),
+    onError: () => undefined,
+  });
   const touch = () => {
     const lock = useSafezoneLock.getState();
     const token = lock.liveToken();
     if (!token || !lock.needsRefresh()) return;
-    safezoneApi
-      .refresh(token)
-      .then((grant) => useSafezoneLock.getState().unlocked(grant))
-      .catch(() => {
-        // A refused refresh has already locked the vault (safezone_pin_locked);
-        // a network failure leaves the token to expire on its own.
-      });
+    if (!refreshing.isPending) refreshing.mutate(token);
   };
 
   let body: ReactNode;
@@ -158,12 +164,14 @@ function Unlock({ attemptsLeft }: { attemptsLeft: number | null }) {
     return () => clearTimeout(id);
   }, [pausedUntil]);
 
+  // The PIN goes in the mutation's variables only, never into state or the cache.
+  const unlocking = useMutation({ mutationFn: (pin: string) => safezoneApi.unlock(pin) });
   const submit = (pin: string) => {
     setBusy(true);
     setNotice(null);
     setWrong(false);
-    safezoneApi
-      .unlock(pin)
+    unlocking
+      .mutateAsync(pin)
       .then((grant) => useSafezoneLock.getState().unlocked(grant))
       .catch((e: unknown) => {
         const lock = useSafezoneLock.getState();
@@ -259,13 +267,14 @@ function SetUpPin({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const enabling = useMutation({ mutationFn: safezoneApi.enable });
   const save = () => {
     if (!/^\d{6}$/.test(pin)) return setError(t("safezone.setup.format"));
     if (pin !== again) return setError(t("safezone.setup.mismatch"));
     setBusy(true);
     setError(null);
-    safezoneApi
-      .enable({ currentPassword: password, pin, pinConfirmation: again })
+    enabling
+      .mutateAsync({ currentPassword: password, pin, pinConfirmation: again })
       .then((status) => {
         setPin("");
         setAgain("");

@@ -18,6 +18,7 @@ import { http, __resetTokenCache } from "@/api/http";
 import { __resetFingerprintCache } from "@/lib/fingerprint";
 import { testQueryClient } from "@/__tests__/queryClient";
 import { useSafezoneLock } from "@/stores/safezoneLock.store";
+import { safezoneKeys } from "@/api/safezone";
 import { clipboardGuard } from "../clipboardGuard";
 import SafeZone from "../../../../app/safezone";
 import SafeZoneItem from "../../../../app/safezone/item";
@@ -265,7 +266,7 @@ describe("locking", () => {
     act(() => appState.forEach((fn) => fn("background")));
     await screen.findByTestId("safezone-unlock");
     expect(useSafezoneLock.getState().token).toBeNull();
-    expect(client.getQueryCache().findAll({ queryKey: ["safezone"] })).toHaveLength(0);
+    expect(client.getQueryCache().findAll({ queryKey: safezoneKeys.lists() })).toHaveLength(0);
   });
 
   it("the app switcher (inactive) covers the vault", async () => {
@@ -284,10 +285,10 @@ describe("locking", () => {
 
   it("leaving SafeZone locks it, and drops even the stripped list", async () => {
     await unlockVault();
-    expect(client.getQueryCache().findAll({ queryKey: ["safezone"] }).length).toBeGreaterThan(0);
+    expect(client.getQueryCache().findAll({ queryKey: safezoneKeys.lists() }).length).toBeGreaterThan(0);
     screen.unmount();
     expect(useSafezoneLock.getState()).toMatchObject({ token: null, status: { kind: "locked" } });
-    expect(client.getQueryCache().findAll({ queryKey: ["safezone"] })).toHaveLength(0);
+    expect(client.getQueryCache().findAll({ queryKey: safezoneKeys.lists() })).toHaveLength(0);
   });
 
   it("an expired token locks the open vault on the next tick", async () => {

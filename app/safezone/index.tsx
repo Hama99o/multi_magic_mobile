@@ -13,7 +13,7 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { SAFEZONE_KINDS, safezoneApi, type SafeZoneKind, type SafeZoneRow } from "@/api/safezone";
+import { SAFEZONE_KINDS, safezoneApi, safezoneKeys, type SafeZoneKind, type SafeZoneRow } from "@/api/safezone";
 import { useSafezoneLock } from "@/stores/safezoneLock.store";
 import { SafeZoneGate } from "@/screens/safezone/SafeZoneGate";
 import { isExpired, rowSubtitle } from "@/screens/safezone/display";
@@ -71,7 +71,7 @@ function Vault() {
   }, [typed]);
 
   const list = useInfiniteQuery({
-    queryKey: ["safezone", kind, search],
+    queryKey: safezoneKeys.list(kind, search),
     initialPageParam: 1,
     queryFn: ({ pageParam }) => {
       const token = useSafezoneLock.getState().liveToken();

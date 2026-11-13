@@ -46,3 +46,13 @@ it("stays fast on a 1 MB note (it only reads what it shows)", () => {
   cardPreview(big, 8);
   expect(Date.now() - t0).toBeLessThan(1500);
 });
+
+it("shows a table as one line per row, cells joined (not one cell per line)", () => {
+  const html = '<p>November</p><table><tbody><tr><th colspan="1" rowspan="1"><p>Item</p></th><th><p>Plan</p></th><th><p>Spent</p></th></tr><tr><td><p>Rent</p></td><td><p>800</p></td><td><p>800</p></td></tr></tbody></table><p>after</p>';
+  expect(cardPreview(html, 10).lines).toEqual(["November", "Item · Plan · Spent", "Rent · 800 · 800", "after"]);
+});
+
+it("a cell with two paragraphs stays in its row", () => {
+  const html = "<table><tbody><tr><td><p>a</p><p>b</p></td><td><p>c</p></td></tr></tbody></table>";
+  expect(cardPreview(html, 10).lines).toEqual(["a b · c"]);
+});

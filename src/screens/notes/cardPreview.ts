@@ -34,6 +34,10 @@ export function cardPreview(html: string, maxLines: number): { lines: string[]; 
   let blockHadText = false;
   const lists: ListFrame[] = [];
   let done = false;
+  // Tables: one line per row, the cells joined with " · " (a cell's own
+  // paragraphs stay in it, joined by a space).
+  let row: string[] | null = null;
+  let cell: string | null = null;
 
   const push = (text: string) => {
     if (lines.length > maxLines) {
@@ -66,6 +70,8 @@ export function cardPreview(html: string, maxLines: number): { lines: string[]; 
           if (i > 0) endLine();
           line += part;
         });
+      } else if (cell !== null) {
+        cell += t.replace(/\s+/g, " ");
       } else {
         const collapsed = t.replace(/\s+/g, " ");
         line += line ? collapsed : collapsed.replace(/^ /, "");
@@ -76,6 +82,30 @@ export function cardPreview(html: string, maxLines: number): { lines: string[]; 
     const tag = rawTag.toLowerCase();
     if (SKIP.has(tag)) {
       skip += closing ? -1 : 1;
+      continue;
+    }
+    if (tag === "tr") {
+      if (!closing) {
+        endLine();
+        row = [];
+      } else if (row) {
+        const text = row.filter(Boolean).join(" · ");
+        if (text) push(prefix + text);
+        row = null;
+      }
+      continue;
+    }
+    if (tag === "td" || tag === "th") {
+      if (!closing) cell = "";
+      else if (cell !== null) {
+        row?.push(cell.replace(/\s+/g, " ").trim());
+        cell = null;
+      }
+      continue;
+    }
+    if (cell !== null) {
+      // Inside a cell, blocks and breaks are a space, never a new line.
+      if (BLOCKS.has(tag) || tag === "br") cell += " ";
       continue;
     }
     if (tag === "br") {

@@ -18,7 +18,7 @@
  * do not exist on the web (MISSING_FEATURES.md).
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, TextInput, View } from "react-native";
+import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
@@ -57,6 +57,10 @@ export default function NotesScreen() {
   const metrics = useMetrics();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  // The screen is a centred column on a tablet; the bottom bar spans the
+  // whole width, as on a phone (seen at 800 dp: it was an inset box).
+  const { width } = useWindowDimensions();
+  const bleed = Math.max(0, (width - metrics.maxMeasure) / 2);
   const user = useAuthStore((s) => s.user);
   const layout = useNotesView((s) => s.layout);
   const setLayout = useNotesView((s) => s.setLayout);
@@ -299,8 +303,8 @@ export default function NotesScreen() {
         <View
           pointerEvents="box-none"
           style={{
-            position: "absolute", left: 0, right: 0, bottom: 0, height: 72, flexDirection: "row", alignItems: "center",
-            backgroundColor: colors.surface, paddingHorizontal: metrics.space.md,
+            position: "absolute", left: -bleed, right: -bleed, bottom: 0, height: 72, flexDirection: "row", alignItems: "center",
+            backgroundColor: colors.surface, paddingHorizontal: metrics.space.md + bleed,
           }}
         >
           {iconKey("notes-new-checklist", t("notes.grid.newChecklist"), () => void create(EMPTY_CHECKLIST), <ListChecks size={24} color={colors.ink} />)}

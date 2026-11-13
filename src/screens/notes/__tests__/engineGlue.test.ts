@@ -49,10 +49,15 @@ describe("toEngine", () => {
     expect(marks).toEqual([{ type: "bold" }, { type: ENGINE_COLOR_MARK, attrs: { color: "var(--sys-color-token-tag)" } }]);
   });
 
-  it("sends code blocks and tables as read-only atoms holding the exact node", () => {
-    const out = toEngine({ type: "doc", content: [code, table, p(t("after"))] });
-    expect(out.content!.map((n) => n.type)).toEqual([READ_ONLY_ATOM, READ_ONLY_ATOM, "paragraph"]);
-    expect(out.content![0].attrs).toEqual({ kind: "codeBlock", node: JSON.stringify(code) });
+  it("sends code blocks as editable code blocks, language kept (owner, 2026-11-13)", () => {
+    const out = toEngine({ type: "doc", content: [code, p(t("after"))] });
+    expect(out.content![0]).toEqual(code);
+  });
+
+  it("sends tables as atoms holding the exact node (until tables are editable, step 4)", () => {
+    const out = toEngine({ type: "doc", content: [table, p(t("after"))] });
+    expect(out.content!.map((n) => n.type)).toEqual([READ_ONLY_ATOM, "paragraph"]);
+    expect(out.content![0].attrs).toEqual({ kind: "table", node: JSON.stringify(table) });
   });
 
   it("sends legacy raw blocks and images as atoms too, so the editor draws them with our card", () => {

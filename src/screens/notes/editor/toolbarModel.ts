@@ -20,7 +20,7 @@ export type ListType = "bulletList" | "orderedList" | "taskList";
 export type MarkName = "bold" | "italic" | "underline" | "strike" | "code" | "subscript" | "superscript";
 export type Align = "left" | "center" | "right" | "justify";
 export type InsertType = "horizontalRule" | "image" | "table";
-export type Panel = "format" | "insert" | "textColor" | "highlight" | "blockType";
+export type Panel = "format" | "insert" | "textColor" | "highlight" | "blockType" | "codeLanguage";
 
 export type Command =
   | { kind: "mark"; mark: MarkName }
@@ -44,6 +44,8 @@ export interface ToolbarInput {
   nodes: Record<string, boolean>;
   /** The heading's level when the caret is in one (from our document). */
   headingLevel?: number;
+  /** The code block's language when the caret is in one (null = plain text). */
+  codeLanguage?: string | null;
   canUndo: boolean;
   canRedo: boolean;
   /** Text is selected (not just a caret). */
@@ -146,6 +148,7 @@ export function buildToolbar(input: ToolbarInput): { keys: ToolbarKey[] } {
       return { keys: HIGHLIGHT_COLORS.map((c) => k(`highlight:${c.key}`, { kind: "color", which: "highlight", value: c.value })) };
     case "blockType":
       return { keys: BLOCKS.map((b) => k(`block:${b}`, { kind: "block", value: b }, block === b)) };
+    case "codeLanguage": // a sheet, drawn by the screen; the row stays the main one
     default:
       break;
   }
@@ -161,6 +164,7 @@ export function buildToolbar(input: ToolbarInput): { keys: ToolbarKey[] } {
       panelKey("insert", "insert"),
       panelKey("format", "format"),
       k("blockType", toggle("blockType"), false, false, block),
+      ...(inCodeBlock ? [k("codeLanguage", { kind: "panel", panel: "codeLanguage" } as Command, false, false, input.codeLanguage ?? "plain")] : []),
       listKey("taskList"),
       listKey("bulletList"),
       k("indent", { kind: "indent" }),

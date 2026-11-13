@@ -35,6 +35,7 @@ import { EditorToolbar } from "@/screens/notes/editor/EditorToolbar";
 import { buildToolbar, type Command, type Panel } from "@/screens/notes/editor/toolbarModel";
 import { runCommand, type EngineRef } from "@/screens/notes/editor/engineCommands";
 import { toolbarLabels } from "@/screens/notes/toolbarLabels";
+import { CODE_LANGUAGES, deleteBlockAt, setCodeLanguageAt, textblockAt, toCodeBlockAt, toParagraphAt } from "@/screens/notes/editor/blockEdits";
 
 interface Opened {
   title: string;
@@ -155,8 +156,15 @@ export default function NoteEditScreen() {
 
   const push = () => saverRef.current?.change({ title: title.current, html: html.current });
 
+  // The engine's document as we last saw it (for structural edits and the caret's block).
+  const engineDocRef = useRef<DocNode | null>(null);
+  useEffect(() => {
+    engineDocRef.current = engine?.session?.engineDoc ?? null;
+  }, [engine]);
+
   const onEngineChange = (json: unknown) => {
     if (!engine?.session) return;
+    engineDocRef.current = json as DocNode;
     const out = saveFromEngine(json as DocNode, engine.session);
     if (!out.ok) {
       setCannotSave(true);
@@ -192,21 +200,49 @@ export default function NoteEditScreen() {
   const [hasSelection, setHasSelection] = useState(false);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [linkDraft, setLinkDraft] = useState<string | null>(null);
+  const [caretPos, setCaretPos] = useState<number | null>(null);
+  const [codeSheet, setCodeSheet] = useState(false);
+  const [languageQuery, setLanguageQuery] = useState("");
   const labelsForToolbar = useMemo(() => toolbarLabels(t), [t]);
-  const toolbarKeys = buildToolbar({ ...active, ...history, hasSelection, panel }).keys;
+  // The textblock under the caret, from our copy of the engine's document.
+  const caretBlock = caretPos !== null && engineDocRef.current ? textblockAt(engineDocRef.current, caretPos) : null;
+  const headingLevel = caretBlock?.node.type === "heading" ? Number(caretBlock.node.attrs?.level ?? 1) : undefined;
+  const codeLanguage = caretBlock?.node.type === "codeBlock" ? ((caretBlock.node.attrs?.language as string | null) ?? null) : undefined;
+  const toolbarKeys = buildToolbar({ ...active, ...history, hasSelection, panel, headingLevel, codeLanguage }).keys;
+
+  /** Replace the engine's document with a structural edit of it (B has no command for these). */
+  const applyStructural = (edit: (doc: DocNode, path: number[]) => DocNode) => {
+    const ref = editorRef.current;
+    const doc = engineDocRef.current;
+    if (!ref || !doc || !caretBlock) return;
+    const next = edit(doc, caretBlock.path);
+    ref.setContentJson(next as never);
+    onEngineChange(next);
+  };
 
   const onCommand = (command: Command) => {
     const ref = editorRef.current as unknown as EngineRef | null;
     if (command.kind === "panel") {
-      setPanel(command.panel);
+      if (command.panel === "codeLanguage") {
+        setLanguageQuery("");
+        setCodeSheet(true);
+      } else setPanel(command.panel);
       return;
+    }
+    if (command.kind === "block" && command.value === "codeBlock") {
+      if (caretBlock && caretBlock.node.type !== "codeBlock") applyStructural(toCodeBlockAt);
+      return;
+    }
+    if (command.kind === "block" && active.nodes.codeBlock && caretBlock?.node.type === "codeBlock") {
+      applyStructural(toParagraphAt);
+      if (command.value === "paragraph") return;
     }
     if (command.kind === "link") {
       setLinkDraft("");
       return;
     }
     if (!ref) return;
-    runCommand(ref, command, { nodes: active.nodes });
+    runCommand(ref, command, { nodes: active.nodes, headingLevel });
     if (command.kind === "color") setPanel(null);
   };
   const saveLink = () => {
@@ -315,7 +351,12 @@ export default function NoteEditScreen() {
             showToolbar={false}
             onActiveStateChange={(state) => setActive({ marks: { ...state.marks }, nodes: { ...state.nodes } })}
             onHistoryStateChange={(h) => setHistory({ canUndo: h.canUndo, canRedo: h.canRedo })}
-            onSelectionChange={(sel) => setHasSelection(sel.type === "text" && sel.anchor !== sel.head)}
+            onSelectionChange={(sel) => {
+              setHasSelection(sel.type === "text" && sel.anchor !== sel.head);
+              setCaretPos(typeof sel.head === "number" ? sel.head : null);
+            }}
+            autoCorrect={!active.nodes.codeBlock}
+            autoCapitalize={active.nodes.codeBlock ? "none" : "sentences"}
             heightBehavior="fixed"
             style={{ flex: 1 }}
             containerStyle={{ flex: 1 }}
@@ -352,6 +393,56 @@ export default function NoteEditScreen() {
                 <Text style={{ color: colors.accent, fontWeight: "700" }}>{t("common.save")}</Text>
               </Pressable>
             </View>
+          </View>
+        </View>
+      </Modal>
+      <Modal visible={codeSheet} transparent animationType="slide" onRequestClose={() => setCodeSheet(false)}>
+        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" }}>
+          <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: metrics.space.lg, gap: metrics.space.md, maxHeight: "75%" }}>
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              <Text style={{ flex: 1, fontWeight: "700", fontSize: 17 }}>{t("notes.code.title")}</Text>
+              <Pressable testID="note-code-done" onPress={() => setCodeSheet(false)} hitSlop={8} style={{ padding: 8 }}>
+                <Text style={{ color: colors.accent, fontWeight: "700" }}>{t("common.close")}</Text>
+              </Pressable>
+            </View>
+            <TextInput
+              testID="note-code-language-search"
+              value={languageQuery}
+              onChangeText={setLanguageQuery}
+              placeholder={t("notes.code.search")}
+              placeholderTextColor={colors.inkMuted}
+              autoCapitalize="none"
+              autoCorrect={false}
+              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.ink, fontSize: 16 }}
+            />
+            <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }}>
+              {CODE_LANGUAGES.filter((l) => (l.id === null ? t("notes.code.plain") : l.name).toLowerCase().includes(languageQuery.trim().toLowerCase())).map((l) => (
+                <Pressable
+                  key={l.id ?? "plain"}
+                  testID={`note-code-language-${l.id ?? "plain"}`}
+                  onPress={() => {
+                    applyStructural((doc, path) => setCodeLanguageAt(doc, path, l.id));
+                    setCodeSheet(false);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected: (codeLanguage ?? null) === l.id }}
+                  style={{ minHeight: 48, justifyContent: "center", borderBottomWidth: 1, borderColor: colors.border }}
+                >
+                  <Text style={{ fontWeight: (codeLanguage ?? null) === l.id ? "700" : "400" }}>{l.id === null ? t("notes.code.plain") : l.name}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+            <Pressable
+              testID="note-code-delete"
+              onPress={() => {
+                applyStructural(deleteBlockAt);
+                setCodeSheet(false);
+              }}
+              accessibilityRole="button"
+              style={{ minHeight: 48, justifyContent: "center" }}
+            >
+              <Text style={{ color: colors.danger, fontWeight: "600" }}>{t("notes.code.delete")}</Text>
+            </Pressable>
           </View>
         </View>
       </Modal>

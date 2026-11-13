@@ -30,6 +30,7 @@ export function toolbarLabels(t: TFunction): ToolbarLabels {
     "align:right": t("notes.toolbar.alignRight"), "align:justify": t("notes.toolbar.alignJustify"),
     "block:paragraph": t("notes.toolbar.paragraph"), "block:h1": t("notes.toolbar.h1"), "block:h2": t("notes.toolbar.h2"),
     "block:h3": t("notes.toolbar.h3"), "block:blockquote": t("notes.toolbar.blockquote"), "block:codeBlock": t("notes.toolbar.codeBlock"),
+    codeLanguage: t("notes.code.title"), "codeLanguage:plain": t("notes.code.plain"),
     "insert:horizontalRule": t("notes.toolbar.horizontalRule"), "insert:image": t("notes.toolbar.image"), "insert:table": t("notes.toolbar.table"),
     ...Object.fromEntries(Object.entries(textColors).map(([k, v]) => [`textColor:${k}`, v])),
     ...Object.fromEntries(Object.entries(highlights).map(([k, v]) => [`highlight:${k}`, v])),

@@ -1023,6 +1023,12 @@ export const fr: Translations = {
       checked: "Fait",
       unchecked: "À faire",
     },
+    code: {
+      title: "Bloc de code",
+      search: "Chercher un langage",
+      plain: "Texte brut",
+      delete: "Supprimer le bloc",
+    },
     toolbar: {
       undo: "Annuler",
       redo: "Rétablir",

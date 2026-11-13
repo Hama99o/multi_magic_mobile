@@ -139,3 +139,23 @@ describe("parity with the web editor (keep this table green)", () => {
     expect(WEB_PARITY.length).toBeGreaterThanOrEqual(30);
   });
 });
+
+describe("inside a code block (EDIT_EVERYTHING.md §1)", () => {
+  const inCode = { nodes: { codeBlock: true }, codeLanguage: "ruby" };
+
+  it("the main row shows the block's language as a key that opens the language sheet", () => {
+    const k = key(inCode, "codeLanguage");
+    expect(k.value).toBe("ruby");
+    expect(k.command).toEqual({ kind: "panel", panel: "codeLanguage" });
+    expect(key({ nodes: { codeBlock: true }, codeLanguage: null }, "codeLanguage").value).toBe("plain");
+  });
+
+  it("no language key outside a code block", () => {
+    expect(ids({})).not.toContain("codeLanguage");
+  });
+
+  it("indent stays available in code (it inserts an indent), lists are not", () => {
+    expect(key(inCode, "indent").disabled).toBe(false);
+    expect(key(inCode, "bulletList").disabled).toBe(true);
+  });
+});

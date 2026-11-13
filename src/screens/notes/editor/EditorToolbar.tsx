@@ -44,6 +44,7 @@ import Type from "lucide-react-native/dist/esm/icons/type";
 import Underline from "lucide-react-native/dist/esm/icons/underline";
 import Undo2 from "lucide-react-native/dist/esm/icons/undo-2";
 
+import { CODE_LANGUAGES } from "./blockEdits";
 import { HIGHLIGHT_COLORS, TEXT_COLORS, type Command, type ToolbarKey } from "./toolbarModel";
 import type { EditorColors } from "./types";
 
@@ -106,6 +107,10 @@ export function EditorToolbar({ keys, labels, colors, onCommand }: EditorToolbar
                   testID={`tb-${k.id}-swatch`}
                   style={{ width: 26, height: 26, borderRadius: 13, borderWidth: 1, borderColor: colors.border, backgroundColor: fill ?? "transparent" }}
                 />
+              ) : k.id === "codeLanguage" ? (
+                <Text style={{ color: tint, fontWeight: "600", fontSize: 13, fontFamily: "monospace" }}>
+                  {k.value === "plain" ? labels["codeLanguage:plain"] ?? "Plain text" : CODE_LANGUAGES.find((l) => l.id === k.value)?.name ?? k.value}
+                </Text>
               ) : k.id === "blockType" ? (
                 <Text style={{ color: tint, fontWeight: "700", fontSize: 15 }}>{BLOCK_TEXT[k.value ?? "paragraph"]}</Text>
               ) : Glyph ? (

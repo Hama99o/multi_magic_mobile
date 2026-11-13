@@ -1007,6 +1007,12 @@ export const en = {
       checked: "Done",
       unchecked: "Not done",
     },
+    code: {
+      title: "Code block",
+      search: "Search languages",
+      plain: "Plain text",
+      delete: "Delete block",
+    },
     toolbar: {
       undo: "Undo",
       redo: "Redo",

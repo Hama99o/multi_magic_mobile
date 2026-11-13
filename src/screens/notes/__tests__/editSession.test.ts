@@ -48,10 +48,23 @@ describe("openForEditing → saveFromEngine", () => {
     const table = '<table style="min-width: 50px"><colgroup><col><col></colgroup><tbody><tr><th colspan="1" rowspan="1"><p>A</p></th><th colspan="1" rowspan="1"><p>B</p></th></tr></tbody></table>';
     const code = '<pre><code class="language-ruby">def x\n  1\nend</code></pre>';
     const s = openForEditing(`<p>top</p>${table}${code}`);
-    expect(s.engineDoc.content!.filter((n) => n.type === READ_ONLY_ATOM)).toHaveLength(2);
+    expect(s.engineDoc.content!.map((n) => n.type)).toEqual(["paragraph", READ_ONLY_ATOM, "codeBlock"]);
     const out = saveFromEngine(typeInFirstParagraph(s.engineDoc, "!"), s);
     if (!out.ok) throw new Error(out.message);
     expect(out.html).toBe(`<p>top!</p>${table}${code}`);
+  });
+
+  it("editing inside a code block writes the web's pre/code with every space, tab and line kept", () => {
+    const stored = '<p>intro</p><pre><code class="language-ruby">def x\n  1\nend</code></pre>';
+    const s = openForEditing(stored);
+    const engine = JSON.parse(JSON.stringify(s.engineDoc)) as DocNode;
+    const block = engine.content![1];
+    expect(block.type).toBe("codeBlock");
+    block.content = [{ type: "text", text: "def x\n\t  1 # tab and spaces\n\nend" }];
+    const out = saveFromEngine(engine, s);
+    if (!out.ok) throw new Error(out.message);
+    expect(out.html).toBe('<p>intro</p><pre><code class="language-ruby">def x\n\t  1 # tab and spaces\n\nend</code></pre>');
+    roundTrips(out.html);
   });
 
   it("a block with sub/sup is read-only on the phone and keeps its bytes", () => {
@@ -90,9 +103,10 @@ describe("openForEditing → saveFromEngine", () => {
   });
 
   it("a damaged read-only block is not saved: the screen falls back to the read view", () => {
-    const s = openForEditing('<pre><code>x</code></pre><p>a</p>');
+    const s = openForEditing('<table><tbody><tr><td><p>x</p></td></tr></tbody></table><p>a</p>');
     const damaged = JSON.parse(JSON.stringify(s.engineDoc)) as DocNode;
-    damaged.content![0].attrs = { kind: "codeBlock", node: "{broken" };
+    expect(damaged.content![0].type).toBe(READ_ONLY_ATOM);
+    damaged.content![0].attrs = { kind: "table", node: "{broken" };
     expect(saveFromEngine(damaged, s)).toEqual({ ok: false, reason: "damaged", message: expect.stringMatching(/read-only block/) });
   });
 

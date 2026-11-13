@@ -21,6 +21,7 @@ export interface EngineRef {
   indentListItem(): void;
   outdentListItem(): void;
   insertNode(type: string): void;
+  insertText(text: string): void;
   undo(): void;
   redo(): void;
   blur(): void;
@@ -83,10 +84,12 @@ export function runCommand(ref: EngineRef, command: Command, ctx: CommandContext
       }
       return "screen";
     case "indent":
-      ref.indentListItem();
+      // In code, an indent is text (soft keyboards have no Tab key).
+      if (ctx.nodes.codeBlock) ref.insertText("  ");
+      else ref.indentListItem();
       return "done";
     case "outdent":
-      ref.outdentListItem();
+      if (!ctx.nodes.codeBlock) ref.outdentListItem();
       return "done";
     case "undo":
       ref.undo();

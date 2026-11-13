@@ -115,7 +115,7 @@ function typed(text: string): DocNode {
 it("open → edit → save: the server gets HTML the codec round-trips, read-only blocks byte for byte", async () => {
   open();
   await waitFor(() => expect(mockEngine.props).not.toBeNull());
-  expect(mockEngine.init.content.map((n: DocNode) => n.type)).toEqual(["paragraph", READ_ONLY_ATOM, READ_ONLY_ATOM, READ_ONLY_ATOM, READ_ONLY_ATOM]);
+  expect(mockEngine.init.content.map((n: DocNode) => n.type)).toEqual(["paragraph", READ_ONLY_ATOM, "codeBlock", READ_ONLY_ATOM, READ_ONLY_ATOM]);
   act(() => mockEngine.props!.onContentChangeJSON(typed(" world")));
   await waitFor(() => expect(mock.history.put).toHaveLength(1), { timeout: 2000 });
   const sent = JSON.parse(mock.history.put[0].data).description as string;
@@ -226,5 +226,81 @@ describe("our toolbar (owner, 2026-11-13: full editing from a bar on the keyboar
     fireEvent.changeText(screen.getByTestId("note-link-input"), "https://example.com");
     fireEvent.press(screen.getByTestId("note-link-save"));
     expect(mockEngine.calls).toContainEqual(["setLink", "https://example.com"]);
+  });
+});
+
+describe("code blocks are edited on the phone (owner, 2026-11-13)", () => {
+  const lastSetJson = () => {
+    const call = [...mockEngine.calls].reverse().find((c) => c[0] === "setContentJson");
+    return call?.[1] as DocNode | undefined;
+  };
+
+  it("the code block reaches the engine as an editable block, with its language", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    const block = mockEngine.init.content.find((n: DocNode) => n.type === "codeBlock");
+    expect(block.attrs.language).toBe("ruby");
+  });
+
+  it("a paragraph becomes a code block from the toolbar, and back", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    act(() => {
+      mockEngine.props!.onSelectionChange({ type: "text", anchor: 3, head: 3 }); // in "hello"
+    });
+    fireEvent.press(screen.getByTestId("tb-format"));
+    fireEvent.press(screen.getByTestId("tb-block:codeBlock"));
+    expect(lastSetJson()!.content![0]).toEqual({ type: "codeBlock", attrs: { language: null }, content: [{ type: "text", text: "hello" }] });
+    act(() => {
+      mockEngine.props!.onContentChangeJSON(lastSetJson());
+      mockEngine.props!.onActiveStateChange({ marks: {}, markAttrs: {}, nodes: { codeBlock: true }, commands: {}, allowedMarks: [], insertableNodes: [] });
+    });
+    fireEvent.press(screen.getByTestId("tb-block:paragraph"));
+    expect(lastSetJson()!.content![0]).toEqual({ type: "paragraph", content: [{ type: "text", text: "hello" }] });
+  });
+
+  it("the language chip opens a searchable sheet; picking a language sets it", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    const codeAt = (() => {
+      // the position inside the code block: after the paragraph and the table atom
+      const doc = mockEngine.init as DocNode;
+      const { nodeSize } = jest.requireActual("@/screens/notes/editor/blockEdits");
+      return nodeSize(doc.content![0]) + nodeSize(doc.content![1]) + 2;
+    })();
+    act(() => {
+      mockEngine.props!.onSelectionChange({ type: "text", anchor: codeAt, head: codeAt });
+      mockEngine.props!.onActiveStateChange({ marks: {}, markAttrs: {}, nodes: { codeBlock: true }, commands: {}, allowedMarks: [], insertableNodes: [] });
+    });
+    expect(screen.getByTestId("tb-codeLanguage")).toHaveTextContent("Ruby");
+    fireEvent.press(screen.getByTestId("tb-codeLanguage"));
+    fireEvent.changeText(screen.getByTestId("note-code-language-search"), "pyth");
+    fireEvent.press(screen.getByTestId("note-code-language-python"));
+    const block = lastSetJson()!.content!.find((n) => n.type === "codeBlock")!;
+    expect(block.attrs).toEqual({ language: "python" });
+  });
+
+  it("the code block's sheet deletes the block", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    const doc = mockEngine.init as DocNode;
+    const { nodeSize } = jest.requireActual("@/screens/notes/editor/blockEdits");
+    const codeAt = nodeSize(doc.content![0]) + nodeSize(doc.content![1]) + 2;
+    act(() => {
+      mockEngine.props!.onSelectionChange({ type: "text", anchor: codeAt, head: codeAt });
+      mockEngine.props!.onActiveStateChange({ marks: {}, markAttrs: {}, nodes: { codeBlock: true }, commands: {}, allowedMarks: [], insertableNodes: [] });
+    });
+    fireEvent.press(screen.getByTestId("tb-codeLanguage"));
+    fireEvent.press(screen.getByTestId("note-code-delete"));
+    expect(lastSetJson()!.content!.some((n) => n.type === "codeBlock")).toBe(false);
+  });
+
+  it("autocorrect and capitalisation are off while the caret is in code", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(mockEngine.props!.autoCorrect).toBe(true);
+    act(() => mockEngine.props!.onActiveStateChange({ marks: {}, markAttrs: {}, nodes: { codeBlock: true }, commands: {}, allowedMarks: [], insertableNodes: [] }));
+    expect(mockEngine.props!.autoCorrect).toBe(false);
+    expect(mockEngine.props!.autoCapitalize).toBe("none");
   });
 });

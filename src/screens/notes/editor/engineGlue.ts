@@ -18,7 +18,7 @@ import type { DocMark, DocNode } from "./types";
 
 export const ENGINE_COLOR_MARK = "fgColor";
 export const READ_ONLY_ATOM = "readOnlyBlock";
-const READ_ONLY_TYPES = new Set(["codeBlock", "table", "rawBlock", "imageUploader"]);
+const READ_ONLY_TYPES = new Set(["table", "rawBlock", "imageUploader"]);
 
 const renameMark = (marks: DocMark[], from: string, to: string): DocMark[] =>
   marks.map((m) => (m.type === from ? { ...m, type: to } : { ...m }));

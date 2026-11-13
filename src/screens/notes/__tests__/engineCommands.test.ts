@@ -12,7 +12,7 @@ function fakeRef() {
     toggleMark: rec("toggleMark"), setMark: rec("setMark"), unsetMark: rec("unsetMark"),
     toggleHeading: rec("toggleHeading"), toggleBlockquote: rec("toggleBlockquote"), toggleList: rec("toggleList"),
     setTextAlign: rec("setTextAlign"), indentListItem: rec("indentListItem"), outdentListItem: rec("outdentListItem"),
-    insertNode: rec("insertNode"), undo: rec("undo"), redo: rec("redo"), blur: rec("blur"),
+    insertNode: rec("insertNode"), insertText: rec("insertText"), undo: rec("undo"), redo: rec("redo"), blur: rec("blur"),
     setLink: rec("setLink"), unsetLink: rec("unsetLink"),
     runTableCommand: async (c: unknown) => void calls.push(["runTableCommand", c]),
   };
@@ -88,4 +88,11 @@ it("what needs the screen (link, image, code block, panels) is handed back, not 
   expect(runCommand(ref, { kind: "block", value: "codeBlock" }, ctx())).toBe("screen");
   expect(runCommand(ref, { kind: "panel", panel: "format" }, ctx())).toBe("screen");
   expect(calls).toEqual([]);
+});
+
+it("in a code block, indent inserts two spaces and outdent does nothing (no list to outdent)", () => {
+  const { ref, calls } = fakeRef();
+  runCommand(ref, { kind: "indent" }, ctx({ nodes: { codeBlock: true } }));
+  runCommand(ref, { kind: "outdent" }, ctx({ nodes: { codeBlock: true } }));
+  expect(calls).toEqual([["insertText", "  "]]);
 });

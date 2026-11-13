@@ -29,6 +29,7 @@ import { feedbackApi, undoApi, type ChatMessage, type Rating } from "@/api/ai";
 import { apiErrorMessage } from "@/api/http";
 import { ReadAloudButtons, ReadAloudNotice } from "./ReadAloud";
 import { FeedbackReasonDialog } from "./FeedbackReasonDialog";
+import { useMutation } from "@tanstack/react-query";
 
 export function AnswerActions({
   message,
@@ -78,6 +79,12 @@ export function AnswerActions({
    * back to what it WAS, not to null: with a rating that persists, snapping to
    * null would claim a change the server never made.
    */
+  // Writes are mutations (docs/DATA_LAYER.md). The thumb is already
+  // optimistic in this row's own state, put back on a failure, as before.
+  const rate = useMutation({ mutationFn: (next: Rating | null) => (next ? feedbackApi.rate(message.id, next) : feedbackApi.clear(message.id)) });
+  const giveReason = useMutation({ mutationFn: (reason: string) => feedbackApi.rate(message.id, "negative", reason) });
+  const undoing_ = useMutation({ mutationFn: () => undoApi.undo(message.id) });
+
   async function toggle(pressed: Rating) {
     const before = rating;
     const next = before === pressed ? null : pressed;
@@ -90,8 +97,7 @@ export function AnswerActions({
       setAsking(true);
     }
     try {
-      if (next) await feedbackApi.rate(message.id, next);
-      else await feedbackApi.clear(message.id);
+      await rate.mutateAsync(next);
       onRated?.({ ...message, rating: next });
     } catch {
       setRating(before);
@@ -101,7 +107,7 @@ export function AnswerActions({
   async function sendReason(reason: string) {
     setSendingReason(true);
     try {
-      await feedbackApi.rate(message.id, "negative", reason);
+      await giveReason.mutateAsync(reason);
       setAsking(false);
       setReasonSent(true);
       setTimeout(() => setReasonSent(false), 2500);
@@ -117,7 +123,7 @@ export function AnswerActions({
     setUndoing(true);
     setError(null);
     try {
-      const { message: updated } = await undoApi.undo(message.id);
+      const { message: updated } = await undoing_.mutateAsync();
       onUndone(updated);
     } catch (e) {
       setError(apiErrorMessage(e) ?? t("answer.undoFailed"));

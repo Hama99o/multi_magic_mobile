@@ -16,7 +16,7 @@
  * document the model cannot see.
  */
 import { useCallback, useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
 import {
@@ -91,6 +91,12 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [error, setError] = useState<string | null>(null);
   const queryClient = useQueryClient();
+  // The upload is a mutation (docs/DATA_LAYER.md); the chip's own state
+  // (uploading / done / failed) stays local, because a file that vanishes
+  // looks like one that uploaded.
+  const uploading = useMutation({
+    mutationFn: ({ conversationId: id, file }: { conversationId: number; file: Parameters<typeof documentsApi.upload>[1] }) => documentsApi.upload(id, file),
+  });
 
   const upload = useCallback(
     async (file: { name: string; uri: string; mimeType: string; size: number }) => {
@@ -110,7 +116,7 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
       ]);
 
       try {
-        const document = await documentsApi.upload(conversationId, file);
+        const document = await uploading.mutateAsync({ conversationId, file });
         setPending((current) =>
           current.map((p) => (p.key === key ? { ...p, status: "done", document } : p)),
         );
@@ -132,7 +138,7 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
         );
       }
     },
-    [conversationId, uploadedCount, pending, queryClient],
+    [conversationId, uploadedCount, pending, queryClient, uploading],
   );
 
   const pickDocument = useCallback(async () => {

@@ -424,3 +424,15 @@ describe("⋮ Labels (the web's note tags)", () => {
     await waitFor(() => expect(JSON.parse(mock.history.post[0].data)).toEqual({ name: "trip" }));
   });
 });
+
+describe("archive from the note (the header pill)", () => {
+  it("archives the note and goes back to the grid", async () => {
+    mock.onPut("/api/v1/note_app/notes/7/archive").reply(200, { note: note({ status: "archived" }) });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    fireEvent.press(screen.getByTestId("note-edit-archive"));
+    await waitFor(() => expect(mock.history.put.some((r) => r.url === "/api/v1/note_app/notes/7/archive")).toBe(true));
+    const router = (jest.requireMock("expo-router") as { router: Record<string, jest.Mock> }).router;
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+  });
+});

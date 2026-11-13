@@ -20,6 +20,7 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { ChevronLeft, Copy, Pin, Share2, Trash2 } from "@/components/icons";
 import TagIcon from "lucide-react-native/dist/esm/icons/tag";
+import ArchiveIcon from "lucide-react-native/dist/esm/icons/archive";
 import { NoteLabelsSheet } from "@/screens/notes/labels";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
 import { notesApi, type Note } from "@/api/notes";
@@ -283,6 +284,13 @@ export default function NoteEditScreen() {
       const saved = await notesApi.setPinned(noteId, !notePinned);
       setPinned(saved.pinned);
     });
+  const archiveNote = () =>
+    void act(async () => {
+      await saverRef.current?.flush();
+      await notesApi.archive(noteId);
+    }).then((ok) => {
+      if (ok) router.back();
+    });
   const pickColor = (key: NoteColorKey | null) => {
     setSheet(null);
     void act(async () => {
@@ -370,6 +378,18 @@ export default function NoteEditScreen() {
           >
             <Pin size={20} color={notePinned ? colors.accent : colors.ink} fill={notePinned ? colors.accent : "none"} />
           </Pressable>
+          {note.role === "owner" || note.role === "administrator" ? (
+            <Pressable
+              testID="note-edit-archive"
+              onPress={archiveNote}
+              accessibilityRole="button"
+              accessibilityLabel={t("notes.views.archiveAction")}
+              hitSlop={4}
+              style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+            >
+              <ArchiveIcon size={20} color={colors.ink} />
+            </Pressable>
+          ) : null}
         </View>
       ) : null}
     </View>

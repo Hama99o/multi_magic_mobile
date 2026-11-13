@@ -180,3 +180,31 @@ describe("make a copy (the web's duplicate)", () => {
     expect(copy).toMatchObject({ id: 70, title: "Trip (copy)" });
   });
 });
+
+describe("archive and trash (Keep, owner 2026-11-13)", () => {
+  const page = (notes: unknown[]) => ({ notes, meta: { pagy: { page: 1, pages: 1 }, total_count: notes.length } });
+
+  it("archives and unarchives (multi_magic PR #21 routes)", async () => {
+    mock.onPut("/api/v1/note_app/notes/7/archive").reply(200, { note: note({ status: "archived" }) });
+    mock.onPut("/api/v1/note_app/notes/7/unarchive").reply(200, { note: note() });
+    expect((await notesApi.archive(7)).status).toBe("archived");
+    expect((await notesApi.unarchive(7)).status).toBe("published");
+  });
+
+  it("lists the archive and the trash like the main list", async () => {
+    mock.onGet("/api/v1/note_app/notes/archives").reply(200, page([note({ status: "archived" })]));
+    mock.onGet("/api/v1/note_app/notes/trashes").reply(200, page([note({ status: "trashed" })]));
+    expect((await notesApi.list(1, undefined, undefined, "archive")).notes[0].status).toBe("archived");
+    expect((await notesApi.list(1, "x", undefined, "trash")).notes[0].status).toBe("trashed");
+    expect(mock.history.get[1].params).toEqual({ page: 1, search: "x" });
+  });
+
+  it("restores from the trash and deletes forever", async () => {
+    mock.onPut("/api/v1/note_app/notes/7/restore").reply(200, note());
+    mock.onDelete("/api/v1/note_app/notes/7/destroy_permanently").reply(200, { note: note() });
+    await notesApi.restore(7);
+    await notesApi.destroyForever(7);
+    expect(mock.history.put[0].url).toBe("/api/v1/note_app/notes/7/restore");
+    expect(mock.history.delete[0].url).toBe("/api/v1/note_app/notes/7/destroy_permanently");
+  });
+});

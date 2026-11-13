@@ -29,8 +29,11 @@ export interface NoteTag {
   name: string;
 }
 
+export type NoteStatus = "published" | "archived" | "trashed";
+
 export interface Note {
   id: number;
+  status: NoteStatus;
   /** The note's colour key (data.color, or a label's colour as the server falls back), null for none. */
   color: NoteColorKey | null;
   title: string;
@@ -68,6 +71,7 @@ export function parseNote(value: unknown): Note {
   return {
     id: id(note.id, "note.id"),
     color: colorKey(note.color),
+    status: note.status === "archived" || note.status === "trashed" ? note.status : "published",
     title: optStr(note.title) ?? "",
     html: optStr(note.description) ?? "",
     pinned: note.pinned === true,
@@ -82,8 +86,9 @@ export function parseNote(value: unknown): Note {
 
 export const notesApi = {
   /** Published notes the reader can see (their own and shared), pinned first, then last edited. */
-  list: async (page = 1, search?: string, tagId?: number): Promise<NoteList> => {
-    const res = await http.get("/api/v1/note_app/notes", {
+  list: async (page = 1, search?: string, tagId?: number, view: "notes" | "archive" | "trash" = "notes"): Promise<NoteList> => {
+    const path = view === "archive" ? "/api/v1/note_app/notes/archives" : view === "trash" ? "/api/v1/note_app/notes/trashes" : "/api/v1/note_app/notes";
+    const res = await http.get(path, {
       params: { page, ...(search ? { search } : {}), ...(tagId ? { tag_id: tagId } : {}) },
     });
     const record = obj(res.data, "notes");
@@ -141,6 +146,27 @@ export const notesApi = {
   duplicate: async (noteId: number): Promise<Note> => {
     const res = await http.post(`/api/v1/note_app/notes/${noteId}/duplicate`);
     return parseNote(obj(res.data, "note").note);
+  },
+
+  /** Archive (Keep's archive; multi_magic PR #21): out of the list, kept. */
+  archive: async (noteId: number): Promise<Note> => {
+    const res = await http.put(`/api/v1/note_app/notes/${noteId}/archive`);
+    return parseNote(obj(res.data, "note").note);
+  },
+
+  unarchive: async (noteId: number): Promise<Note> => {
+    const res = await http.put(`/api/v1/note_app/notes/${noteId}/unarchive`);
+    return parseNote(obj(res.data, "note").note);
+  },
+
+  /** Out of the trash, back into the notes. */
+  restore: async (noteId: number): Promise<void> => {
+    await http.put(`/api/v1/note_app/notes/${noteId}/restore`);
+  },
+
+  /** Gone for good (only from the trash, as on the web). */
+  destroyForever: async (noteId: number): Promise<void> => {
+    await http.delete(`/api/v1/note_app/notes/${noteId}/destroy_permanently`);
   },
 
   /** To the trash: the server's destroy sets status trashed (restore and delete forever exist). */

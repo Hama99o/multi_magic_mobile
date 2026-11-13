@@ -14,19 +14,24 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { noteTagsApi } from "@/api/noteTags";
 import type { Note, NoteTag } from "@/api/notes";
 import TagIcon from "lucide-react-native/dist/esm/icons/tag";
+import ArchiveIcon from "lucide-react-native/dist/esm/icons/archive";
 
 export const TAGS_KEY = ["notes", "tags"] as const;
 export const useNoteTags = (enabled = true) => useQuery({ queryKey: TAGS_KEY, queryFn: () => noteTagsApi.list(), enabled });
 
 /** Keep's drawer: Notes (current when no label), then every label; Edit labels. */
+export type NotesView = "notes" | "archive" | "trash";
+
 export function NotesDrawer({
-  visible, currentTagId, onClose, onPick, onEditLabels,
+  visible, currentTagId, view = "notes", onClose, onPick, onEditLabels, onPickView,
 }: {
   visible: boolean;
   currentTagId: number | null;
+  view?: NotesView;
   onClose(): void;
   onPick(tag: NoteTag | null): void;
   onEditLabels(): void;
+  onPickView?(view: NotesView): void;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -57,12 +62,15 @@ export function NotesDrawer({
             {t("notes.labels.drawerTitle")}
           </Text>
           <ScrollView>
-            {row("drawer-notes", t("notes.title"), <NotebookPen size={22} color={colors.ink} />, currentTagId === null, () => onPick(null))}
+            {row("drawer-notes", t("notes.title"), <NotebookPen size={22} color={colors.ink} />, view === "notes" && currentTagId === null, () => onPick(null))}
             <Text tone="muted" style={{ fontSize: 12, fontWeight: "600", letterSpacing: 0.6, paddingHorizontal: 20, marginTop: metrics.space.lg, marginBottom: metrics.space.xs }}>
               {t("notes.labels.title").toUpperCase()}
             </Text>
             {tags.map((tag) => row(`drawer-label-${tag.id}`, tag.name, <TagIcon size={22} color={colors.ink} />, currentTagId === tag.id, () => onPick(tag)))}
             {row("drawer-edit-labels", t("notes.labels.edit"), <Pencil size={22} color={colors.ink} />, false, onEditLabels)}
+            <View style={{ height: 1, backgroundColor: colors.border, marginVertical: metrics.space.sm }} />
+            {onPickView ? row("drawer-archive", t("notes.views.archive"), <ArchiveIcon size={22} color={colors.ink} />, view === "archive", () => onPickView("archive")) : null}
+            {onPickView ? row("drawer-trash", t("notes.views.trash"), <Trash2 size={22} color={colors.ink} />, view === "trash", () => onPickView("trash")) : null}
           </ScrollView>
         </View>
         <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.5)" }} onPress={onClose} accessibilityLabel={t("common.close")} />

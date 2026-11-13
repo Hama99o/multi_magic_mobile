@@ -154,6 +154,7 @@ const PLURAL = new Set([
   "pages.select.count",
   "notes.grid.selected",
   "notes.grid.deleteTitle",
+  "notes.views.foreverTitle",
   "pages.uploads.barItems",
   "pages.download.saved",
   "pages.download.failed",

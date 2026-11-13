@@ -38,7 +38,11 @@ import { cardPreview } from "@/screens/notes/cardPreview";
 import { masonry } from "@/screens/notes/masonry";
 import { NoteColorPicker } from "@/screens/notes/NoteColorPicker";
 import { noteColor, type NoteColorKey } from "@/screens/notes/editor/noteColors";
-import { EditLabelsSheet, NotesDrawer } from "@/screens/notes/labels";
+import { EditLabelsSheet, NotesDrawer, type NotesView } from "@/screens/notes/labels";
+import ArchiveIcon from "lucide-react-native/dist/esm/icons/archive";
+import ArchiveRestore from "lucide-react-native/dist/esm/icons/archive-restore";
+import RotateCcwIcon from "lucide-react-native/dist/esm/icons/rotate-ccw";
+import Flame from "lucide-react-native/dist/esm/icons/flame";
 
 /** The web's empty to-do list (tiptop 2.3.1 taskList markup), for "new checklist". */
 const EMPTY_CHECKLIST =
@@ -70,10 +74,12 @@ export default function NotesScreen() {
   const [drawer, setDrawer] = useState(false);
   const [editLabels, setEditLabels] = useState(false);
   const [label, setLabel] = useState<NoteTag | null>(null);
+  const [view, setView] = useState<NotesView>("notes");
+  const [confirmForever, setConfirmForever] = useState(false);
 
   const { data, error, refetch, isRefetching, isLoading, dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
-    queryKey: ["notes", "list", search, label?.id ?? null],
-    queryFn: ({ pageParam }) => notesApi.list(pageParam, search || undefined, label?.id),
+    queryKey: ["notes", "list", view, search, label?.id ?? null],
+    queryFn: ({ pageParam }) => notesApi.list(pageParam, search || undefined, view === "notes" ? label?.id : undefined, view),
     initialPageParam: 1,
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
   });
@@ -176,14 +182,27 @@ export default function NotesScreen() {
           <Text testID="notes-selection-count" style={{ flex: 1, fontSize: 18, fontWeight: "600" }}>
             {t("notes.grid.selected", { count: selected.length })}
           </Text>
-          {iconKey(
-            "notes-selection-pin",
-            allPinned ? t("notes.grid.unpin") : t("notes.grid.pin"),
-            () => void runOnSelection((n) => notesApi.setPinned(n.id, !allPinned)),
-            allPinned ? <PinOff size={22} color={colors.ink} /> : <Pin size={22} color={colors.ink} />,
-          )}
-          {iconKey("notes-selection-color", t("notes.grid.color"), () => setColorOpen(true), <Palette size={22} color={colors.ink} />)}
-          {iconKey("notes-selection-delete", t("notes.grid.delete"), () => setConfirmDelete(true), <Trash2 size={22} color={colors.ink} />)}
+          {view === "notes"
+            ? iconKey(
+                "notes-selection-pin",
+                allPinned ? t("notes.grid.unpin") : t("notes.grid.pin"),
+                () => void runOnSelection((n) => notesApi.setPinned(n.id, !allPinned)),
+                allPinned ? <PinOff size={22} color={colors.ink} /> : <Pin size={22} color={colors.ink} />,
+              )
+            : null}
+          {view !== "trash" ? iconKey("notes-selection-color", t("notes.grid.color"), () => setColorOpen(true), <Palette size={22} color={colors.ink} />) : null}
+          {view === "notes"
+            ? iconKey("notes-selection-archive", t("notes.views.archiveAction"), () => void runOnSelection((n) => notesApi.archive(n.id)), <ArchiveIcon size={22} color={colors.ink} />)
+            : null}
+          {view === "archive"
+            ? iconKey("notes-selection-unarchive", t("notes.views.unarchiveAction"), () => void runOnSelection((n) => notesApi.unarchive(n.id)), <ArchiveRestore size={22} color={colors.ink} />)
+            : null}
+          {view === "trash"
+            ? iconKey("notes-selection-restore", t("notes.views.restore"), () => void runOnSelection((n) => notesApi.restore(n.id)), <RotateCcwIcon size={22} color={colors.ink} />)
+            : null}
+          {view === "trash"
+            ? iconKey("notes-selection-forever", t("notes.views.deleteForever"), () => setConfirmForever(true), <Flame size={22} color={colors.danger} />)
+            : iconKey("notes-selection-delete", t("notes.grid.delete"), () => setConfirmDelete(true), <Trash2 size={22} color={colors.ink} />)}
         </View>
       ) : (
         <View
@@ -219,7 +238,15 @@ export default function NotesScreen() {
         </View>
       )}
 
-      {label ? (
+      {view !== "notes" ? (
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: metrics.space.xs }}>
+          <Text testID="notes-view-title" style={{ flex: 1, fontSize: 18, fontWeight: "600" }} accessibilityRole="header">
+            {view === "archive" ? t("notes.views.archive") : t("notes.views.trash")}
+          </Text>
+          {iconKey("notes-view-close", t("notes.labels.clearFilter"), () => setView("notes"), <X size={20} color={colors.inkMuted} />)}
+        </View>
+      ) : null}
+      {label && view === "notes" ? (
         <View testID="notes-label-filter" style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: metrics.space.xs }}>
           <Text style={{ flex: 1, fontSize: 18, fontWeight: "600" }} accessibilityLabel={t("notes.labels.filter", { name: label.name })}>
             {label.name}
@@ -255,7 +282,7 @@ export default function NotesScreen() {
               </Text>
             ) : (
               <Text testID="notes-empty" tone="muted" style={{ textAlign: "center", marginTop: metrics.space.xl }}>
-                {t("notes.empty")}
+                {view === "archive" ? t("notes.views.archiveEmpty") : view === "trash" ? t("notes.views.trashEmpty") : t("notes.empty")}
               </Text>
             )
           ) : null}
@@ -265,7 +292,7 @@ export default function NotesScreen() {
         </ScrollView>
       )}
 
-      {NOTES_EDITOR_ENABLED && !selecting ? (
+      {NOTES_EDITOR_ENABLED && !selecting && view === "notes" ? (
         <View
           pointerEvents="box-none"
           style={{
@@ -295,9 +322,16 @@ export default function NotesScreen() {
         visible={drawer}
         currentTagId={label?.id ?? null}
         onClose={() => setDrawer(false)}
+        view={view}
         onPick={(tag) => {
           setDrawer(false);
+          setView("notes");
           setLabel(tag);
+        }}
+        onPickView={(v) => {
+          setDrawer(false);
+          setSelected([]);
+          setView(v);
         }}
         onEditLabels={() => {
           setDrawer(false);
@@ -318,6 +352,29 @@ export default function NotesScreen() {
         }}
         onClose={() => setColorOpen(false)}
       />
+      <Modal visible={confirmForever} transparent animationType="fade" onRequestClose={() => setConfirmForever(false)}>
+        <View style={{ flex: 1, justifyContent: "center", padding: metrics.space.lg, backgroundColor: "rgba(0,0,0,0.4)" }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: metrics.space.lg, gap: metrics.space.md }}>
+            <Text style={{ fontWeight: "700", fontSize: 17 }}>{t("notes.views.foreverTitle", { count: selected.length })}</Text>
+            <Text tone="muted">{t("notes.views.foreverBody")}</Text>
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: metrics.space.md }}>
+              <Pressable onPress={() => setConfirmForever(false)} style={{ padding: 10 }}>
+                <Text tone="muted">{t("common.cancel")}</Text>
+              </Pressable>
+              <Pressable
+                testID="notes-forever-confirm"
+                onPress={() => {
+                  setConfirmForever(false);
+                  void runOnSelection((n) => notesApi.destroyForever(n.id));
+                }}
+                style={{ padding: 10 }}
+              >
+                <Text style={{ color: colors.danger, fontWeight: "700" }}>{t("notes.views.deleteForever")}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <Modal visible={confirmDelete} transparent animationType="fade" onRequestClose={() => setConfirmDelete(false)}>
         <View style={{ flex: 1, justifyContent: "center", padding: metrics.space.lg, backgroundColor: "rgba(0,0,0,0.4)" }}>
           <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: metrics.space.lg, gap: metrics.space.md }}>

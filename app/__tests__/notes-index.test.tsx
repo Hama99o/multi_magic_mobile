@@ -228,3 +228,58 @@ describe("the drawer and labels (the web's note tags)", () => {
     await waitFor(() => expect(mock.history.delete.map((r) => r.url)).toEqual(["/api/v1/note_app/tags/3"]));
   });
 });
+
+describe("Archive and Trash (drawer)", () => {
+  beforeEach(() => {
+    mock.onGet("/api/v1/note_app/tags").reply(200, { tags: [], meta: { pagy: { page: 1, pages: 1 } } });
+    mock.onGet("/api/v1/note_app/notes/archives").reply(200, { notes: [note(20, { title: "Archived seed", status: "archived" })], meta: { pagy: { page: 1, pages: 1 }, total_count: 1 } });
+    mock.onGet("/api/v1/note_app/notes/trashes").reply(200, { notes: [note(30, { title: "Trashed seed", status: "trashed" })], meta: { pagy: { page: 1, pages: 1 }, total_count: 1 } });
+  });
+
+  const go = async (testID: string) => {
+    open();
+    await screen.findByText("Pinned seed");
+    fireEvent.press(screen.getByTestId("notes-menu"));
+    fireEvent.press(await screen.findByTestId(testID));
+  };
+
+  it("Archive lists archived notes; selecting one can unarchive it", async () => {
+    mock.onPut("/api/v1/note_app/notes/20/unarchive").reply(200, { note: note(20) });
+    await go("drawer-archive");
+    expect(await screen.findByText("Archived seed")).toBeTruthy();
+    expect(screen.getByTestId("notes-view-title")).toHaveTextContent("Archive");
+    fireEvent(screen.getByTestId("note-card-20"), "longPress");
+    fireEvent.press(screen.getByTestId("notes-selection-unarchive"));
+    await waitFor(() => expect(mock.history.put.map((r) => r.url)).toEqual(["/api/v1/note_app/notes/20/unarchive"]));
+  });
+
+  it("Trash lists trashed notes; restore, or delete forever after a confirm", async () => {
+    mock.onPut("/api/v1/note_app/notes/30/restore").reply(200, note(30));
+    mock.onDelete("/api/v1/note_app/notes/30/destroy_permanently").reply(200, {});
+    await go("drawer-trash");
+    expect(await screen.findByText("Trashed seed")).toBeTruthy();
+    fireEvent(screen.getByTestId("note-card-30"), "longPress");
+    fireEvent.press(screen.getByTestId("notes-selection-restore"));
+    await waitFor(() => expect(mock.history.put.map((r) => r.url)).toEqual(["/api/v1/note_app/notes/30/restore"]));
+    fireEvent(screen.getByTestId("note-card-30"), "longPress");
+    fireEvent.press(screen.getByTestId("notes-selection-forever"));
+    fireEvent.press(await screen.findByTestId("notes-forever-confirm"));
+    await waitFor(() => expect(mock.history.delete.map((r) => r.url)).toEqual(["/api/v1/note_app/notes/30/destroy_permanently"]));
+  });
+
+  it("no new-note bar in Archive or Trash", async () => {
+    await go("drawer-trash");
+    await screen.findByText("Trashed seed");
+    expect(screen.queryByTestId("notes-new")).toBeNull();
+  });
+});
+
+describe("selection on the main grid can archive", () => {
+  it("archives the selection", async () => {
+    mock.onPut("/api/v1/note_app/notes/3/archive").reply(200, { note: note(3, { status: "archived" }) });
+    open();
+    fireEvent(await screen.findByTestId("note-card-3"), "longPress");
+    fireEvent.press(screen.getByTestId("notes-selection-archive"));
+    await waitFor(() => expect(mock.history.put.map((r) => r.url)).toEqual(["/api/v1/note_app/notes/3/archive"]));
+  });
+});

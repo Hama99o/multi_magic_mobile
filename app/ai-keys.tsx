@@ -42,6 +42,7 @@ import { failureMessage } from "@/api/failure";
 import { LoadFailure } from "@/components/LoadFailure";
 import { BorrowedKeyRow } from "@/components/settings/BorrowedKeyRow";
 import { MorningBriefRow } from "@/components/settings/MorningBriefRow";
+import { profileKeys } from "@/api/keys";
 
 export default function AiKeys() {
   const colors = useColors();
@@ -50,7 +51,7 @@ export default function AiKeys() {
   const queryClient = useQueryClient();
 
   const { data, isLoading, error, refetch, dataUpdatedAt } = useQuery({
-    queryKey: ["aiKeys"],
+    queryKey: profileKeys.aiKeys(),
     queryFn: aiKeysApi.list,
   });
 
@@ -61,7 +62,7 @@ export default function AiKeys() {
   const [failure, setFailure] = useState<string | null>(null);
 
   const cache = (payload: AiKeyPayload) => {
-    queryClient.setQueryData(["aiKeys"], payload);
+    queryClient.setQueryData(profileKeys.aiKeys(), payload);
     setPasted("");
     setProvider(null);
     setReplacing(null);

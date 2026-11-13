@@ -17,6 +17,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { sharesApi, type CalendarEvent, type GuestPermission, type Share } from "@/api/calendar";
 import { failureMessage } from "@/api/failure";
 import { ChoiceSheet } from "./ChoiceSheet";
+import { calendarKeys } from "@/api/keys";
 
 export function GuestsSection({ event }: { event: CalendarEvent }) {
   const colors = useColors();
@@ -31,13 +32,13 @@ export function GuestsSection({ event }: { event: CalendarEvent }) {
   const [error, setError] = useState<string | null>(null);
 
   const { data: listed } = useQuery({
-    queryKey: ["calendar", "event", event.id, "shares"],
+    queryKey: calendarKeys.shares(event.id),
     queryFn: () => sharesApi.list(event.id),
     enabled: isOwner,
   });
   const shares = isOwner ? (listed ?? event.shares) : event.shares;
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ["calendar"] });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: calendarKeys.all });
   const fail = (e: unknown) => setError(failureMessage(e, t("calendar.guests.failed")));
 
   const invite = useMutation({

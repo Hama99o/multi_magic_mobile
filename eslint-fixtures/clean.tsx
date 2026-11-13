@@ -1,6 +1,6 @@
 // EXPECTED TO PASS — the legitimate forms of everything the rules forbid.
 // A rule that fires on these is over-broad, which this test catches too.
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { LucideIcon } from "lucide-react-native";
 
@@ -70,4 +70,17 @@ export function NotWords({ count }: { count: number }) {
       <Text>{count}</Text>
     </View>
   );
+}
+
+// Requests: a mutation's mutate() from an effect, a pure parser in an effect,
+// and an API call in an event handler, are all allowed (api-in-effect).
+declare const messagesApi: { parseOne: (raw: unknown) => { id: number } };
+declare const markRead: { mutate: (id: number) => void };
+declare const pagesApi: { trash: (id: number) => Promise<void> };
+export function NotRequestsInEffects({ id, frame }: { id: number; frame: unknown }) {
+  useEffect(() => {
+    markRead.mutate(id);
+    messagesApi.parseOne(frame);
+  }, [id, frame]);
+  return <Pressable onPress={() => void pagesApi.trash(id)} />;
 }

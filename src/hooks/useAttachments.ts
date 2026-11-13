@@ -25,6 +25,7 @@ import {
 } from "@/api/ai";
 import { failureMessage } from "@/api/failure";
 import i18n, { t } from "@/i18n";
+import { aiKeys } from "@/api/keys";
 
 export interface PendingFile {
   /** Local, and only for React's key — the server's id arrives on success. */
@@ -118,7 +119,7 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
         // pending file. Without this refetch it never held the new one, so it
         // never polled: seen 2026-11-10, "Reading…" for minutes on a photo
         // the server had read in 5 s.
-        void queryClient.invalidateQueries({ queryKey: ["ai", "documents", conversationId] });
+        void queryClient.invalidateQueries({ queryKey: aiKeys.documents(conversationId) });
       } catch (e) {
         // Kept on screen as FAILED rather than removed: a file that vanishes
         // looks like one that uploaded.

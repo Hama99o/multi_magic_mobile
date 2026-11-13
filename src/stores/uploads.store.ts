@@ -43,6 +43,7 @@ import { pagesApi, safeFileName } from "@/api/pages";
 import { queryClient } from "@/lib/queryClient";
 import { IN_EXPO_GO } from "@/config/runtime";
 import { useReachability } from "@/stores/reachability.store";
+import { pagesKeys } from "@/api/keys";
 
 const KEY = "mm-pages-uploads";
 /**
@@ -261,7 +262,7 @@ export const useUploads = create<UploadsState>((set, get) => {
   const finish = (item: UploadItem) => {
     update(item.id, { status: "done", sent: item.size, error: null });
     removeLocal(item);
-    void queryClient.invalidateQueries({ queryKey: ["pages"] });
+    void queryClient.invalidateQueries({ queryKey: pagesKeys.all });
   };
 
   /** A network failure: wait and retry, as for the single request. */

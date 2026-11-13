@@ -39,6 +39,7 @@ import { calendarApi } from "@/api/calendar";
 import { useTranslation } from "react-i18next";
 import { meApi, type AppKey } from "@/api/me";
 import { t } from "@/i18n";
+import { aiKeys, calendarKeys, profileKeys } from "@/api/keys";
 
 /**
  * ONE WHOLE QUESTION PER APP, not a noun dropped into an English sentence.
@@ -135,7 +136,7 @@ export function useStarterPrompts(conversationId: number | null): {
   loading: boolean;
 } {
   const { data: files, isLoading: filesLoading } = useQuery({
-    queryKey: ["ai", "documents", conversationId],
+    queryKey: aiKeys.documents(conversationId),
     queryFn: () => documentsApi.list(conversationId as number),
     enabled: conversationId != null,
   });
@@ -147,14 +148,14 @@ export function useStarterPrompts(conversationId: number | null): {
   // (cannotAsk.test.tsx, "one cache, two screens"). Reading the page here
   // also means the two share one request.
   const { data: eventsPage, isLoading: eventsLoading } = useQuery({
-    queryKey: ["calendar", "upcoming", 7],
+    queryKey: calendarKeys.upcoming(7),
     queryFn: () => calendarApi.upcomingPage(7),
     // A failure here means no calendar suggestion, never a broken empty state.
     retry: false,
   });
 
   const { data: summary, isLoading: summaryLoading } = useQuery({
-    queryKey: ["me", "summary"],
+    queryKey: profileKeys.summary(),
     queryFn: meApi.summary,
     // Same rule as the calendar above: a failure here means one suggestion
     // fewer, never a broken empty state.

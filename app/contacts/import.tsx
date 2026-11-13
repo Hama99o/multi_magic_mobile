@@ -26,6 +26,7 @@ import { phoneBook, PhoneBookUnavailable } from "@/screens/contacts/phoneBook";
 import { displayOf, toVcard, toVcards, type PhoneContact } from "@/screens/contacts/vcard";
 import { runImport, splitCards, type ImportOutcome } from "@/screens/contacts/importer";
 import { useSharedIntoContacts } from "@/stores/sharedIntoContacts.store";
+import { contactsKeys } from "@/api/keys";
 
 type Stage =
   | { kind: "choose"; note?: string }
@@ -66,7 +67,7 @@ export default function ImportContacts() {
       from: resume?.sent,
       so: resume?.result,
     });
-    if (outcome.result.created) await queryClient.invalidateQueries({ queryKey: ["contacts"] });
+    if (outcome.result.created) await queryClient.invalidateQueries({ queryKey: contactsKeys.all });
     setShowNames(false);
     setStage({ kind: "done", outcome, cards });
   };

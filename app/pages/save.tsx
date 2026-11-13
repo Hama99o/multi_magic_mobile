@@ -59,6 +59,7 @@ import {
   type IncomingFile,
   type LastDestination,
 } from "@/stores/uploads.store";
+import { pagesKeys } from "@/api/keys";
 
 const THUMB = 64;
 
@@ -194,8 +195,8 @@ export default function SaveToPages() {
 
   const totalBytes = useMemo(() => files.reduce((n, f) => n + (f.size ?? 0), 0), [files]);
 
-  const spaces = useQuery({ queryKey: ["pages", "spaces", "picker"], queryFn: () => pagesApi.spaces(1) });
-  const shared = useQuery({ queryKey: ["pages", "shared"], queryFn: () => pagesApi.sharedWithMe() });
+  const spaces = useQuery({ queryKey: pagesKeys.spacesFor("picker"), queryFn: () => pagesApi.spaces(1) });
+  const shared = useQuery({ queryKey: pagesKeys.shared(), queryFn: () => pagesApi.sharedWithMe() });
   const accessFor = useMemo(
     () => accessResolver(spaces.data?.rows ?? [], shared.data?.rows ?? []),
     [spaces.data, shared.data],
@@ -204,7 +205,7 @@ export default function SaveToPages() {
 
   const parentId = place ? parentOf(place) : null;
   const folders = useInfiniteQuery({
-    queryKey: ["pages", "folders", place?.space.id, parentId],
+    queryKey: pagesKeys.folders(place?.space.id, parentId),
     queryFn: ({ pageParam }) =>
       pagesApi.children(place!.space.id, parentId, pageParam, { kind: "folder", sortBy: "name", sortDir: "asc" }),
     initialPageParam: 1,
@@ -214,7 +215,7 @@ export default function SaveToPages() {
   const folderRows = useMemo(() => (folders.data?.pages ?? []).flatMap((p) => p.rows), [folders.data]);
 
   const found = useQuery({
-    queryKey: ["pages", "folder-search", query.trim()],
+    queryKey: pagesKeys.folderSearch(query.trim()),
     queryFn: () => pagesApi.drive("search", 1, { search: query.trim(), kind: "folder" }),
     enabled: searching,
   });
@@ -256,7 +257,7 @@ export default function SaveToPages() {
       setError(null);
       try {
         const created = await pagesApi.createFolder(place.space.id, parentId, name);
-        void queryClient.invalidateQueries({ queryKey: ["pages"] });
+        void queryClient.invalidateQueries({ queryKey: pagesKeys.all });
         setNewName(null);
         enterFolder(created);
       } catch (e) {

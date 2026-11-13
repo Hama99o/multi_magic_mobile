@@ -22,6 +22,7 @@ import { failureMessage } from "@/api/failure";
 import { EmptyLine } from "../parts";
 import { BottomSheet, SheetRow } from "./sheets";
 import { ListRow } from "./ui";
+import { pagesKeys } from "@/api/keys";
 
 export function TrashView() {
   const colors = useColors();
@@ -32,13 +33,13 @@ export function TrashView() {
   const [emptying, setEmptying] = useState(false);
 
   const trash = useInfiniteQuery({
-    queryKey: ["pages", "drive", "trash", ""],
+    queryKey: pagesKeys.drive("trash", ""),
     queryFn: ({ pageParam }) => pagesApi.drive("trash", pageParam),
     initialPageParam: 1,
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
   });
   const nodes = useMemo(() => (trash.data?.pages ?? []).flatMap((p) => p.rows), [trash.data]);
-  const refresh = useCallback(() => queryClient.invalidateQueries({ queryKey: ["pages"] }), [queryClient]);
+  const refresh = useCallback(() => queryClient.invalidateQueries({ queryKey: pagesKeys.all }), [queryClient]);
 
   const restore = useCallback(
     (node: PageNode) => {

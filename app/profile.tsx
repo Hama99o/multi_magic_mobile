@@ -38,6 +38,7 @@ import { LoadFailure } from "@/components/LoadFailure";
 import { API_URL } from "@/config/env";
 import { Avatar } from "@/screens/people/Avatar";
 import { PhotoSheet, type PickedPhoto } from "@/screens/account/PhotoSheet";
+import { profileKeys } from "@/api/keys";
 
 function Field({
   label,
@@ -91,7 +92,7 @@ export default function ProfileScreen() {
   const queryClient = useQueryClient();
 
   const { data: profile, isLoading, error, refetch, dataUpdatedAt } = useQuery({
-    queryKey: ["profile"],
+    queryKey: profileKeys.all,
     queryFn: profileApi.me,
   });
 
@@ -121,7 +122,7 @@ export default function ProfileScreen() {
       about !== (profile.about ?? ""));
 
   const onSaved = (updated: Awaited<ReturnType<typeof profileApi.me>>) => {
-    queryClient.setQueryData(["profile"], updated);
+    queryClient.setQueryData(profileKeys.all, updated);
     setFailure(null);
     setSaved(true);
   };

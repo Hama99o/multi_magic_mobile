@@ -32,6 +32,7 @@ import { SessionRow } from "./SessionRow";
 import { RenameDialog } from "./RenameDialog";
 import { DeleteConfirm } from "./DeleteConfirm";
 import { InstructionsDialog, ScopeDialog } from "./SessionOptionsDialogs";
+import { aiKeys } from "@/api/keys";
 
 type Pending =
   | { kind: "rename" | "delete" | "menu" | "instructions" | "scope"; session: AiSession }
@@ -77,12 +78,12 @@ export function SessionsSheet({
     error: loadError,
     refetch,
   } = useQuery({
-    queryKey: ["ai", "sessions"],
+    queryKey: aiKeys.sessions(),
     queryFn: sessionsApi.list,
     enabled: visible,
   });
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: ["ai", "sessions"] });
+  const refresh = () => queryClient.invalidateQueries({ queryKey: aiKeys.sessions() });
 
   const create = useMutation({
     /**
@@ -188,7 +189,7 @@ export function SessionsSheet({
     onSuccess: () => {
       void refresh();
       // The open conversation's transcript just emptied server-side.
-      void queryClient.invalidateQueries({ queryKey: ["ai", "currentSession"] });
+      void queryClient.invalidateQueries({ queryKey: aiKeys.currentSession() });
       setPending(null);
     },
     onError: (e) => setError(apiErrorMessage(e) ?? t("sessions.clearFailed")),

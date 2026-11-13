@@ -51,6 +51,7 @@ import {
 import { useDraft } from "@/hooks/useDraft";
 import { isToday } from "@/lib/relativeTime";
 import { NotificationRow } from "@/screens/people/NotificationRow";
+import { aiKeys, notificationKeys } from "@/api/keys";
 
 type Row =
   | { kind: "heading"; key: string; label: string }
@@ -72,7 +73,7 @@ export default function Notifications() {
    */
   const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
-      queryKey: ["notifications", "list"],
+      queryKey: notificationKeys.list(),
       queryFn: ({ pageParam }) => notificationsApi.list(pageParam),
       initialPageParam: 1,
       getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
@@ -85,13 +86,13 @@ export default function Notifications() {
    * none, so this never comes back empty.
    */
   const { data: sessionId } = useQuery({
-    queryKey: ["ai", "currentSession"],
+    queryKey: aiKeys.currentSession(),
     queryFn: aiApi.currentSessionId,
   });
   const { setDraft } = useDraft(sessionId ?? null);
 
   const reload = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
   }, [queryClient]);
 
   /**

@@ -97,6 +97,8 @@ secrets (`lockEpoch` increments; `useSecretFields` clears on change). It runs:
 
 - Copy works without revealing: the secret is fetched, written to the
   clipboard, and dropped from memory at once. "Copied, clears in 30 s".
+- **Marked sensitive on Android 13+** (no clipboard preview over other
+  apps): `sensitiveClipboard.ts` → `modules/sensitive-clipboard`, see §9.
 - **After 30 s the clipboard is cleared** (`CLIPBOARD_CLEAR_MS = 30_000`,
   `src/screens/safezone/clipboard.ts`). The phone writes an empty string
   **only if it still holds what we copied**. On Android, `getStringAsync`
@@ -160,8 +162,11 @@ secrets (`lockEpoch` increments; `useSecretFields` clears on change). It runs:
   a native module, logged in `docs/MISSING_FEATURES.md`. (An earlier note here
   said iOS only; it was written from the code, not a device, and was wrong.)
 - **Android 13+ "sensitive" clip flag** (`ClipDescription.EXTRA_IS_SENSITIVE`,
-  which hides the clipboard preview): not exposed by `expo-clipboard` either.
-  Same follow-up.
+  which hides the clipboard preview): `expo-clipboard` 57 cannot set it, so a
+  SafeZone copy goes through the local module `modules/sensitive-clipboard`
+  (`sensitiveClipboard.ts`), and falls back to `expo-clipboard` on iOS, on a
+  build without the module, or if it fails. Whether the preview is really
+  hidden is the device check D10 (SPEC §G); until it runs, NOT MEASURED.
 - **iOS screenshots cannot be blocked**, only detected, and detection is not built: a recording of an open SafeZone on an iPhone would show what is on screen.
 - **The unlock token is not bound to the device** (server). A stolen JWT plus
   a stolen unlock token works for at most 120 s.

@@ -16,6 +16,7 @@ import * as SecureStore from "expo-secure-store";
 import { onSafezoneLock } from "@/stores/safezoneLock.store";
 import { createClipboardGuard } from "./clipboard";
 import { createClipboardMarker } from "./clipboardMarker";
+import { sensitiveSetString } from "./sensitiveClipboard";
 
 const marker = createClipboardMarker({
   store: SecureStore,
@@ -24,7 +25,8 @@ const marker = createClipboardMarker({
 });
 
 export const clipboardGuard = createClipboardGuard({
-  clipboard: { setStringAsync: (text) => Clipboard.setStringAsync(text), getStringAsync: () => Clipboard.getStringAsync() },
+  // Copies are marked sensitive on Android 13+ (no clipboard preview), `sensitiveClipboard.ts`.
+  clipboard: { setStringAsync: sensitiveSetString, getStringAsync: () => Clipboard.getStringAsync() },
   platform: Platform.OS,
   marker,
 });

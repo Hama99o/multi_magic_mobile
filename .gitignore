@@ -11,6 +11,8 @@ web-build/
 *.mobileprovision
 *.orig.*
 android/
+# A local Expo module's own native code is source, not prebuild output.
+!modules/*/android/
 ios/
 .gradle/
 build/

@@ -8,7 +8,7 @@ import { useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, Mail, Phone, Search, UserPlus, Users, X } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -22,12 +22,13 @@ import { mergeInto, sameContact } from "@/screens/contacts/shareIn";
 import { sortKey } from "@/screens/contacts/sections";
 import { useSharedIntoContacts, type SharedIntoContacts } from "@/stores/sharedIntoContacts.store";
 import { contactsKeys } from "@/api/keys";
+import { useMergeIntoContact } from "@/screens/contacts/useContactMutations";
 
 export default function SharedIntoContactsScreen() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
+  const merge = useMergeIntoContact();
   const [shared] = useState<Extract<SharedIntoContacts, { kind: "bits" }> | null>(() => {
     const pending = useSharedIntoContacts.getState().take();
     return pending?.kind === "bits" ? pending : null;
@@ -67,8 +68,7 @@ export default function SharedIntoContactsScreen() {
     setBusy(c.id);
     setError(null);
     try {
-      await contactsApi.update(c.id, mergeInto(c, incoming));
-      await queryClient.invalidateQueries({ queryKey: contactsKeys.all });
+      await merge.mutateAsync({ id: c.id, payload: mergeInto(c, incoming) });
       router.replace({ pathname: "/contacts/contact", params: { id: String(c.id) } });
     } catch (e) {
       setError(failureMessage(e, t("contacts.form.saveFailed")));

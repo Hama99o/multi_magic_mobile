@@ -16,7 +16,7 @@ import type { Contact } from "@/api/contacts";
 import { testQueryClient } from "@/__tests__/queryClient";
 import { useContactsUndo } from "@/stores/contactsUndo.store";
 import {
-  useDestroyForever, useFavourite, useRestoreContact, useTrashContact, useUnlinkRelative,
+  useDestroyForever, useFavourite, useMergeIntoContact, useRestoreContact, useSaveContact, useTrashContact, useUnlinkRelative,
 } from "../useContactMutations";
 
 const BASE = "/api/v1/contact_app/contacts";
@@ -160,5 +160,55 @@ describe("family", () => {
     g.open();
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(detail(1)?.relations.map((r) => r.id)).toEqual([9]);
+  });
+});
+
+describe("save and merge (not optimistic: the screen waits for the answer)", () => {
+  const wire = (c: Contact) => ({
+    id: c.id, firstname: c.firstname, lastname: "Test", nickname: null, company: null, job_title: null, favorite: false,
+    birth_date: null, age: null, photo_url: null, email: null, phone: null, is_self: false, phones: [], emails: [],
+    addresses: [], relations: [], documents: [], website: null, notes: null,
+  });
+  const expectRefetched = (spy: jest.SpyInstance, id: number) => {
+    const keys = spy.mock.calls.map((c) => JSON.stringify(c[0]?.queryKey));
+    for (const k of [contactsKeys.detail(id), contactsKeys.list(), contactsKeys.searches(), contactsKeys.allBirthdays(), contactsKeys.duplicates()]) {
+      expect(keys).toContain(JSON.stringify(k));
+    }
+    // Exactly those: never the whole app (the trash did not change).
+    expect(keys).not.toContain(JSON.stringify(contactsKeys.all));
+    expect(keys).not.toContain(JSON.stringify(contactsKeys.trash()));
+  };
+
+  it("a new contact: the card is filled from the answer, the lists refetched", async () => {
+    mock.onPost(BASE).reply(201, { contact: wire(contact(5, { firstname: "New" })) });
+    const spy = jest.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useSaveContact(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ contactId: null, payload: { firstname: "New" } as never, photo: null });
+    });
+    expect(detail(5)?.firstname).toBe("New");
+    expectRefetched(spy, 5);
+  });
+
+  it("a photo that fails does not lose the contact: it is saved, and the failure is returned", async () => {
+    mock.onPut(`${BASE}/1`).reply(200, { contact: wire(contact(1)) });
+    mock.onPost(`${BASE}/1/upload_photo`).reply(500);
+    const { result } = renderHook(() => useSaveContact(), { wrapper });
+    let out: { photoError: unknown } | undefined;
+    await act(async () => {
+      out = await result.current.mutateAsync({ contactId: 1, payload: { firstname: "C1" } as never, photo: { kind: "set", uri: "file:///p.jpg", name: "p.jpg", mimeType: "image/jpeg" } });
+    });
+    expect(out?.photoError).toBeTruthy();
+    expect(detail(1)).toBeTruthy();
+  });
+
+  it("merging what was shared into someone: their card and the lists, nothing else", async () => {
+    mock.onPut(`${BASE}/2`).reply(200, { contact: wire(contact(2)) });
+    const spy = jest.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(() => useMergeIntoContact(), { wrapper });
+    await act(async () => {
+      await result.current.mutateAsync({ id: 2, payload: { phones: [] } as never });
+    });
+    expectRefetched(spy, 2);
   });
 });

@@ -279,6 +279,9 @@ export default function NotesScreen() {
       ) : (
         <ScrollView
           testID="notes-list"
+          // A tap on a card opens it even with the search keyboard up (Keep);
+          // the default spent the first tap closing the keyboard.
+          keyboardShouldPersistTaps="handled"
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={() => void refetch()} tintColor={colors.inkMuted} />}
           contentContainerStyle={{ gap: metrics.space.sm, paddingBottom: 120 }}
           scrollEventThrottle={200}

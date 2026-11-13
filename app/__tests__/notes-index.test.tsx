@@ -332,3 +332,11 @@ describe("lock badge", () => {
     expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/notes/note", params: { id: "30" } });
   });
 });
+
+describe("a search result opens on the first tap (device, 2026-11-13: the first tap only closed the keyboard)", () => {
+  it("the list lets taps through while the keyboard is up", async () => {
+    open();
+    const list = await screen.findByTestId("notes-list");
+    expect(list.props.keyboardShouldPersistTaps).toBe("handled");
+  });
+});

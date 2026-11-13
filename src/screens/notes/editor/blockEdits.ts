@@ -70,7 +70,22 @@ function plainLines(node: DocNode): string {
   return (node.content ?? []).map((c) => (c.type === "text" ? c.text ?? "" : c.type === "hardBreak" ? "\n" : "")).join("");
 }
 
+/** Nodes whose content must start with a paragraph (Tiptap: "paragraph block*"). */
+const STARTS_WITH_PARAGRAPH = new Set(["listItem", "taskItem"]);
+
+function parentOf(doc: DocNode, path: number[]): DocNode {
+  let parent = doc;
+  for (const i of path.slice(0, -1)) parent = parent.content![i];
+  return parent;
+}
+
+/**
+ * The first paragraph of a list or task item stays: the item must start with
+ * one, so the web's toggleCodeBlock refuses there, and B would throw on the
+ * result (device, 2026-11-14: the screen crashed). Returns `doc` itself.
+ */
 export function toCodeBlockAt(doc: DocNode, path: number[]): DocNode {
+  if (path[path.length - 1] === 0 && STARTS_WITH_PARAGRAPH.has(parentOf(doc, path).type)) return doc;
   return replaceAt(doc, path, (node) => {
     const text = plainLines(node);
     return { type: "codeBlock", attrs: { language: null }, ...(text ? { content: [{ type: "text", text }] } : {}) };

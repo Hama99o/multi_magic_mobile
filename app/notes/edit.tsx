@@ -325,7 +325,15 @@ export default function NoteEditScreen() {
       return;
     }
     const next = edit(doc, caretBlock.path);
-    ref.setContentJson(next as never);
+    if (next === doc) return; // the edit does not apply here (as on the web)
+    try {
+      ref.setContentJson(next as never);
+    } catch (e) {
+      // B checks the new document against its schema; a refusal leaves the
+      // note as it was. Never a crash (device, 2026-11-14).
+      console.warn("[notes] engine B refused a structural edit:", e instanceof Error ? e.message : String(e));
+      return;
+    }
     onEngineChange(next);
     // B puts the caret at the start after a whole-document replace (seen on
     // the device): put it back where it was, as B's own mention code does.

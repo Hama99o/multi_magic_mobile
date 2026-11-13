@@ -62,6 +62,20 @@ describe("paragraph ↔ code block (the toolbar's block chips)", () => {
     expect(out.content![0].content![0].content!.map((n) => n.type)).toEqual(["paragraph", "codeBlock"]);
   });
 
+  // Device, 2026-11-14: "Code block" with the caret in a checklist item
+  // crashed the screen. A list or task item must start with a paragraph
+  // (Tiptap: content "paragraph block*"), so the web's toggleCodeBlock
+  // refuses there; so do we: the document comes back as it was.
+  it("the first paragraph of a list item or a task item stays a paragraph (as on the web)", () => {
+    const bullets = doc({ type: "bulletList", content: [{ type: "listItem", content: [p(t("x"))] }] });
+    expect(toCodeBlockAt(bullets, [0, 0, 0])).toBe(bullets);
+    const tasks = doc({ type: "taskList", content: [{ type: "taskItem", attrs: { checked: false }, content: [p()] }] });
+    expect(toCodeBlockAt(tasks, [0, 0, 0])).toBe(tasks);
+    const ordered = doc({ type: "orderedList", content: [{ type: "listItem", content: [p(t("a")), p(t("b"))] }] });
+    expect(toCodeBlockAt(ordered, [0, 0, 0])).toBe(ordered);
+    expect(toCodeBlockAt(ordered, [0, 0, 1])).not.toBe(ordered); // a later paragraph may become code
+  });
+
   it("never changes its input", () => {
     const d = doc(p(t("x")));
     const before = JSON.stringify(d);

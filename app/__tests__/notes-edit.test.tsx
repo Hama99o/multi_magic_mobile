@@ -19,7 +19,7 @@ import MockAdapter from "axios-mock-adapter";
 import { Alert, Share } from "react-native";
 
 const mockEngineErrors: { listeners: ((e: unknown) => void)[] } = { listeners: [] };
-const mockEngine: { props: Record<string, any> | null; init: any; doc: any; refuse: boolean; holds: "all" | "nothing" | "part"; calls: unknown[][]; selections: unknown[] } = { props: null, init: null, doc: null, refuse: false, holds: "all", calls: [], selections: [] };
+const mockEngine: { props: Record<string, any> | null; init: any; doc: any; refuse: boolean; rejectSet: boolean; holds: "all" | "nothing" | "part"; calls: unknown[][]; selections: unknown[] } = { props: null, init: null, doc: null, refuse: false, rejectSet: false, holds: "all", calls: [], selections: [] };
 /** The person typed: B now holds `json` and says so (it exports only when asked). */
 const engineChanged = (json: unknown) => {
   mockEngine.doc = json;
@@ -66,6 +66,8 @@ jest.mock("@apollohg/react-native-rich-text-editor", () => {
           get: (_t: unknown, name: string) => (...args: unknown[]) => {
             if (name === "getContentJson") return JSON.parse(JSON.stringify(mockEngine.doc ?? mockEngine.init));
             mockEngine.calls.push([name, ...args]);
+            // B validates a whole-document replace against its schema and throws.
+            if (name === "setContentJson" && mockEngine.rejectSet) throw new Error("node 'taskItem' content [codeBlock] does not match its content expression");
             if (name === "setContentJson") mockEngine.doc = JSON.parse(JSON.stringify(args[0]));
             return Promise.resolve();
           },
@@ -126,6 +128,7 @@ beforeEach(() => {
   __resetFingerprintCache();
   mockEngine.props = null;
   mockEngine.refuse = false;
+  mockEngine.rejectSet = false;
   mockEngine.holds = "all";
   mockEngine.init = null;
   mockEngine.calls = [];
@@ -567,6 +570,32 @@ describe("the bar keeps the editor's focus (device finding, 2026-11-13)", () => 
     expect(screen.getByTestId("tb-closePanel")).toBeTruthy();
     fireEvent.press(screen.getByTestId("tb-closePanel"));
     expect(screen.queryByTestId("tb-closePanel")).toBeNull();
+  });
+});
+
+describe("B refusing a structural edit (device finding, 2026-11-14)", () => {
+  it("does not crash: the note stays as it was, nothing is sent, and editing goes on", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    act(() => {
+      mockEngine.props!.onSelectionChange({ type: "text", anchor: 3, head: 3 }); // in "hello"
+      mockEngine.props!.onFocus();
+    });
+    mockEngine.rejectSet = true;
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => undefined);
+    fireEvent.press(screen.getByTestId("tb-format"));
+    expect(() => fireEvent.press(screen.getByTestId("tb-block:codeBlock"))).not.toThrow();
+    expect(warn).toHaveBeenCalledWith("[notes] engine B refused a structural edit:", expect.stringContaining("content expression"));
+    warn.mockRestore();
+    await new Promise((r) => setTimeout(r, 700));
+    expect(mock.history.put.some((c) => String(c.data).includes("<pre>"))).toBe(false);
+    expect(screen.getByTestId("engine-b")).toBeTruthy();
+    expect(screen.queryByTestId("note-edit-cannot-open")).toBeNull();
+    // The next edit still works.
+    mockEngine.rejectSet = false;
+    fireEvent.press(screen.getByTestId("tb-block:codeBlock"));
+    const last = [...mockEngine.calls].reverse().find((c) => c[0] === "setContentJson")?.[1] as DocNode;
+    expect(last.content![0].type).toBe("codeBlock");
   });
 });
 

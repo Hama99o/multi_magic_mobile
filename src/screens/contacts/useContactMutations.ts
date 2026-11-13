@@ -148,3 +148,51 @@ export function useLinkRelative(contactId: number, opts: { onError?: (e: unknown
     onSettled: (_r, _e, v) => settle(client, [contactsKeys.detail(contactId), contactsKeys.detail(v.relativeId)]),
   });
 }
+
+/** What a saved contact can change: its card, every list and search it is
+ *  in, the birthdays strip and the duplicates screen. */
+function afterSave(client: QueryClient, id: number) {
+  return settle(client, [contactsKeys.detail(id), contactsKeys.list(), contactsKeys.searches(), contactsKeys.allBirthdays(), contactsKeys.duplicates()]);
+}
+
+/**
+ * Save the form: create or update, then the photo. Not optimistic (the
+ * screen closes on the server's answer, and a new contact has no id until
+ * then). The photo is best-effort: a contact saved without it says so.
+ */
+export function useSaveContact() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async (input: {
+      contactId: number | null;
+      payload: Parameters<typeof contactsApi.create>[0];
+      photo: { kind: "set"; uri: string; name: string; mimeType: string } | { kind: "remove" } | null;
+    }): Promise<{ saved: Contact; photoError: unknown }> => {
+      let saved = input.contactId == null ? await contactsApi.create(input.payload) : await contactsApi.update(input.contactId, input.payload);
+      let photoError: unknown = null;
+      try {
+        if (input.photo?.kind === "set") saved = await contactsApi.uploadPhoto(saved.id, input.photo);
+        if (input.photo?.kind === "remove") saved = await contactsApi.removePhoto(saved.id);
+      } catch (e) {
+        photoError = e;
+      }
+      return { saved, photoError };
+    },
+    onSuccess: ({ saved }) => {
+      client.setQueryData(contactsKeys.detail(saved.id), saved);
+      return afterSave(client, saved.id);
+    },
+  });
+}
+
+/** Add what was shared (numbers, emails) to someone already in the book. */
+export function useMergeIntoContact() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, payload }: { id: number; payload: Parameters<typeof contactsApi.update>[1] }) => contactsApi.update(id, payload),
+    onSuccess: (saved) => {
+      client.setQueryData(contactsKeys.detail(saved.id), saved);
+      return afterSave(client, saved.id);
+    },
+  });
+}

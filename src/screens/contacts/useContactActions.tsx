@@ -18,6 +18,7 @@ import { useContactsCountry } from "@/stores/contactsCountry.store";
 import { ActionSheet, type SheetAction } from "./ActionSheet";
 import { mailUrl, openOutside, openWhatsApp } from "./outside";
 import { COUNTRIES, countryFromAddress, smsUrl, telUrl, whatsappNumber } from "./phone";
+import { useMutation } from "@tanstack/react-query";
 
 export type Channel = "call" | "whatsapp" | "sms" | "email";
 
@@ -39,7 +40,10 @@ export function useContactActions(contact: Contact | null | undefined) {
   const setCountry = useContactsCountry((s) => s.setCountry);
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [sharing, setSharing] = useState(false);
+  // The vCard is fetched by a mutation: a one-shot download for the share
+  // sheet, not data to keep (docs/DATA_LAYER.md), and it gives `sharing`.
+  const exporting = useMutation({ mutationFn: (id: number) => contactsApi.exportVcf(id) });
+  const sharing = exporting.isPending;
 
   const contactCountry = contact ? countryFromAddress(contact.addresses) : null;
   const lang = i18n.language === "fr" ? "fr" : "en";
@@ -99,11 +103,10 @@ export function useContactActions(contact: Contact | null | undefined) {
 
   const share = async () => {
     if (!contact || sharing) return;
-    setSharing(true);
     setError(null);
     let file: ReturnType<typeof vcfFile> | null = null;
     try {
-      file = vcfFile(await contactsApi.exportVcf(contact.id), displayName(contact) || "contact");
+      file = vcfFile(await exporting.mutateAsync(contact.id), displayName(contact) || "contact");
       await Sharing.shareAsync(file.uri, { mimeType: "text/vcard", UTI: "public.vcard", dialogTitle: displayName(contact) });
     } catch (e) {
       setError(failureMessage(e, t("contacts.detail.shareFailed")));
@@ -113,7 +116,6 @@ export function useContactActions(contact: Contact | null | undefined) {
       } catch {
         // The cache is the system's to clear; a file left there is harmless.
       }
-      setSharing(false);
     }
   };
 

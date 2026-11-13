@@ -34,6 +34,7 @@ import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { LoadFailure } from "@/components/LoadFailure";
 import { ConversationRow } from "@/screens/people/ConversationRow";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
+import { conversationKeys } from "@/api/keys";
 
 export default function Chats() {
   const colors = useColors();
@@ -51,14 +52,14 @@ export default function Chats() {
    */
   const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
-      queryKey: ["conversations", "list"],
+      queryKey: conversationKeys.list(),
       queryFn: ({ pageParam }) => conversationsApi.list(pageParam),
       initialPageParam: 1,
       getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
     });
 
   const reload = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+    void queryClient.invalidateQueries({ queryKey: conversationKeys.all });
   }, [queryClient]);
 
   /**

@@ -15,7 +15,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { useAuthStore } from "@/stores/auth.store";
+import { useMe } from "@/hooks/useMe";
 
 const PREFIX = "mm-draft:";
 
@@ -31,7 +31,7 @@ function keyFor(userId: number, conversationId: number): string {
 }
 
 export function useDraft(conversationId: number | null) {
-  const userId = useAuthStore((s) => s.user?.id ?? null);
+  const userId = useMe()?.id ?? null;
   /**
    * The draft is TAGGED with the conversation it belongs to, and the reset on
    * a switch is a DERIVATION rather than an effect.

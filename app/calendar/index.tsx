@@ -51,6 +51,7 @@ import { eventColor } from "@/screens/calendar/colors";
 import { addDays, dayKey, formatDayLong, gridWindow, startOfMonth, weekStartsOn } from "@/screens/calendar/dates";
 import { useCalendarView } from "@/stores/calendarView.store";
 import { useCalendarUndo } from "@/stores/calendarUndo.store";
+import { calendarKeys } from "@/api/keys";
 
 /** "The next few days", his phrase. The assistant reads this same key. */
 const WINDOW_DAYS = 7;
@@ -107,7 +108,7 @@ export default function Calendar() {
   }, [hydrate]);
 
   const agenda = useQuery({
-    queryKey: ["calendar", "upcoming", days],
+    queryKey: calendarKeys.upcoming(days),
     // The page, not the bare list: it carries how many occurrences could not
     // be read, which the screen says (`UnreadableNotice`).
     queryFn: () => calendarApi.upcomingPage(days),
@@ -117,7 +118,7 @@ export default function Calendar() {
 
   const window = gridWindow(month, weekStartsOn(i18n.language));
   const monthQuery = useQuery({
-    queryKey: ["calendar", "occurrences", window.from, window.to],
+    queryKey: calendarKeys.occurrences(window.from, window.to),
     queryFn: () => calendarApi.occurrences(window.from, window.to),
     enabled: view === "month",
     placeholderData: keepPreviousData,
@@ -129,7 +130,7 @@ export default function Calendar() {
   /** Re-read every calendar window, not only the one on screen: the other
    *  view and any open month are just as stale after a write. */
   const reload = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+    void queryClient.invalidateQueries({ queryKey: calendarKeys.all });
   }, [queryClient]);
 
   // The assistant just wrote an event — re-read, without being asked.

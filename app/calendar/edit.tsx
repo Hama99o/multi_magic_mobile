@@ -25,6 +25,7 @@ import { failureMessage } from "@/api/failure";
 import { EventForm } from "@/screens/calendar/EventForm";
 import { draftFromEvent, isDirty, newDraft, toPayload, type Draft } from "@/screens/calendar/draft";
 import { todayKey } from "@/screens/calendar/dates";
+import { calendarKeys } from "@/api/keys";
 
 function parseId(raw: string | undefined): number | null {
   return raw && /^\d+$/.test(raw) ? Number(raw) : null;
@@ -38,7 +39,7 @@ export default function EditEvent() {
   const navigation = useNavigation();
 
   const { data: event, error: loadError, refetch } = useQuery({
-    queryKey: ["calendar", "event", eventId ?? 0],
+    queryKey: calendarKeys.event(eventId ?? 0),
     queryFn: () => calendarApi.show(eventId ?? 0),
     enabled: eventId != null,
   });
@@ -91,9 +92,9 @@ export default function EditEvent() {
     try {
       const payload = toPayload(draft);
       const saved = eventId == null ? await calendarApi.create(payload, draft.reminders) : await calendarApi.update(eventId, payload, draft.reminders);
-      queryClient.setQueryData(["calendar", "event", saved.id], saved);
+      queryClient.setQueryData(calendarKeys.event(saved.id), saved);
       // Every window that could show it: the agenda, every month, the detail.
-      await queryClient.invalidateQueries({ queryKey: ["calendar"] });
+      await queryClient.invalidateQueries({ queryKey: calendarKeys.all });
       leaving.current = true;
       router.back();
     } catch (e) {

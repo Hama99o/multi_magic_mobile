@@ -16,7 +16,7 @@ import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
 import {
   BookUser, Briefcase, Cake, ChevronLeft, Globe, Mail, MapPin, MessageCircle, MessageSquareText, NotebookPen,
@@ -38,7 +38,8 @@ import { birthdayInfo } from "@/screens/contacts/birthday";
 import { phoneBook, PhoneBookUnavailable } from "@/screens/contacts/phoneBook";
 import { sortKey } from "@/screens/contacts/sections";
 import { dayKey } from "@/screens/calendar/dates";
-import { useContactsUndo } from "@/stores/contactsUndo.store";
+import { aiKeys, contactsKeys } from "@/api/keys";
+import { useFavourite, useLinkRelative, useTrashContact, useUnlinkRelative } from "@/screens/contacts/useContactMutations";
 
 /** WhatsApp's own green, for its button only: people find it by colour. */
 const WHATSAPP = "#1FAF54";
@@ -56,55 +57,32 @@ export default function ContactDetail() {
   const contactId = parseId(params.id);
 
   const query = useQuery({
-    queryKey: ["contacts", "contact", contactId ?? 0],
+    queryKey: contactsKeys.detail(contactId ?? 0),
     queryFn: () => contactsApi.show(contactId ?? 0),
     enabled: contactId != null,
     // The row the list already holds draws the header at once; the full view
     // (addresses, notes, family) replaces it a moment later.
-    placeholderData: () => (queryClient.getQueryData<Contact[]>(["contacts", "list"]) ?? []).find((c) => c.id === contactId),
+    placeholderData: () => (queryClient.getQueryData<Contact[]>(contactsKeys.list()) ?? []).find((c) => c.id === contactId),
   });
   const contact = query.data;
   const actions = useContactActions(contact);
-  const { data: sessionId } = useQuery({ queryKey: ["ai", "currentSession"], queryFn: aiApi.currentSessionId });
+  const { data: sessionId } = useQuery({ queryKey: aiKeys.currentSession(), queryFn: aiApi.currentSessionId });
   const { setDraft } = useDraft(sessionId ?? null);
   const [error, setError] = useState<string | null>(null);
   const [familyOpen, setFamilyOpen] = useState<null | "kind" | RelationKind>(null);
   // The whole book, only once "Add" is tapped: the detail can be opened from a
   // birthday or the assistant with no list screen (and no list cache) below it.
-  const book = useQuery({ queryKey: ["contacts", "list"], queryFn: contactsApi.list, enabled: familyOpen != null });
+  const book = useQuery({ queryKey: contactsKeys.list(), queryFn: contactsApi.list, enabled: familyOpen != null });
 
-  const reload = () => void queryClient.invalidateQueries({ queryKey: ["contacts"] });
 
-  const favourite = useMutation({
-    mutationFn: (c: Contact) => contactsApi.setFavorite(c.id, !c.favorite),
-    onSuccess: (saved) => {
-      queryClient.setQueryData(["contacts", "contact", saved.id], (old: Contact | undefined) => ({ ...(old ?? saved), favorite: saved.favorite }));
-      reload();
-    },
-    onError: (e) => setError(failureMessage(e, t("contacts.detail.saveFailed"))),
-  });
-
-  const setTrashed = useContactsUndo((s) => s.set);
-  const remove = useMutation({
-    mutationFn: (c: Contact) => contactsApi.remove(c.id),
-    onSuccess: (_void, c) => {
-      setTrashed({ id: c.id, name: displayName(c), at: Date.now() });
-      reload();
-      router.back();
-    },
+  const favourite = useFavourite({ onError: (e) => setError(failureMessage(e, t("contacts.detail.saveFailed"))) });
+  const remove = useTrashContact({
+    onDone: () => router.back(),
     onError: (e) => setError(failureMessage(e, t("contacts.detail.deleteFailed"))),
   });
-
-  const unlink = useMutation({
-    mutationFn: ({ relationId }: { relationId: number }) => contactsApi.removeRelation(contactId ?? 0, relationId),
-    onSuccess: reload,
-    onError: (e) => setError(failureMessage(e, t("contacts.family.failed"))),
-  });
-  const link = useMutation({
-    mutationFn: ({ relativeId, kind }: { relativeId: number; kind: RelationKind }) => contactsApi.addRelation(contactId ?? 0, relativeId, kind),
-    onSuccess: reload,
-    onError: (e) => setError(failureMessage(e, t("contacts.family.failed"))),
-  });
+  const familyFailed = (e: unknown) => setError(failureMessage(e, t("contacts.family.failed")));
+  const unlink = useUnlinkRelative(contactId ?? 0, { onError: familyFailed });
+  const link = useLinkRelative(contactId ?? 0, { onError: familyFailed });
 
   if (contactId == null || (!contact && query.error)) {
     return (
@@ -351,7 +329,7 @@ export default function ContactDetail() {
                   onPress={() => router.push({ pathname: "/contacts/contact", params: { id: String(r.relative.id) } })}
                   a11yHint={t("contacts.family.openHint")}
                 >
-                  <IconButton testID={`contact-relation-${r.id}-remove`} label={t("contacts.family.remove", { name: r.relative.name })} onPress={() => unlink.mutate({ relationId: r.id })}>
+                  <IconButton testID={`contact-relation-${r.id}-remove`} label={t("contacts.family.remove", { name: r.relative.name })} onPress={() => unlink.mutate(r.id)}>
                     <X size={18} color={colors.inkMuted} />
                   </IconButton>
                 </Row>

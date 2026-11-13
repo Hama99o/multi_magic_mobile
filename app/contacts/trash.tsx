@@ -7,7 +7,7 @@ import { useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronLeft, RotateCcw, Trash2 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -17,39 +17,29 @@ import { contactsApi, displayName, type Contact } from "@/api/contacts";
 import { failureMessage } from "@/api/failure";
 import { ContactAvatar } from "@/screens/contacts/ContactAvatar";
 import { sortKey } from "@/screens/contacts/sections";
+import { contactsKeys } from "@/api/keys";
+import { useDestroyForever, useRestoreContact } from "@/screens/contacts/useContactMutations";
 
 export default function ContactsTrash() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const [error, setError] = useState<string | null>(null);
-  const trash = useQuery({ queryKey: ["contacts", "trash"], queryFn: contactsApi.trash });
-  const reload = () => void queryClient.invalidateQueries({ queryKey: ["contacts"] });
+  const trash = useQuery({ queryKey: contactsKeys.trash(), queryFn: contactsApi.trash });
 
-  const restore = useMutation({
-    mutationFn: (c: Contact) => contactsApi.restore(c.id),
-    onMutate: () => setError(null),
-    onSuccess: reload,
-    onError: (e) => setError(failureMessage(e, t("contacts.trash.restoreFailed"))),
-  });
-  const destroy = useMutation({
-    mutationFn: (c: Contact) => contactsApi.destroyForever(c.id),
-    onMutate: () => setError(null),
-    onSuccess: reload,
-    onError: (e) => setError(failureMessage(e, t("contacts.trash.deleteFailed"))),
-  });
+  const restore = useRestoreContact({ onError: (e) => setError(failureMessage(e, t("contacts.trash.restoreFailed"))) });
+  const destroy = useDestroyForever({ onError: (e) => setError(failureMessage(e, t("contacts.trash.deleteFailed"))) });
 
   const confirm = (c: Contact) => {
     const name = displayName(c) || t("contacts.noName");
     Alert.alert(t("contacts.trash.deleteTitle", { name }), t("contacts.trash.deleteBody"), [
       { text: t("common.cancel"), style: "cancel" },
-      { text: t("contacts.trash.deleteForever"), style: "destructive", onPress: () => destroy.mutate(c) },
+      { text: t("contacts.trash.deleteForever"), style: "destructive", onPress: () => (setError(null), destroy.mutate(c.id)) },
     ]);
   };
 
   const rows = [...(trash.data ?? [])].sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
-  const busy = (c: Contact) => (restore.isPending && restore.variables?.id === c.id) || (destroy.isPending && destroy.variables?.id === c.id);
+  const busy = (c: Contact) => (restore.isPending && restore.variables === c.id) || (destroy.isPending && destroy.variables === c.id);
 
   return (
     <Screen measure>
@@ -91,7 +81,7 @@ export default function ContactsTrash() {
                 <ActivityIndicator />
               ) : (
                 <>
-                  <Pressable testID={`contacts-trash-restore-${item.id}`} onPress={() => restore.mutate(item)} accessibilityRole="button" accessibilityLabel={t("contacts.trash.restore", { name })} style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center" }}>
+                  <Pressable testID={`contacts-trash-restore-${item.id}`} onPress={() => (setError(null), restore.mutate(item.id))} accessibilityRole="button" accessibilityLabel={t("contacts.trash.restore", { name })} style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center" }}>
                     <RotateCcw size={20} color={colors.accent} />
                   </Pressable>
                   <Pressable testID={`contacts-trash-delete-${item.id}`} onPress={() => confirm(item)} accessibilityRole="button" accessibilityLabel={t("contacts.trash.deleteForeverOf", { name })} style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center" }}>

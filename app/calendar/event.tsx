@@ -34,6 +34,7 @@ import { eventColor } from "@/screens/calendar/colors";
 import { dayKey, formatDayLong, timeRange, yearsOn } from "@/screens/calendar/dates";
 import { GuestsSection } from "@/screens/calendar/GuestsSection";
 import { useCalendarUndo } from "@/stores/calendarUndo.store";
+import { aiKeys, calendarKeys, profileKeys } from "@/api/keys";
 
 function Row({ icon, label, children, testID }: { icon: ReactNode; label: string; children: ReactNode; testID?: string }) {
   const colors = useColors();
@@ -68,15 +69,15 @@ export default function EventDetail() {
   const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: event, error, refetch, isPending } = useQuery({
-    queryKey: ["calendar", "event", eventId],
+    queryKey: calendarKeys.event(eventId),
     queryFn: () => calendarApi.show(eventId),
     enabled: eventId > 0,
   });
-  const { data: me } = useQuery({ queryKey: ["profile"], queryFn: profileApi.me, enabled: Boolean(event && event.permission !== "owner") });
-  const { data: sessionId } = useQuery({ queryKey: ["ai", "currentSession"], queryFn: aiApi.currentSessionId });
+  const { data: me } = useQuery({ queryKey: profileKeys.me(), queryFn: profileApi.me, enabled: Boolean(event && event.permission !== "owner") });
+  const { data: sessionId } = useQuery({ queryKey: aiKeys.currentSession(), queryFn: aiApi.currentSessionId });
   const { setDraft } = useDraft(sessionId ?? null);
 
-  const refreshAll = () => queryClient.invalidateQueries({ queryKey: ["calendar"] });
+  const refreshAll = () => queryClient.invalidateQueries({ queryKey: calendarKeys.all });
 
   const remove = useMutation({
     mutationFn: () => calendarApi.remove(eventId),

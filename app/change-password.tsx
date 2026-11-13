@@ -37,6 +37,7 @@ import {
   profileApi,
 } from "@/api/profile";
 import { failureMessage } from "@/api/failure";
+import { profileKeys } from "@/api/keys";
 
 function SecretField({
   label,
@@ -122,7 +123,7 @@ export default function ChangePassword() {
   const metrics = useMetrics();
   const { t } = useTranslation();
 
-  const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: profileApi.me });
+  const { data: profile } = useQuery({ queryKey: profileKeys.me(), queryFn: profileApi.me });
 
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");

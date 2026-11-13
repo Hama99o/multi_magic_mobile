@@ -29,6 +29,7 @@ import { ContactForm, type PhotoChange } from "@/screens/contacts/ContactForm";
 import { draftFrom, emptyDraft, isDirty, toPayload, type Draft } from "@/screens/contacts/draft";
 import { mergeInto, sameContact, type ParsedCard } from "@/screens/contacts/shareIn";
 import { useSharedIntoContacts } from "@/stores/sharedIntoContacts.store";
+import { contactsKeys } from "@/api/keys";
 
 /** A card shared from another app → the form's draft. */
 function draftFromCard(card: ParsedCard): Draft {
@@ -80,7 +81,7 @@ export default function EditContact() {
   const navigation = useNavigation();
 
   const { data: contact, error: loadError, refetch } = useQuery({
-    queryKey: ["contacts", "contact", contactId ?? 0],
+    queryKey: contactsKeys.detail(contactId ?? 0),
     queryFn: () => contactsApi.show(contactId ?? 0),
     enabled: contactId != null,
   });
@@ -95,7 +96,7 @@ export default function EditContact() {
   const leaving = useRef(false);
 
   // Someone already in the book with one of these numbers or emails?
-  const book = useQuery({ queryKey: ["contacts", "list"], queryFn: contactsApi.list, enabled: shared != null });
+  const book = useQuery({ queryKey: contactsKeys.list(), queryFn: contactsApi.list, enabled: shared != null });
   const twin = shared && draft && book.data ? sameContact(toPayload(draft), book.data) : null;
   const [merging, setMerging] = useState(false);
   const mergeIntoTwin = async () => {
@@ -105,7 +106,7 @@ export default function EditContact() {
     try {
       const merged = mergeInto(twin, toPayload(draft));
       await contactsApi.update(twin.id, merged);
-      await queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      await queryClient.invalidateQueries({ queryKey: contactsKeys.all });
       leaving.current = true;
       router.replace({ pathname: "/contacts/contact", params: { id: String(twin.id) } });
     } catch (e) {
@@ -179,8 +180,8 @@ export default function EditContact() {
       } catch (e) {
         photoError = failureMessage(e, t("contacts.form.photoFailed"));
       }
-      queryClient.setQueryData(["contacts", "contact", saved.id], saved);
-      await queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      queryClient.setQueryData(contactsKeys.detail(saved.id), saved);
+      await queryClient.invalidateQueries({ queryKey: contactsKeys.all });
       leaving.current = true;
       if (contactId == null) router.replace({ pathname: "/contacts/contact", params: { id: String(saved.id) } });
       else router.back();

@@ -21,6 +21,7 @@ import { localMatch } from "@/screens/contacts/search";
 import { mergeInto, sameContact } from "@/screens/contacts/shareIn";
 import { sortKey } from "@/screens/contacts/sections";
 import { useSharedIntoContacts, type SharedIntoContacts } from "@/stores/sharedIntoContacts.store";
+import { contactsKeys } from "@/api/keys";
 
 export default function SharedIntoContactsScreen() {
   const colors = useColors();
@@ -35,7 +36,7 @@ export default function SharedIntoContactsScreen() {
   const [filter, setFilter] = useState("");
   const [busy, setBusy] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const book = useQuery({ queryKey: ["contacts", "list"], queryFn: contactsApi.list });
+  const book = useQuery({ queryKey: contactsKeys.list(), queryFn: contactsApi.list });
 
   const incoming = useMemo(
     () => ({
@@ -67,7 +68,7 @@ export default function SharedIntoContactsScreen() {
     setError(null);
     try {
       await contactsApi.update(c.id, mergeInto(c, incoming));
-      await queryClient.invalidateQueries({ queryKey: ["contacts"] });
+      await queryClient.invalidateQueries({ queryKey: contactsKeys.all });
       router.replace({ pathname: "/contacts/contact", params: { id: String(c.id) } });
     } catch (e) {
       setError(failureMessage(e, t("contacts.form.saveFailed")));

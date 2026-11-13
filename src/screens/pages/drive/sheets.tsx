@@ -10,7 +10,7 @@
  * - "New page": creating a page needs the page editor (phase 3).
  * - "Copy link" / "Manage access": sharing with people is phase 4.
  */
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, FlatList, Modal, Pressable, ScrollView, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -24,6 +24,7 @@ import { pagesApi, type PageNode } from "@/api/pages";
 import { relativeTime } from "@/lib/relativeTime";
 import { formatBytes } from "../parts";
 import { FileTypeIcon, familyOf, type FileFamily } from "./ui";
+import { pagesKeys } from "@/api/keys";
 
 export function BottomSheet({ open, onClose, children, testID }: { open: boolean; onClose: () => void; children: ReactNode; testID: string }) {
   const colors = useColors();
@@ -249,6 +250,19 @@ interface Place {
   path: { id: number; title: string }[];
 }
 
+/** The folder an item lives in, with the path above it. A folder listing
+ *  sends `space: null` and no ancestors, so both are asked for: the space's
+ *  name, and the parent folder, whose `show` carries its ancestors. */
+async function startPlace(first: PageNode): Promise<Place> {
+  const space = first.space ?? (await pagesApi.space(first.spaceId));
+  let path: Place["path"] = [];
+  if (first.parentId != null) {
+    const parent = await pagesApi.node(first.spaceId, first.parentId);
+    path = [...parent.ancestors.map((a) => ({ id: a.id, title: a.title })), { id: parent.id, title: parent.title }];
+  }
+  return { space: { id: space.id, title: space.title }, path };
+}
+
 export function MoveSheet({
   nodes,
   onClose,
@@ -262,44 +276,30 @@ export function MoveSheet({
   const metrics = useMetrics();
   const { t } = useTranslation();
   const first = nodes?.[0];
-  const [place, setPlace] = useState<Place | null>(null);
-  const [busy, setBusy] = useState(false);
-  const startedFor = useRef<number | null>(null);
   // Open where the item lives, like Drive's "Move": its folder, with the
-  // path above it. A folder listing sends `space: null` (only drive-wide
-  // lists send it), and no ancestors, so both are asked for: the space's
-  // name, and the parent folder, whose `show` carries its ancestors.
-  // Measured 2026-11-07: before this it opened on the list of spaces.
-  useEffect(() => {
-    if (!first) {
-      startedFor.current = null;
-      return;
-    }
-    if (startedFor.current === first.id) return;
-    const id = first.id;
-    startedFor.current = id;
-    void (async () => {
-      try {
-        const space = first.space ?? (await pagesApi.space(first.spaceId));
-        let path: Place["path"] = [];
-        if (first.parentId != null) {
-          const parent = await pagesApi.node(first.spaceId, first.parentId);
-          path = [...parent.ancestors.map((a) => ({ id: a.id, title: a.title })), { id: parent.id, title: parent.title }];
-        }
-        // Only for the item still being moved (the sheet may have closed).
-        if (startedFor.current === id) setPlace({ space: { id: space.id, title: space.title }, path });
-      } catch {
-        // The list of spaces is still a way to get anywhere.
-        if (startedFor.current === id) setPlace(null);
-      }
-    })();
-  }, [first]);
+  // path above it (measured 2026-11-07: before, it opened on the list of
+  // spaces). A query, not an effect (docs/DATA_LAYER.md): keyed on the item,
+  // cached, cancelled with the sheet. A failure leaves the list of spaces,
+  // which is still a way to get anywhere.
+  const start = useQuery({
+    queryKey: pagesKeys.moveStart(first?.id ?? 0),
+    queryFn: () => startPlace(first!),
+    enabled: Boolean(first),
+    retry: false,
+  });
+  // Where the person has navigated to since, for THIS item only.
+  const [picked, setPicked] = useState<{ itemId: number; place: Place | null } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const place: Place | null = first && picked?.itemId === first.id ? picked.place : (start.data ?? null);
+  const setPlace = (next: Place | null) => {
+    if (first) setPicked({ itemId: first.id, place: next });
+  };
   const moving = useMemo(() => new Set((nodes ?? []).map((n) => n.id)), [nodes]);
   const parentId = place && place.path.length ? place.path[place.path.length - 1].id : null;
 
-  const spaces = useQuery({ queryKey: ["pages", "spaces", "move"], queryFn: () => pagesApi.spaces(1), enabled: Boolean(nodes) && !place });
+  const spaces = useQuery({ queryKey: pagesKeys.spacesFor("move"), queryFn: () => pagesApi.spaces(1), enabled: Boolean(nodes) && !place });
   const folders = useInfiniteQuery({
-    queryKey: ["pages", "folders", "move", place?.space.id, parentId],
+    queryKey: pagesKeys.moveFolders(place?.space.id, parentId),
     queryFn: ({ pageParam }) => pagesApi.children(place!.space.id, parentId, pageParam, { kind: "folder", sortBy: "name", sortDir: "asc" }),
     initialPageParam: 1,
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),

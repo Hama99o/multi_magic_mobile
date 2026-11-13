@@ -39,6 +39,7 @@ import { NodeCollection } from "@/screens/pages/drive/NodeCollection";
 import { BottomSheet, NewSheet } from "@/screens/pages/drive/sheets";
 import { IconButton, NewFab, PagesTabBar, SortRow, UploadBar, useViewPrefs } from "@/screens/pages/drive/ui";
 import { useUploads } from "@/stores/uploads.store";
+import { pagesKeys } from "@/api/keys";
 
 function Chip({ label, selected, onPress, testID }: { label: string; selected: boolean; onPress: () => void; testID: string }) {
   const colors = useColors();
@@ -101,7 +102,7 @@ export default function Folder() {
   }, [hydrateUploads, hydrateView]);
 
   const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
-    queryKey: ["pages", "children", spaceId, parentId, sortBy, sortDir, type],
+    queryKey: pagesKeys.children(spaceId, parentId, sortBy, sortDir, type),
     queryFn: ({ pageParam }) => pagesApi.children(spaceId, parentId, pageParam, { sortBy, sortDir, ...listFilter(type) }),
     initialPageParam: 1,
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
@@ -131,7 +132,7 @@ export default function Folder() {
       try {
         await pagesApi.createFolder(spaceId, parentId, name);
         setNaming(false);
-        void queryClient.invalidateQueries({ queryKey: ["pages"] });
+        void queryClient.invalidateQueries({ queryKey: pagesKeys.all });
       } catch (e) {
         setNameError(failureMessage(e, t("pages.save.folderFailed")));
       } finally {

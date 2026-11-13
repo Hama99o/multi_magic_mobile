@@ -53,6 +53,8 @@ import { useAttachments } from "@/hooks/useAttachments";
 import { documentsApi, sessionsApi } from "@/api/ai";
 import { notificationsApi } from "@/api/notifications";
 import { conversationsApi } from "@/api/conversations";
+import { aiKeys, conversationKeys, notificationKeys } from "@/api/keys";
+import { useMe } from "@/hooks/useMe";
 
 /**
  * One quiet door in the title bar.
@@ -161,10 +163,10 @@ export default function Chat() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const user = useAuthStore((s) => s.user);
+  const user = useMe();
 
   const { data: sessionId, error: sessionError, refetch: refetchSession } = useQuery({
-    queryKey: ["ai", "currentSession"],
+    queryKey: aiKeys.currentSession(),
     queryFn: aiApi.currentSessionId,
   });
 
@@ -267,7 +269,7 @@ export default function Chat() {
   const pendingSince = useRef<{ ids: string; at: number } | null>(null);
   const [readingSlow, setReadingSlow] = useState(false);
   const { data: uploaded = [] } = useQuery({
-    queryKey: ["ai", "documents", conversationId],
+    queryKey: aiKeys.documents(conversationId),
     queryFn: () => documentsApi.list(conversationId as number),
     enabled: conversationId != null,
     refetchInterval: (query) => {
@@ -313,11 +315,11 @@ export default function Chat() {
    * two meanings, one endpoint apart. The icon wants threads.
    */
   const { data: unreadNotifications = 0 } = useQuery<number>({
-    queryKey: ["notifications", "unreadCount"],
+    queryKey: notificationKeys.unreadCount(),
     queryFn: notificationsApi.unreadCount,
   });
   const { data: unread } = useQuery({
-    queryKey: ["conversations", "unreadCount"],
+    queryKey: conversationKeys.unreadCount(),
     queryFn: conversationsApi.unreadCount,
   });
   // THREADS with something unread, not messages — see the note above.

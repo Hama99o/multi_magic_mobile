@@ -24,6 +24,7 @@ import { NameDialog, shareNode } from "../ItemSheet";
 import { downloadMany } from "../downloadMany";
 import { ActionsSheet, DetailsSheet, MoveSheet } from "./sheets";
 import { GridCard, IconButton, ListRow, SelectionBar, useViewPrefs } from "./ui";
+import { pagesKeys } from "@/api/keys";
 
 const GAP = 12;
 
@@ -93,7 +94,7 @@ export function NodeCollection({
   const [renameError, setRenameError] = useState<string | null>(null);
   const [moving, setMoving] = useState<PageNode[] | null>(null);
 
-  const refresh = useCallback(() => void queryClient.invalidateQueries({ queryKey: ["pages"] }), [queryClient]);
+  const refresh = useCallback(() => void queryClient.invalidateQueries({ queryKey: pagesKeys.all }), [queryClient]);
   const byId = useMemo(() => new Map(nodes.map((n) => [n.id, n])), [nodes]);
   const chosen = useMemo(() => [...selected].map((id) => byId.get(id)).filter((n): n is PageNode => Boolean(n)), [selected, byId]);
 

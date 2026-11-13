@@ -56,6 +56,7 @@ import { useAuthStore } from "@/stores/auth.store";
 import { useUploads } from "@/stores/uploads.store";
 import type { PageNode } from "@/api/pages";
 import { PlayBadge, formatBytes } from "../parts";
+import { useMe } from "@/hooks/useMe";
 
 // ── Type: icon and colour ───────────────────────────────────────────────────
 
@@ -149,7 +150,7 @@ export function SearchPill({ onMenu }: { onMenu?: () => void }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const user = useAuthStore((s) => s.user);
+  const user = useMe();
   const [profileOpen, setProfileOpen] = useState(false);
   return (
     <View

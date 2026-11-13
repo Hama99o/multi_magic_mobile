@@ -37,6 +37,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { profileApi, type Profile } from "@/api/profile";
 import { failureMessage } from "@/api/failure";
+import { profileKeys } from "@/api/keys";
 
 export function MorningBriefRow() {
   const colors = useColors();
@@ -46,7 +47,7 @@ export function MorningBriefRow() {
   const [failure, setFailure] = useState<string | null>(null);
   const [justTurnedOn, setJustTurnedOn] = useState(false);
 
-  const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: profileApi.me });
+  const { data: profile } = useQuery({ queryKey: profileKeys.me(), queryFn: profileApi.me });
 
   const setBrief = useMutation({
     mutationFn: (on: boolean) => profileApi.update((profile as Profile).id, { ai_morning_brief: on }),
@@ -57,17 +58,17 @@ export function MorningBriefRow() {
       // optimistic updates; karwan-42's cross-read, 2026-09-25). Otherwise a
       // read that started before the tap lands after it and flips the switch
       // back, until the save returns.
-      await queryClient.cancelQueries({ queryKey: ["profile"] });
-      const before = queryClient.getQueryData<Profile>(["profile"]);
-      if (before) queryClient.setQueryData<Profile>(["profile"], { ...before, aiMorningBrief: on });
+      await queryClient.cancelQueries({ queryKey: profileKeys.all });
+      const before = queryClient.getQueryData<Profile>(profileKeys.all);
+      if (before) queryClient.setQueryData<Profile>(profileKeys.all, { ...before, aiMorningBrief: on });
       return { before };
     },
     onError: (e, _on, context) => {
-      if (context?.before) queryClient.setQueryData(["profile"], context.before);
+      if (context?.before) queryClient.setQueryData(profileKeys.all, context.before);
       setFailure(failureMessage(e, t("aiKeys.briefFailed")));
     },
     onSuccess: (saved, on) => {
-      queryClient.setQueryData(["profile"], saved);
+      queryClient.setQueryData(profileKeys.all, saved);
       setJustTurnedOn(on);
     },
   });

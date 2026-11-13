@@ -41,6 +41,7 @@ import { failureMessage } from "@/api/failure";
 import { shareNode } from "@/screens/pages/ItemSheet";
 import { HeaderButton, NodeGlyph, PagesHeader, metaLine } from "@/screens/pages/parts";
 import { modeFor, pageDocument } from "@/screens/pages/viewerModes";
+import { pagesKeys } from "@/api/keys";
 
 /**
  * Video fills the screen. Audio is a music card with its own controls under
@@ -145,7 +146,7 @@ export function clock(seconds: number): string {
 function TextFile({ uri, markdown }: { uri: string; markdown: boolean }) {
   const { t } = useTranslation();
   const { data, error, isLoading } = useQuery({
-    queryKey: ["pages", "text", uri],
+    queryKey: pagesKeys.text(uri),
     queryFn: async () => {
       const res = await fetch(uri);
       if (!res.ok) throw new Error(String(res.status));
@@ -168,7 +169,7 @@ export default function Viewer() {
   const [shareError, setShareError] = useState<string | null>(null);
 
   const { data: node, error, refetch, dataUpdatedAt } = useQuery({
-    queryKey: ["pages", "node", spaceId, nodeId],
+    queryKey: pagesKeys.node(spaceId, nodeId),
     queryFn: () => pagesApi.node(spaceId, nodeId),
   });
 
@@ -201,7 +202,7 @@ export default function Viewer() {
   // The photos beside this one, in the folder's default order (name), so a
   // swipe goes where Drive's does. Up to 4 pages (100 photos).
   const siblings = useQuery({
-    queryKey: ["pages", "gallery", spaceId, node?.parentId ?? null],
+    queryKey: pagesKeys.gallery(spaceId, node?.parentId ?? null),
     queryFn: async () => {
       const rows: PageNode[] = [];
       for (let page = 1; page <= 4; page += 1) {

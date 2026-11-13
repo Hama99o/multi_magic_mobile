@@ -17,6 +17,12 @@
  */
 import { act, renderHook, waitFor } from "@testing-library/react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+// `useMe()` reads the profile from React Query (docs/DATA_LAYER.md); this
+// suite is not about that, and sets the signed-in user through the auth store
+// as before. `useMe` itself is `src/hooks/__tests__/useMe.test.tsx`.
+jest.mock("@/hooks/useMe", () => ({
+  useMe: () => (jest.requireActual("@/stores/auth.store") as typeof import("@/stores/auth.store")).useAuthStore((s) => s.user),
+}));
 import { useDraft } from "../useDraft";
 import { useAuthStore } from "@/stores/auth.store";
 

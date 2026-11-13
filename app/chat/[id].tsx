@@ -40,7 +40,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "@/components/icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { useQuery, useQueryClient, type InfiniteData, type QueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -62,6 +62,7 @@ import { BubblesSkeleton } from "@/components/reusables/skeleton";
 import { PersonComposer } from "@/screens/people/PersonComposer";
 import { ReactionSheet } from "@/screens/people/ReactionSheet";
 import { DayDivider, UnreadDivider, dayLabel } from "@/screens/people/DayDivider";
+import { conversationKeys } from "@/api/keys";
 
 /** How long a typing indicator survives its last frame. */
 const TYPING_LINGER_MS = 4_000;
@@ -200,7 +201,7 @@ const ThreadRow = memo(
 export const SEED_MAX_AGE_MS = 60_000;
 
 export function lastKnownMessages(client: QueryClient, conversationId: number, now = Date.now()): ChatMessage[] | undefined {
-  const state = client.getQueryState<InfiniteData<ConversationList>>(["conversations", "list"]);
+  const state = client.getQueryState<InfiniteData<ConversationList>>(conversationKeys.list());
   if (!state?.data || now - state.dataUpdatedAt > SEED_MAX_AGE_MS) return undefined;
   for (const page of state.data.pages) {
     const found = page.conversations.find((c) => c.id === conversationId);
@@ -278,16 +279,16 @@ export default function PersonThread() {
    * edge one. The list's badge is invalidated after, so going back shows the
    * row already cleared.
    */
+  // A mutation the effect FIRES; the request itself lives in the mutation
+  // (docs/DATA_LAYER.md). Losing it is survivable: it is re-sent the next
+  // time the thread opens, and the badge is stale rather than wrong.
+  const { mutate: markRead } = useMutation({
+    mutationFn: (id: number) => conversationsApi.markRead(id),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: conversationKeys.all }),
+  });
   useEffect(() => {
-    if (!Number.isFinite(conversationId)) return;
-    void conversationsApi
-      .markRead(conversationId)
-      .then(() => queryClient.invalidateQueries({ queryKey: ["conversations"] }))
-      .catch(() => {
-        // Losing this is survivable: it is re-sent the next time the thread
-        // opens, and the badge is stale rather than wrong.
-      });
-  }, [conversationId, queryClient]);
+    if (Number.isFinite(conversationId)) markRead(conversationId);
+  }, [conversationId, markRead]);
 
   /**
    * `ConversationChannel` — typing and read state, and nothing else.
@@ -368,7 +369,7 @@ export default function PersonThread() {
       // message lands on top of it rather than appearing twice.
       mergeMessage(saved);
       setOutbox((current) => current.filter((item) => item.key !== key));
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      void queryClient.invalidateQueries({ queryKey: conversationKeys.all });
     } catch (e) {
       // It STAYS ON SCREEN. `BRIEF.md` §5 — a message arrives or says it did
       // not; it never disappears into an optimistic bubble. With the server's
@@ -516,7 +517,7 @@ export default function PersonThread() {
    * left unrendered on purpose (`docs/design/people-chat/SPEC.md` §2.3).
    */
   const { data: detail } = useQuery({
-    queryKey: ["conversation", conversationId],
+    queryKey: conversationKeys.thread(conversationId),
     queryFn: () => conversationsApi.show(conversationId),
     enabled: Number.isFinite(conversationId),
   });

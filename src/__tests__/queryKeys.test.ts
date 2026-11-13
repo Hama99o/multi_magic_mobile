@@ -18,7 +18,9 @@
  *
  * Keys: a string or number literal (or a const that resolves to one, like
  * WINDOW_DAYS) is itself; anything else is a wildcard, because a variable can
- * take any value, including the other screen's literal.
+ * take any value, including the other screen's literal. Since 2026-11-13 keys
+ * come from the factories in `src/api/keys.ts`; a factory call is read from
+ * its tuple type, element by element, the same way.
  *
  * The plant is the bug it exists for: put `calendarApi.upcoming(7)` back in
  * useStarterPrompts and this goes red.
@@ -50,17 +52,21 @@ function collect(): { accesses: Access[]; unreadable: string[]; checker: ts.Type
   const accesses: Access[] = [];
   const unreadable: string[] = [];
 
+  const element = (t: ts.Type) => {
+    if (t.isStringLiteral()) return JSON.stringify(t.value);
+    if (t.isNumberLiteral()) return String(t.value);
+    return "*";
+  };
   const keyOf = (node: ts.Expression, where: string): string[] | null => {
-    if (!ts.isArrayLiteralExpression(node)) {
-      unreadable.push(`${where}: a key that is not an array literal`);
-      return null;
-    }
-    return node.elements.map((el) => {
-      const t = checker.getTypeAtLocation(el);
-      if (t.isStringLiteral()) return JSON.stringify(t.value);
-      if (t.isNumberLiteral()) return String(t.value);
-      return "*";
-    });
+    if (ts.isArrayLiteralExpression(node)) return node.elements.map((el) => element(checker.getTypeAtLocation(el)));
+    // A factory call (`src/api/keys.ts`, 2026-11-13): its `as const` tuple
+    // TYPE is the key. The factories' parameters are generic, so a literal
+    // argument stays literal here (`calendarKeys.upcoming(7)` → 7), and a
+    // variable is the same wildcard it always was.
+    const type = checker.getTypeAtLocation(node);
+    if (checker.isTupleType(type)) return checker.getTypeArguments(type as ts.TypeReference).map(element);
+    unreadable.push(`${where}: a key that is neither an array literal nor a key factory's tuple`);
+    return null;
   };
   const awaited = (t: ts.Type) => checker.getAwaitedType(t) ?? t;
 
@@ -138,7 +144,10 @@ describe("one query key, one shape", () => {
     const files = ts.sys
       .readDirectory(ROOT, [".ts", ".tsx"], ["node_modules"], ["app/**/*", "src/**/*"])
       .filter((f) => !f.includes("__tests__") && !/\.test\.tsx?$/.test(f));
-    const pattern = /\buse(?:Infinite)?Query(?:<[^>]*>)?\(\{|\.setQueryData(?:<[^>]*>)?\(|\.getQuery(?:Data|State)<(?:[^<>]|<[^<>]*>)*>\(/g;
+    // One level of nested generics on every form: `setQueryData<InfiniteData<Page>>(`
+    // was invisible to this count until 2026-11-13 (the walk saw it; the
+    // regex stopped at the first `>`), so the two counts disagreed.
+    const pattern = /\buse(?:Infinite)?Query(?:<(?:[^<>]|<[^<>]*>)*>)?\(\{|\.setQueryData(?:<(?:[^<>]|<[^<>]*>)*>)?\(|\.getQuery(?:Data|State)<(?:[^<>]|<[^<>]*>)*>\(/g;
     const counted = files.reduce((n, f) => n + (ts.sys.readFile(f)?.match(pattern)?.length ?? 0), 0);
     expect(accesses.length).toBe(counted);
     expect(counted).toBeGreaterThan(20);

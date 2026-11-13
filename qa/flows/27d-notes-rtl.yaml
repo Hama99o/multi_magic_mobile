@@ -1,0 +1,34 @@
+# NOTES, RTL with the keyboard up (owner, 2026-11-13: "Pashto and Dari too").
+# Opens the invented Pashto note "[qa-shot] پښتو یادښت" in the editor, puts
+# the caret in its body and ENDS WITH THE KEYBOARD UP for keyboard_check.py
+# and the screenshot (lines right-aligned, the caret above the bar).
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: an RTL note opening in the editor; the bar and the caret with the
+# keyboard up on RTL text.
+# CANNOT TELL YOU: typing in Pashto (adb input cannot send it; the owner's
+# phone checks the Pashto keyboard, plan §11).
+appId: ${APP_ID}
+tags:
+  - notes
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-notes"
+- tapOn:
+    id: "notes-search"
+- inputText: "qa-shot"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "\\[qa-shot\\] پښتو یادښت"
+    timeout: 30000
+- tapOn: "\\[qa-shot\\] پښتو یادښت"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-body"
+    timeout: 30000
+- tapOn:
+    id: "note-edit-body"
+- takeScreenshot: reports/27d-rtl-keyboard-up

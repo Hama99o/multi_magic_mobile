@@ -519,7 +519,7 @@ export default function NoteEditScreen() {
   }
 
   return (
-    <Screen avoidKeyboard>
+    <Screen avoidKeyboard background={pageFill}>
       <View testID="note-edit-page" style={{ flex: 1, marginHorizontal: -metrics.space.lg, paddingHorizontal: metrics.space.lg, backgroundColor: pageFill }}>
       {header}
       {actionFailed ? (

@@ -6,6 +6,7 @@
 # ── FLOW_REGISTER note ─────────────────────────────────────────────────────
 # COVERS: A → Format panel and back; Code block → language sheet → Python;
 # ⋮ → Edited …, Labels; the bell → reminder sheet (Tomorrow morning, saved);
+# the lock → read-only with its chip, then unlocked;
 # the drawer: Reminders, Archive, Trash, back to Notes.
 # CANNOT TELL YOU: a reminder actually ringing (the device pass waits for it
 # separately); iOS.
@@ -69,6 +70,20 @@ tags:
       id: "note-edit-reminder-chip"
     timeout: 15000
 - takeScreenshot: reports/27b-reminder-chip
+# Lock: read-only with a chip, then unlocked again (the note stays editable).
+- tapOn:
+    id: "note-edit-lock"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-locked-chip"
+    timeout: 15000
+- takeScreenshot: reports/27b-locked
+- tapOn:
+    id: "note-edit-lock"
+- extendedWaitUntil:
+    notVisible:
+      id: "note-edit-locked-chip"
+    timeout: 15000
 - tapOn:
     id: "note-edit-back"
 - extendedWaitUntil:

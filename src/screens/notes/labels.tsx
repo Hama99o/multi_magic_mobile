@@ -14,6 +14,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { noteTagsApi } from "@/api/noteTags";
 import type { Note, NoteTag } from "@/api/notes";
 import TagIcon from "lucide-react-native/dist/esm/icons/tag";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ArchiveIcon from "lucide-react-native/dist/esm/icons/archive";
 import BellIcon from "lucide-react-native/dist/esm/icons/bell";
 
@@ -38,6 +39,8 @@ export function NotesDrawer({
   const metrics = useMetrics();
   const { t } = useTranslation();
   const { data: tags = [] } = useNoteTags(visible);
+  // The drawer is a Modal: it starts under the status bar unless told (seen on the device).
+  const insets = useSafeAreaInsets();
   const row = (testID: string, label: string, icon: React.ReactNode, selected: boolean, onPress: () => void) => (
     <Pressable
       key={testID}
@@ -58,7 +61,7 @@ export function NotesDrawer({
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <View style={{ flex: 1, flexDirection: "row" }}>
-        <View testID="notes-drawer" style={{ width: "78%", maxWidth: 360, backgroundColor: colors.surface, paddingTop: metrics.space.xl }}>
+        <View testID="notes-drawer" style={{ width: "78%", maxWidth: 360, backgroundColor: colors.surface, paddingTop: insets.top + metrics.space.lg }}>
           <Text style={{ fontSize: 22, fontWeight: "600", paddingHorizontal: 20, marginBottom: metrics.space.md }} accessibilityRole="header">
             {t("notes.labels.drawerTitle")}
           </Text>

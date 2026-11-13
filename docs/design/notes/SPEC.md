@@ -188,7 +188,9 @@ Each decision cites the pictures it came from. The mockups are on the board
    is the content. Return on an empty item ends the list (the web's ListKit
    behaviour). Tapping the box toggles it even with the keyboard down,
    without moving the caret.
-8. **Read-only blocks are a "view on web" card.** *(notion-table-01,
+8. **SUPERSEDED 2026-11-13: everything is editable on the phone, with no web
+   link anywhere in Notes.** See `EDIT_EVERYTHING.md` (code, tables, sub/sup,
+   comments, legacy content). The old text, kept for history: **Read-only blocks are a "view on web" card.** *(notion-table-01,
    notion-block-actions-02)* Tables, code blocks and legacy content
    (`<img data-width>`, YouTube iframes, `h4–h6`, anything unknown) render as
    a `RawBlockCard`: a bordered `surface` card with an icon and a kind label
@@ -440,6 +442,9 @@ screen wires those together.
    saves a copy titled "… (conflict 12 Nov 15:40)". Never a silent
    last-write-wins.
 3. **Comments:** off everywhere for now. Row 43 stays read-only.
+   **Changed 2026-11-13:** comments are visible and editable on the phone
+   (add, reply, resolve). The storage is an open question for the owner
+   (`EDIT_EVERYTHING.md` §4).
 4. **Sharing on the phone:** view, and add or remove people (web parity),
    in phase 3b.
 5. **Notes list:** last edited first (pinned on top).
@@ -449,7 +454,10 @@ screen wires those together.
 - **Glue rules** (`editor/engineGlue.ts`, tested):
   - a deep copy goes in;
   - the text colour travels as `fgColor`;
-  - code blocks and tables travel as read-only atoms.
+  - code blocks and tables travel as read-only atoms. **Being removed
+    (2026-11-13, `EDIT_EVERYTHING.md`):** code and tables become editable
+    in B; only truly unknown markup stays an atom (moveable, deletable,
+    no web link).
 - **Known limitation: hardware keyboard.** With key events (a hardware keyboard, or `adb input`), Return in a list item desyncs the caret: the next characters land in another block, and one is lost. The on-screen keyboard (Gboard) is correct. A tablet with a keyboard must be checked before release. The upstream issue is ready and waits for the owner's "oui".
-- **Not drawn while editing:** highlight, sub and sup. The read view draws them.
+- **Not drawn while editing:** highlight, sub and sup. The read view draws them. Fix planned: a Kotlin patch to B's renderer (`EDIT_EVERYTHING.md` §2).
 - **Long notes:** the 914 KB dev note types about 3× slower than a small one on the emulator. Measure on a real phone before choosing a size limit for read-only.

@@ -422,6 +422,19 @@ describe("one event", () => {
     alert.mockRestore();
   });
 
+  // Device QA 2026-11-13: with the keyboard up from the guest's email, the
+  // first tap on Invite only closed the keyboard (no POST, 3 of 3 tries).
+  // ScrollView's default keyboardShouldPersistTaps="never" spends that tap on
+  // dismissing (reactnative.dev/docs/scrollview#keyboardshouldpersisttaps).
+  it("a tap on Invite with the keyboard up reaches Invite (the page keeps taps it handles)", async () => {
+    mockParams.current = { id: "41", on: "2026-11-12" };
+    mock.onGet("/api/v1/calendar_app/events/41").reply(200, { event: serverEvent() });
+    mock.onGet("/api/v1/calendar_app/events/41/event_shares").reply(200, { shares: [] });
+    renderScreen(<EventDetail />);
+    await screen.findByTestId("event-title");
+    expect(screen.getByTestId("event-detail").props.keyboardShouldPersistTaps).toBe("handled");
+  });
+
   it("deleting a REPEATING event says every occurrence goes (the web has no 'this one only')", async () => {
     mockParams.current = { id: "41", on: "2026-11-12" };
     mock.onGet("/api/v1/calendar_app/events/41").reply(200, { event: serverEvent({ recurrence: "weekly" }) });

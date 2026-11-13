@@ -184,7 +184,7 @@ export default function EventDetail() {
           ) : null
         }
       />
-      <ScrollView testID="event-detail" contentContainerStyle={{ paddingBottom: metrics.space.xl * 2 }}>
+      <ScrollView testID="event-detail" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingBottom: metrics.space.xl * 2 }}>
         <View style={{ flexDirection: "row", gap: metrics.space.md, paddingBottom: metrics.space.md }}>
           <View style={{ width: 6, borderRadius: 3, backgroundColor: eventColor(event) }} />
           <View style={{ flex: 1, minWidth: 0, gap: 4 }}>

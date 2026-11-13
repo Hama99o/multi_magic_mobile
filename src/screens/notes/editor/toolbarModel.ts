@@ -35,6 +35,8 @@ export type Command =
   | { kind: "undo" }
   | { kind: "redo" }
   | { kind: "panel"; panel: Panel | null }
+  | { kind: "sheet"; sheet: "noteColor" | "more" }
+  | { kind: "none" }
   | { kind: "hideKeyboard" };
 
 export interface ToolbarInput {
@@ -50,6 +52,8 @@ export interface ToolbarInput {
   canRedo: boolean;
   /** Text is selected (not just a caret). */
   hasSelection: boolean;
+  /** The caret is in the body (Keep's A key wakes up). */
+  focused?: boolean;
   panel: Panel | null;
 }
 
@@ -123,12 +127,13 @@ export function buildToolbar(input: ToolbarInput): { keys: ToolbarKey[] } {
   const listKey = (list: ListType) => k(list, { kind: "list", value: list }, Boolean(input.nodes[list]), inCodeBlock);
   const colorKeys = () => [panelKey("textColor", "textColor", inCode || inCodeBlock), panelKey("highlight", "highlight", inCode || inCodeBlock)];
   const hide = k("hideKeyboard", { kind: "hideKeyboard" });
+  const close = k("closePanel", { kind: "panel", panel: null });
 
   switch (input.panel) {
     case "format":
       return {
         keys: [
-          panelKey("format", "format"),
+          close,
           ...BLOCKS.map((b) => k(`block:${b}`, { kind: "block", value: b }, block === b)),
           ...MARKS.map(markKey),
           listKey("taskList"), // the checklist first (Apple Notes)
@@ -141,13 +146,13 @@ export function buildToolbar(input: ToolbarInput): { keys: ToolbarKey[] } {
         ],
       };
     case "insert":
-      return { keys: INSERT_GROUPS.flatMap((g) => g.items.map(insertItem)).map(({ id, command }) => k(id, command)) };
+      return { keys: [close, ...INSERT_GROUPS.flatMap((g) => g.items.map(insertItem)).map(({ id, command }) => k(id, command))] };
     case "textColor":
-      return { keys: TEXT_COLORS.map((c) => k(`textColor:${c.key}`, { kind: "color", which: "text", value: c.value })) };
+      return { keys: [close, ...TEXT_COLORS.map((c) => k(`textColor:${c.key}`, { kind: "color", which: "text", value: c.value }))] };
     case "highlight":
-      return { keys: HIGHLIGHT_COLORS.map((c) => k(`highlight:${c.key}`, { kind: "color", which: "highlight", value: c.value })) };
+      return { keys: [close, ...HIGHLIGHT_COLORS.map((c) => k(`highlight:${c.key}`, { kind: "color", which: "highlight", value: c.value }))] };
     case "blockType":
-      return { keys: BLOCKS.map((b) => k(`block:${b}`, { kind: "block", value: b }, block === b)) };
+      return { keys: [close, ...BLOCKS.map((b) => k(`block:${b}`, { kind: "block", value: b }, block === b))] };
     case "codeLanguage": // a sheet, drawn by the screen; the row stays the main one
     default:
       break;
@@ -157,21 +162,19 @@ export function buildToolbar(input: ToolbarInput): { keys: ToolbarKey[] } {
     return { keys: [...MARKS.map(markKey), k("link", { kind: "link" }, Boolean(input.marks.link), inCodeBlock), ...colorKeys(), hide] };
   }
 
+  // Keep's bar (owner, 2026-11-13): + · palette · A | undo · redo | ⋮.
+  const spacer = () => k("spacer", { kind: "none" }); // pushes undo/redo to the middle, ⋮ to the end
   return {
     keys: [
+      panelKey("insert", "insert"),
+      k("noteColor", { kind: "sheet", sheet: "noteColor" }),
+      k("format", toggle("format"), false, !input.focused), // the Format panel replaces this row while open
+      ...(inCodeBlock ? [k("codeLanguage", { kind: "panel", panel: "codeLanguage" } as Command, false, false, input.codeLanguage ?? "plain")] : []),
+      spacer(),
       k("undo", { kind: "undo" }, false, !input.canUndo),
       k("redo", { kind: "redo" }, false, !input.canRedo),
-      panelKey("insert", "insert"),
-      panelKey("format", "format"),
-      k("blockType", toggle("blockType"), false, false, block),
-      ...(inCodeBlock ? [k("codeLanguage", { kind: "panel", panel: "codeLanguage" } as Command, false, false, input.codeLanguage ?? "plain")] : []),
-      listKey("taskList"),
-      listKey("bulletList"),
-      k("indent", { kind: "indent" }),
-      k("outdent", { kind: "outdent" }),
-      listKey("orderedList"),
-      k("insert:image", { kind: "insert", value: "image" }),
-      hide,
+      spacer(),
+      k("more", { kind: "sheet", sheet: "more" }),
     ],
   };
 }
@@ -182,7 +185,7 @@ export function allCommands(): Command[] {
   const seen = new Map<string, Command>();
   for (const panel of panels) {
     for (const hasSelection of [false, true]) {
-      const input: ToolbarInput = { marks: {}, nodes: { paragraph: true }, canUndo: true, canRedo: true, hasSelection, panel };
+      const input: ToolbarInput = { marks: {}, nodes: { paragraph: true }, canUndo: true, canRedo: true, hasSelection, panel, focused: true };
       for (const key of buildToolbar(input).keys) seen.set(JSON.stringify(key.command), key.command);
     }
   }

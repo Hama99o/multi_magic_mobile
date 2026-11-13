@@ -31,6 +31,9 @@ import List from "lucide-react-native/dist/esm/icons/list";
 import ListChecks from "lucide-react-native/dist/esm/icons/list-checks";
 import ListOrdered from "lucide-react-native/dist/esm/icons/list-ordered";
 import Minus from "lucide-react-native/dist/esm/icons/minus";
+import EllipsisVertical from "lucide-react-native/dist/esm/icons/ellipsis-vertical";
+import Palette from "lucide-react-native/dist/esm/icons/palette";
+import XIcon from "lucide-react-native/dist/esm/icons/x";
 import Pilcrow from "lucide-react-native/dist/esm/icons/pilcrow";
 import Plus from "lucide-react-native/dist/esm/icons/plus";
 import Quote from "lucide-react-native/dist/esm/icons/quote";
@@ -52,6 +55,7 @@ type Icon = React.ComponentType<{ color?: string; size?: number }>;
 
 const ICONS: Record<string, Icon> = {
   undo: Undo2, redo: Redo2, insert: Plus, format: Type, hideKeyboard: KeyboardOff,
+  noteColor: Palette, more: EllipsisVertical, closePanel: XIcon,
   bold: Bold, italic: Italic, underline: Underline, strike: Strikethrough, code: Code,
   subscript: Subscript, superscript: Superscript, link: LinkIcon, textColor: Baseline, highlight: Highlighter,
   taskList: ListChecks, bulletList: List, orderedList: ListOrdered, indent: IndentIncrease, outdent: IndentDecrease,
@@ -83,8 +87,11 @@ const swatch = (id: string): string | null | undefined => {
 export function EditorToolbar({ keys, labels, colors, onCommand }: EditorToolbarProps) {
   return (
     <View testID="note-toolbar" style={{ borderTopWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
-      <ScrollView horizontal keyboardShouldPersistTaps="always" showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 4 }}>
-        {keys.map((k) => {
+      <ScrollView horizontal keyboardShouldPersistTaps="always" showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 4, flexGrow: 1 }}>
+        {keys.map((k, index) => {
+          if (k.id === "spacer") {
+            return <View key={`spacer-${index}`} testID="tb-spacer" accessibilityElementsHidden importantForAccessibility="no-hide-descendants" style={{ flex: 1 }} />;
+          }
           const Glyph = ICONS[k.id];
           const fill = k.id.includes(":") ? swatch(k.id) : undefined;
           const tint = k.disabled ? colors.border : k.active ? colors.onAccent : colors.ink;

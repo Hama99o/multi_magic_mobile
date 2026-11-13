@@ -10,7 +10,7 @@
  * phone (plan §11 condition 1). No web link anywhere (owner, 2026-11-13).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, Share, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -18,8 +18,8 @@ import { createNativeEditorDocumentHandle, RichTextEditor, type RichTextEditorRe
 
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
-import { ChevronLeft } from "@/components/icons";
-import { useColors, useMetrics } from "@/hooks/useColors";
+import { ChevronLeft, Copy, Pin, Share2, Trash2 } from "@/components/icons";
+import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
 import { notesApi, type Note } from "@/api/notes";
 import { failureMessage } from "@/api/failure";
 import { noteDrafts } from "@/stores/noteDrafts.files";
@@ -35,6 +35,10 @@ import { EditorToolbar } from "@/screens/notes/editor/EditorToolbar";
 import { buildToolbar, type Command, type Panel } from "@/screens/notes/editor/toolbarModel";
 import { runCommand, type EngineRef } from "@/screens/notes/editor/engineCommands";
 import { toolbarLabels } from "@/screens/notes/toolbarLabels";
+import { NoteColorPicker } from "@/screens/notes/NoteColorPicker";
+import { noteColor, type NoteColorKey } from "@/screens/notes/editor/noteColors";
+import { cardPreview } from "@/screens/notes/cardPreview";
+import { relativeTime } from "@/lib/relativeTime";
 import { CODE_LANGUAGES, deleteBlockAt, setCodeLanguageAt, textblockAt, toCodeBlockAt, toParagraphAt } from "@/screens/notes/editor/blockEdits";
 
 interface Opened {
@@ -201,6 +205,15 @@ export default function NoteEditScreen() {
   const [panel, setPanel] = useState<Panel | null>(null);
   const [linkDraft, setLinkDraft] = useState<string | null>(null);
   const [caretPos, setCaretPos] = useState<number | null>(null);
+  const scheme = useScheme();
+  const [focused, setFocused] = useState(false);
+  const [sheet, setSheet] = useState<"noteColor" | "more" | "confirmDelete" | null>(null);
+  const [pinned, setPinned] = useState<boolean | null>(null);
+  const [color, setColor] = useState<NoteColorKey | null | undefined>(undefined);
+  const notePinned = pinned ?? note?.pinned ?? false;
+  const noteColorKey = color === undefined ? (note?.color ?? null) : color;
+  const page = noteColor(noteColorKey, scheme);
+  const pageFill = noteColorKey ? page.fill : colors.ground;
   const [codeSheet, setCodeSheet] = useState(false);
   const [languageQuery, setLanguageQuery] = useState("");
   const labelsForToolbar = useMemo(() => toolbarLabels(t), [t]);
@@ -208,7 +221,7 @@ export default function NoteEditScreen() {
   const caretBlock = caretPos !== null && engineDocRef.current ? textblockAt(engineDocRef.current, caretPos) : null;
   const headingLevel = caretBlock?.node.type === "heading" ? Number(caretBlock.node.attrs?.level ?? 1) : undefined;
   const codeLanguage = caretBlock?.node.type === "codeBlock" ? ((caretBlock.node.attrs?.language as string | null) ?? null) : undefined;
-  const toolbarKeys = buildToolbar({ ...active, ...history, hasSelection, panel, headingLevel, codeLanguage }).keys;
+  const toolbarKeys = buildToolbar({ ...active, ...history, hasSelection, panel, headingLevel, codeLanguage, focused }).keys;
 
   /** Replace the engine's document with a structural edit of it (B has no command for these). */
   const applyStructural = (edit: (doc: DocNode, path: number[]) => DocNode) => {
@@ -241,10 +254,69 @@ export default function NoteEditScreen() {
       setLinkDraft("");
       return;
     }
+    if (command.kind === "sheet") {
+      setSheet(command.sheet);
+      return;
+    }
+    if (command.kind === "none") return;
     if (!ref) return;
     runCommand(ref, command, { nodes: active.nodes, headingLevel });
     if (command.kind === "color") setPanel(null);
   };
+  const [actionFailed, setActionFailed] = useState(false);
+  const act = async (fn: () => Promise<unknown>) => {
+    setActionFailed(false);
+    try {
+      await fn();
+      void queryClient.invalidateQueries({ queryKey: ["notes"] });
+      return true;
+    } catch {
+      setActionFailed(true);
+      return false;
+    }
+  };
+  const togglePin = () =>
+    void act(async () => {
+      const saved = await notesApi.setPinned(noteId, !notePinned);
+      setPinned(saved.pinned);
+    });
+  const pickColor = (key: NoteColorKey | null) => {
+    setSheet(null);
+    void act(async () => {
+      const saved = await notesApi.setColor(noteId, key);
+      setColor(saved.color);
+    });
+  };
+  const deleteNote = () => {
+    setSheet(null);
+    void act(async () => {
+      await saverRef.current?.flush();
+      await notesApi.trash(noteId);
+    }).then((ok) => {
+      if (ok) router.back();
+    });
+  };
+  const copyNote = () => {
+    setSheet(null);
+    void act(async () => {
+      await saverRef.current?.flush();
+      const copy = await notesApi.duplicate(noteId);
+      router.replace({ pathname: "/notes/edit", params: { id: String(copy.id) } });
+    });
+  };
+  const sendNote = () => {
+    setSheet(null);
+    const body = cardPreview(html.current, 100000).lines.join("\n");
+    const message = [title.current.trim(), body].filter(Boolean).join("\n\n");
+    void Share.share({ message, title: title.current.trim() || undefined }).catch(() => undefined);
+  };
+  const colorLabels = {
+    no_color: t("notes.grid.colors.no_color"), red: t("notes.grid.colors.red"), orange: t("notes.grid.colors.orange"),
+    yellow: t("notes.grid.colors.yellow"), green: t("notes.grid.colors.green"), teal: t("notes.grid.colors.teal"),
+    blue: t("notes.grid.colors.blue"), purple: t("notes.grid.colors.purple"), pink: t("notes.grid.colors.pink"),
+    gray: t("notes.grid.colors.gray"),
+  } satisfies Record<NoteColorKey, string>;
+
   const saveLink = () => {
     const ref = editorRef.current;
     const href = (linkDraft ?? "").trim();
@@ -264,6 +336,9 @@ export default function NoteEditScreen() {
   };
   const stateLabel = stateLabels[state.kind];
 
+  // Keep's header (owner's screenshots, 2026-11-13, not stored): a round back
+  // button; on the right a rounded pill of the note's actions (pin for now;
+  // reminder and archive join it in their step).
   const header = (
     <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: metrics.space.sm, gap: metrics.space.sm }}>
       <Pressable
@@ -272,13 +347,28 @@ export default function NoteEditScreen() {
         accessibilityRole="button"
         accessibilityLabel={t("common.back")}
         hitSlop={8}
-        style={{ width: metrics.touch, height: metrics.touch, justifyContent: "center" }}
+        style={{ width: 44, height: 44, borderRadius: 22, alignItems: "center", justifyContent: "center", backgroundColor: `${colors.ink}14` }}
       >
         <ChevronLeft size={24} color={colors.ink} />
       </Pressable>
-      <Text testID="note-edit-state" tone="muted" style={{ flex: 1, fontSize: 13 }} accessibilityLiveRegion="polite">
+      <Text testID="note-edit-state" tone="muted" style={{ flex: 1, fontSize: 12 }} accessibilityLiveRegion="polite">
         {opened ? stateLabel : ""}
       </Text>
+      {note ? (
+        <View style={{ flexDirection: "row", borderRadius: 999, backgroundColor: `${colors.ink}14`, paddingHorizontal: 4 }}>
+          <Pressable
+            testID="note-edit-pin"
+            onPress={togglePin}
+            accessibilityRole="button"
+            accessibilityLabel={notePinned ? t("notes.grid.unpin") : t("notes.grid.pin")}
+            accessibilityState={{ selected: notePinned }}
+            hitSlop={4}
+            style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+          >
+            <Pin size={20} color={notePinned ? colors.accent : colors.ink} fill={notePinned ? colors.accent : "none"} />
+          </Pressable>
+        </View>
+      ) : null}
     </View>
   );
 
@@ -316,7 +406,11 @@ export default function NoteEditScreen() {
 
   return (
     <Screen avoidKeyboard>
+      <View testID="note-edit-page" style={{ flex: 1, marginHorizontal: -metrics.space.lg, paddingHorizontal: metrics.space.lg, backgroundColor: pageFill }}>
       {header}
+      {actionFailed ? (
+        <Text testID="note-edit-action-failed" style={{ color: colors.danger, fontSize: 13 }}>{t("notes.grid.actionFailed")}</Text>
+      ) : null}
       {opened.restored ? (
         <Text testID="note-edit-restored" tone="muted" style={{ fontSize: 13 }}>{t("notes.edit.restored")}</Text>
       ) : null}
@@ -336,7 +430,7 @@ export default function NoteEditScreen() {
           push();
         }}
         returnKeyType="next"
-        style={{ fontSize: 26, lineHeight: 32, fontWeight: "700", color: colors.ink, paddingVertical: metrics.space.sm }}
+        style={{ fontSize: 28, lineHeight: 36, fontWeight: "400", color: colors.ink, paddingVertical: metrics.space.sm }}
         accessibilityLabel={t("notes.edit.titlePlaceholder")}
       />
       <ReadOnlyAtomProvider value={{ colors, labels, onLinkPress: openLink }}>
@@ -346,7 +440,12 @@ export default function NoteEditScreen() {
             key={`body-${generation}`}
             documentHandle={engine.handle}
             atoms={notesEngineAtoms}
-            theme={engineTheme(colors) as never}
+            theme={engineTheme(colors, pageFill) as never}
+            onFocus={() => setFocused(true)}
+            onBlur={() => {
+              setFocused(false);
+              setPanel(null);
+            }}
             placeholder={t("notes.edit.bodyPlaceholder")}
             showToolbar={false}
             onActiveStateChange={(state) => setActive({ marks: { ...state.marks }, nodes: { ...state.nodes } })}
@@ -366,8 +465,54 @@ export default function NoteEditScreen() {
         </View>
       </ReadOnlyAtomProvider>
       <View style={{ marginHorizontal: -metrics.space.lg }}>
-        <EditorToolbar keys={toolbarKeys} labels={labelsForToolbar} colors={colors} onCommand={onCommand} />
+        <EditorToolbar keys={toolbarKeys} labels={labelsForToolbar} colors={{ ...colors, surface: pageFill }} onCommand={onCommand} />
       </View>
+      </View>
+      <NoteColorPicker
+        visible={sheet === "noteColor"}
+        value={noteColorKey}
+        mode={scheme}
+        colors={colors}
+        title={t("notes.grid.colorTitle")}
+        labels={colorLabels}
+        onPick={pickColor}
+        onClose={() => setSheet(null)}
+      />
+      <Modal visible={sheet === "more"} transparent animationType="slide" onRequestClose={() => setSheet(null)}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)" }} onPress={() => setSheet(null)} accessibilityLabel={t("common.close")} />
+        <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingVertical: metrics.space.md, paddingHorizontal: metrics.space.lg }}>
+          <Text testID="note-more-edited" tone="muted" style={{ fontSize: 12, marginBottom: metrics.space.sm }}>
+            {t("notes.more.edited", { when: relativeTime(note.updatedAt) })}
+          </Text>
+          {(
+            [
+              ["note-more-delete", Trash2, t("notes.more.delete"), () => setSheet("confirmDelete")],
+              ["note-more-copy", Copy, t("notes.more.copy"), copyNote],
+              ["note-more-send", Share2, t("notes.more.send"), sendNote],
+            ] as const
+          ).map(([testID, Icon, label, onPress]) => (
+            <Pressable key={testID} testID={testID} onPress={onPress} accessibilityRole="button" style={{ minHeight: 52, flexDirection: "row", alignItems: "center", gap: 16 }}>
+              <Icon size={22} color={colors.ink} />
+              <Text style={{ fontSize: 16 }}>{label}</Text>
+            </Pressable>
+          ))}
+        </View>
+      </Modal>
+      <Modal visible={sheet === "confirmDelete"} transparent animationType="fade" onRequestClose={() => setSheet(null)}>
+        <View style={{ flex: 1, justifyContent: "center", padding: metrics.space.lg, backgroundColor: "rgba(0,0,0,0.45)" }}>
+          <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: metrics.space.lg, gap: metrics.space.md }}>
+            <Text style={{ fontWeight: "700", fontSize: 17 }}>{t("notes.grid.deleteTitle", { count: 1 })}</Text>
+            <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: metrics.space.md }}>
+              <Pressable testID="note-more-delete-cancel" onPress={() => setSheet(null)} style={{ padding: 10 }}>
+                <Text tone="muted">{t("common.cancel")}</Text>
+              </Pressable>
+              <Pressable testID="note-more-delete-confirm" onPress={deleteNote} style={{ padding: 10 }}>
+                <Text style={{ color: colors.danger, fontWeight: "700" }}>{t("notes.grid.deleteConfirm")}</Text>
+              </Pressable>
+            </View>
+          </View>
+        </View>
+      </Modal>
       <Modal visible={linkDraft !== null} transparent animationType="fade" onRequestClose={() => setLinkDraft(null)}>
         <View style={{ flex: 1, justifyContent: "center", padding: metrics.space.lg, backgroundColor: "rgba(0,0,0,0.4)" }}>
           <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: metrics.space.lg, gap: metrics.space.md }}>

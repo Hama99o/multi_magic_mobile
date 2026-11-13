@@ -52,7 +52,36 @@ Built:
 - Not built: drawing, voice, sort (see `MISSING_FEATURES.md`). Archive,
   labels and drawer come in their own steps.
 
-## 2 … 5 (next)
+## 2 · The note screen and the one bar (built 2026-11-13)
+
+Layout read from the references (note and keyboard-up):
+- a round back button at the top left;
+- a rounded pill of actions at the top right;
+- a large, light title, then the text straight on the page with no frame;
+- a single bar at the bottom: + · palette · A on the left, undo · redo in
+  the middle, ⋮ on the right;
+- with the keyboard up, **the same bar** sits right on the keyboard.
+
+Built (`app/notes/edit.tsx`):
+- the page takes the note's colour (palette → the web's ten keys, saved to
+  `data.color`);
+- the title is 28 sp, regular weight;
+- the header pill has **pin** (saved to `pinned`). Reminder and archive
+  join it in step 5, so no key does nothing;
+- the bar is `toolbarModel`'s Keep row. **A** is dimmed until the caret is
+  in the body; it swaps the bar for the Format panel, with a close key. +
+  opens the insert panel (the web's slash commands);
+- ⋮ opens a bottom sheet: "Edited <when>", **Delete** (confirm, to the
+  trash, then back), **Make a copy** (the web's duplicate; opens the copy),
+  **Send** (the OS share sheet, plain text). **Labels** and
+  **Collaborators** join it in step 4, with their sheets;
+- tapping a note in the grid opens it straight in this screen: always in
+  edit mode, as in Keep.
+
+Still to do here: auto-detected links, phones and emails in the body (tap
+to open). This is checked on the device, with the keyboard-occlusion pass.
+
+## 3 … 5 (next)
 
 Note screen with one bar that moves with the keyboard; ⋮ sheet; drawer and
 labels; archive, trash and reminders. See Hello's brief of 2026-11-13 and

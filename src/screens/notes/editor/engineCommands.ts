@@ -102,6 +102,9 @@ export function runCommand(ref: EngineRef, command: Command, ctx: CommandContext
       return "done";
     case "link":
     case "panel":
+    case "sheet":
       return "screen";
+    case "none":
+      return "done";
   }
 }

@@ -1022,6 +1022,12 @@ export const fr: Translations = {
       checked: "Fait",
       unchecked: "À faire",
     },
+    more: {
+      edited: "Modifiée {{when}}",
+      delete: "Supprimer",
+      copy: "Faire une copie",
+      send: "Envoyer",
+    },
     grid: {
       search: "Rechercher dans vos notes",
       layoutGrid: "Afficher en grille",

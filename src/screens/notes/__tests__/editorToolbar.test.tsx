@@ -10,7 +10,7 @@ import { TOKENS } from "@/theme/tokens";
 import { EditorToolbar, type ToolbarLabels } from "../editor/EditorToolbar";
 import { buildToolbar, type ToolbarInput } from "../editor/toolbarModel";
 
-const base: ToolbarInput = { marks: {}, nodes: { paragraph: true }, canUndo: true, canRedo: false, hasSelection: false, panel: null };
+const base: ToolbarInput = { marks: {}, nodes: { paragraph: true }, canUndo: true, canRedo: false, hasSelection: false, panel: null, focused: true };
 const labels: ToolbarLabels = new Proxy({} as ToolbarLabels, { get: (_t, id) => `L:${String(id)}` });
 
 const draw = (input: Partial<ToolbarInput>, onCommand = jest.fn()) => {
@@ -20,14 +20,14 @@ const draw = (input: Partial<ToolbarInput>, onCommand = jest.fn()) => {
 
 it("draws every key with its translated label", () => {
   draw({});
-  for (const k of buildToolbar(base).keys) expect(screen.getByTestId(`tb-${k.id}`)).toBeTruthy();
+  for (const k of buildToolbar(base).keys.filter((k) => k.id !== "spacer")) expect(screen.getByTestId(`tb-${k.id}`)).toBeTruthy();
   expect(screen.getByLabelText("L:undo")).toBeTruthy();
 });
 
 it("pressing a key hands its command to the screen", () => {
   const onCommand = draw({});
-  fireEvent.press(screen.getByTestId("tb-taskList"));
-  expect(onCommand).toHaveBeenCalledWith({ kind: "list", value: "taskList" });
+  fireEvent.press(screen.getByTestId("tb-noteColor"));
+  expect(onCommand).toHaveBeenCalledWith({ kind: "sheet", sheet: "noteColor" });
 });
 
 it("a disabled key does nothing and says so", () => {
@@ -44,9 +44,10 @@ it("an active mark is announced as selected", () => {
   expect(screen.getByTestId("tb-italic").props.accessibilityState).toMatchObject({ selected: false });
 });
 
-it("the block-type key shows the type the caret is in", () => {
-  draw({ nodes: { heading: true }, headingLevel: 2 });
-  expect(screen.getByTestId("tb-blockType")).toHaveTextContent("H2");
+it("spacers are not keys: nothing to press, nothing announced", () => {
+  draw({});
+  expect(screen.getAllByTestId("tb-spacer", { includeHiddenElements: true })).toHaveLength(2);
+  expect(screen.getAllByTestId("tb-spacer", { includeHiddenElements: true })[0].props.accessibilityElementsHidden).toBe(true);
 });
 
 it("colour swatches show the web's colour, and default shows none", () => {
@@ -58,5 +59,5 @@ it("colour swatches show the web's colour, and default shows none", () => {
 
 it("every key is at least 48 dp to touch", () => {
   draw({});
-  expect(screen.getByTestId("tb-bulletList")).toHaveStyle({ minWidth: 48, minHeight: 48 });
+  expect(screen.getByTestId("tb-undo")).toHaveStyle({ minWidth: 48, minHeight: 48 });
 });

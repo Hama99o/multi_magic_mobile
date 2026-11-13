@@ -172,3 +172,11 @@ describe("grid actions (pin, colour, trash)", () => {
     expect(mock.history.delete).toHaveLength(1);
   });
 });
+
+describe("make a copy (the web's duplicate)", () => {
+  it("asks the server to duplicate and returns the copy", async () => {
+    mock.onPost("/api/v1/note_app/notes/7/duplicate").reply(201, { note: note({ id: 70, title: "Trip (copy)" }) });
+    const copy = await notesApi.duplicate(7);
+    expect(copy).toMatchObject({ id: 70, title: "Trip (copy)" });
+  });
+});

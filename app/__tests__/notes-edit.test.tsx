@@ -15,7 +15,7 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import MockAdapter from "axios-mock-adapter";
-import { Alert } from "react-native";
+import { Alert, Share } from "react-native";
 
 const mockEngine: { props: Record<string, any> | null; init: any; refuse: boolean; calls: unknown[][] } = { props: null, init: null, refuse: false, calls: [] };
 jest.mock("@apollohg/react-native-rich-text-editor", () => {
@@ -208,9 +208,10 @@ describe("our toolbar (owner, 2026-11-13: full editing from a bar on the keyboar
     expect(mockEngine.calls).toContainEqual(["undo"]);
   });
 
-  it("Aa opens the Format panel; a colour from it is the web's colour string", async () => {
+  it("A (dimmed until the caret is in the body) opens the Format panel; a colour from it is the web's colour string", async () => {
     open();
     await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    act(() => mockEngine.props!.onFocus());
     fireEvent.press(screen.getByTestId("tb-format"));
     expect(screen.getByTestId("tb-align:center")).toBeTruthy();
     fireEvent.press(screen.getByTestId("tb-textColor"));
@@ -247,6 +248,7 @@ describe("code blocks are edited on the phone (owner, 2026-11-13)", () => {
     await waitFor(() => expect(mockEngine.props).not.toBeNull());
     act(() => {
       mockEngine.props!.onSelectionChange({ type: "text", anchor: 3, head: 3 }); // in "hello"
+      mockEngine.props!.onFocus();
     });
     fireEvent.press(screen.getByTestId("tb-format"));
     fireEvent.press(screen.getByTestId("tb-block:codeBlock"));
@@ -302,5 +304,91 @@ describe("code blocks are edited on the phone (owner, 2026-11-13)", () => {
     act(() => mockEngine.props!.onActiveStateChange({ marks: {}, markAttrs: {}, nodes: { codeBlock: true }, commands: {}, allowedMarks: [], insertableNodes: [] }));
     expect(mockEngine.props!.autoCorrect).toBe(false);
     expect(mockEngine.props!.autoCapitalize).toBe("none");
+  });
+});
+
+describe("the note screen in Keep's style (owner, 2026-11-13)", () => {
+  const mockRouter = (jest.requireMock("expo-router") as { router: Record<string, jest.Mock> }).router;
+  // The page colour in whichever theme the test renders in.
+  const fills = (key: string) => {
+    const { noteColor } = jest.requireActual("@/screens/notes/editor/noteColors");
+    return [noteColor(key, "dark").fill, noteColor(key, "light").fill];
+  };
+  const pageColor = () => (screen.getByTestId("note-edit-page").props.style as { backgroundColor: string }).backgroundColor;
+  beforeEach(() => {
+    mockRouter.back.mockClear();
+    mockRouter.replace.mockClear();
+  });
+
+  it("the page takes the note's colour, and the title is large and light", async () => {
+    server = note({ color: "orange" });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(fills("orange")).toContain(pageColor());
+    expect(screen.getByTestId("note-edit-title")).toHaveStyle({ fontSize: 28, fontWeight: "400" });
+  });
+
+  it("the pin in the header pins the note on the server", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply((cfg) => {
+      server = { ...server, ...JSON.parse(cfg.data) };
+      return [200, { note: server }];
+    });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    fireEvent.press(screen.getByTestId("note-edit-pin"));
+    await waitFor(() => expect(mock.history.put.some((r) => JSON.parse(r.data).pinned === true)).toBe(true));
+    await waitFor(() => expect(screen.getByTestId("note-edit-pin").props.accessibilityState).toMatchObject({ selected: true }));
+  });
+
+  it("the palette colours the note on the server and the page follows", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply((cfg) => {
+      server = { ...server, ...JSON.parse(cfg.data) };
+      return [200, { note: server }];
+    });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    fireEvent.press(screen.getByTestId("tb-noteColor"));
+    fireEvent.press(screen.getByTestId("note-color-teal"));
+    await waitFor(() => expect(mock.history.put.some((r) => JSON.parse(r.data).color === "teal")).toBe(true));
+    await waitFor(() => expect(fills("teal")).toContain(pageColor()));
+  });
+
+  it("⋮ opens a sheet that says when the note was edited", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    fireEvent.press(screen.getByTestId("tb-more"));
+    expect(screen.getByTestId("note-more-edited")).toHaveTextContent(/^Edited /);
+  });
+
+  it("⋮ Delete moves the note to the trash after a confirm, and leaves the note", async () => {
+    mock.onDelete("/api/v1/note_app/notes/7").reply(200, {});
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    fireEvent.press(screen.getByTestId("tb-more"));
+    fireEvent.press(screen.getByTestId("note-more-delete"));
+    fireEvent.press(screen.getByTestId("note-more-delete-confirm"));
+    await waitFor(() => expect(mock.history.delete).toHaveLength(1));
+    await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+  });
+
+  it("⋮ Make a copy asks the server for its copy and opens it", async () => {
+    mock.onPost("/api/v1/note_app/notes/7/duplicate").reply(201, { note: note({ id: 70, title: "Plan (copy)" }) });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    fireEvent.press(screen.getByTestId("tb-more"));
+    fireEvent.press(screen.getByTestId("note-more-copy"));
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith({ pathname: "/notes/edit", params: { id: "70" } }));
+  });
+
+  it("⋮ Send shares the note as plain text (title, then the body's lines)", async () => {
+    const share = jest.spyOn(Share, "share").mockResolvedValue({ action: "sharedAction" } as never);
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    fireEvent.press(screen.getByTestId("tb-more"));
+    fireEvent.press(screen.getByTestId("note-more-send"));
+    await waitFor(() => expect(share).toHaveBeenCalled());
+    const message = (share.mock.calls[0][0] as { message: string }).message;
+    expect(message.startsWith("Plan\n\nhello")).toBe(true);
+    expect(message).not.toMatch(/</);
   });
 });

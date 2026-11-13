@@ -4,9 +4,9 @@
  */
 import type { EditorColors } from "./types";
 
-export function engineTheme(colors: EditorColors) {
+export function engineTheme(colors: EditorColors, page: string = colors.ground) {
   return {
-    content: { backgroundColor: colors.ground },
+    content: { backgroundColor: page },
     text: { color: colors.ink, fontSize: 16 },
     paragraph: { lineHeight: 24 },
     h1: { fontSize: 26, lineHeight: 32, fontWeight: "700" as const },

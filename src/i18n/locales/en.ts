@@ -1006,6 +1006,12 @@ export const en = {
       checked: "Done",
       unchecked: "Not done",
     },
+    more: {
+      edited: "Edited {{when}}",
+      delete: "Delete",
+      copy: "Make a copy",
+      send: "Send",
+    },
     grid: {
       search: "Search your notes",
       layoutGrid: "Show as a grid",

@@ -135,6 +135,12 @@ export const notesApi = {
     return parseNote(obj(res.data, "note").note);
   },
 
+  /** Make a copy (the web's duplicate: the caller's own copy, "(copy)" title, colour kept, no shares or tags). */
+  duplicate: async (noteId: number): Promise<Note> => {
+    const res = await http.post(`/api/v1/note_app/notes/${noteId}/duplicate`);
+    return parseNote(obj(res.data, "note").note);
+  },
+
   /** To the trash: the server's destroy sets status trashed (restore and delete forever exist). */
   trash: async (noteId: number): Promise<void> => {
     await http.delete(`/api/v1/note_app/notes/${noteId}`);

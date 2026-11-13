@@ -26,16 +26,14 @@ const base: ToolbarInput = {
 const ids = (input: Partial<ToolbarInput>) => buildToolbar({ ...base, ...input }).keys.map((k) => k.id);
 const key = (input: Partial<ToolbarInput>, id: string) => buildToolbar({ ...base, ...input }).keys.find((k) => k.id === id)!;
 
-describe("the main row (caret, no selection)", () => {
-  it("starts with undo, redo, insert and format, and ends with hide-keyboard (SPEC §C3)", () => {
-    const row = ids({});
-    expect(row.slice(0, 5)).toEqual(["undo", "redo", "insert", "format", "blockType"]);
-    expect(row.at(-1)).toBe("hideKeyboard");
+describe("the Keep bar (owner, 2026-11-13: one bar, on the keyboard when it is up)", () => {
+  it("is + · palette · A, then undo · redo in the middle, then ⋮", () => {
+    expect(ids({ focused: true })).toEqual(["insert", "noteColor", "format", "spacer", "undo", "redo", "spacer", "more"]);
   });
 
-  it("puts the checklist, bullets and indent keys in the first screenful (8 × 44 dp at 360 dp)", () => {
-    const row = ids({});
-    for (const id of ["taskList", "bulletList", "indent"]) expect(row.indexOf(id)).toBeLessThan(8);
+  it("A (format) is dimmed until the caret is in the body", () => {
+    expect(key({ focused: false }, "format").disabled).toBe(true);
+    expect(key({ focused: true }, "format").disabled).toBe(false);
   });
 
   it("undo and redo follow the editor's history", () => {
@@ -44,10 +42,19 @@ describe("the main row (caret, no selection)", () => {
     expect(key({ canRedo: true }, "redo").disabled).toBe(false);
   });
 
-  it("shows the block type the caret is in", () => {
-    expect(key({ nodes: { heading: true }, headingLevel: 2 }, "blockType").value).toBe("h2");
-    expect(key({ nodes: { codeBlock: true } }, "blockType").value).toBe("codeBlock");
-    expect(key({ nodes: { bulletList: true, listItem: true, paragraph: true } }, "bulletList").active).toBe(true);
+  it("palette and ⋮ open the screen's sheets", () => {
+    expect(key({}, "noteColor").command).toEqual({ kind: "sheet", sheet: "noteColor" });
+    expect(key({}, "more").command).toEqual({ kind: "sheet", sheet: "more" });
+  });
+
+  it("the Format panel starts with a key that closes it (back to the bar)", () => {
+    const first = buildToolbar({ ...base, focused: true, panel: "format" }).keys[0];
+    expect(first).toMatchObject({ id: "closePanel", command: { kind: "panel", panel: null } });
+  });
+
+  it("shows the block type the caret is in, in the Format panel", () => {
+    expect(key({ panel: "format", nodes: { heading: true }, headingLevel: 2 }, "block:h2").active).toBe(true);
+    expect(key({ panel: "format", nodes: { bulletList: true, listItem: true, paragraph: true } }, "bulletList").active).toBe(true);
   });
 });
 
@@ -102,6 +109,7 @@ describe("the panels", () => {
       ["insert", ["horizontalRule", "image", "table"]],
     ]);
     expect(ids({ panel: "insert" })).toEqual([
+      "closePanel",
       "block:paragraph", "block:h1", "block:h2", "block:h3",
       "bulletList", "orderedList", "taskList", "block:blockquote", "block:codeBlock",
       "insert:horizontalRule", "insert:image", "insert:table",
@@ -114,20 +122,18 @@ describe("the panels", () => {
     expect(TEXT_COLORS[0]).toEqual({ key: "default", value: null });
     expect(TEXT_COLORS[6]).toEqual({ key: "blue", value: "hsl(202, 64%, 52%)" });
     expect(HIGHLIGHT_COLORS[9]).toEqual({ key: "red", value: "hsl(1, 69%, 60%)" });
-    expect(ids({ panel: "textColor" })).toEqual(TEXT_COLORS.map((c) => `textColor:${c.key}`));
+    expect(ids({ panel: "textColor" })).toEqual(["closePanel", ...TEXT_COLORS.map((c) => `textColor:${c.key}`)]);
   });
 
   it("every key carries the command it runs", () => {
     expect(key({ panel: "format" }, "align:center").command).toEqual({ kind: "align", value: "center" });
     expect(key({ panel: "insert" }, "insert:table").command).toEqual({ kind: "insert", value: "table" });
     expect(key({ panel: "textColor" }, "textColor:blue").command).toEqual({ kind: "color", which: "text", value: "hsl(202, 64%, 52%)" });
-    expect(key({}, "insert").command).toEqual({ kind: "panel", panel: "insert" });
+    expect(key({ focused: true }, "insert").command).toEqual({ kind: "panel", panel: "insert" });
   });
 
-  it("the key of the open panel shows active, and pressing it again closes the panel", () => {
-    const k = key({ panel: "format" }, "format");
-    expect(k.active).toBe(true);
-    expect(k.command).toEqual({ kind: "panel", panel: null });
+  it("the insert panel also starts with its close key", () => {
+    expect(buildToolbar({ ...base, panel: "insert" }).keys[0].id).toBe("closePanel");
   });
 });
 
@@ -154,8 +160,8 @@ describe("inside a code block (EDIT_EVERYTHING.md §1)", () => {
     expect(ids({})).not.toContain("codeLanguage");
   });
 
-  it("indent stays available in code (it inserts an indent), lists are not", () => {
-    expect(key(inCode, "indent").disabled).toBe(false);
-    expect(key(inCode, "bulletList").disabled).toBe(true);
+  it("in the Format panel, indent stays available in code (it inserts an indent), lists are not", () => {
+    expect(key({ ...inCode, panel: "format" }, "indent").disabled).toBe(false);
+    expect(key({ ...inCode, panel: "format" }, "bulletList").disabled).toBe(true);
   });
 });

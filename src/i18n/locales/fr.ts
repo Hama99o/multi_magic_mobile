@@ -713,6 +713,10 @@ export const fr: Translations = {
   },
 
   contacts: {
+    split: {
+      emptyTitle: "Sélectionnez un contact",
+      emptyBody: "Sa fiche s’ouvre ici, à côté de la liste.",
+    },
     title: "Contacts",
     loadFailed: "Impossible de charger vos contacts.",
     newContact: "Nouveau contact",

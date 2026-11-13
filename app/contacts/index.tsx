@@ -11,7 +11,7 @@
  * exports a few as one .vcf; the More menu imports, exports all, and opens
  * the trash, the duplicates and the WhatsApp country.
  */
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AccessibilityInfo, ActivityIndicator, Pressable, RefreshControl, ScrollView, SectionList, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -40,6 +40,8 @@ import { COUNTRIES, countryByCode } from "@/screens/contacts/phone";
 import { useContactsUndo } from "@/stores/contactsUndo.store";
 import { useContactsCountry } from "@/stores/contactsCountry.store";
 import { localMatch } from "@/screens/contacts/search";
+import { ContactCard } from "@/screens/contacts/ContactCard";
+import { useSplit } from "@/screens/contacts/split";
 
 const ROW = 64;
 const HEADER = 32;
@@ -66,7 +68,14 @@ function layoutOf(sections: Section[]) {
 }
 
 
-export default function Contacts() {
+/**
+ * The list. On a phone it is the whole screen; in the tablet split
+ * (`ContactsScreen`, SPEC §C.11) it is the left pane: `onOpen` shows a
+ * contact on the right instead of pushing its route, and `openId` is
+ * highlighted.
+ */
+function ContactsList({ pane = false, openId = null, onOpen }: { pane?: boolean; openId?: number | null; onOpen?: (id: number) => void }) {
+  const open = (id: number) => (onOpen ? onOpen(id) : router.push({ pathname: "/contacts/contact", params: { id: String(id) } }));
   const colors = useColors();
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
@@ -250,7 +259,7 @@ export default function Contacts() {
   const soon = !searching && !selecting ? (birthdays.data ?? []).slice(0, 10) : [];
 
   return (
-    <Screen measure>
+    <ListFrame pane={pane}>
       {/* Header: back · title · select · more · assistant. In select mode the
           title says how many and the left button leaves the mode. */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
@@ -369,7 +378,7 @@ export default function Contacts() {
                       <Pressable
                         key={b.contact.id}
                         testID={`contacts-birthday-${b.contact.id}`}
-                        onPress={() => router.push({ pathname: "/contacts/contact", params: { id: String(b.contact.id) } })}
+                        onPress={() => open(b.contact.id)}
                         accessibilityRole="button"
                         accessibilityLabel={`${displayName(b.contact)}, ${b.inDays === 0 ? t("contacts.birthdays.today") : t("contacts.birthdays.inDays", { count: b.inDays })}${b.turning ? `, ${t("contacts.birthdays.turning", { age: b.turning })}` : ""}`}
                         style={{ width: 92, alignItems: "center", gap: 4, padding: metrics.space.sm, borderRadius: metrics.radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
@@ -412,16 +421,26 @@ export default function Contacts() {
               return (
                 <Pressable
                   testID={`contacts-row-${item.id}`}
-                  onPress={() => (selecting ? toggle(item.id) : router.push({ pathname: "/contacts/contact", params: { id: String(item.id) } }))}
+                  onPress={() => (selecting ? toggle(item.id) : open(item.id))}
                   onLongPress={() => (selecting ? undefined : setPressed(item))}
                   delayLongPress={350}
                   accessibilityRole={selecting ? "checkbox" : "button"}
-                  accessibilityState={selecting ? { checked: isOn } : undefined}
+                  accessibilityState={selecting ? { checked: isOn } : pane ? { selected: item.id === openId } : undefined}
                   accessibilityLabel={[name, item.favorite ? t("contacts.list.favourite") : null, subtitleOf(item) || null].filter(Boolean).join(", ")}
                   accessibilityHint={selecting ? undefined : t("contacts.list.rowHint")}
                   accessibilityActions={selecting ? undefined : [{ name: "longpress", label: t("contacts.list.moreActions") }]}
                   onAccessibilityAction={(e) => e.nativeEvent.actionName === "longpress" && setPressed(item)}
-                  style={{ height: ROW, flexDirection: "row", alignItems: "center", gap: metrics.space.md }}
+                  style={{
+                    height: ROW,
+                    flexDirection: "row",
+                    alignItems: "center",
+                    gap: metrics.space.md,
+                    // The open contact, in the split: the surface tone and an
+                    // accent edge (Meetup, Quo), so it reads at a glance.
+                    ...(pane && item.id === openId
+                      ? { backgroundColor: colors.surface, borderLeftWidth: 3, borderLeftColor: colors.accent, marginHorizontal: -metrics.space.sm, paddingHorizontal: metrics.space.sm - 3, borderRadius: metrics.radius.sm }
+                      : null),
+                  }}
                 >
                   <ContactAvatar contact={item} size={44} />
                   <View style={{ flex: 1, minWidth: 0 }}>
@@ -508,6 +527,50 @@ export default function Contacts() {
           {actions.error}
         </Text>
       ) : null}
+    </ListFrame>
+  );
+}
+
+/** The phone's full screen, or the split's left pane. */
+function ListFrame({ pane, children }: { pane: boolean; children: ReactNode }) {
+  return pane ? <View style={{ flex: 1 }}>{children}</View> : <Screen measure>{children}</Screen>;
+}
+
+/**
+ * Contacts: the list on a phone; at 800 dp and wider the list on the left and
+ * the card on the right (SPEC §C.11). The open contact lives HERE, above both
+ * layouts, so a rotation (which can cross the breakpoint) keeps it.
+ */
+export default function ContactsScreen() {
+  const colors = useColors();
+  const metrics = useMetrics();
+  const { t } = useTranslation();
+  const { split, paneWidth } = useSplit();
+  const [openId, setOpenId] = useState<number | null>(null);
+
+  if (!split) return <ContactsList />;
+  return (
+    <Screen measure={false}>
+      <View style={{ flex: 1, flexDirection: "row" }}>
+        <View style={{ width: paneWidth, paddingRight: metrics.space.lg, borderRightWidth: 1, borderRightColor: colors.border }}>
+          <ContactsList pane openId={openId} onOpen={setOpenId} />
+        </View>
+        <View testID="contacts-split-pane" style={{ flex: 1, paddingLeft: metrics.space.lg }}>
+          {openId == null ? (
+            <View testID="contacts-split-empty" style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: metrics.space.sm }}>
+              <BookUser size={40} color={colors.inkMuted} />
+              <Text variant="label">{t("contacts.split.emptyTitle")}</Text>
+              <Text tone="muted" style={{ textAlign: "center" }}>
+                {t("contacts.split.emptyBody")}
+              </Text>
+            </View>
+          ) : (
+            <View style={{ flex: 1, width: "100%", maxWidth: metrics.maxMeasure, alignSelf: "center" }}>
+              <ContactCard key={openId} contactId={openId} embedded onGone={() => setOpenId(null)} />
+            </View>
+          )}
+        </View>
+      </View>
     </Screen>
   );
 }

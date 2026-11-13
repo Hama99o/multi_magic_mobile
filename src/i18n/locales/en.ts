@@ -697,6 +697,10 @@ export const en = {
   },
 
   contacts: {
+    split: {
+      emptyTitle: "Select a contact",
+      emptyBody: "Their card opens here, beside the list.",
+    },
     title: "Contacts",
     loadFailed: "Could not load your contacts.",
     newContact: "New contact",

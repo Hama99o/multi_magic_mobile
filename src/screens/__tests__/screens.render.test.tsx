@@ -14,6 +14,13 @@
  * handles exist at 360, 411 and 800. The day somebody writes
  * `width > 600 ? <Sidebar/> : null`, this table is what says so.
  *
+ * **One deliberate exception since 2026-11-13: Contacts.** At 800 dp and up
+ * it splits into the list and the card side by side, at the owner's request
+ * (`docs/MISSING_FEATURES.md` row 3, `contacts/SPEC.md` §C.11). It ADDS a
+ * pane; every list handle stays at every width. That branch is tested in
+ * `src/screens/contacts/__tests__/contactsSplit.test.tsx` at 360, 411, 800
+ * and 1280, not here (Contacts is not in this table, see below).
+ *
  * Dark mode is here for the same reason in the other direction: every colour
  * resolves through `useColors()`, so a screen that renders in one mode renders
  * in both — unless somebody hardcodes a hex, at which point the render itself

@@ -140,6 +140,45 @@ master: a master push deploys production):**
     moment is worse than a clear "not saved"). The banner says so on contact
     screens.
 
+11. **Tablet split (2026-11-13, `docs/MISSING_FEATURES.md` row 3).** At
+    **800 dp and wider** (`SPLIT_AT`, `src/screens/contacts/split.ts`) the
+    list is the left pane and the card the right, master-detail. The owner
+    saw one phone-width column on an 800 dp tablet, small and lost in the
+    middle.
+    - **Sources** (Rule Zero, Mobbin 2026-11-13, images in `references/`
+      `split-*.jpg`): [Meetup messages](https://mobbin.com/screens/22e2b656-c848-4446-af19-8b578d0394d6)
+      and [Quo](https://mobbin.com/screens/ceac50d8-3d61-4420-8a0a-5b7a0b88d88d)
+      (a phone-width list on the left, the selected row on a tinted
+      surface, the record on the right);
+      [Base44](https://mobbin.com/screens/4b82e9b8-2f62-4b9f-a873-495745fef526)
+      and [Givingli](https://mobbin.com/screens/85a98c32-aef7-4c8a-926c-37afb2349ac3)
+      (an empty right pane with an icon, a title and one line saying what
+      to pick). **iPad Contacts, Gmail and Outlook tablet layouts are not on
+      Mobbin** (searched: it has iPhone and web screens only); said here so
+      nobody thinks they were skipped.
+    - **The list pane keeps a phone's width**: 38 % of the screen, clamped
+      to 360–420 dp (`listPaneWidth`). The rows, the 44 dp avatars, the A–Z
+      index and the type size are exactly the phone's; nothing is scaled.
+      The card takes the rest, capped at `maxMeasure` (640) and centred.
+    - **The open contact** is tinted (`surface`) with a 3 dp accent edge,
+      and `accessibilityState.selected` for a screen reader.
+    - **The card in the pane has no back button**, and deleting it empties
+      the pane (the list shows Undo, as on a phone) instead of going back.
+    - **Nothing open yet**: "Select a contact. Their card opens here, beside
+      the list." (`contacts.split.*`).
+    - **Rotation keeps the open contact**: it lives in `ContactsScreen`,
+      above both layouts. Crossing under 800 dp shows the list alone, and
+      coming back shows the same card.
+    - **Not changed**: + New contact, Edit, Import and Trash still open
+      their own screens on top; a new contact therefore opens full screen
+      after Save. That's acceptable for now, and noted for the device pass.
+    - Code: `app/contacts/index.tsx` (`ContactsScreen` → `ContactsList`
+      `pane`/`openId`/`onOpen`), `src/screens/contacts/ContactCard.tsx`
+      (the card, `embedded`/`onGone`; `app/contacts/contact.tsx` is its
+      phone route), `split.ts`. Tests: `contactsSplit.test.tsx` at 360, 411,
+      800, 1280. Device check: with the SafeZone device pass (an 800 dp
+      shot and a 1280 dp landscape shot into `ours/`).
+
 ## D · Not taken (and why)
 
 - The web's **family tree drawing** (`FamilyTreeView`, 783 lines): a phone
@@ -160,7 +199,8 @@ master: a master push deploys production):**
   openWhatsApp), `vcard.ts` (phone contact → vCard text), `draft.ts`,
   `ContactForm.tsx`, `Avatar.tsx`, `AzIndex.tsx`, `QuickActions.tsx`,
   `NumberChooser.tsx`.
-- `app/contacts/{index,[id],edit,trash,import,duplicates}.tsx`; a Home tile.
+- `app/contacts/{index,contact,edit,trash,import,duplicates}.tsx`; a Home tile.
+  The card is `src/screens/contacts/ContactCard.tsx` (route + split pane).
 - Stores: `contactsCountry.store.ts` (default country), the Calendar's undo
   pattern.
 - Native: `expo-contacts` (READ/WRITE_CONTACTS; `NSContactsUsageDescription`

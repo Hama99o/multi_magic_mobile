@@ -13,14 +13,14 @@ import { useMemo } from "react";
 import { ActivityIndicator, Linking, Pressable, ScrollView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
 
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { ChevronLeft, Pencil } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { canEdit, notesApi } from "@/api/notes";
+import { canEdit } from "@/api/notes";
+import { useNote } from "@/screens/notes/api/queries";
 import { NOTES_EDITOR_ENABLED } from "@/config/features";
 import { failureMessage } from "@/api/failure";
 import { NoteDocument } from "@/screens/notes/editor/NoteDocument";
@@ -34,11 +34,7 @@ export default function NoteScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
   const noteId = Number(params.id) || 0;
 
-  const { data: note, error, refetch, isPending } = useQuery({
-    queryKey: ["notes", "note", noteId],
-    queryFn: () => notesApi.get(noteId),
-    enabled: noteId > 0,
-  });
+  const { data: note, error, refetch, isPending } = useNote(noteId);
 
   const parsed = useMemo(() => (note ? parseNoteHtml(note.html) : null), [note]);
 

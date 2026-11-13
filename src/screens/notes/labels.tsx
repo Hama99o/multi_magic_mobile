@@ -6,20 +6,18 @@
 import { useState } from "react";
 import { Modal, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Text } from "@/components/reusables/text";
 import { Check, NotebookPen, Pencil, Plus, Square, Trash2, X } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { noteTagsApi } from "@/api/noteTags";
+import { useCreateTag, useCreateTagOnNote, useNoteTags, useRemoveTag, useRenameTag, useToggleNoteTag } from "./api/queries";
 import type { Note, NoteTag } from "@/api/notes";
 import TagIcon from "lucide-react-native/dist/esm/icons/tag";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import ArchiveIcon from "lucide-react-native/dist/esm/icons/archive";
 import BellIcon from "lucide-react-native/dist/esm/icons/bell";
 
-export const TAGS_KEY = ["notes", "tags"] as const;
-export const useNoteTags = (enabled = true) => useQuery({ queryKey: TAGS_KEY, queryFn: () => noteTagsApi.list(), enabled });
+export { useNoteTags };
 
 /** Keep's drawer: Notes (current when no label), then every label; Edit labels. */
 export type NotesView = "notes" | "reminders" | "archive" | "trash";
@@ -89,8 +87,10 @@ export function EditLabelsSheet({ visible, onClose }: { visible: boolean; onClos
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const { data: tags = [] } = useNoteTags(visible);
+  const createTag = useCreateTag();
+  const renameTag = useRenameTag();
+  const removeTag = useRemoveTag();
   const [draft, setDraft] = useState("");
   const [names, setNames] = useState<Record<number, string>>({});
   const [toDelete, setToDelete] = useState<NoteTag | null>(null);
@@ -101,15 +101,13 @@ export function EditLabelsSheet({ visible, onClose }: { visible: boolean; onClos
       await fn();
     } catch {
       setFailed(true);
-    } finally {
-      void queryClient.invalidateQueries({ queryKey: ["notes"] });
     }
   };
   const create = () => {
     const name = draft.trim();
     if (!name) return;
     setDraft("");
-    void run(() => noteTagsApi.create(name));
+    void run(() => createTag.mutateAsync({ name }));
   };
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
@@ -146,7 +144,7 @@ export function EditLabelsSheet({ visible, onClose }: { visible: boolean; onClos
                   onChangeText={(v) => setNames((n) => ({ ...n, [tag.id]: v }))}
                   onSubmitEditing={() => {
                     const name = (names[tag.id] ?? tag.name).trim();
-                    if (name && name !== tag.name) void run(() => noteTagsApi.rename(tag.id, name));
+                    if (name && name !== tag.name) void run(() => renameTag.mutateAsync({ id: tag.id, name }));
                   }}
                   accessibilityLabel={tag.name}
                   style={{ flex: 1, color: colors.ink, fontSize: 16, paddingVertical: 8 }}
@@ -173,7 +171,7 @@ export function EditLabelsSheet({ visible, onClose }: { visible: boolean; onClos
                 onPress={() => {
                   const tag = toDelete;
                   setToDelete(null);
-                  if (tag) void run(() => noteTagsApi.remove(tag.id));
+                  if (tag) void run(() => removeTag.mutateAsync({ id: tag.id }));
                 }}
                 style={{ padding: 10 }}
               >
@@ -189,32 +187,31 @@ export function EditLabelsSheet({ visible, onClose }: { visible: boolean; onClos
 
 /** A note's labels (⋮ Labels): tick to put on or take off; type to find or create. */
 export function NoteLabelsSheet({
-  visible, note, onClose, onChanged,
+  visible, note, onClose,
 }: {
   visible: boolean;
   note: Pick<Note, "id" | "tags">;
   onClose(): void;
-  onChanged(note: Note): void;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const { data: tags = [] } = useNoteTags(visible);
+  const toggleTag = useToggleNoteTag();
+  const createOnNote = useCreateTagOnNote();
   const [query, setQuery] = useState("");
   const [failed, setFailed] = useState(false);
   const on = new Set(note.tags.map((tag) => tag.id));
   const q = query.trim().toLowerCase();
   const shown = tags.filter((tag) => tag.name.toLowerCase().includes(q));
   const exact = tags.some((tag) => tag.name.toLowerCase() === q);
+  // The note's labels come from its cache entry; a toggle shows at once.
   const run = async (fn: () => Promise<Note>) => {
     setFailed(false);
     try {
-      onChanged(await fn());
+      await fn();
     } catch {
       setFailed(true);
-    } finally {
-      void queryClient.invalidateQueries({ queryKey: ["notes"] });
     }
   };
   return (
@@ -243,7 +240,7 @@ export function NoteLabelsSheet({
                 onPress={() => {
                   const name = query.trim();
                   setQuery("");
-                  void run(() => noteTagsApi.createOnNote(note.id, name));
+                  void run(() => createOnNote.mutateAsync({ id: note.id, name }));
                 }}
                 accessibilityRole="button"
                 style={{ minHeight: 52, flexDirection: "row", alignItems: "center", gap: 16 }}
@@ -258,7 +255,7 @@ export function NoteLabelsSheet({
                 <Pressable
                   key={tag.id}
                   testID={`note-label-${tag.id}`}
-                  onPress={() => void run(() => noteTagsApi.toggleOnNote(note.id, tag.id))}
+                  onPress={() => void run(() => toggleTag.mutateAsync({ id: note.id, tag }))}
                   accessibilityRole="checkbox"
                   accessibilityState={{ checked }}
                   accessibilityLabel={tag.name}

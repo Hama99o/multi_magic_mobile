@@ -461,3 +461,36 @@ screen wires those together.
 - **Known limitation: hardware keyboard.** With key events (a hardware keyboard, or `adb input`), Return in a list item desyncs the caret: the next characters land in another block, and one is lost. The on-screen keyboard (Gboard) is correct. A tablet with a keyboard must be checked before release. The upstream issue is ready and waits for the owner's "oui".
 - **Drawn while editing since 2026-11-13:** text colour, highlight, sub and sup, through a patch-package patch of B 2.2.3 (Android `RenderBridgeInlineAndAtoms.kt`, iOS `RenderBridge+Atoms.swift`). Colours come from the glue's `display` (#rrggbb). Guarded by `enginePatch.test.ts`. iOS is **NOT MEASURED** on a device.
 - **Long notes:** the 914 KB dev note types about 3× slower than a small one on the emulator. Measure on a real phone before choosing a size limit for read-only.
+
+## I · Data layer (React Query, 2026-11-13)
+
+Owner, 2026-11-13: "use the query style well so it doesn't get hard". Every read and write of a note or a label goes through `src/screens/notes/api/queries.ts`. `src/screens/notes/__tests__/dataLayerGuard.test.ts` fails if a screen calls `notesApi`/`noteTagsApi`, writes a key by hand or opens its own `useQuery`.
+
+**Keys** (`notesKeys`; `src/__tests__/queryKeys.test.ts` reads their tuple types, so the one-key-one-shape guard still covers them):
+
+| Key | Holds | Read by |
+|---|---|---|
+| `all` = `["notes"]` | prefix of everything below | (never read) |
+| `lists()` = `["notes","list"]` | prefix of every list | (invalidation only) |
+| `list({view,search,tagId})` | infinite pages of `NoteList` | `useNotesList`: grid, search, label filter, reminders, archive, trash |
+| `details()` = `["notes","note"]` | prefix of every open note | (invalidation only) |
+| `detail(id)` | one `Note` | `useNote`: editor, read view; the saver's conflict check (`fetchFreshNote`) |
+| `tags()` | `NoteTag[]` | `useNoteTags`: drawer, Edit labels, the note's Labels sheet |
+
+**Mutations.** Optimistic = onMutate snapshot and patch, onError rollback, onSuccess writes the server's note, onSettled invalidates.
+
+| Mutation | Optimistic change | Invalidates |
+|---|---|---|
+| `usePinNote`, `useSetNoteColor`, `useLockNote`, `useSetNoteReminder` | patches the note in every list and in `detail(id)` | `lists()`, `detail(id)` |
+| `useArchiveNote`, `useUnarchiveNote`, `useTrashNote`, `useRestoreNote` | removes the card from the loaded lists; sets `detail(id).status` | `lists()`, `detail(id)` |
+| `useDestroyNoteForever` | removes the card; drops `detail(id)` on success | `lists()` |
+| `useDuplicateNote`, `useCreateNote` | none (the id comes from the server); seeds `detail(newId)` | `lists()` |
+| `useSaveNote` (editor) | none: drafts + debounce + 409 stay in `noteSaver.ts`; the answer is written into `detail(id)` and every card, so going back shows no stale card | nothing (written, not refetched) |
+| `useToggleNoteTag` | adds or removes the label on the note everywhere | `lists()`, `detail(id)` |
+| `useCreateTagOnNote` | none (new label id); writes the returned note | `tags()`, `lists()`, `detail(id)` |
+| `useCreateTag` | none | `tags()` |
+| `useRenameTag`, `useRemoveTag` | patches `tags()` and every note carrying the label | `tags()`, `lists()`, `details()` |
+
+Each optimistic mutation has a refused-by-the-server test (`src/screens/notes/__tests__/queries.test.tsx`) that checks the list and the open note change at once and come back exactly as they were.
+
+**One exception.** `reminderNotifications.ts` runs outside React (on sign-in, after a change, on a notification tap). It reads the reminders list with `notesApi.list` itself to schedule local notifications. Nothing it reads is shown on screen.

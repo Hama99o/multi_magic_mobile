@@ -285,6 +285,8 @@ describe("code blocks are edited on the phone (owner, 2026-11-13)", () => {
     });
     expect(screen.getByTestId("tb-codeLanguage")).toHaveTextContent("Ruby");
     fireEvent.press(screen.getByTestId("tb-codeLanguage"));
+    // Typing goes to the search at once, never into the note (device, flow 27b).
+    expect(screen.getByTestId("note-code-language-search").props.autoFocus).toBe(true);
     fireEvent.changeText(screen.getByTestId("note-code-language-search"), "pyth");
     fireEvent.press(screen.getByTestId("note-code-language-python"));
     const block = lastSetJson()!.content!.find((n) => n.type === "codeBlock")!;
@@ -410,7 +412,8 @@ describe("⋮ Labels (the web's note tags)", () => {
 
   it("lists the labels with the note's ones checked, and toggles one on the server", async () => {
     server = note({ tags: [tag(4, "home")] });
-    mock.onPut("/api/v1/note_app/notes/7/toggle_tag").reply(200, { note: note({ tags: [tag(4, "home"), tag(3, "dev-stuff")] }) });
+    // Stateful, like the server: the refetch after the toggle sees it.
+    mock.onPut("/api/v1/note_app/notes/7/toggle_tag").reply(() => [200, { note: (server = note({ tags: [tag(4, "home"), tag(3, "dev-stuff")] })) }]);
     open();
     await waitFor(() => expect(mockEngine.props).not.toBeNull());
     fireEvent.press(screen.getByTestId("tb-more"));
@@ -548,7 +551,7 @@ describe("lock (owner, 2026-11-13: stops editing for that note)", () => {
 
   it("a locked note opens read-only and unlocks with the same key", async () => {
     server = note({ is_locked: true });
-    mock.onPut("/api/v1/note_app/notes/7").reply((cfg) => [200, { note: { ...server, is_locked: JSON.parse(cfg.data).locked } }]);
+    mock.onPut("/api/v1/note_app/notes/7").reply((cfg) => [200, { note: (server = { ...server, is_locked: JSON.parse(cfg.data).locked }) }]);
     open();
     await waitFor(() => expect(mockEngine.props).not.toBeNull());
     expect(mockEngine.props!.editable).toBe(false);

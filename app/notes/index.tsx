@@ -21,7 +21,6 @@ import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -29,7 +28,11 @@ import { LoadFailure } from "@/components/LoadFailure";
 import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { LayoutGrid, List, ListChecks, Menu, Palette, Pin, PinOff, Plus, Trash2, Users, X } from "@/components/icons";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
-import { canEdit, notesApi, type Note, type NoteTag } from "@/api/notes";
+import { canEdit, type Note, type NoteTag } from "@/api/notes";
+import {
+  useArchiveNote, useCreateNote, useDestroyNoteForever, useNotesList, usePinNote, useRestoreNote, useSetNoteColor,
+  useTrashNote, useUnarchiveNote,
+} from "@/screens/notes/api/queries";
 import { NOTES_EDITOR_ENABLED } from "@/config/features";
 import { useAuthStore } from "@/stores/auth.store";
 import { useNotesView } from "@/stores/notesView.store";
@@ -56,7 +59,6 @@ export default function NotesScreen() {
   const scheme = useScheme();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   // The screen is a centred column on a tablet; the bottom bar spans the
   // whole width, as on a phone (seen at 800 dp: it was an inset box).
   const { width } = useWindowDimensions();
@@ -83,12 +85,17 @@ export default function NotesScreen() {
   const [view, setView] = useState<NotesView>("notes");
   const [confirmForever, setConfirmForever] = useState(false);
 
-  const { data, error, refetch, isRefetching, isLoading, dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
-    queryKey: ["notes", "list", view, search, label?.id ?? null],
-    queryFn: ({ pageParam }) => notesApi.list(pageParam, search || undefined, view === "notes" ? label?.id : undefined, view),
-    initialPageParam: 1,
-    getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
+  const { data, error, refetch, isRefetching, isLoading, dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage } = useNotesList({
+    view, search, tagId: label?.id ?? null,
   });
+  const pin = usePinNote();
+  const setNoteColor = useSetNoteColor();
+  const archive = useArchiveNote();
+  const unarchive = useUnarchiveNote();
+  const restore = useRestoreNote();
+  const trash = useTrashNote();
+  const destroyForever = useDestroyNoteForever();
+  const createNote = useCreateNote();
   const notes = useMemo(() => data?.pages.flatMap((p) => p.notes) ?? [], [data]);
   const unreadable = data?.pages.reduce((n, p) => n + p.unreadable, 0) ?? 0;
   const pinned = notes.filter((n) => n.pinned);
@@ -105,6 +112,7 @@ export default function NotesScreen() {
   const selectedNotes = notes.filter((n) => selected.includes(n.id));
   const allPinned = selectedNotes.length > 0 && selectedNotes.every((n) => n.pinned);
 
+  // Each card changes at once (optimistic) and comes back if the server refuses it.
   const runOnSelection = async (action: (note: Note) => Promise<unknown>) => {
     setFailed(false);
     try {
@@ -112,8 +120,6 @@ export default function NotesScreen() {
       setSelected([]);
     } catch {
       setFailed(true);
-    } finally {
-      void queryClient.invalidateQueries({ queryKey: ["notes"] });
     }
   };
 
@@ -125,8 +131,7 @@ export default function NotesScreen() {
   const create = async (html: string) => {
     setFailed(false);
     try {
-      const made = await notesApi.create({ title: "", html });
-      void queryClient.invalidateQueries({ queryKey: ["notes"] });
+      const made = await createNote.mutateAsync({ title: "", html });
       router.push({ pathname: "/notes/edit", params: { id: String(made.id) } });
     } catch {
       setFailed(true);
@@ -193,19 +198,19 @@ export default function NotesScreen() {
             ? iconKey(
                 "notes-selection-pin",
                 allPinned ? t("notes.grid.unpin") : t("notes.grid.pin"),
-                () => void runOnSelection((n) => notesApi.setPinned(n.id, !allPinned)),
+                () => void runOnSelection((n) => pin.mutateAsync({ id: n.id, pinned: !allPinned })),
                 allPinned ? <PinOff size={22} color={colors.ink} /> : <Pin size={22} color={colors.ink} />,
               )
             : null}
           {view !== "trash" ? iconKey("notes-selection-color", t("notes.grid.color"), () => setColorOpen(true), <Palette size={22} color={colors.ink} />) : null}
           {view === "notes" || view === "reminders"
-            ? iconKey("notes-selection-archive", t("notes.views.archiveAction"), () => void runOnSelection((n) => notesApi.archive(n.id)), <ArchiveIcon size={22} color={colors.ink} />)
+            ? iconKey("notes-selection-archive", t("notes.views.archiveAction"), () => void runOnSelection((n) => archive.mutateAsync({ id: n.id })), <ArchiveIcon size={22} color={colors.ink} />)
             : null}
           {view === "archive"
-            ? iconKey("notes-selection-unarchive", t("notes.views.unarchiveAction"), () => void runOnSelection((n) => notesApi.unarchive(n.id)), <ArchiveRestore size={22} color={colors.ink} />)
+            ? iconKey("notes-selection-unarchive", t("notes.views.unarchiveAction"), () => void runOnSelection((n) => unarchive.mutateAsync({ id: n.id })), <ArchiveRestore size={22} color={colors.ink} />)
             : null}
           {view === "trash"
-            ? iconKey("notes-selection-restore", t("notes.views.restore"), () => void runOnSelection((n) => notesApi.restore(n.id)), <RotateCcwIcon size={22} color={colors.ink} />)
+            ? iconKey("notes-selection-restore", t("notes.views.restore"), () => void runOnSelection((n) => restore.mutateAsync({ id: n.id })), <RotateCcwIcon size={22} color={colors.ink} />)
             : null}
           {view === "trash"
             ? iconKey("notes-selection-forever", t("notes.views.deleteForever"), () => setConfirmForever(true), <Flame size={22} color={colors.danger} />)
@@ -355,7 +360,7 @@ export default function NotesScreen() {
         labels={colorLabels}
         onPick={(key) => {
           setColorOpen(false);
-          void runOnSelection((n) => notesApi.setColor(n.id, key));
+          void runOnSelection((n) => setNoteColor.mutateAsync({ id: n.id, color: key }));
         }}
         onClose={() => setColorOpen(false)}
       />
@@ -372,7 +377,7 @@ export default function NotesScreen() {
                 testID="notes-forever-confirm"
                 onPress={() => {
                   setConfirmForever(false);
-                  void runOnSelection((n) => notesApi.destroyForever(n.id));
+                  void runOnSelection((n) => destroyForever.mutateAsync({ id: n.id }));
                 }}
                 style={{ padding: 10 }}
               >
@@ -394,7 +399,7 @@ export default function NotesScreen() {
                 testID="notes-delete-confirm"
                 onPress={() => {
                   setConfirmDelete(false);
-                  void runOnSelection((n) => notesApi.trash(n.id));
+                  void runOnSelection((n) => trash.mutateAsync({ id: n.id }));
                 }}
                 style={{ padding: 10 }}
               >

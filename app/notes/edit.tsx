@@ -13,7 +13,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, Share, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { createNativeEditorDocumentHandle, RichTextEditor, type RichTextEditorRef } from "@apollohg/react-native-rich-text-editor";
 
 import { Screen } from "@/components/ScreenContainer";
@@ -29,7 +29,11 @@ import { ensureReminderPermission, resyncReminders } from "@/screens/notes/remin
 import type { NoteReminder } from "@/screens/notes/reminders";
 import { NoteLabelsSheet } from "@/screens/notes/labels";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
-import { canEdit, notesApi, type Note } from "@/api/notes";
+import { canEdit, type Note } from "@/api/notes";
+import {
+  fetchFreshNote, notesKeys, useArchiveNote, useCreateNote, useDuplicateNote, useLockNote, useNote, usePinNote,
+  useSaveNote, useSetNoteColor, useSetNoteReminder, useTrashNote,
+} from "@/screens/notes/api/queries";
 import { failureMessage } from "@/api/failure";
 import { noteDrafts } from "@/stores/noteDrafts.files";
 import { decideOnOpen } from "@/stores/noteDrafts.store";
@@ -69,11 +73,18 @@ export default function NoteEditScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
   const noteId = Number(params.id) || 0;
 
-  const { data: note, error, refetch } = useQuery({
-    queryKey: ["notes", "note", noteId],
-    queryFn: () => notesApi.get(noteId),
-    enabled: noteId > 0,
-  });
+  const { data: note, error, refetch } = useNote(noteId);
+  const save = useSaveNote();
+  const createNote = useCreateNote();
+  const saveCalls = useRef({ save: save.mutateAsync, create: createNote.mutateAsync });
+  saveCalls.current = { save: save.mutateAsync, create: createNote.mutateAsync };
+  const pin = usePinNote();
+  const setNoteColor = useSetNoteColor();
+  const lock = useLockNote();
+  const setNoteReminder = useSetNoteReminder();
+  const archive = useArchiveNote();
+  const trash = useTrashNote();
+  const duplicate = useDuplicateNote();
 
   // The server copy, or an unsent draft (SPEC §C11).
   const [opened, setOpened] = useState<Opened | null>(null);
@@ -148,10 +159,10 @@ export default function NoteEditScreen() {
       noteId,
       base: opened.base,
       api: {
-        get: async (id) => toServer(await notesApi.get(id)),
-        update: async (id, body, expected) => toServer(await notesApi.update(id, body, expected)),
+        get: async (id) => toServer(await fetchFreshNote(queryClient, id)),
+        update: async (id, body, expected) => toServer(await saveCalls.current.save({ id, body, expectedUpdatedAt: expected })),
         create: async (body) => {
-          const made = await notesApi.create(body);
+          const made = await saveCalls.current.create(body);
           return { id: made.id, ...toServer(made) };
         },
       },
@@ -163,9 +174,8 @@ export default function NoteEditScreen() {
     saverRef.current = saver;
     if (opened.resend) saver.change({ title: opened.title, html: opened.html });
     return () => {
-      void saver.flush().finally(() => {
-        void queryClient.invalidateQueries({ queryKey: ["notes"] });
-      });
+      // Each save already wrote the server's note into the cards (useSaveNote).
+      void saver.flush();
       saver.dispose();
     };
   }, [opened]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -197,7 +207,7 @@ export default function NoteEditScreen() {
     const pick = (choice: "both" | "mine" | "web") => async () => {
       const result = await saverRef.current?.resolve(choice);
       if (result?.reload) {
-        queryClient.setQueryData(["notes", "note", noteId], (old: Note | undefined) => (old ? { ...old, ...result.reload } : old));
+        queryClient.setQueryData<Note>(notesKeys.detail(noteId), (old) => (old ? { ...old, ...result.reload } : old));
         setOpened({ title: result.reload.title, html: result.reload.html, base: result.reload, restored: false, resend: false });
         setGeneration((g) => g + 1);
       }
@@ -224,15 +234,12 @@ export default function NoteEditScreen() {
   const scheme = useScheme();
   const [focused, setFocused] = useState(false);
   const [sheet, setSheet] = useState<"noteColor" | "more" | "confirmDelete" | "labels" | "reminder" | null>(null);
-  const [reminder, setReminder] = useState<NoteReminder | null | undefined>(undefined);
-  const [lockedState, setLockedState] = useState<boolean | null>(null);
-  const locked = lockedState ?? note?.locked ?? false;
+  // Pin, colour, lock, reminder and labels: read from the cache, which the
+  // mutations change at once (optimistic) and put back on a refusal.
+  const locked = note?.locked ?? false;
   const [reminderDenied, setReminderDenied] = useState(false);
-  const [noteTags, setNoteTags] = useState<Note["tags"] | null>(null);
-  const [pinned, setPinned] = useState<boolean | null>(null);
-  const [color, setColor] = useState<NoteColorKey | null | undefined>(undefined);
-  const notePinned = pinned ?? note?.pinned ?? false;
-  const noteColorKey = color === undefined ? (note?.color ?? null) : color;
+  const notePinned = note?.pinned ?? false;
+  const noteColorKey = note?.color ?? null;
   const page = noteColor(noteColorKey, scheme);
   const pageFill = noteColorKey ? page.fill : colors.ground;
   const [codeSheet, setCodeSheet] = useState(false);
@@ -320,7 +327,6 @@ export default function NoteEditScreen() {
     setActionFailed(false);
     try {
       await fn();
-      void queryClient.invalidateQueries({ queryKey: ["notes"] });
       return true;
     } catch {
       setActionFailed(true);
@@ -329,17 +335,15 @@ export default function NoteEditScreen() {
   };
   const togglePin = () =>
     void act(async () => {
-      const saved = await notesApi.setPinned(noteId, !notePinned);
-      setPinned(saved.pinned);
+      await pin.mutateAsync({ id: noteId, pinned: !notePinned });
     });
-  const noteReminder = reminder === undefined ? (note?.reminder ?? null) : reminder;
+  const noteReminder = note?.reminder ?? null;
   const resync = () => void resyncReminders({ untitled: t("notes.untitled") }).catch(() => undefined);
   const saveReminder = (next: NoteReminder | null) => {
     setSheet(null);
     void act(async () => {
       if (next) setReminderDenied(!(await ensureReminderPermission()));
-      const saved = await notesApi.setReminder(noteId, next);
-      setReminder(saved.reminder);
+      await setNoteReminder.mutateAsync({ id: noteId, reminder: next });
       resync();
     });
   };
@@ -349,13 +353,12 @@ export default function NoteEditScreen() {
         await saverRef.current?.flush();
         editorRef.current?.blur();
       }
-      const saved = await notesApi.setLocked(noteId, !locked);
-      setLockedState(saved.locked);
+      await lock.mutateAsync({ id: noteId, locked: !locked });
     });
   const archiveNote = () =>
     void act(async () => {
       await saverRef.current?.flush();
-      await notesApi.archive(noteId);
+      await archive.mutateAsync({ id: noteId });
       resync();
     }).then((ok) => {
       if (ok) router.back();
@@ -363,15 +366,14 @@ export default function NoteEditScreen() {
   const pickColor = (key: NoteColorKey | null) => {
     setSheet(null);
     void act(async () => {
-      const saved = await notesApi.setColor(noteId, key);
-      setColor(saved.color);
+      await setNoteColor.mutateAsync({ id: noteId, color: key });
     });
   };
   const deleteNote = () => {
     setSheet(null);
     void act(async () => {
       await saverRef.current?.flush();
-      await notesApi.trash(noteId);
+      await trash.mutateAsync({ id: noteId });
       resync();
     }).then((ok) => {
       if (ok) router.back();
@@ -381,7 +383,7 @@ export default function NoteEditScreen() {
     setSheet(null);
     void act(async () => {
       await saverRef.current?.flush();
-      const copy = await notesApi.duplicate(noteId);
+      const copy = await duplicate.mutateAsync({ id: noteId });
       router.replace({ pathname: "/notes/edit", params: { id: String(copy.id) } });
     });
   };
@@ -649,9 +651,8 @@ export default function NoteEditScreen() {
       />
       <NoteLabelsSheet
         visible={sheet === "labels"}
-        note={{ id: noteId, tags: noteTags ?? note.tags }}
+        note={{ id: noteId, tags: note.tags }}
         onClose={() => setSheet(null)}
-        onChanged={(n) => setNoteTags(n.tags)}
       />
       <Modal visible={sheet === "confirmDelete"} transparent animationType="fade" onRequestClose={() => setSheet(null)}>
         <View style={{ flex: 1, justifyContent: "center", padding: metrics.space.lg, backgroundColor: "rgba(0,0,0,0.45)" }}>
@@ -707,6 +708,7 @@ export default function NoteEditScreen() {
             </View>
             <TextInput
               testID="note-code-language-search"
+              autoFocus
               value={languageQuery}
               onChangeText={setLanguageQuery}
               placeholder={t("notes.code.search")}

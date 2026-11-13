@@ -703,5 +703,5 @@ Every key comes from `aiKeys` in `src/api/keys.ts`, never a literal
 | `aiKeys.sessions()` | `["ai", "sessions"]` |
 | `aiKeys.documents()` | `["ai", "documents", conversationId]` |
 
-Writes: app/chat.tsx, src/components/chat/AnswerActions.tsx, src/hooks/useAttachments.ts. ask, session activate, feedback, undo and uploads are mutations; the pending bubble and the thumb keep their own local state. The thread's messages (useConversation) are the audit's last slice.
+Writes: app/chat.tsx, src/components/chat/AnswerActions.tsx, src/hooks/useAttachments.ts. ask, session activate, feedback, undo and uploads are mutations; the pending bubble and the thumb keep their own local state. The transcript itself is cached by `useConversation` under `conversationKeys.transcript(id)` (`["messages", id]`), its own root so a details refetch does not re-read it.
 

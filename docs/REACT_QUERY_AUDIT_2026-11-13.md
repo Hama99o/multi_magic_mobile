@@ -25,7 +25,7 @@ parser), and so is `startPlace` in the move sheet (it IS that sheet's
 | Calendar | 5: 2 hand-rolled writes, 2 non-optimistic, keys | `useCalendarMutations.ts`: delete, answer, guest access, remove guest OPTIMISTIC; invite, leave, save plain (reasons in the file); exact keys, not the whole calendar |
 | Contacts | 12: 5 hand-rolled, 6 non-optimistic, keys | `useContactMutations.ts`: favourite, delete, restore, delete for ever, unlink OPTIMISTIC, shared by list, card and trash; save, merges, export plain mutations; exact keys |
 | SafeZone (its branch) | 4 + 2 exempt | PIN status `useQuery`; unlock / enable / refresh mutations; `safezoneKeys` beside its API, lists under their own prefix; the item stays OUTSIDE the cache (secrets: React Query caches before `select`) |
-| Assistant | 8: messages in useState (useConversation), ask, activate, feedback ×3, upload | ask, activate, feedback, undo, upload are mutations (behaviour unchanged). **useConversation: open, the last slice** (493 lines, cable + pending + resync; to be done with its tests running, not blind) |
+| Assistant | 8: messages in useState (useConversation), ask, activate, feedback ×3, upload | ask, activate, feedback, undo, upload are mutations (behaviour unchanged). **useConversation**: the transcript is in the cache (`conversationKeys.transcript`), the read is its `queryFn` (gap fill kept), the 3 s poll its `refetchInterval`; frames, sends and the optimistic question go in with `setQueryData`; status, waiting, failed and local ids stay local. Its 38 tests kept green; 3 new (cached, opened-again, and the in-flight race, which NO test covered before: planted, red) |
 | People chat | 6: mark-read in an effect, 5 hand-rolled | mark-read a mutation fired from the effect; send/edit/react/delete mutations; the outbox and server-counted reactions stay NOT optimistic on purpose (BRIEF.md §5) |
 | Notifications | 2 | mark-read OPTIMISTIC (row + every badge), the old comment that claimed it corrected |
 | Account | 9: the profile copied into zustand, change-password, profile ×3 and AI keys ×3 non-optimistic, the language store writing to the server | `useMe()` over `profileKeys.me()` (the store keeps the session only, six readers moved); name/about and AI key activate/remove OPTIMISTIC; photo and add-key plain; change-password a mutation; the language PATCH moved out of the store into `useChooseLanguage` |
@@ -41,7 +41,7 @@ moment: `useContactMutations.test.tsx` (11), `useCalendarMutations.test.tsx`
 `useChooseLanguage.test.tsx` (3), `useMe.test.tsx` (3). Planted: a missing
 rollback (red), the guard in a real screen (red).
 
-**Measured so far:** lint and tsc on every slice; Jest on slice 1's suites
-(contacts 192, queryKeys, hooks, components, pages, app). **Not yet run:** the
-full suite on the later slices (the box's RAM went to the Notes device pass);
-queued for the next window.
+**Measured:** lint 0, tsc clean, Jest 150 suites / 2013 tests at `-w 1`,
+`test:west` 372, on the final tree of `chore/react-query-audit`. The first
+full run had 8 red suites, all from the audit, each fixed at its cause
+(`aad39bd`). SafeZone and the vCard-share branches: their own runs.

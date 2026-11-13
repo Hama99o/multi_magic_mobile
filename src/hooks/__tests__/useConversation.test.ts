@@ -5,7 +5,9 @@
  * like the assistant thinking, and a resync that reads the wrong endpoint looks
  * like an empty conversation.
  */
-import { act, renderHook, waitFor } from "@testing-library/react-native";
+import { act, renderHook as rtlRenderHook, waitFor } from "@testing-library/react-native";
+import { createElement, type ReactNode } from "react";
+import { notifyManager, QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 
 const mockSubscribe = jest.fn();
 jest.mock("@/lib/cable", () => ({
@@ -18,6 +20,31 @@ jest.mock("@/lib/cable", () => ({
 /* eslint-disable import/first */
 import { useConversation } from "../useConversation";
 import { messagesApi, type ChatMessage } from "@/api/ai";
+import { conversationKeys } from "@/api/keys";
+import { testQueryClient } from "@/__tests__/queryClient";
+
+/**
+ * The transcript lives in React Query (docs/DATA_LAYER.md), so every hook here
+ * renders inside a client, ONE per test, as the app has one: a second
+ * renderHook in the same test shares it (that is the "opened again" case).
+ */
+let client: QueryClient;
+
+/**
+ * React Query hands cache updates to components on a `setTimeout(0)` batch
+ * (its notifyManager); the hook used to `setState` directly. These tests
+ * assert straight after an `act()`, so notifications are made SYNCHRONOUS
+ * here, keeping every assertion as strict as it was. In the app the
+ * difference is one tick (milliseconds), not the 1.4 s blink the hook's
+ * header is about.
+ */
+beforeAll(() => notifyManager.setScheduler((cb) => cb()));
+afterAll(() => notifyManager.setScheduler((cb) => setTimeout(cb, 0)));
+
+function renderHook<R, P>(callback: (props: P) => R, options: { initialProps?: P } = {}) {
+  const wrapper = ({ children }: { children: ReactNode }) => createElement(QueryClientProvider, { client }, children);
+  return rtlRenderHook(callback, { ...options, wrapper });
+}
 
 function message(id: number, role: "user" | "assistant", body: string): ChatMessage {
   return {
@@ -48,6 +75,8 @@ let before: jest.SpyInstance;
 
 beforeEach(() => {
   jest.clearAllMocks();
+  // gcTime Infinity: an unmounted transcript must stay for "opened again".
+  client = testQueryClient({ queries: { gcTime: Infinity } });
   mockSubscribe.mockReturnValue(() => {});
   latest = jest.spyOn(messagesApi, "latest").mockResolvedValue({
     messages: [message(1, "user", "Do I owe anyone?")],
@@ -56,7 +85,10 @@ beforeEach(() => {
   before = jest.spyOn(messagesApi, "before");
 });
 
-afterEach(() => jest.restoreAllMocks());
+afterEach(() => {
+  jest.restoreAllMocks();
+  client.clear();
+});
 
 const render = () =>
   renderHook(() => useConversation({ conversationId: 4, channel: "MessageChannel" }));
@@ -638,4 +670,48 @@ it("takes a newer edit whose text sorts earlier", async () => {
     listener().onData({ message: { ...rawMessage(2, "user", "newer"), edited_at: "2026-09-24T21:30:00Z" } });
   });
   expect(result.current.messages[0]).toMatchObject({ body: "newer" });
+});
+
+describe("the transcript is in the cache (docs/DATA_LAYER.md)", () => {
+  it("under conversationKeys.transcript(id), where any screen can read or merge it", async () => {
+    const { result } = render();
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+    const cached = client.getQueryData<{ messages: ChatMessage[] }>(conversationKeys.transcript(4));
+    expect(cached?.messages.map((m) => m.body)).toEqual(["Do I owe anyone?"]);
+  });
+
+  it("opened again, it shows what it had AT ONCE, and still re-reads", async () => {
+    const first = render();
+    await waitFor(() => expect(first.result.current.status).toBe("ready"));
+    first.unmount();
+    latest.mockClear();
+    let release!: () => void;
+    latest.mockImplementation(() => new Promise((r) => (release = () => r({ messages: [message(1, "user", "Do I owe anyone?"), message(2, "assistant", "No.")], hasMore: false }))));
+    const again = render();
+    expect(again.result.current.messages.map((m) => m.body)).toEqual(["Do I owe anyone?"]);
+    await waitFor(() => expect(latest).toHaveBeenCalledWith(4));
+    await act(async () => release());
+    await waitFor(() => expect(again.result.current.messages.map((m) => m.body)).toEqual(["Do I owe anyone?", "No."]));
+  });
+});
+
+describe("a reply that lands on the socket WHILE a re-read is in flight", () => {
+  it("is kept: the read merges into the transcript as it is when it returns, not as it was", async () => {
+    const { result } = render();
+    await waitFor(() => expect(result.current.status).toBe("ready"));
+
+    let release!: () => void;
+    latest.mockImplementation(
+      () => new Promise((r) => (release = () => r({ messages: [message(1, "user", "Do I owe anyone?")], hasMore: false }))),
+    );
+    // A reconnect starts a re-read; the answer arrives on the socket meanwhile.
+    act(() => listener().onConnected?.());
+    await waitFor(() => expect(latest).toHaveBeenCalledTimes(2));
+    act(() => listener().onData({ message: rawMessage(2, "assistant", "You lent Ahmad 500.") }));
+    expect(result.current.messages.map((m) => m.body)).toEqual(["Do I owe anyone?", "You lent Ahmad 500."]);
+
+    // The read, started before the answer existed, now returns without it.
+    await act(async () => release());
+    expect(result.current.messages.map((m) => m.body)).toEqual(["Do I owe anyone?", "You lent Ahmad 500."]);
+  });
 });

@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, Share, TextInput, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { createNativeEditorDocumentHandle, RichTextEditor, type RichTextEditorRef } from "@apollohg/react-native-rich-text-editor";
@@ -41,6 +41,7 @@ import { decideOnOpen } from "@/stores/noteDrafts.store";
 import { NoteDocument } from "@/screens/notes/editor/NoteDocument";
 import { ReadOnlyAtomProvider } from "@/screens/notes/editor/ReadOnlyAtom";
 import { openForEditing, saveFromEngine, type EditSession } from "@/screens/notes/editor/editSession";
+import { createExportScheduler, type ExportScheduler } from "@/screens/notes/editor/exportScheduler";
 import { notesEngineAtoms, notesEngineSchema } from "@/screens/notes/editor/engineSchema";
 import { engineTheme } from "@/screens/notes/editor/engineTheme";
 import { createNoteSaver, type NoteSaver, type SaverState, type ServerNote } from "@/screens/notes/editor/noteSaver";
@@ -189,9 +190,11 @@ export default function NoteEditScreen() {
     engineDocRef.current = engine?.session?.engineDoc ?? null;
   }, [engine]);
 
+  const [, setDocVersion] = useState(0);
   const onEngineChange = (json: unknown) => {
     if (!engine?.session) return;
     engineDocRef.current = json as DocNode;
+    setDocVersion((v) => v + 1); // the bar re-reads the caret's block
     const out = saveFromEngine(json as DocNode, engine.session);
     if (!out.ok) {
       setCannotSave(true);
@@ -200,6 +203,32 @@ export default function NoteEditScreen() {
     if (out.html === html.current) return;
     html.current = out.html;
     push();
+  };
+
+  // B says "changed" on every key; the export + conversion runs at once while
+  // it is cheap and once per pause when it is not (exportScheduler.ts).
+  const exporterRef = useRef<ExportScheduler | null>(null);
+  useEffect(() => {
+    const exporter = createExportScheduler({
+      run: () => {
+        const json = editorRef.current?.getContentJson();
+        if (json) onEngineChange(json);
+      },
+    });
+    exporterRef.current = exporter;
+    return () => {
+      exporter.flush();
+      exporter.dispose();
+    };
+  }, [engine]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Leaving by any way (our back, Android's, a router call): convert what is
+  // still pending while the editor is still there to export it.
+  const navigation = useNavigation();
+  useEffect(() => navigation.addListener("beforeRemove", () => exporterRef.current?.flush()), [navigation]);
+  /** The engine's latest document converted and handed to the saver, then sent. */
+  const flushAll = () => {
+    exporterRef.current?.flush();
+    return saverRef.current?.flush();
   };
 
   // A web edit meanwhile: ask; "Keep both" first (the owner's default, §G2).
@@ -260,7 +289,9 @@ export default function NoteEditScreen() {
   /** Replace the engine's document with a structural edit of it (B has no command for these). */
   const applyStructural = (edit: (doc: DocNode, path: number[]) => DocNode) => {
     const ref = editorRef.current;
+    exporterRef.current?.flush(); // the document as it is now, typing included
     const doc = engineDocRef.current;
+    const caretBlock = caretPos !== null && doc ? textblockAt(doc, caretPos) : null;
     if (!ref || !doc || !caretBlock) {
       console.warn("[notes] no block under the caret for a structural edit", { caretPos, types: doc?.content?.map((n) => n.type) });
       return;
@@ -351,14 +382,14 @@ export default function NoteEditScreen() {
   const toggleLock = () =>
     void act(async () => {
       if (!locked) {
-        await saverRef.current?.flush();
+        await flushAll();
         editorRef.current?.blur();
       }
       await lock.mutateAsync({ id: noteId, locked: !locked });
     });
   const archiveNote = () =>
     void act(async () => {
-      await saverRef.current?.flush();
+      await flushAll();
       await archive.mutateAsync({ id: noteId });
       resync();
     }).then((ok) => {
@@ -373,7 +404,7 @@ export default function NoteEditScreen() {
   const deleteNote = () => {
     setSheet(null);
     void act(async () => {
-      await saverRef.current?.flush();
+      await flushAll();
       await trash.mutateAsync({ id: noteId });
       resync();
     }).then((ok) => {
@@ -383,7 +414,7 @@ export default function NoteEditScreen() {
   const copyNote = () => {
     setSheet(null);
     void act(async () => {
-      await saverRef.current?.flush();
+      await flushAll();
       const copy = await duplicate.mutateAsync({ id: noteId });
       router.replace({ pathname: "/notes/edit", params: { id: String(copy.id) } });
     });
@@ -603,7 +634,7 @@ export default function NoteEditScreen() {
             heightBehavior="fixed"
             style={{ flex: 1 }}
             containerStyle={{ flex: 1 }}
-            onContentChangeJSON={onEngineChange}
+            onDocumentChange={() => exporterRef.current?.dirty()}
             accessibilityLabel={t("notes.edit.bodyPlaceholder")}
           />
         </View>

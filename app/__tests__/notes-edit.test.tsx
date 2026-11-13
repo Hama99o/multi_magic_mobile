@@ -2,7 +2,8 @@
  * THE NOTE EDITOR SCREEN (phase 3), open → edit → save, at the level a person
  * meets it: the real screen, codec, glue, saver and notes API, a fake server
  * (MockAdapter), drafts in memory. Engine B is native, so it is replaced by a
- * stand-in that hands back JSON the way B does (onContentChangeJSON).
+ * stand-in that says "changed" (onDocumentChange) and hands back JSON on
+ * request (ref.getContentJson), the way B does.
  *
  * What it proves:
  *  - an edit reaches the server as HTML the codec round-trips;
@@ -17,7 +18,12 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import MockAdapter from "axios-mock-adapter";
 import { Alert, Share } from "react-native";
 
-const mockEngine: { props: Record<string, any> | null; init: any; refuse: boolean; calls: unknown[][]; selections: unknown[] } = { props: null, init: null, refuse: false, calls: [], selections: [] };
+const mockEngine: { props: Record<string, any> | null; init: any; doc: any; refuse: boolean; calls: unknown[][]; selections: unknown[] } = { props: null, init: null, doc: null, refuse: false, calls: [], selections: [] };
+/** The person typed: B now holds `json` and says so (it exports only when asked). */
+const engineChanged = (json: unknown) => {
+  mockEngine.doc = json;
+  mockEngine.props!.onDocumentChange({});
+};
 jest.mock("@apollohg/react-native-rich-text-editor", () => {
   const ReactActual = jest.requireActual("react");
   const { View } = jest.requireActual("react-native");
@@ -29,6 +35,7 @@ jest.mock("@apollohg/react-native-rich-text-editor", () => {
     createNativeEditorDocumentHandle: (config: { initialization: { json: unknown } }) => {
       if (mockEngine.refuse) throw new Error("invalid localJson initialization");
       mockEngine.init = JSON.parse(JSON.stringify(config.initialization.json));
+      mockEngine.doc = null;
       return {
         destroy: () => undefined,
         bridge: {
@@ -41,15 +48,29 @@ jest.mock("@apollohg/react-native-rich-text-editor", () => {
     RichTextEditor: ReactActual.forwardRef((props: Record<string, unknown>, ref: unknown) => {
       mockEngine.props = props;
       ReactActual.useImperativeHandle(ref, () =>
-        new Proxy({}, { get: (_t: unknown, name: string) => (...args: unknown[]) => { mockEngine.calls.push([name, ...args]); return Promise.resolve(); } }),
+        new Proxy({}, {
+          get: (_t: unknown, name: string) => (...args: unknown[]) => {
+            if (name === "getContentJson") return JSON.parse(JSON.stringify(mockEngine.doc ?? mockEngine.init));
+            mockEngine.calls.push([name, ...args]);
+            if (name === "setContentJson") mockEngine.doc = JSON.parse(JSON.stringify(args[0]));
+            return Promise.resolve();
+          },
+        }),
       );
       return ReactActual.createElement(View, { testID: "engine-b" });
     }),
   };
 });
+const mockLeave: { listeners: (() => void)[] } = { listeners: [] };
 jest.mock("expo-router", () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
   useLocalSearchParams: () => ({ id: "7" }),
+  useNavigation: () => ({
+    addListener: (event: string, fn: () => void) => {
+      if (event === "beforeRemove") mockLeave.listeners.push(fn);
+      return () => void (mockLeave.listeners = mockLeave.listeners.filter((l) => l !== fn));
+    },
+  }),
 }));
 jest.mock("expo-image", () => {
   const { View } = jest.requireActual("react-native");
@@ -125,7 +146,7 @@ it("open → edit → save: the server gets HTML the codec round-trips, read-onl
   open();
   await waitFor(() => expect(mockEngine.props).not.toBeNull());
   expect(mockEngine.init.content.map((n: DocNode) => n.type)).toEqual(["paragraph", "table", "codeBlock", "paragraph", "paragraph", READ_ONLY_ATOM]);
-  act(() => mockEngine.props!.onContentChangeJSON(typed(" world")));
+  act(() => engineChanged(typed(" world")));
   await waitFor(() => expect(mock.history.put).toHaveLength(1), { timeout: 2000 });
   const sent = JSON.parse(mock.history.put[0].data).description as string;
   expect(sent).toBe(`<p>hello world</p>${TABLE}${CODE}${CHEM}${COMMENT}${LEGACY}`);
@@ -141,7 +162,7 @@ it("open → edit → save: the server gets HTML the codec round-trips, read-onl
 it("an untouched note is never written", async () => {
   open();
   await waitFor(() => expect(mockEngine.props).not.toBeNull());
-  act(() => mockEngine.props!.onContentChangeJSON(JSON.parse(JSON.stringify(mockEngine.init))));
+  act(() => engineChanged(JSON.parse(JSON.stringify(mockEngine.init))));
   await new Promise((r) => setTimeout(r, 700));
   expect(mock.history.put).toHaveLength(0);
 });
@@ -160,7 +181,7 @@ it("a change that cannot become valid HTML is never sent, and the screen says so
   await waitFor(() => expect(mockEngine.props).not.toBeNull());
   const damaged = JSON.parse(JSON.stringify(mockEngine.init)) as DocNode;
   damaged.content![5].attrs = { kind: "rawBlock", node: "{broken" };
-  act(() => mockEngine.props!.onContentChangeJSON(damaged));
+  act(() => engineChanged(damaged));
   expect(await screen.findByTestId("note-edit-cannot-save")).toBeTruthy();
   expect(screen.queryByText(/web/i)).toBeNull();
   await new Promise((r) => setTimeout(r, 700));
@@ -173,7 +194,7 @@ it("a web edit meanwhile asks; Keep both saves a dated copy and leaves the web's
   open();
   await waitFor(() => expect(mockEngine.props).not.toBeNull());
   server = note({ description: "<p>from the web</p>", updated_at: "2026-11-13T08:00:00Z" });
-  act(() => mockEngine.props!.onContentChangeJSON(typed("!")));
+  act(() => engineChanged(typed("!")));
   await waitFor(() => expect(alert).toHaveBeenCalled(), { timeout: 2000 });
   expect(mock.history.put).toHaveLength(0);
   const buttons = alert.mock.calls[0][2] as { text: string; onPress: () => Promise<void> }[];
@@ -263,7 +284,7 @@ describe("code blocks are edited on the phone (owner, 2026-11-13)", () => {
     fireEvent.press(screen.getByTestId("tb-block:codeBlock"));
     expect(lastSetJson()!.content![0]).toEqual({ type: "codeBlock", attrs: { language: null }, content: [{ type: "text", text: "hello" }] });
     act(() => {
-      mockEngine.props!.onContentChangeJSON(lastSetJson());
+      engineChanged(lastSetJson());
       mockEngine.props!.onActiveStateChange({ marks: {}, markAttrs: {}, nodes: { codeBlock: true }, commands: {}, allowedMarks: [], insertableNodes: [] });
     });
     fireEvent.press(screen.getByTestId("tb-block:paragraph"));
@@ -608,5 +629,20 @@ describe("sheets with a text field sit above the keyboard (device, flow 27b: the
     fireEvent.press(screen.getByTestId("tb-more"));
     fireEvent.press(screen.getByTestId("note-more-labels"));
     expect(liftedAboveKeyboard(await screen.findByTestId("note-labels-search"))).toBe(true);
+  });
+});
+
+describe("typing does not convert the whole note on every key (device, 2026-11-13: a 900 KB note froze)", () => {
+  it("listens to B's cheap change signal and asks for the JSON itself", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(mockEngine.props!.onContentChangeJSON).toBeUndefined();
+    expect(typeof mockEngine.props!.onDocumentChange).toBe("function");
+  });
+
+  it("leaving (back button, Android back, router) converts what is still pending first", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(mockLeave.listeners.length).toBeGreaterThan(0);
   });
 });

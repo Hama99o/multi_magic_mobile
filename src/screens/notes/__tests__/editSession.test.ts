@@ -13,7 +13,7 @@
  */
 import { fromHTML, toHTML, validate, type DocNode } from "@/vendor/tiptop-schema";
 import { READ_ONLY_ATOM } from "../editor/engineGlue";
-import { openForEditing, saveFromEngine } from "../editor/editSession";
+import { SOURCE_MAP_LIMIT, openForEditing, saveFromEngine } from "../editor/editSession";
 
 const typeInFirstParagraph = (engineDoc: DocNode, text: string): DocNode => {
   const doc = JSON.parse(JSON.stringify(engineDoc)) as DocNode;
@@ -26,6 +26,29 @@ const roundTrips = (html: string) => {
   const again = toHTML(fromHTML(html, { preserveUnknown: true }), { preserveUnknown: true });
   expect(again).toBe(html);
 };
+
+describe("a very long note (device, 2026-11-13: a 900 KB note did not open in 90 s)", () => {
+  // Invented text; the size of the owner's longest note, never its content.
+  const long = (kb: number) => {
+    const block = "<p>river lantern <strong>copper</strong> meadow orbit velvet harbor quiet pixel maple ember canyon</p><ul><li><p>falcon garnet</p></li></ul>";
+    return block.repeat(Math.ceil((kb * 1024) / block.length));
+  };
+
+  it(`above ${SOURCE_MAP_LIMIT / 1024} KB it opens without the source map, and saves what the web writes`, () => {
+    const html = long(SOURCE_MAP_LIMIT / 1024 + 10);
+    const s = openForEditing(html);
+    expect(s.source).toBeNull();
+    const out = saveFromEngine(typeInFirstParagraph(s.engineDoc, " edited"), s);
+    if (!out.ok) throw new Error(out.message);
+    expect(out.html.startsWith("<p>river lantern <strong>copper</strong> meadow orbit velvet harbor quiet pixel maple ember canyon edited</p>")).toBe(true);
+    roundTrips(out.html);
+  });
+
+  it("below it, the source map still keeps untouched blocks byte for byte", () => {
+    const s = openForEditing(long(4));
+    expect(s.source).not.toBeNull();
+  });
+});
 
 describe("openForEditing → saveFromEngine", () => {
   it("an untouched note saves back to the exact stored bytes", () => {

@@ -137,3 +137,9 @@ describe("NoteDocument", () => {
     expect(screen.getByText("No image")).toBeTruthy();
   });
 });
+
+describe("the read view's parse (device, 2026-11-13: long notes)", () => {
+  it("does not build the source map it never uses (it parses the note twice more)", () => {
+    expect("source" in parseNoteHtml("<p>a</p>")).toBe(false);
+  });
+});

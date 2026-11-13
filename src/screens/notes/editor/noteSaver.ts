@@ -10,7 +10,9 @@
  *   live (multi_magic branch notes-update-version-check, owner's merge), the
  *   saver also reads the note just before writing and asks if it moved.
  * - Offline or a server error: the draft stays, the header says "On this
- *   phone only", the next change or `flush` tries again.
+ *   phone only", and it tries again by itself, 2 s, 4 s, 8 s… then every
+ *   30 s, until it is saved (device, 2026-11-13: back online, nothing was
+ *   sent until the next keystroke). A change or `flush` tries at once.
  */
 import { StaleNoteError } from "@/lib/staleNote";
 import { conflictCopyTitle, type NoteDrafts } from "@/stores/noteDrafts.store";
@@ -64,6 +66,13 @@ export function createNoteSaver(o: NoteSaverOptions): NoteSaver {
   let pending: Content | null = null;
   let conflict: ServerNote | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
+  let retry: ReturnType<typeof setTimeout> | null = null;
+  let retryMs = 2_000;
+  let disposed = false;
+  const stopRetry = () => {
+    if (retry) clearTimeout(retry);
+    retry = null;
+  };
   let draftWrite: Promise<void> = Promise.resolve();
   let chain: Promise<void> = Promise.resolve();
 
@@ -88,6 +97,7 @@ export function createNoteSaver(o: NoteSaverOptions): NoteSaver {
       if (pending === c) pending = null;
       await draftWrite;
       await o.drafts.settled(o.noteId, c).catch(() => undefined);
+      retryMs = 2_000;
       o.onState(pending ? { kind: "unsaved" } : { kind: "saved" });
     } catch (e) {
       if (e instanceof StaleNoteError) {
@@ -96,12 +106,20 @@ export function createNoteSaver(o: NoteSaverOptions): NoteSaver {
         return;
       }
       o.onState({ kind: "local" });
+      if (!disposed && !retry && !timer) {
+        retry = setTimeout(() => {
+          retry = null;
+          void flush();
+        }, retryMs);
+        retryMs = Math.min(retryMs * 2, 30_000);
+      }
     }
   };
 
   const flush = () => {
     if (timer) clearTimeout(timer);
     timer = null;
+    stopRetry();
     if (!pending || conflict) return chain;
     chain = chain.then(send);
     return chain;
@@ -149,6 +167,8 @@ export function createNoteSaver(o: NoteSaverOptions): NoteSaver {
       return { reload: web };
     },
     dispose() {
+      disposed = true;
+      stopRetry();
       if (timer) clearTimeout(timer);
       timer = null;
     },

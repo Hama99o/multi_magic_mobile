@@ -106,6 +106,42 @@ it("offline: keeps the draft, says 'On this phone only', and sends it when asked
   expect(await r.drafts.get(7)).toBeNull();
 });
 
+it("back online, it saves by itself, once, with no new keystroke (device, 2026-11-13)", async () => {
+  const r = rig();
+  r.setOffline(true);
+  r.saver.change({ title: "Plan", html: "<p>typed offline</p>" });
+  await settle();
+  expect(r.states.at(-1)).toEqual({ kind: "local" });
+  // Still offline: it keeps trying, backing off, and stays local.
+  await settle(2_000);
+  await settle(4_000);
+  expect(r.states.at(-1)).toEqual({ kind: "local" });
+  const tries = (r.api.get as jest.Mock).mock.calls.length;
+  expect(tries).toBeGreaterThanOrEqual(3);
+  r.setOffline(false);
+  await settle(30_000);
+  expect(r.server().html).toBe("<p>typed offline</p>");
+  expect((r.api.update as jest.Mock).mock.calls.filter((c) => c[1].html === "<p>typed offline</p>")).toHaveLength(1);
+  expect(r.states.at(-1)).toEqual({ kind: "saved" });
+  expect(await r.drafts.get(7)).toBeNull();
+  // Saved: no more tries.
+  const after = (r.api.get as jest.Mock).mock.calls.length;
+  await settle(120_000);
+  expect((r.api.get as jest.Mock).mock.calls.length).toBe(after);
+});
+
+it("the retry never runs after dispose", async () => {
+  const r = rig();
+  r.setOffline(true);
+  r.saver.change({ title: "Plan", html: "<p>x</p>" });
+  await settle();
+  r.saver.dispose();
+  const before = (r.api.get as jest.Mock).mock.calls.length;
+  r.setOffline(false);
+  await settle(120_000);
+  expect((r.api.get as jest.Mock).mock.calls.length).toBe(before);
+});
+
 it("a web edit made meanwhile stops the save and asks; nothing is overwritten", async () => {
   const r = rig();
   r.webEdits("<p>from the web</p>");

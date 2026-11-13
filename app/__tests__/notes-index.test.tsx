@@ -304,3 +304,23 @@ describe("Reminders view and chips", () => {
     expect(screen.getByTestId("notes-view-title")).toHaveTextContent("Reminders");
   });
 });
+
+describe("lock badge", () => {
+  it("a locked note shows a lock on its card", async () => {
+    server = [note(6, { is_locked: true }), note(7)];
+    open();
+    expect(await screen.findByTestId("note-card-6-locked")).toBeTruthy();
+    expect(screen.queryByTestId("note-card-7-locked")).toBeNull();
+  });
+
+  it("in the Trash a tap opens the note to read, not to edit (as the web)", async () => {
+    mock.onGet("/api/v1/note_app/tags").reply(200, { tags: [], meta: { pagy: { page: 1, pages: 1 } } });
+    mock.onGet("/api/v1/note_app/notes/trashes").reply(200, { notes: [note(30, { status: "trashed" })], meta: { pagy: { page: 1, pages: 1 }, total_count: 1 } });
+    open();
+    await screen.findByText("Pinned seed");
+    fireEvent.press(screen.getByTestId("notes-menu"));
+    fireEvent.press(await screen.findByTestId("drawer-trash"));
+    fireEvent.press(await screen.findByTestId("note-card-30"));
+    expect(mockPush).toHaveBeenLastCalledWith({ pathname: "/notes/note", params: { id: "30" } });
+  });
+});

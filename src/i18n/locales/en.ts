@@ -1006,6 +1006,11 @@ export const en = {
       checked: "Done",
       unchecked: "Not done",
     },
+    lock: {
+      lock: "Lock note",
+      unlock: "Unlock note",
+      locked: "Locked",
+    },
     reminder: {
       title: "Remind me",
       when: "When",

@@ -520,8 +520,40 @@ describe("a structural edit keeps the caret where it was (device finding, 2026-1
     });
     fireEvent.press(screen.getByTestId("tb-format"));
     fireEvent.press(screen.getByTestId("tb-block:codeBlock"));
+    expect(mockEngine.selections).toEqual([]); // not before B has applied the new document
+    await waitFor(() => expect(mockEngine.selections).toHaveLength(1));
+    expect(mockEngine.calls).toContainEqual(["focus"]);
     expect(mockEngine.selections).toEqual([
       { baseDocumentRevision: "7", selection: { type: "text", anchor: { offset: 2, kind: "scalar", affinity: "after" }, head: { offset: 2, kind: "scalar", affinity: "after" } } },
     ]);
+  });
+});
+
+describe("lock (owner, 2026-11-13: stops editing for that note)", () => {
+  it("the lock key locks the note on the server; the editor becomes read-only with a Locked chip", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply((cfg) => {
+      server = { ...server, ...JSON.parse(cfg.data), is_locked: JSON.parse(cfg.data).locked };
+      return [200, { note: server }];
+    });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(mockEngine.props!.editable).not.toBe(false);
+    fireEvent.press(screen.getByTestId("note-edit-lock"));
+    await waitFor(() => expect(mock.history.put.some((r) => JSON.parse(r.data).locked === true)).toBe(true));
+    await waitFor(() => expect(mockEngine.props!.editable).toBe(false));
+    expect(screen.getByTestId("note-edit-locked-chip")).toBeTruthy();
+    expect(screen.getByTestId("note-edit-title").props.editable).toBe(false);
+    expect(screen.getByTestId("tb-format").props.accessibilityState).toMatchObject({ disabled: true });
+  });
+
+  it("a locked note opens read-only and unlocks with the same key", async () => {
+    server = note({ is_locked: true });
+    mock.onPut("/api/v1/note_app/notes/7").reply((cfg) => [200, { note: { ...server, is_locked: JSON.parse(cfg.data).locked } }]);
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(mockEngine.props!.editable).toBe(false);
+    expect(screen.getByTestId("note-edit-lock").props.accessibilityState).toMatchObject({ selected: true });
+    fireEvent.press(screen.getByTestId("note-edit-lock"));
+    await waitFor(() => expect(mockEngine.props!.editable).toBe(true));
   });
 });

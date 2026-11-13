@@ -35,6 +35,8 @@ export type NoteStatus = "published" | "archived" | "trashed";
 export interface Note {
   id: number;
   status: NoteStatus;
+  /** Locked: opens read-only on the web and the phone (data.locked, sent as is_locked). */
+  locked: boolean;
   /** A reminder set on any device (data.launch_time + repeat_frequency), or null. */
   reminder: NoteReminder | null;
   /** The note's colour key (data.color, or a label's colour as the server falls back), null for none. */
@@ -86,6 +88,7 @@ export function parseNote(value: unknown): Note {
     color: colorKey(note.color),
     status: note.status === "archived" || note.status === "trashed" ? note.status : "published",
     reminder: parseReminder(note.data),
+    locked: note.is_locked === true,
     title: optStr(note.title) ?? "",
     html: optStr(note.description) ?? "",
     pinned: note.pinned === true,
@@ -142,6 +145,12 @@ export const notesApi = {
       if (res?.status === 409) throw new StaleNoteError(parseNote(obj(res.data, "note").note));
       throw e;
     }
+  },
+
+  /** Lock or unlock (data.locked; multi_magic notes-lock branch). */
+  setLocked: async (noteId: number, locked: boolean): Promise<Note> => {
+    const res = await http.put(`/api/v1/note_app/notes/${noteId}`, { locked });
+    return parseNote(obj(res.data, "note").note);
   },
 
   /** Pin or unpin (the web's update with `pinned`). */

@@ -26,8 +26,9 @@ tags:
 - extendedWaitUntil:
     visible:
       id: "notes-grid-others-col-0"
-    timeout: 30000
-- takeScreenshot: reports/27-notes-grid
+    timeout: 60000
+# (No grid screenshot here: the QA account's grid shows copies of real
+# notes. The sheet's grid shot is 27c, filtered to invented notes.)
 - scrollUntilVisible:
     element: "\\[qa-edit\\] scratch.*"
     direction: DOWN

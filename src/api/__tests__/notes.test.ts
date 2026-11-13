@@ -235,3 +235,18 @@ describe("reminders (data.launch_time, data.repeat_frequency; multi_magic PR #22
     expect(mock.history.get[0].params).toEqual({ page: 1, reminders: "true" });
   });
 });
+
+describe("lock (data.locked, is_locked; multi_magic notes-lock branch)", () => {
+  it("reads the lock, and a note never locked is not", async () => {
+    mock.onGet("/api/v1/note_app/notes/7").reply(200, { note: note({ is_locked: true }) });
+    expect((await notesApi.get(7)).locked).toBe(true);
+    mock.onGet("/api/v1/note_app/notes/8").reply(200, { note: note({ id: 8 }) });
+    expect((await notesApi.get(8)).locked).toBe(false);
+  });
+
+  it("locks and unlocks through the web's update", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note({ is_locked: true }) });
+    expect((await notesApi.setLocked(7, true)).locked).toBe(true);
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ locked: true });
+  });
+});

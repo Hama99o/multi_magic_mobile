@@ -1022,6 +1022,11 @@ export const fr: Translations = {
       checked: "Fait",
       unchecked: "À faire",
     },
+    lock: {
+      lock: "Verrouiller la note",
+      unlock: "Déverrouiller la note",
+      locked: "Verrouillée",
+    },
     reminder: {
       title: "Me le rappeler",
       when: "Quand",

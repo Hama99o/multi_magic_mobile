@@ -1,0 +1,77 @@
+# NOTES, the screenshot sheet (Keep's style, 2026-11-13). Reads the seeded,
+# invented "[qa-shot]" dev notes (qa rig seed; never real content) and takes
+# the owner's list: the grid (coloured, pinned and others), the drawer with
+# labels, a table in a note, the Format panel, the ⋮ sheet, the reminder
+# sheet. Run once per theme: THEME=light|dark names the shots (the runner
+# switches `cmd uimode night`).
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: what each screen looks like with real-shaped content, both themes.
+# CANNOT TELL YOU: anything a screenshot cannot (it writes nothing).
+appId: ${APP_ID}
+tags:
+  - notes
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-notes"
+# Only the invented notes on the sheet: the QA account also holds copies of
+# real notes ("[qa-notes] … corpus"), which must never be in a screenshot.
+- tapOn:
+    id: "notes-search"
+- inputText: "qa-shot"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "\\[qa-shot\\] Groceries"
+    timeout: 30000
+- takeScreenshot: reports/27c-grid-${THEME}
+- tapOn:
+    id: "notes-menu"
+- extendedWaitUntil:
+    visible:
+      id: "drawer-edit-labels"
+    timeout: 15000
+- takeScreenshot: reports/27c-drawer-${THEME}
+- tapOn:
+    id: "drawer-notes"
+- scrollUntilVisible:
+    element: "\\[qa-shot\\] Budget"
+    direction: DOWN
+    timeout: 30000
+- tapOn: "\\[qa-shot\\] Budget"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-body"
+    timeout: 30000
+- takeScreenshot: reports/27c-note-table-${THEME}
+- tapOn:
+    id: "tb-more"
+- extendedWaitUntil:
+    visible:
+      id: "note-more-edited"
+    timeout: 10000
+- takeScreenshot: reports/27c-more-sheet-${THEME}
+- pressKey: Back
+- tapOn:
+    id: "note-edit-reminder"
+- extendedWaitUntil:
+    visible:
+      id: "reminder-save"
+    timeout: 10000
+- takeScreenshot: reports/27c-reminder-sheet-${THEME}
+- pressKey: Back
+- tapOn:
+    id: "note-edit-body"
+- tapOn:
+    id: "tb-format"
+- extendedWaitUntil:
+    visible:
+      id: "tb-closePanel"
+    timeout: 10000
+- takeScreenshot: reports/27c-format-panel-${THEME}
+- tapOn:
+    id: "tb-closePanel"
+- tapOn:
+    id: "note-edit-back"

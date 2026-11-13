@@ -22,12 +22,14 @@ import { ChevronLeft, Copy, Pin, Share2, Trash2 } from "@/components/icons";
 import TagIcon from "lucide-react-native/dist/esm/icons/tag";
 import ArchiveIcon from "lucide-react-native/dist/esm/icons/archive";
 import BellIcon from "lucide-react-native/dist/esm/icons/bell";
+import LockIcon from "lucide-react-native/dist/esm/icons/lock";
+import LockOpenIcon from "lucide-react-native/dist/esm/icons/lock-open";
 import { ReminderSheet, reminderLabel } from "@/screens/notes/ReminderSheet";
 import { ensureReminderPermission, resyncReminders } from "@/screens/notes/reminderNotifications";
 import type { NoteReminder } from "@/screens/notes/reminders";
 import { NoteLabelsSheet } from "@/screens/notes/labels";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
-import { notesApi, type Note } from "@/api/notes";
+import { canEdit, notesApi, type Note } from "@/api/notes";
 import { failureMessage } from "@/api/failure";
 import { noteDrafts } from "@/stores/noteDrafts.files";
 import { decideOnOpen } from "@/stores/noteDrafts.store";
@@ -223,6 +225,8 @@ export default function NoteEditScreen() {
   const [focused, setFocused] = useState(false);
   const [sheet, setSheet] = useState<"noteColor" | "more" | "confirmDelete" | "labels" | "reminder" | null>(null);
   const [reminder, setReminder] = useState<NoteReminder | null | undefined>(undefined);
+  const [lockedState, setLockedState] = useState<boolean | null>(null);
+  const locked = lockedState ?? note?.locked ?? false;
   const [reminderDenied, setReminderDenied] = useState(false);
   const [noteTags, setNoteTags] = useState<Note["tags"] | null>(null);
   const [pinned, setPinned] = useState<boolean | null>(null);
@@ -238,7 +242,9 @@ export default function NoteEditScreen() {
   const caretBlock = caretPos !== null && engineDocRef.current ? textblockAt(engineDocRef.current, caretPos) : null;
   const headingLevel = caretBlock?.node.type === "heading" ? Number(caretBlock.node.attrs?.level ?? 1) : undefined;
   const codeLanguage = caretBlock?.node.type === "codeBlock" ? ((caretBlock.node.attrs?.language as string | null) ?? null) : undefined;
-  const toolbarKeys = buildToolbar({ ...active, ...history, hasSelection, panel, headingLevel, codeLanguage, focused }).keys;
+  // Locked: every edit key is off; ⋮ (delete, copy, send, labels) stays.
+  const toolbarKeys = buildToolbar({ ...active, ...history, hasSelection, panel: locked ? null : panel, headingLevel, codeLanguage, focused: focused && !locked })
+    .keys.map((k) => (locked && k.id !== "more" && k.id !== "spacer" ? { ...k, disabled: true } : k));
 
   /** Replace the engine's document with a structural edit of it (B has no command for these). */
   const applyStructural = (edit: (doc: DocNode, path: number[]) => DocNode) => {
@@ -256,18 +262,23 @@ export default function NoteEditScreen() {
     const at = caretScalar.current;
     const bridge = (engine?.handle as unknown as { bridge?: { getState(): { documentRevision: string }; setSelection(r: unknown): unknown } } | null)?.bridge;
     if (at && bridge) {
-      try {
-        bridge.setSelection({
-          baseDocumentRevision: bridge.getState().documentRevision,
-          selection: {
-            type: "text",
-            anchor: { offset: at.anchor, kind: "scalar", affinity: "after" },
-            head: { offset: at.head, kind: "scalar", affinity: "after" },
-          },
-        });
-      } catch {
-        // A position the new document cannot hold: the caret stays where B put it.
-      }
+      // After B has applied the new document (setContentJson goes through a
+      // render): restoring before it is undone by the replace (seen on device).
+      setTimeout(() => {
+        try {
+          bridge.setSelection({
+            baseDocumentRevision: bridge.getState().documentRevision,
+            selection: {
+              type: "text",
+              anchor: { offset: at.anchor, kind: "scalar", affinity: "after" },
+              head: { offset: at.head, kind: "scalar", affinity: "after" },
+            },
+          });
+          ref.focus();
+        } catch {
+          // A position the new document cannot hold: the caret stays where B put it.
+        }
+      }, 150);
     }
   };
 
@@ -329,6 +340,15 @@ export default function NoteEditScreen() {
       resync();
     });
   };
+  const toggleLock = () =>
+    void act(async () => {
+      if (!locked) {
+        await saverRef.current?.flush();
+        editorRef.current?.blur();
+      }
+      const saved = await notesApi.setLocked(noteId, !locked);
+      setLockedState(saved.locked);
+    });
   const archiveNote = () =>
     void act(async () => {
       await saverRef.current?.flush();
@@ -425,6 +445,19 @@ export default function NoteEditScreen() {
           >
             <Pin size={20} color={notePinned ? colors.accent : colors.ink} fill={notePinned ? colors.accent : "none"} />
           </Pressable>
+          {canEdit(note) ? (
+            <Pressable
+              testID="note-edit-lock"
+              onPress={toggleLock}
+              accessibilityRole="button"
+              accessibilityLabel={locked ? t("notes.lock.unlock") : t("notes.lock.lock")}
+              accessibilityState={{ selected: locked }}
+              hitSlop={4}
+              style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+            >
+              {locked ? <LockIcon size={20} color={colors.accent} /> : <LockOpenIcon size={20} color={colors.ink} />}
+            </Pressable>
+          ) : null}
           <Pressable
             testID="note-edit-reminder"
             onPress={() => setSheet("reminder")}
@@ -504,6 +537,7 @@ export default function NoteEditScreen() {
         testID="note-edit-title"
         key={`title-${generation}`}
         defaultValue={opened.title}
+        editable={!locked}
         placeholder={t("notes.edit.titlePlaceholder")}
         placeholderTextColor={colors.inkMuted}
         onChangeText={(v) => {
@@ -514,6 +548,12 @@ export default function NoteEditScreen() {
         style={{ fontSize: 28, lineHeight: 36, fontWeight: "400", color: colors.ink, paddingVertical: metrics.space.sm }}
         accessibilityLabel={t("notes.edit.titlePlaceholder")}
       />
+      {locked ? (
+        <View testID="note-edit-locked-chip" style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 999, backgroundColor: `${colors.ink}14`, paddingHorizontal: 10, paddingVertical: 4, marginBottom: metrics.space.xs }}>
+          <LockIcon size={14} color={colors.ink} />
+          <Text style={{ fontSize: 13 }}>{t("notes.lock.locked")}</Text>
+        </View>
+      ) : null}
       {noteReminder ? (
         <Pressable
           testID="note-edit-reminder-chip"
@@ -539,6 +579,7 @@ export default function NoteEditScreen() {
             atoms={notesEngineAtoms}
             theme={engineTheme(colors, pageFill) as never}
             focusPreservingRefs={barRef}
+            editable={!locked}
             onFocus={() => setFocused(true)}
             onBlur={() => setFocused(false)}
             placeholder={t("notes.edit.bodyPlaceholder")}

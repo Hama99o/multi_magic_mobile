@@ -44,6 +44,7 @@ import ArchiveRestore from "lucide-react-native/dist/esm/icons/archive-restore";
 import RotateCcwIcon from "lucide-react-native/dist/esm/icons/rotate-ccw";
 import Flame from "lucide-react-native/dist/esm/icons/flame";
 import BellIcon from "lucide-react-native/dist/esm/icons/bell";
+import LockIcon from "lucide-react-native/dist/esm/icons/lock";
 
 /** The web's empty to-do list (tiptop 2.3.1 taskList markup), for "new checklist". */
 const EMPTY_CHECKLIST =
@@ -113,7 +114,8 @@ export default function NotesScreen() {
   };
 
   const openNote = (note: Note) => {
-    const edit = NOTES_EDITOR_ENABLED && canEdit(note);
+    // Straight into the editor (Keep); the trash is for reading, as on the web.
+    const edit = NOTES_EDITOR_ENABLED && canEdit(note) && view !== "trash";
     router.push({ pathname: edit ? "/notes/edit" : "/notes/note", params: { id: String(note.id) } });
   };
   const create = async (html: string) => {
@@ -441,11 +443,16 @@ function NoteCard({
         gap: 6,
       }}
     >
-      {note.title || note.isShared || note.sharedCount > 0 ? (
+      {note.title || note.locked || note.isShared || note.sharedCount > 0 ? (
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: 6 }}>
           <Text numberOfLines={2} style={{ flex: 1, fontSize: 16, fontWeight: "700", color: colors.ink }}>
             {note.title}
           </Text>
+          {note.locked ? (
+            <View testID={`note-card-${note.id}-locked`} accessibilityLabel={t("notes.lock.locked")}>
+              <LockIcon size={15} color={colors.inkMuted} />
+            </View>
+          ) : null}
           {note.isShared || note.sharedCount > 0 ? <Users size={16} color={colors.inkMuted} accessibilityLabel={t("notes.shared")} /> : null}
         </View>
       ) : null}

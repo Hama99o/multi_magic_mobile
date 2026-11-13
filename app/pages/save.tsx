@@ -60,6 +60,7 @@ import {
   type LastDestination,
 } from "@/stores/uploads.store";
 import { pagesKeys } from "@/api/keys";
+import { useCreateFolder } from "@/screens/pages/usePageMutations";
 
 const THUMB = 64;
 
@@ -238,7 +239,8 @@ export default function SaveToPages() {
       setBusy(true);
       setError(null);
       try {
-        const full = await pagesApi.node(space.id, folder.id);
+        // A read, so through the cache (docs/DATA_LAYER.md): de-duplicated, and kept.
+        const full = await queryClient.fetchQuery({ queryKey: pagesKeys.node(space.id, folder.id), queryFn: () => pagesApi.node(space.id, folder.id) });
         setPlace(placeFromFolder(full, space, Boolean(whole)));
       } catch {
         setPlace(placeFromFolder({ ...folder, ancestors: [] }, space, false));
@@ -247,17 +249,17 @@ export default function SaveToPages() {
         setQuery("");
       }
     },
-    [spaces.data, shared.data],
+    [spaces.data, shared.data, queryClient],
   );
 
+  const creating = useCreateFolder();
   const makeFolder = useCallback(
     async (name: string) => {
       if (!place) return;
       setBusy(true);
       setError(null);
       try {
-        const created = await pagesApi.createFolder(place.space.id, parentId, name);
-        void queryClient.invalidateQueries({ queryKey: pagesKeys.all });
+        const created = await creating.mutateAsync({ spaceId: place.space.id, parentId, title: name });
         setNewName(null);
         enterFolder(created);
       } catch (e) {
@@ -266,7 +268,7 @@ export default function SaveToPages() {
         setBusy(false);
       }
     },
-    [place, parentId, enterFolder, queryClient, t],
+    [place, parentId, enterFolder, creating, t],
   );
 
   /** One tap: today's folder, made if missing, entered either way. */

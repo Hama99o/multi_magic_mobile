@@ -17,6 +17,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # flow_lint dates each flow by its last commit: a shallow clone
+          # dates every file to the newest commit (CI red since 2026-11-12).
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:

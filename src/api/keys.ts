@@ -53,6 +53,9 @@ export const notificationKeys = {
 
 export const calendarKeys = {
   all: ["calendar"] as const,
+  /** Every month window and every agenda page, as prefixes (a write can move an event in any of them). */
+  allOccurrences: () => ["calendar", "occurrences"] as const,
+  allUpcoming: () => ["calendar", "upcoming"] as const,
   occurrences: <F extends string, T extends string>(from: F, to: T) => ["calendar", "occurrences", from, to] as const,
   upcoming: <D extends number>(days: D) => ["calendar", "upcoming", days] as const,
   event: <E extends number>(eventId: E) => ["calendar", "event", eventId] as const,

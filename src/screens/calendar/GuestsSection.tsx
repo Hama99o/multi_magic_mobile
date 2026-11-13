@@ -9,7 +9,7 @@
 import { useState } from "react";
 import { Alert, Pressable, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ChevronDown, UserPlus, X } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
@@ -18,12 +18,12 @@ import { sharesApi, type CalendarEvent, type GuestPermission, type Share } from 
 import { failureMessage } from "@/api/failure";
 import { ChoiceSheet } from "./ChoiceSheet";
 import { calendarKeys } from "@/api/keys";
+import { useInviteGuest, useRemoveGuest, useSetGuestAccess } from "@/screens/calendar/useCalendarMutations";
 
 export function GuestsSection({ event }: { event: CalendarEvent }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const isOwner = event.permission === "owner";
   const [email, setEmail] = useState("");
   const [access, setAccess] = useState<GuestPermission>("viewer");
@@ -38,30 +38,13 @@ export function GuestsSection({ event }: { event: CalendarEvent }) {
   });
   const shares = isOwner ? (listed ?? event.shares) : event.shares;
 
-  const refresh = () => queryClient.invalidateQueries({ queryKey: calendarKeys.all });
   const fail = (e: unknown) => setError(failureMessage(e, t("calendar.guests.failed")));
-
-  const invite = useMutation({
-    mutationFn: () => sharesApi.invite(event.id, email, access),
-    onMutate: () => setError(null),
-    onSuccess: () => {
-      setEmail("");
-      void refresh();
-    },
-    onError: fail,
-  });
-  const change = useMutation({
-    mutationFn: ({ share, permission }: { share: Share; permission: GuestPermission }) => sharesApi.setPermission(event.id, share.id, permission),
-    onMutate: () => setError(null),
-    onSuccess: () => void refresh(),
-    onError: fail,
-  });
-  const remove = useMutation({
-    mutationFn: (share: Share) => sharesApi.remove(event.id, share.id),
-    onMutate: () => setError(null),
-    onSuccess: () => void refresh(),
-    onError: fail,
-  });
+  const inviting = useInviteGuest(event.id, { onDone: () => setEmail(""), onError: fail });
+  const invite = { ...inviting, mutate: () => (setError(null), inviting.mutate({ email, access })) };
+  const changing = useSetGuestAccess(event.id, { onError: fail });
+  const change = { ...changing, mutate: (v: { share: Share; permission: GuestPermission }) => (setError(null), changing.mutate(v)) };
+  const removing = useRemoveGuest(event.id, { onError: fail });
+  const remove = { ...removing, mutate: (share: Share) => (setError(null), removing.mutate(share)) };
 
   const confirmRemove = (share: Share) =>
     Alert.alert(t("calendar.guests.removeTitle", { name: share.sharedWithName }), t("calendar.guests.removeBody"), [

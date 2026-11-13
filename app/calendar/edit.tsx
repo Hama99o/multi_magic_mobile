@@ -16,7 +16,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, View } from "react-native";
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
@@ -26,6 +26,7 @@ import { EventForm } from "@/screens/calendar/EventForm";
 import { draftFromEvent, isDirty, newDraft, toPayload, type Draft } from "@/screens/calendar/draft";
 import { todayKey } from "@/screens/calendar/dates";
 import { calendarKeys } from "@/api/keys";
+import { useSaveEvent } from "@/screens/calendar/useCalendarMutations";
 
 function parseId(raw: string | undefined): number | null {
   return raw && /^\d+$/.test(raw) ? Number(raw) : null;
@@ -35,7 +36,6 @@ export default function EditEvent() {
   const { t } = useTranslation();
   const params = useLocalSearchParams<{ id?: string; day?: string }>();
   const eventId = parseId(params.id);
-  const queryClient = useQueryClient();
   const navigation = useNavigation();
 
   const { data: event, error: loadError, refetch } = useQuery({
@@ -84,17 +84,16 @@ export default function EditEvent() {
     return unsubscribe;
   }, [navigation, dirty, t]);
 
+  const saver = useSaveEvent();
   const save = useCallback(async () => {
     if (!draft || inFlight.current) return;
     inFlight.current = true;
     setSaving(true);
     setSaveError(null);
     try {
-      const payload = toPayload(draft);
-      const saved = eventId == null ? await calendarApi.create(payload, draft.reminders) : await calendarApi.update(eventId, payload, draft.reminders);
-      queryClient.setQueryData(calendarKeys.event(saved.id), saved);
-      // Every window that could show it: the agenda, every month, the detail.
-      await queryClient.invalidateQueries({ queryKey: calendarKeys.all });
+      // The event from the answer, then every window that could show it: the
+      // agenda pages and every month (`useSaveEvent`).
+      await saver.mutateAsync({ eventId, payload: toPayload(draft), reminders: draft.reminders });
       leaving.current = true;
       router.back();
     } catch (e) {
@@ -103,7 +102,7 @@ export default function EditEvent() {
       inFlight.current = false;
       setSaving(false);
     }
-  }, [draft, eventId, queryClient, t]);
+  }, [draft, eventId, saver, t]);
 
   if (!draft) {
     return (

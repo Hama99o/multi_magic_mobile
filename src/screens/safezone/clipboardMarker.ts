@@ -15,8 +15,8 @@
  * reads it on launch and on return to the foreground (`sweep`). It can only
  * act when the app is opened again: until then the copy stays (§9).
  */
-export const MARKER_KEY = "safezone.clipboard.pending";
-export const MARKER_SECRET_KEY = "safezone.clipboard.key";
+export const MARKER_KEY = "safezone_clipboard_pending";
+export const MARKER_SECRET_KEY = "safezone_clipboard_key";
 const KEY_BYTES = 32;
 const BLOCK = 64;
 

@@ -57,7 +57,7 @@ const colorKey = (v: unknown): NoteColorKey | null => (isNoteColorKey(v) && v !=
 
 const ROLES: readonly NoteRole[] = ["owner", "administrator", "contributor", "viewer"];
 
-function parseTag(value: unknown): NoteTag {
+export function parseTag(value: unknown): NoteTag {
   const tag = obj(value, "note.tag");
   return { id: id(tag.id, "note.tag.id"), name: str(tag.name, "note.tag.name"), color: colorKey(tag.color) };
 }
@@ -82,8 +82,10 @@ export function parseNote(value: unknown): Note {
 
 export const notesApi = {
   /** Published notes the reader can see (their own and shared), pinned first, then last edited. */
-  list: async (page = 1, search?: string): Promise<NoteList> => {
-    const res = await http.get("/api/v1/note_app/notes", { params: { page, ...(search ? { search } : {}) } });
+  list: async (page = 1, search?: string, tagId?: number): Promise<NoteList> => {
+    const res = await http.get("/api/v1/note_app/notes", {
+      params: { page, ...(search ? { search } : {}), ...(tagId ? { tag_id: tagId } : {}) },
+    });
     const record = obj(res.data, "notes");
     const meta = obj(record.meta, "notes.meta");
     const pagy = obj(meta.pagy, "notes.meta.pagy");

@@ -1022,6 +1022,18 @@ export const fr: Translations = {
       checked: "Fait",
       unchecked: "À faire",
     },
+    labels: {
+      drawerTitle: "Notes MultiMagic",
+      title: "Libellés",
+      edit: "Modifier les libellés",
+      create: "Créer un libellé",
+      createNamed: "Créer « {{name}} »",
+      search: "Nom du libellé",
+      deleteTitle: "Supprimer le libellé « {{name}} » ?",
+      deleteBody: "Il est retiré de toutes les notes qui l’ont. Les notes restent.",
+      filter: "Notes avec le libellé {{name}}",
+      clearFilter: "Afficher toutes les notes",
+    },
     more: {
       edited: "Modifiée {{when}}",
       delete: "Supprimer",

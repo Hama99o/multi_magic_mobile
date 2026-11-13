@@ -19,6 +19,8 @@ import { createNativeEditorDocumentHandle, RichTextEditor, type RichTextEditorRe
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { ChevronLeft, Copy, Pin, Share2, Trash2 } from "@/components/icons";
+import TagIcon from "lucide-react-native/dist/esm/icons/tag";
+import { NoteLabelsSheet } from "@/screens/notes/labels";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
 import { notesApi, type Note } from "@/api/notes";
 import { failureMessage } from "@/api/failure";
@@ -207,7 +209,8 @@ export default function NoteEditScreen() {
   const [caretPos, setCaretPos] = useState<number | null>(null);
   const scheme = useScheme();
   const [focused, setFocused] = useState(false);
-  const [sheet, setSheet] = useState<"noteColor" | "more" | "confirmDelete" | null>(null);
+  const [sheet, setSheet] = useState<"noteColor" | "more" | "confirmDelete" | "labels" | null>(null);
+  const [noteTags, setNoteTags] = useState<Note["tags"] | null>(null);
   const [pinned, setPinned] = useState<boolean | null>(null);
   const [color, setColor] = useState<NoteColorKey | null | undefined>(undefined);
   const notePinned = pinned ?? note?.pinned ?? false;
@@ -489,6 +492,7 @@ export default function NoteEditScreen() {
               ["note-more-delete", Trash2, t("notes.more.delete"), () => setSheet("confirmDelete")],
               ["note-more-copy", Copy, t("notes.more.copy"), copyNote],
               ["note-more-send", Share2, t("notes.more.send"), sendNote],
+              ["note-more-labels", TagIcon, t("notes.labels.title"), () => setSheet("labels")],
             ] as const
           ).map(([testID, Icon, label, onPress]) => (
             <Pressable key={testID} testID={testID} onPress={onPress} accessibilityRole="button" style={{ minHeight: 52, flexDirection: "row", alignItems: "center", gap: 16 }}>
@@ -498,6 +502,12 @@ export default function NoteEditScreen() {
           ))}
         </View>
       </Modal>
+      <NoteLabelsSheet
+        visible={sheet === "labels"}
+        note={{ id: noteId, tags: noteTags ?? note.tags }}
+        onClose={() => setSheet(null)}
+        onChanged={(n) => setNoteTags(n.tags)}
+      />
       <Modal visible={sheet === "confirmDelete"} transparent animationType="fade" onRequestClose={() => setSheet(null)}>
         <View style={{ flex: 1, justifyContent: "center", padding: metrics.space.lg, backgroundColor: "rgba(0,0,0,0.45)" }}>
           <View style={{ backgroundColor: colors.surface, borderRadius: 16, padding: metrics.space.lg, gap: metrics.space.md }}>

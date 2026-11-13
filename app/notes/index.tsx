@@ -27,9 +27,9 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { UnreadableNotice } from "@/components/UnreadableNotice";
-import { LayoutGrid, List, ListChecks, Palette, Pin, PinOff, Plus, Search, Trash2, Users, X } from "@/components/icons";
+import { LayoutGrid, List, ListChecks, Menu, Palette, Pin, PinOff, Plus, Trash2, Users, X } from "@/components/icons";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
-import { canEdit, notesApi, type Note } from "@/api/notes";
+import { canEdit, notesApi, type Note, type NoteTag } from "@/api/notes";
 import { NOTES_EDITOR_ENABLED } from "@/config/features";
 import { useAuthStore } from "@/stores/auth.store";
 import { useNotesView } from "@/stores/notesView.store";
@@ -38,6 +38,7 @@ import { cardPreview } from "@/screens/notes/cardPreview";
 import { masonry } from "@/screens/notes/masonry";
 import { NoteColorPicker } from "@/screens/notes/NoteColorPicker";
 import { noteColor, type NoteColorKey } from "@/screens/notes/editor/noteColors";
+import { EditLabelsSheet, NotesDrawer } from "@/screens/notes/labels";
 
 /** The web's empty to-do list (tiptop 2.3.1 taskList markup), for "new checklist". */
 const EMPTY_CHECKLIST =
@@ -65,9 +66,14 @@ export default function NotesScreen() {
     return () => clearTimeout(id);
   }, [query]);
 
+  // Drawer and label filter (the web's tags; index's ?tag_id=).
+  const [drawer, setDrawer] = useState(false);
+  const [editLabels, setEditLabels] = useState(false);
+  const [label, setLabel] = useState<NoteTag | null>(null);
+
   const { data, error, refetch, isRefetching, isLoading, dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
-    queryKey: ["notes", "list", search],
-    queryFn: ({ pageParam }) => notesApi.list(pageParam, search || undefined),
+    queryKey: ["notes", "list", search, label?.id ?? null],
+    queryFn: ({ pageParam }) => notesApi.list(pageParam, search || undefined, label?.id),
     initialPageParam: 1,
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
   });
@@ -186,7 +192,7 @@ export default function NotesScreen() {
             borderRadius: 999, backgroundColor: colors.surface, minHeight: 52,
           }}
         >
-          <Search size={20} color={colors.inkMuted} />
+          {iconKey("notes-menu", t("notes.labels.title"), () => setDrawer(true), <Menu size={22} color={colors.ink} />)}
           <TextInput
             testID="notes-search"
             value={query}
@@ -213,6 +219,14 @@ export default function NotesScreen() {
         </View>
       )}
 
+      {label ? (
+        <View testID="notes-label-filter" style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: metrics.space.xs }}>
+          <Text style={{ flex: 1, fontSize: 18, fontWeight: "600" }} accessibilityLabel={t("notes.labels.filter", { name: label.name })}>
+            {label.name}
+          </Text>
+          {iconKey("notes-label-filter-clear", t("notes.labels.clearFilter"), () => setLabel(null), <X size={20} color={colors.inkMuted} />)}
+        </View>
+      ) : null}
       <LoadFailure error={error} loadFailed={t("notes.listLoadFailed")} hasData={notes.length > 0} updatedAt={dataUpdatedAt} onRetry={() => void refetch()} testID="notes-load-failed" />
       {unreadable ? <UnreadableNotice count={unreadable} /> : null}
       {failed ? (
@@ -277,6 +291,20 @@ export default function NotesScreen() {
         </View>
       ) : null}
 
+      <NotesDrawer
+        visible={drawer}
+        currentTagId={label?.id ?? null}
+        onClose={() => setDrawer(false)}
+        onPick={(tag) => {
+          setDrawer(false);
+          setLabel(tag);
+        }}
+        onEditLabels={() => {
+          setDrawer(false);
+          setEditLabels(true);
+        }}
+      />
+      <EditLabelsSheet visible={editLabels} onClose={() => setEditLabels(false)} />
       <NoteColorPicker
         visible={colorOpen}
         value={selectedNotes.length === 1 ? selectedNotes[0].color : null}

@@ -1006,6 +1006,18 @@ export const en = {
       checked: "Done",
       unchecked: "Not done",
     },
+    labels: {
+      drawerTitle: "MultiMagic Notes",
+      title: "Labels",
+      edit: "Edit labels",
+      create: "Create new label",
+      createNamed: "Create “{{name}}”",
+      search: "Enter label name",
+      deleteTitle: "Delete the label “{{name}}”?",
+      deleteBody: "It is removed from every note that has it. The notes stay.",
+      filter: "Notes labelled {{name}}",
+      clearFilter: "Show all notes",
+    },
     more: {
       edited: "Edited {{when}}",
       delete: "Delete",

@@ -392,3 +392,35 @@ describe("the note screen in Keep's style (owner, 2026-11-13)", () => {
     expect(message).not.toMatch(/</);
   });
 });
+
+describe("⋮ Labels (the web's note tags)", () => {
+  const tag = (id: number, name: string) => ({ id, name, color: "no_color", created_at: "2026-11-01T10:00:00Z", parent_id: null, position: id, description: null });
+  beforeEach(() => {
+    mock.onGet("/api/v1/note_app/tags").reply(200, { tags: [tag(3, "dev-stuff"), tag(4, "home")], meta: { pagy: { page: 1, pages: 1 } } });
+  });
+
+  it("lists the labels with the note's ones checked, and toggles one on the server", async () => {
+    server = note({ tags: [tag(4, "home")] });
+    mock.onPut("/api/v1/note_app/notes/7/toggle_tag").reply(200, { note: note({ tags: [tag(4, "home"), tag(3, "dev-stuff")] }) });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    fireEvent.press(screen.getByTestId("tb-more"));
+    fireEvent.press(screen.getByTestId("note-more-labels"));
+    expect((await screen.findByTestId("note-label-4")).props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByTestId("note-label-3").props.accessibilityState).toMatchObject({ checked: false });
+    fireEvent.press(screen.getByTestId("note-label-3"));
+    await waitFor(() => expect(JSON.parse(mock.history.put.find((r) => r.url?.endsWith("toggle_tag"))!.data)).toEqual({ tag_id: 3 }));
+    await waitFor(() => expect(screen.getByTestId("note-label-3").props.accessibilityState).toMatchObject({ checked: true }));
+  });
+
+  it("typing a new name offers to create it on the note", async () => {
+    mock.onPost("/api/v1/note_app/notes/7/create_and_assign_tag").reply(200, { note: note({ tags: [tag(9, "trip")] }) });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    fireEvent.press(screen.getByTestId("tb-more"));
+    fireEvent.press(screen.getByTestId("note-more-labels"));
+    fireEvent.changeText(await screen.findByTestId("note-labels-search"), "trip");
+    fireEvent.press(screen.getByTestId("note-labels-create"));
+    await waitFor(() => expect(JSON.parse(mock.history.post[0].data)).toEqual({ name: "trip" }));
+  });
+});

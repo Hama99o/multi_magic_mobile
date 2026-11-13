@@ -177,3 +177,54 @@ it("an empty account says so in one line", async () => {
   open();
   expect(await screen.findByTestId("notes-empty")).toBeTruthy();
 });
+
+describe("the drawer and labels (the web's note tags)", () => {
+  const tag = (id: number, name: string) => ({ id, name, color: "no_color", created_at: "2026-11-01T10:00:00Z", parent_id: null, position: id, description: null });
+  let tags: ReturnType<typeof tag>[];
+  beforeEach(() => {
+    tags = [tag(3, "dev-stuff"), tag(4, "home")];
+    mock.onGet("/api/v1/note_app/tags").reply(() => [200, { tags, meta: { pagy: { page: 1, pages: 1 } } }]);
+  });
+
+  it("☰ opens the drawer: Notes (current), then every label", async () => {
+    open();
+    await screen.findByText("Pinned seed");
+    fireEvent.press(screen.getByTestId("notes-menu"));
+    expect(await screen.findByTestId("drawer-label-3")).toHaveTextContent("dev-stuff");
+    expect(screen.getByTestId("drawer-notes").props.accessibilityState).toMatchObject({ selected: true });
+  });
+
+  it("a label filters the grid with the server's tag filter, and can be cleared", async () => {
+    open();
+    await screen.findByText("Pinned seed");
+    fireEvent.press(screen.getByTestId("notes-menu"));
+    fireEvent.press(await screen.findByTestId("drawer-label-3"));
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === "/api/v1/note_app/notes" && r.params?.tag_id === 3)).toBe(true));
+    expect(screen.getByTestId("notes-label-filter")).toHaveTextContent("dev-stuff");
+    fireEvent.press(screen.getByTestId("notes-label-filter-clear"));
+    expect(screen.queryByTestId("notes-label-filter")).toBeNull();
+  });
+
+  it("Edit labels creates, renames and deletes labels in the web's store", async () => {
+    mock.onPost("/api/v1/note_app/tags").reply((cfg) => {
+      const made = tag(9, JSON.parse(cfg.data).tag.name);
+      tags = [...tags, made];
+      return [200, { tag: made }];
+    });
+    mock.onPut("/api/v1/note_app/tags/4").reply((cfg) => [200, { tag: tag(4, JSON.parse(cfg.data).tag.name) }]);
+    mock.onDelete("/api/v1/note_app/tags/3").reply(200, {});
+    open();
+    await screen.findByText("Pinned seed");
+    fireEvent.press(screen.getByTestId("notes-menu"));
+    fireEvent.press(await screen.findByTestId("drawer-edit-labels"));
+    fireEvent.changeText(await screen.findByTestId("labels-new"), "ideas");
+    fireEvent.press(screen.getByTestId("labels-create"));
+    await waitFor(() => expect(JSON.parse(mock.history.post[0].data)).toEqual({ tag: { name: "ideas" } }));
+    fireEvent.changeText(screen.getByTestId("labels-name-4"), "house");
+    fireEvent(screen.getByTestId("labels-name-4"), "submitEditing");
+    await waitFor(() => expect(JSON.parse(mock.history.put[0].data)).toEqual({ tag: { name: "house" } }));
+    fireEvent.press(screen.getByTestId("labels-delete-3"));
+    fireEvent.press(await screen.findByTestId("labels-delete-confirm"));
+    await waitFor(() => expect(mock.history.delete.map((r) => r.url)).toEqual(["/api/v1/note_app/tags/3"]));
+  });
+});

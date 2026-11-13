@@ -965,6 +965,9 @@ export const fr: Translations = {
       saveFailed: "Impossible d’ouvrir les contacts du téléphone.",
     },
     share: {
+      restBody_one: "1 autre fichier de ce partage n’est pas un contact.",
+      restBody_other: "{{count}} autres fichiers de ce partage ne sont pas des contacts.",
+      restSave: "Enregistrer dans Pages",
       title: "Ajouter à vos contacts ?",
       pickTitle: "Ajouter à quel contact ?",
       from: "Trouvé dans : « {{text}} »",
@@ -1256,6 +1259,12 @@ export const fr: Translations = {
         web: "Garder celle du web",
       },
     },
+  },
+  shareDoor: {
+    unreadableTitle_one: "Impossible de lire ce fichier",
+    unreadableTitle_other: "Impossible de lire {{count}} fichiers",
+    unreadableBody_one: "Essayez de le partager à nouveau.",
+    unreadableBody_other: "Essayez de les partager à nouveau.",
   },
   pages: {
     modified: "Modifié {{when}}",

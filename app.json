@@ -82,13 +82,8 @@
       [
         "expo-share-intent",
         {
-          "iosShareExtensionName": "MultiMagic Pages",
-          "iosActivationRules": {
-            "NSExtensionActivationSupportsImageWithMaxCount": 100,
-            "NSExtensionActivationSupportsMovieWithMaxCount": 100,
-            "NSExtensionActivationSupportsFileWithMaxCount": 100,
-            "NSExtensionActivationSupportsText": true
-          },
+          "iosShareExtensionName": "MultiMagic",
+          "iosActivationRules": "SUBQUERY (extensionItems, $extensionItem, $extensionItem.attachments.@count <= 100 AND SUBQUERY ($extensionItem.attachments, $attachment, ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"public.vcard\" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"public.image\" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"public.movie\" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"public.plain-text\" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"public.file-url\" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"public.content\" OR ANY $attachment.registeredTypeIdentifiers UTI-CONFORMS-TO \"public.archive\").@count >= 1).@count >= 1",
           "androidIntentFilters": [
             "*/*"
           ],

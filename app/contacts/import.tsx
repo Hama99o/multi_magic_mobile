@@ -27,6 +27,7 @@ import { displayOf, toVcard, toVcards, type PhoneContact } from "@/screens/conta
 import { runImport, splitCards, type ImportOutcome } from "@/screens/contacts/importer";
 import { useSharedIntoContacts } from "@/stores/sharedIntoContacts.store";
 import { contactsKeys } from "@/api/keys";
+import { SharedRestToPages } from "@/screens/contacts/SharedRestToPages";
 
 type Stage =
   | { kind: "choose"; note?: string }
@@ -74,7 +75,7 @@ export default function ImportContacts() {
 
   // Several cards shared from another app (`ShareIntentBridge`): straight to
   // the bulk import, the same bar and summary as a file.
-  const params = useLocalSearchParams<{ shared?: string }>();
+  const params = useLocalSearchParams<{ shared?: string; rest?: string }>();
   const started = useRef(false);
   useEffect(() => {
     if (params.shared !== "1" || started.current) return;
@@ -342,6 +343,7 @@ export default function ImportContacts() {
     <Screen measure>
       {header(t("contacts.import.doneTitle"), () => router.back())}
       <View style={{ gap: metrics.space.md }}>
+        <SharedRestToPages rest={params.rest} />
         <Text testID="contacts-import-summary" variant="title" style={{ fontSize: 22 }} accessibilityLiveRegion="polite">
           {outcome.status === "unsupported"
             ? t("contacts.import.unsupported")

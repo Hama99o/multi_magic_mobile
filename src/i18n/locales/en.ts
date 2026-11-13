@@ -949,6 +949,9 @@ export const en = {
       saveFailed: "Could not open the phone’s contacts.",
     },
     share: {
+      restBody_one: "1 other file from that share is not a contact.",
+      restBody_other: "{{count}} other files from that share are not contacts.",
+      restSave: "Save to Pages",
       title: "Add to your contacts?",
       pickTitle: "Add to which contact?",
       from: "Found in: “{{text}}”",
@@ -1240,6 +1243,12 @@ export const en = {
         web: "Keep the web's",
       },
     },
+  },
+  shareDoor: {
+    unreadableTitle_one: "Couldn't read this file",
+    unreadableTitle_other: "Couldn't read {{count}} files",
+    unreadableBody_one: "Try sharing it again.",
+    unreadableBody_other: "Try sharing them again.",
   },
   pages: {
     modified: "Modified {{when}}",

@@ -144,6 +144,8 @@ const COMPOSED = [
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
 const PLURAL = new Set([
+  "shareDoor.unreadableTitle",
+  "shareDoor.unreadableBody",
   "calendar.eventCount",
   "calendar.detail.age",
   "pages.trash.emptied",
@@ -179,6 +181,7 @@ const PLURAL = new Set([
   "contacts.list.searchPlaceholder",
   "contacts.list.selected",
   "contacts.phone.limited",
+  "contacts.share.restBody",
   "safezone.pin.wrong",
 ]);
 

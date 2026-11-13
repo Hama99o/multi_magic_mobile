@@ -4,7 +4,7 @@
  * holding a number or an email → "add as a contact", files → Pages, and
  * plain text with neither → nowhere (never dumped into Pages).
  */
-import { classifyShare, detectContactBits, looksLikeVcard, mergeInto, parseCard, sameContact, unknownType } from "../shareIn";
+import { classifyShare, detectContactBits, looksLikeVcard, mergeInto, parseCard, partitionShare, planShare, sameContact, unknownType } from "../shareIn";
 
 const card = (body: string) => `BEGIN:VCARD\r\nVERSION:3.0\r\n${body}END:VCARD\r\n`;
 
@@ -144,5 +144,53 @@ describe("a file shared with no useful type (seen on the device, 2026-11-12)", (
     expect(looksLikeVcard("\uFEFF  BEGIN:VCARD\r\nFN:A")).toBe(true);
     expect(looksLikeVcard("begin:vcard")).toBe(true);
     expect(looksLikeVcard("%PDF-1.7")).toBe(false);
+  });
+});
+
+// ── a share of several files: contacts to Contacts, the rest to Pages ──────
+// (the owner, 2026-11-13: a .vcf shared to MultiMagic must open Contacts,
+// not Pages; contacts SPEC §F.3)
+
+describe("partitionShare: which files are cards, which may be, which are not", () => {
+  const f = (path: string, mimeType: string | null, fileName: string | null = null) => ({ path, mimeType, fileName });
+
+  it("a vCard by type or by extension, in any case, is a card", () => {
+    const p = partitionShare([
+      f("/a", "text/vcard", "a"), f("/b", "text/x-vcard", "b"), f("/c.vcf", "application/octet-stream", "c.vcf"),
+      f("/d", null, "D.VCF"), f("/e", "text/directory", "e"), f("/z.csv", "text/csv", "z.csv"),
+    ]);
+    // text/directory is vCard's older MIME type (RFC 2425).
+    expect(p.cards.map((x) => x.path)).toEqual(["/a", "/b", "/c.vcf", "/d", "/e"]);
+    expect(p.others.map((x) => x.path)).toEqual(["/z.csv"]);
+  });
+
+  it("a generic type with no extension, or plain text, MAY be one: its bytes decide", () => {
+    const p = partitionShare([f("/x", "application/octet-stream", "1000000058"), f("/t.txt", "text/plain", "t.txt"), f("/p.jpg", "image/jpeg", "p.jpg")]);
+    expect(p.sniff.map((x) => x.path)).toEqual(["/x", "/t.txt"]);
+    expect(p.others.map((x) => x.path)).toEqual(["/p.jpg"]);
+  });
+});
+
+describe("planShare: after the sniff", () => {
+  const f = (path: string, mimeType: string, fileName: string) => ({ path, mimeType, fileName });
+  const vcf = f("/Ali.vcf", "text/x-vcard", "Ali.vcf");
+  const photo = f("/p.jpg", "image/jpeg", "p.jpg");
+  const txt = f("/t.txt", "text/plain", "t.txt");
+
+  it("only cards: Contacts, nothing for Pages", () => {
+    expect(planShare([vcf], new Set())).toEqual({ cards: ["file:///Ali.vcf"], pages: [] });
+  });
+
+  it("mixed: the cards to Contacts, the photo kept for Pages", () => {
+    expect(planShare([vcf, photo], new Set())).toEqual({ cards: ["file:///Ali.vcf"], pages: [photo] });
+  });
+
+  it("a plain-text file whose bytes are a vCard joins the cards; one that is not goes to Pages", () => {
+    expect(planShare([txt, photo], new Set(["/t.txt"]))).toEqual({ cards: ["file:///t.txt"], pages: [photo] });
+    expect(planShare([txt, photo], new Set())).toEqual({ cards: [], pages: [txt, photo] });
+  });
+
+  it("no card at all: everything to Pages, as before", () => {
+    expect(planShare([photo], new Set())).toEqual({ cards: [], pages: [photo] });
   });
 });

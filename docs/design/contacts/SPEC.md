@@ -237,6 +237,66 @@ iOS gains `NSExtensionActivationSupportsText`. A `.vcf` from iOS Contacts is
 shared as a file; whether the extension's file rule takes it is **NOT
 MEASURED** (no iOS device on this box).
 
+### F.3 · A contact shared to MultiMagic opens Contacts, never Pages (owner, 2026-11-13)
+
+*"iOS/Android share of a contact (.vcf) to MultiMagic must open Contacts
+import, not Pages."*
+
+**Which file is a card** (`partitionShare`, `src/screens/contacts/shareIn.ts`):
+- by its type: `text/vcard`, `text/x-vcard`, `text/directory` (vCard's
+  older MIME type, RFC 2425);
+- or by its extension: `.vcf` in any case, whatever the type;
+- or by its bytes, for a file that only MAY be one: a generic type with no
+  extension (seen on a device, 2026-11-12), or `text/plain`. The first bytes
+  must start `BEGIN:VCARD` (`looksLikeVcard`). Nothing else is read.
+
+**Where it goes** (`planShare`, `ShareIntentBridge.tsx`):
+- only cards: one card → the new-contact form, filled in; several → the
+  bulk import with its preview and duplicate skip (both as before);
+- **mixed (cards + photos or documents): Contacts first.** The cards open as
+  above; the other files wait as the pending Pages import, and the Contacts
+  screen shows **"N other files from that share are not contacts. Save to
+  Pages"** (`SharedRestToPages`, on the form and on the import's summary).
+  Tapping it opens Save to Pages with them, where the person picks a place.
+  **A banner, not a toast:** a toast is gone before the person has
+  decided, and the files would vanish without a word;
+- **a file that could not be read is said, never saved** (device pass,
+  2026-11-13): no path, an empty file by the sender's own word, or a cache
+  copy that is missing or empty (`unreadableFile`, `shareIn.ts`). An alert,
+  "Couldn't read this file · Try sharing it again." (`shareDoor.*`); the
+  rest of the share goes on; a share with nothing readable goes nowhere,
+  and from the cold-start landing goes Home. Found on the dev build: with
+  the app stopped, a lone `.vcf` reached Save to Pages as "1 file · 0 B"
+  and MediaProvider refused the read. That the read grant is lost in the
+  dev launcher's hop is INFERRED; the release-build check is the
+  measurement. `expo-share-intent` already copies each shared file into the
+  cache natively, on arrival, so there is no earlier moment for JS;
+- no card at all: Pages, at once, without reading anything (as before);
+- signed out: the share waits and acts after sign-in (as before, tested
+  for a mixed share too).
+
+**Native:**
+- iOS: the extension's activation rule is now a predicate naming
+  `public.vcard` explicitly (with images, movies, plain text, file URLs,
+  `public.content` and archives, up to 100). The old dictionary rule left it
+  unclear whether a contact shared from iOS Contacts (vCard DATA, not
+  necessarily a file URL) matched "file". Bare web links stay out on
+  purpose: `public.url` and `public.data` are not in the rule.
+- iOS display name **"MultiMagic"** (was "MultiMagic Pages"). The bundle id
+  is computed from the app's, not the name, so it stays
+  `com.multimagics.mobile.share-extension`; `shareExtensionConfig.test.ts`
+  checks it with the plugin's own function. The Xcode target name changes
+  (`MultiMagicPages` → `MultiMagic`); prebuild regenerates it.
+- Android: `*/*` already accepts `text/vcard` and `text/x-vcard`. The plugin
+  only accepts `text/*`, `image/*`, `video/*` or `*/*`, so an explicit vCard
+  filter cannot be expressed and would add nothing.
+
+**Measured:** Jest only (classifier, bridge, banner, config).
+**Device pass** (with SafeZone/split, `devpass.sh`): share a `.vcf` from the
+Android Contacts app, alone and with a photo. **iPhone: NOT MEASURED**, on
+the owner's checklist: share one contact and several contacts from iOS
+Contacts, and check that the share sheet shows "MultiMagic".
+
 ## Query keys (React Query audit, 2026-11-13)
 
 Every key comes from `contactsKeys` in `src/api/keys.ts`, never a literal

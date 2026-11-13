@@ -993,7 +993,6 @@ export const en = {
     pinned: "Pinned",
     others: "Notes",
     shared: "Shared",
-    viewOnWeb: "View on web",
     updated: "Edited {{when}}",
     block: {
       table: "Table · {{rows}} × {{cols}}",
@@ -1012,10 +1011,9 @@ export const en = {
       open: "Edit",
       titlePlaceholder: "Title",
       bodyPlaceholder: "Write something",
-      editOnWeb: "Edit on the web",
       state: { saved: "Saved", unsaved: "Not saved yet", saving: "Saving…", local: "On this phone only", conflict: "Edited on the web too" },
-      cannotOpen: "This note cannot be edited on the phone yet. You can read it here and edit it on the web.",
-      cannotSave: "This change cannot be saved from the phone. Your text is kept on this phone; open the note on the web.",
+      cannotOpen: "This note cannot be edited on the phone yet. You can still read it here.",
+      cannotSave: "This change could not be saved. Your text is kept on this phone.",
       restored: "Your unsent changes were restored.",
       conflict: {
         title: "This note changed on the web",

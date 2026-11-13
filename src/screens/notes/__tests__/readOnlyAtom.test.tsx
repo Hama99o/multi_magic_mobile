@@ -17,7 +17,6 @@ jest.mock("expo-image", () => {
 });
 
 const labels: EditorLabels = {
-  viewOnWeb: "View on web",
   table: (r, c) => `Table · ${r} × ${c}`,
   code: (l) => (l ? `Code · ${l}` : "Code"),
   legacyImage: "Old image",
@@ -35,9 +34,9 @@ const props = (node: unknown, kind = "codeBlock") => ({
   setActive: () => undefined,
 });
 
-const wrap = (ui: React.ReactElement, onViewOnWeb = jest.fn()) =>
+const wrap = (ui: React.ReactElement) =>
   render(
-    <ReadOnlyAtomProvider value={{ colors: TOKENS.dark, labels, editOnWeb: "Edit on the web", onViewOnWeb, onLinkPress: () => undefined }}>
+    <ReadOnlyAtomProvider value={{ colors: TOKENS.dark, labels, onLinkPress: () => undefined }}>
       {ui}
     </ReadOnlyAtomProvider>,
   );
@@ -49,11 +48,11 @@ it("draws a code block's card and preview from the atom", () => {
   expect(screen.getByText("puts 1")).toBeTruthy();
 });
 
-it("draws a paragraph with sub/sup as the read view does, and says it is edited on the web", () => {
+it("draws a block it carries as the read view does, with no web link (owner, 2026-11-13)", () => {
   const p: DocNode = { type: "paragraph", content: [{ type: "text", text: "H" }, { type: "text", text: "2", marks: [{ type: "subscript" }] }, { type: "text", text: "O" }] };
   wrap(<ReadOnlyAtom {...props(p, "paragraph")} />);
   expect(screen.getByText("2")).toBeTruthy();
-  expect(screen.getByText("Edit on the web")).toBeTruthy();
+  expect(screen.queryByText(/web/i)).toBeNull();
 });
 
 it("a damaged payload still shows a card, never a crash or a blank", () => {

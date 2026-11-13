@@ -6,8 +6,8 @@
  *     (draft at once, server after 500 ms, conflicts asked, never overwritten)
  *
  * If B refuses the document, or a change cannot be turned back into HTML the
- * web loads, nothing is sent: the screen says so, keeps the text on the
- * phone, and offers the web (plan §11 condition 1).
+ * web loads, nothing is sent: the screen says so and keeps the text on the
+ * phone (plan §11 condition 1). No web link anywhere (owner, 2026-11-13).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, TextInput, View } from "react-native";
@@ -18,13 +18,12 @@ import { createNativeEditorDocumentHandle, RichTextEditor } from "@apollohg/reac
 
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
-import { ChevronLeft, Globe } from "@/components/icons";
+import { ChevronLeft } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { notesApi, type Note } from "@/api/notes";
 import { failureMessage } from "@/api/failure";
 import { noteDrafts } from "@/stores/noteDrafts.files";
 import { decideOnOpen } from "@/stores/noteDrafts.store";
-import { noteWebUrl } from "@/screens/notes/document";
 import { NoteDocument } from "@/screens/notes/editor/NoteDocument";
 import { ReadOnlyAtomProvider } from "@/screens/notes/editor/ReadOnlyAtom";
 import { openForEditing, saveFromEngine, type EditSession } from "@/screens/notes/editor/editSession";
@@ -83,7 +82,6 @@ export default function NoteEditScreen() {
   }, [note, noteId, opened]);
 
   const labels: EditorLabels = {
-    viewOnWeb: t("notes.viewOnWeb"),
     table: (rows, cols) => t("notes.block.table", { rows, cols }),
     code: (language) => (language ? t("notes.block.codeIn", { language }) : t("notes.block.code")),
     legacyImage: t("notes.block.legacyImage"),
@@ -93,9 +91,8 @@ export default function NoteEditScreen() {
     checked: t("notes.task.checked"),
     unchecked: t("notes.task.unchecked"),
   };
-  const openWeb = (url?: string) => void Linking.openURL(url ?? noteWebUrl(noteId)).catch(() => undefined);
   const openLink = (href: string) => {
-    if (/^(https?:|mailto:|tel:)/i.test(href)) openWeb(href);
+    if (/^(https?:|mailto:|tel:)/i.test(href)) void Linking.openURL(href).catch(() => undefined);
   };
 
   // Codec session and engine handle, once per opened content.
@@ -208,16 +205,6 @@ export default function NoteEditScreen() {
       <Text testID="note-edit-state" tone="muted" style={{ flex: 1, fontSize: 13 }} accessibilityLiveRegion="polite">
         {opened ? stateLabel : ""}
       </Text>
-      <Pressable
-        testID="note-edit-web"
-        onPress={() => openWeb()}
-        accessibilityRole="link"
-        accessibilityLabel={t("notes.viewOnWeb")}
-        hitSlop={8}
-        style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
-      >
-        <Globe size={22} color={colors.ink} />
-      </Pressable>
     </View>
   );
 
@@ -238,7 +225,7 @@ export default function NoteEditScreen() {
     );
   }
 
-  // B refused this document: the read view, and the web to edit (plan §11 condition 1).
+  // B refused this document: the read view, nothing sent (plan §11 condition 1).
   if (engine.failed || !engine.handle) {
     return (
       <Screen>
@@ -246,7 +233,7 @@ export default function NoteEditScreen() {
         <ScrollView contentContainerStyle={{ paddingBottom: metrics.space.xl, gap: metrics.space.md }}>
           <Text testID="note-edit-cannot-open" tone="muted">{t("notes.edit.cannotOpen")}</Text>
           {engine.session ? (
-            <NoteDocument doc={engine.session.doc} colors={colors} labels={labels} onLinkPress={openLink} onViewOnWeb={openWeb} />
+            <NoteDocument doc={engine.session.doc} colors={colors} labels={labels} onLinkPress={openLink} />
           ) : null}
         </ScrollView>
       </Screen>
@@ -260,7 +247,7 @@ export default function NoteEditScreen() {
         <Text testID="note-edit-restored" tone="muted" style={{ fontSize: 13 }}>{t("notes.edit.restored")}</Text>
       ) : null}
       {cannotSave ? (
-        <Text testID="note-edit-cannot-save" style={{ color: colors.danger, fontSize: 13 }} onPress={() => openWeb()}>
+        <Text testID="note-edit-cannot-save" style={{ color: colors.danger, fontSize: 13 }}>
           {t("notes.edit.cannotSave")}
         </Text>
       ) : null}
@@ -278,7 +265,7 @@ export default function NoteEditScreen() {
         style={{ fontSize: 26, lineHeight: 32, fontWeight: "700", color: colors.ink, paddingVertical: metrics.space.sm }}
         accessibilityLabel={t("notes.edit.titlePlaceholder")}
       />
-      <ReadOnlyAtomProvider value={{ colors, labels, editOnWeb: t("notes.edit.editOnWeb"), onViewOnWeb: openWeb, onLinkPress: openLink }}>
+      <ReadOnlyAtomProvider value={{ colors, labels, onLinkPress: openLink }}>
         <View style={{ flex: 1 }} testID="note-edit-body">
           <RichTextEditor
             key={`body-${generation}`}

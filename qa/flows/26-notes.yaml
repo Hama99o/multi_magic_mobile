@@ -14,7 +14,7 @@
 # note; every renderer on real content; the legacy cards; RTL per block; a
 # 914 KB note opening.
 # CANNOT TELL YOU: the colours of a highlight by eye (shots are looked at);
-# "View on web" opening a browser (left to the manual pass); editing (phase 3).
+# editing (flow 27). No web link exists in Notes (owner, 2026-11-13).
 appId: ${APP_ID}
 tags:
   - notes

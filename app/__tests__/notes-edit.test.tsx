@@ -121,6 +121,7 @@ it("open → edit → save: the server gets HTML the codec round-trips, read-onl
   expect(once).toContain("<p>hello world</p>");
   expect(once).toContain("H<sub>2</sub>O");
   await waitFor(() => expect(screen.getByTestId("note-edit-state")).toHaveTextContent("Saved"));
+  expect(screen.queryByTestId("note-edit-web")).toBeNull(); // owner, 2026-11-13: no web link in Notes
 });
 
 it("an untouched note is never written", async () => {
@@ -136,6 +137,7 @@ it("when engine B refuses the note, the read view shows and nothing is sent", as
   open();
   expect(await screen.findByTestId("note-edit-cannot-open")).toBeTruthy();
   expect(screen.getByText("hello")).toBeTruthy();
+  expect(screen.queryByText(/web/i)).toBeNull();
   expect(mock.history.put).toHaveLength(0);
 });
 
@@ -146,6 +148,7 @@ it("a change that cannot become valid HTML is never sent, and the screen says so
   damaged.content![1].attrs = { kind: "table", node: "{broken" };
   act(() => mockEngine.props!.onContentChangeJSON(damaged));
   expect(await screen.findByTestId("note-edit-cannot-save")).toBeTruthy();
+  expect(screen.queryByText(/web/i)).toBeNull();
   await new Promise((r) => setTimeout(r, 700));
   expect(mock.history.put).toHaveLength(0);
 });

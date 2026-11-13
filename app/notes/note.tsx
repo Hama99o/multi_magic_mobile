@@ -18,14 +18,14 @@ import { useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
-import { ChevronLeft, Globe, Pencil } from "@/components/icons";
+import { ChevronLeft, Pencil } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { canEdit, notesApi } from "@/api/notes";
 import { NOTES_EDITOR_ENABLED } from "@/config/features";
 import { failureMessage } from "@/api/failure";
 import { NoteDocument } from "@/screens/notes/editor/NoteDocument";
 import type { EditorLabels } from "@/screens/notes/editor/types";
-import { noteWebUrl, parseNoteHtml } from "@/screens/notes/document";
+import { parseNoteHtml } from "@/screens/notes/document";
 
 export default function NoteScreen() {
   const colors = useColors();
@@ -43,7 +43,6 @@ export default function NoteScreen() {
   const parsed = useMemo(() => (note ? parseNoteHtml(note.html) : null), [note]);
 
   const labels: EditorLabels = {
-    viewOnWeb: t("notes.viewOnWeb"),
     table: (rows, cols) => t("notes.block.table", { rows, cols }),
     code: (language) => (language ? t("notes.block.codeIn", { language }) : t("notes.block.code")),
     legacyImage: t("notes.block.legacyImage"),
@@ -54,12 +53,9 @@ export default function NoteScreen() {
     unchecked: t("notes.task.unchecked"),
   };
 
-  const openWeb = (url?: string) => {
-    void Linking.openURL(url ?? noteWebUrl(noteId)).catch(() => undefined);
-  };
   // Links in the note: only what the phone can open (a relative web link has no host here).
   const openLink = (href: string) => {
-    if (/^(https?:|mailto:|tel:)/i.test(href)) openWeb(href);
+    if (/^(https?:|mailto:|tel:)/i.test(href)) void Linking.openURL(href).catch(() => undefined);
   };
 
   const header = (
@@ -84,18 +80,6 @@ export default function NoteScreen() {
           style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
         >
           <Pencil size={22} color={colors.ink} />
-        </Pressable>
-      ) : null}
-      {note ? (
-        <Pressable
-          testID="note-open-web"
-          onPress={() => openWeb()}
-          accessibilityRole="link"
-          accessibilityLabel={t("notes.viewOnWeb")}
-          hitSlop={8}
-          style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
-        >
-          <Globe size={22} color={colors.ink} />
         </Pressable>
       ) : null}
     </View>
@@ -128,7 +112,7 @@ export default function NoteScreen() {
         <Text testID="note-title" style={{ fontSize: 26, lineHeight: 32, fontWeight: "700", color: note.title ? colors.ink : colors.inkMuted }} accessibilityRole="header">
           {note.title || t("notes.untitled")}
         </Text>
-        <NoteDocument doc={parsed.doc} colors={colors} labels={labels} onLinkPress={openLink} onViewOnWeb={openWeb} />
+        <NoteDocument doc={parsed.doc} colors={colors} labels={labels} onLinkPress={openLink} />
       </ScrollView>
     </Screen>
   );

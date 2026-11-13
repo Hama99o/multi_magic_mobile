@@ -70,11 +70,17 @@ export function SafeZoneGate({ children, lockOnLeave = false }: { children: Reac
     };
   }, []);
 
+  // Leaving SafeZone locks it AND drops the lists here, not through the
+  // listener above: React runs cleanups in declaration order, so that
+  // listener is already unsubscribed when this one locks (found in review,
+  // 2026-11-13; `safezoneApp.test.tsx` "leaving SafeZone…").
   useEffect(
     () => () => {
-      if (lockOnLeave) useSafezoneLock.getState().lock();
+      if (!lockOnLeave) return;
+      useSafezoneLock.getState().lock();
+      queryClient.removeQueries({ queryKey: ["safezone"] });
     },
-    [lockOnLeave],
+    [lockOnLeave, queryClient],
   );
 
   const touch = () => {

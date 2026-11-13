@@ -77,7 +77,7 @@ secrets (`lockEpoch` increments; `useSecretFields` clears on change). It runs:
    so the switcher's snapshot shows no secret (`SafeZoneCover`);
 2. **when the token expires** with no activity (≤ 120 s, the server's TTL);
 3. **on any `safezone_pin_locked`** from the server;
-4. **on sign-out** (the auth store's sign-out calls `useSafezoneLock.getState().lock()`);
+4. **on leaving SafeZone**, which covers sign-out: the vault's root screen locks when it unmounts (`lockOnLeave`), and a sign-out or an expired session replaces the route. The token exists only while SafeZone is on screen; the auth store does not call the lock store;
 5. **when the person taps the padlock** in the header.
 
 ## 5 · Reveal
@@ -114,9 +114,9 @@ secrets (`lockEpoch` increments; `useSecretFields` clears on change). It runs:
   `expo-screen-capture` `preventScreenCaptureAsync(key)`. Leaving the screen
   removes it with `allowScreenCaptureAsync(key)`. Screenshots, screen
   recording and the recents thumbnail all go black.
-- **iOS**: the same module listens for screenshots and hides the content while
-  recording (`addScreenshotListener`, `isCapturedAsync`). iOS cannot block a
-  screenshot; it can only know one was taken.
+- **iOS**: nothing blocks or detects a screenshot yet. The `inactive` cover
+  hides the app-switcher snapshot only. Screen-recording detection
+  (`isCapturedAsync`, `addScreenshotListener`) is **not built**; see §9.
 - It is a **native module**: a build without it must still open SafeZone and
   say so. It is required with a literal inside a `try` (as for
   `readAloud.store.ts` and `phoneBook.ts`), and `secureScreen.ts` reports
@@ -145,7 +145,7 @@ secrets (`lockEpoch` increments; `useSecretFields` clears on change). It runs:
 - **Android 13+ "sensitive" clip flag** (`ClipDescription.EXTRA_IS_SENSITIVE`,
   which hides the clipboard preview): not exposed by `expo-clipboard` either.
   Same follow-up.
-- **iOS screenshots cannot be blocked**, only detected.
+- **iOS screenshots cannot be blocked**, only detected, and detection is not built: a recording of an open SafeZone on an iPhone would show what is on screen.
 - **The unlock token is not bound to the device** (server). A stolen JWT plus
   a stolen unlock token works for at most 120 s.
 - **Biometric unlock** (`expo-local-authentication`) is designed in

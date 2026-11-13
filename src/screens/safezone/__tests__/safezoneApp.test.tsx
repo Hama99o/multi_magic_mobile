@@ -145,6 +145,9 @@ describe("the gate", () => {
     expect(mock.history.get.find((r) => r.url === `${BASE}/passwords`)?.params).toMatchObject({ masked: 1 });
     expect(screen.getByText("Mail")).toBeTruthy();
     expect(screen.getByText("qa-user")).toBeTruthy();
+    // The module is in this build: no "cannot block" warning
+    // (its absence is secureScreen.absent.test.tsx).
+    expect(screen.queryByTestId("safezone-no-capture-block")).toBeNull();
     assertNoSecretOnScreen();
     fireEvent.press(screen.getByTestId("safezone-tab-payment_cards"));
     expect(await screen.findByText("•••• 4242")).toBeTruthy();
@@ -187,6 +190,65 @@ describe("the gate", () => {
     expect(mock.history.post).toHaveLength(1);
   });
 
+  it("the server saying no PIN at unlock goes to Set a PIN", async () => {
+    mock.onGet(`${BASE}/pin`).replyOnce(200, status());
+    mock.onPost(`${BASE}/pin/unlock`).reply(422, { error: "pin_not_enabled" });
+    renderScreen(<SafeZone />);
+    await screen.findByTestId("safezone-unlock");
+    typePin("111111");
+    await screen.findByTestId("safezone-setup");
+  });
+
+  it("the 429 pause lifts after 60 s and the pad works again", async () => {
+    jest.useFakeTimers();
+    mock.onGet(`${BASE}/pin`).reply(200, status());
+    mock.onPost(`${BASE}/pin/unlock`).replyOnce(429, {}).onPost(`${BASE}/pin/unlock`).reply(200, { unlock_token: "tok", expires_in: 120 });
+    renderScreen(<SafeZone />);
+    await screen.findByTestId("safezone-unlock");
+    typePin("111111");
+    await screen.findByTestId("safezone-pin-notice");
+    act(() => jest.advanceTimersByTime(59_000));
+    typePin("222222");
+    expect(mock.history.post).toHaveLength(1);
+    act(() => jest.advanceTimersByTime(1_000));
+    expect(screen.queryByTestId("safezone-pin-notice")).toBeNull();
+    typePin("333333");
+    await waitFor(() => expect(mock.history.post).toHaveLength(2));
+    expect(JSON.parse(mock.history.post[1].data as string)).toEqual({ pin: "333333" });
+  });
+
+  it("the lockout counts down to 0, then asks the server again and gives the pad back", async () => {
+    jest.useFakeTimers();
+    const until = new Date(Date.now() + 3_000).toISOString();
+    mock
+      .onGet(`${BASE}/pin`).replyOnce(200, status({ locked_out: true, locked_until: until, attempts_left: 0 }))
+      .onGet(`${BASE}/pin`).reply(200, status());
+    renderScreen(<SafeZone />);
+    await screen.findByTestId("safezone-locked-out");
+    expect(screen.getByTestId("safezone-locked-out-left").props.children).toBe("Too many wrong PINs. Try again in 0:03.");
+    act(() => jest.advanceTimersByTime(1_000));
+    expect(screen.getByTestId("safezone-locked-out-left").props.children).toBe("Too many wrong PINs. Try again in 0:02.");
+    act(() => jest.advanceTimersByTime(2_000));
+    await screen.findByTestId("safezone-unlock");
+    expect(mock.history.get.filter((r) => r.url === `${BASE}/pin`)).toHaveLength(2);
+  });
+
+  it("after the PIN is turned on, nothing on screen still holds it or the password", async () => {
+    mock.onGet(`${BASE}/pin`).replyOnce(200, status({ enabled: false })).onGet(`${BASE}/pin`).reply(200, status());
+    mock.onPost(`${BASE}/pin/enable`).reply(200, status());
+    renderScreen(<SafeZone />);
+    await screen.findByTestId("safezone-setup");
+    fireEvent.changeText(screen.getByTestId("safezone-setup-pin"), "246810");
+    fireEvent.changeText(screen.getByTestId("safezone-setup-again"), "246810");
+    fireEvent.changeText(screen.getByTestId("safezone-setup-password"), "account-pw");
+    fireEvent.press(screen.getByTestId("safezone-setup-save"));
+    await screen.findByTestId("safezone-unlock");
+    // The form is gone (its state with it), and no field anywhere holds them.
+    expect(screen.queryByTestId("safezone-setup")).toBeNull();
+    expect(screen.queryByDisplayValue("246810")).toBeNull();
+    expect(screen.queryByDisplayValue("account-pw")).toBeNull();
+  });
+
   it("blocks screen capture while open, and allows it again on leaving", async () => {
     mock.onGet(`${BASE}/pin`).reply(200, status());
     const view = renderScreen(<SafeZone />);
@@ -220,10 +282,41 @@ describe("locking", () => {
     await screen.findByTestId("safezone-unlock");
   });
 
-  it("leaving SafeZone locks it", async () => {
+  it("leaving SafeZone locks it, and drops even the stripped list", async () => {
     await unlockVault();
+    expect(client.getQueryCache().findAll({ queryKey: ["safezone"] }).length).toBeGreaterThan(0);
     screen.unmount();
     expect(useSafezoneLock.getState()).toMatchObject({ token: null, status: { kind: "locked" } });
+    expect(client.getQueryCache().findAll({ queryKey: ["safezone"] })).toHaveLength(0);
+  });
+
+  it("an expired token locks the open vault on the next tick", async () => {
+    // Fake BEFORE the gate mounts: its 5 s interval is set up then.
+    jest.useFakeTimers();
+    await unlockVault();
+    act(() => useSafezoneLock.setState({ expiresAt: Date.now() - 1 }));
+    act(() => jest.advanceTimersByTime(5_000));
+    expect(screen.getByTestId("safezone-unlock")).toBeTruthy();
+  });
+
+  it("a touch past half the token's life asks the server to slide it", async () => {
+    mock.onPost(`${BASE}/pin/refresh`).reply((config) => {
+      expect(config.headers?.["X-Safezone-Unlock"]).toBe("tok");
+      return [200, { unlock_token: "tok-2", expires_in: 120 }];
+    });
+    await unlockVault();
+    fireEvent(screen.getByTestId("safezone-list"), "touchStart");
+    expect(mock.history.post.filter((r) => r.url?.endsWith("/pin/refresh"))).toHaveLength(0);
+    act(() => useSafezoneLock.setState({ expiresAt: Date.now() + 30_000 }));
+    fireEvent(screen.getByTestId("safezone-list"), "touchStart");
+    await waitFor(() => expect(useSafezoneLock.getState().token).toBe("tok-2"));
+  });
+
+  it("back from the background, an overdue clipboard clear runs", async () => {
+    await unlockVault();
+    const due = jest.spyOn(clipboardGuard, "clearIfDue");
+    act(() => appState.forEach((fn) => fn("active")));
+    expect(due).toHaveBeenCalled();
   });
 
   it("the server saying locked mid-list locks the vault", async () => {
@@ -265,6 +358,36 @@ describe("the item: reveal and copy", () => {
     act(() => jest.advanceTimersByTime(1_000));
     expect(screen.getByTestId("safezone-field-password-value").props.children).toBe("••••••••");
     assertNoSecretOnScreen();
+  });
+
+  it("the countdown under a revealed secret runs down, then the value is masked", async () => {
+    jest.useFakeTimers();
+    await openItem();
+    fireEvent.press(screen.getByTestId("safezone-field-password-reveal"));
+    await waitFor(() => expect(screen.getByTestId("safezone-field-password-value").props.children).toBe(SECRET));
+    const timer = () => screen.getByTestId("safezone-field-password-timer");
+    expect(timer().props.accessibilityLabel).toBe("Hidden again in 20 seconds");
+    act(() => jest.advanceTimersByTime(5_000));
+    expect(timer().props.accessibilityLabel).toBe("Hidden again in 15 seconds");
+    act(() => jest.advanceTimersByTime(10_000));
+    expect(timer().props.accessibilityLabel).toBe("Hidden again in 5 seconds");
+    act(() => jest.advanceTimersByTime(5_000));
+    expect(screen.queryByTestId("safezone-field-password-timer")).toBeNull();
+    expect(screen.getByTestId("safezone-field-password-value").props.children).toBe("••••••••");
+  });
+
+  it("copying a plain field is a plain copy: not fetched again, not cleared", async () => {
+    jest.useFakeTimers();
+    await openItem();
+    const gets = mock.history.get.length;
+    fireEvent.press(screen.getByTestId("safezone-field-username-copy"));
+    await waitFor(() => expect(clip.__board.text).toBe("qa-user"));
+    expect(await screen.findByText("Copied")).toBeTruthy();
+    expect(mock.history.get.length).toBe(gets);
+    await act(async () => {
+      jest.advanceTimersByTime(60_000);
+    });
+    expect(clip.__board.text).toBe("qa-user");
   });
 
   it("one field at a time: revealing the CVV hides the number", async () => {

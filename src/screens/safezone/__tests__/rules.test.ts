@@ -35,6 +35,11 @@ describe("no storage, no logs, nowhere else", () => {
   });
 });
 
+it("an item's secrets never go through React Query (SECURITY.md §8)", () => {
+  const item = readFileSync(join(ROOT, "app/safezone/item.tsx"), "utf8");
+  expect(item).not.toMatch(/useQuery|useInfiniteQuery|useMutation|queryClient/);
+});
+
 describe("display", () => {
   it("masks with the last four at most", () => {
     expect(maskedTail("4242")).toBe("•••• 4242");

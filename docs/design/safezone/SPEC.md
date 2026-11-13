@@ -132,3 +132,27 @@ sheet is the reference); PIN change via the email code; the tablet split
 - **Password autofill at login** (iOS credential provider extension, Android
   Autofill service): noted, not built.
 - **Native clipboard expiry / sensitive flag** (SECURITY §9).
+
+## G · Device and iPhone checklist: **NOT MEASURED** until run
+
+Jest cannot see any of these. Each one is a verdict for the device pass
+(Android, `qa_phone3`, with a native build that includes
+`expo-screen-capture`) or for the owner's iPhone in the RC. Until then, each
+stays NOT MEASURED: not a pass, and not a failure.
+
+| # | Check | Where | How |
+|---|---|---|---|
+| D1 | FLAG_SECURE: a screenshot of the vault and of an item is black | Android | `adb exec-out screencap` on the vault, the item with a revealed field, and the PIN pad |
+| D2 | A screen recording shows black while SafeZone is open | Android | `adb shell screenrecord`, open, reveal, stop |
+| D3 | The recents thumbnail shows no vault | Android | open SafeZone, Home, then recents: screenshot |
+| D4 | Leaving SafeZone lets screenshots work again elsewhere | Android | screencap on Home after SafeZone |
+| D5 | The app-switcher snapshot shows the cover, not the vault | iPhone | swipe up with an item revealed |
+| D6 | A screen recording of SafeZone on an iPhone **does** show the screen (detection is not built: SECURITY §9) | iPhone | to confirm the known gap, not a pass |
+| D7 | Copy, then wait 30 s in the app: the clipboard is empty | both | paste into the search field |
+| D8 | Copy, switch away at once, paste elsewhere within 30 s works; come back after 30 s and the clipboard is cleared on return | both | |
+| D9 | iOS: does the clear raise the "Allow paste" prompt? (it must not: we never read the pasteboard there) | iPhone | |
+| D10 | Android 13+: the clipboard preview chip shows the copied secret (`EXTRA_IS_SENSITIVE` is not set: SECURITY §9) | Android 13+ | confirm the known gap |
+| D11 | Background → back: the PIN is asked again | both | |
+| D12 | Kill the app with a copied secret pending: the copy stays (known gap) | both | confirm the gap |
+| D13 | The pad, the vault and an item at 360 / 411 / 800 dp, light and dark, en and fr: shots into `ours/` | Android | the `DONE` bar |
+| D14 | The heap: a dropped secret is unreachable, not overwritten (SECURITY §9). Not measurable with our tools; listed so nobody counts it | | none |

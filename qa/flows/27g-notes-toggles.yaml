@@ -70,6 +70,17 @@ tags:
           direction: RIGHT
 - tapOn:
     id: "tb-block:codeBlock"
+# The row keeps its scroll: bring ¶ (second key) back into view.
+- repeat:
+    times: 4
+    while:
+      notVisible:
+        id: "tb-block:paragraph"
+    commands:
+      - swipe:
+          from:
+            id: "note-toolbar"
+          direction: RIGHT
 - tapOn:
     id: "tb-block:paragraph"
 - tapOn:

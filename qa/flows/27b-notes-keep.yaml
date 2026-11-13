@@ -79,7 +79,8 @@ tags:
     id: "notes-menu"
 - tapOn:
     id: "drawer-notes"
+# The search pill: the grid is up (the Others section may be off-screen).
 - extendedWaitUntil:
     visible:
-      id: "notes-grid-others-col-0"
+      id: "notes-search"
     timeout: 15000

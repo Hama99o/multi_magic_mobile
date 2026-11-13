@@ -127,6 +127,7 @@ beforeEach(() => {
   mockEngine.props = null;
   mockEngine.refuse = false;
   mockEngine.holds = "all";
+  mockEngine.init = null;
   mockEngine.calls = [];
   mockEngine.selections = [];
   server = note();
@@ -679,5 +680,21 @@ describe("typing does not convert the whole note on every key (device, 2026-11-1
     open();
     await waitFor(() => expect(mockEngine.props).not.toBeNull());
     expect(mockLeave.listeners.length).toBeGreaterThan(0);
+  });
+});
+
+describe("the editor opens the server's copy, not a cached one (device, 2026-11-13: a web edit did not show)", () => {
+  it("with an older copy in the cache, the engine is given the server's current note", async () => {
+    const client = testQueryClient({ queries: { gcTime: Infinity } });
+    const { parseNote } = jest.requireActual("@/api/notes") as typeof import("@/api/notes");
+    client.setQueryData(["notes", "note", 7], parseNote(note({ description: "<p>old copy</p>", updated_at: "2026-11-01T00:00:00Z" })));
+    server = note({ description: "<p>old copy</p><p>web edit</p>", updated_at: "2026-11-02T00:00:00Z" });
+    render(
+      <QueryClientProvider client={client}>
+        <NoteEditScreen />
+      </QueryClientProvider>,
+    );
+    await waitFor(() => expect(mockEngine.init).not.toBeNull());
+    expect(JSON.stringify(mockEngine.init)).toContain("web edit");
   });
 });

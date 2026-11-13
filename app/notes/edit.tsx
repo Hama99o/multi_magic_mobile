@@ -76,7 +76,7 @@ export default function NoteEditScreen() {
   const params = useLocalSearchParams<{ id?: string }>();
   const noteId = Number(params.id) || 0;
 
-  const { data: note, error, refetch } = useNote(noteId);
+  const { data: note, error, refetch, isFetchedAfterMount } = useNote(noteId);
   const save = useSaveNote();
   const createNote = useCreateNote();
   const saveCalls = useRef({ save: save.mutateAsync, create: createNote.mutateAsync });
@@ -93,7 +93,10 @@ export default function NoteEditScreen() {
   const [opened, setOpened] = useState<Opened | null>(null);
   const [generation, setGeneration] = useState(0);
   useEffect(() => {
-    if (!note || opened) return;
+    // Open the server's copy as it is NOW, not one cached from an earlier
+    // visit (device, 2026-11-13: a web edit did not show). Offline, the
+    // refetch fails and the cached copy (plus any draft) is what opens.
+    if (!note || opened || !isFetchedAfterMount) return;
     let live = true;
     void noteDrafts.get(noteId).then((draft) => {
       if (!live) return;
@@ -111,7 +114,7 @@ export default function NoteEditScreen() {
     return () => {
       live = false;
     };
-  }, [note, noteId, opened]);
+  }, [note, noteId, opened, isFetchedAfterMount]);
 
   const labels: EditorLabels = {
     table: (rows, cols) => t("notes.block.table", { rows, cols }),

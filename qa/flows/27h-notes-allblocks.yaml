@@ -1,0 +1,49 @@
+# NOTES, the phone ↔ web round trip (owner, 2026-11-13: smoothness #6).
+# Opens "[qa-edit] allblocks" (invented; every block type and mark the web
+# has), types " phone edit" and waits for "Saved". The runner then loads the
+# saved HTML in the real web Tiptap (tiptop-editor's oracle, web-prod stack),
+# checks getJSON is stable, adds a web edit, puts it back on the server, and
+# runs this flow again: the second save must keep the web's edit (the phone
+# read it) and every block type.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: phone edit → web load → web edit → phone edit, on the real server.
+# CANNOT TELL YOU: the web's UI (headless Tiptap only); iOS.
+appId: ${APP_ID}
+tags:
+  - notes
+  - writes
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-notes"
+# The search pill: the grid is up (which section is on screen depends on how
+# many notes the QA account has pinned).
+- extendedWaitUntil:
+    visible:
+      id: "notes-search"
+    timeout: 60000
+# (No grid screenshot here: the QA account's grid shows copies of real
+# notes. The sheet's grid shot is 27c, filtered to invented notes.)
+- tapOn:
+    id: "notes-search"
+# The server matches the title as typed: "[qa-edit] allblocks" has a "]" in it.
+- inputText: "qa-edit] allblocks"
+- extendedWaitUntil:
+    visible: "\\[qa-edit\\] allblocks.*"
+    timeout: 60000
+- tapOn: "\\[qa-edit\\] allblocks.*"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-body"
+    timeout: 30000
+- takeScreenshot: reports/27h-notes-allblocks-open
+- tapOn:
+    id: "note-edit-body"
+- inputText: " phone edit"
+- extendedWaitUntil:
+    visible: "Saved"
+    timeout: 15000
+- takeScreenshot: reports/27h-notes-allblocks-keyboard-up

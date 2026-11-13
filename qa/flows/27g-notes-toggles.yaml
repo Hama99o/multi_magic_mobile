@@ -1,0 +1,92 @@
+# NOTES, rapid format toggles (owner, 2026-11-13: "editing must be smooth,
+# nothing should break"). Starts in "[qa-edit] scratch" with the caret in the
+# body (after 27-notes-edit). Selects the first word, flips bold and italic on
+# and off, then H1 → H2 → H3 → paragraph, checklist on/off, bullets on/off,
+# code on/off, fast, then types "Q". The runner compares the server's text
+# before and after: same words, plus one "Q" in the first block (the caret
+# did not jump).
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: toggles with a selection and on a block, back to back; the caret
+# staying in the block; nothing lost after a save.
+# CANNOT TELL YOU: how it looks mid-way (the screenshots do); iOS.
+appId: ${APP_ID}
+tags:
+  - notes
+  - writes
+---
+- doubleTapOn:
+    point: "12%,18%"
+- tapOn:
+    id: "tb-bold"
+- tapOn:
+    id: "tb-bold"
+- tapOn:
+    id: "tb-italic"
+- tapOn:
+    id: "tb-italic"
+- takeScreenshot: reports/27g-marks
+- tapOn:
+    point: "50%,18%"
+- tapOn:
+    id: "tb-format"
+- tapOn:
+    id: "tb-block:h1"
+- tapOn:
+    id: "tb-block:h2"
+- tapOn:
+    id: "tb-block:h3"
+- takeScreenshot: reports/27g-h3
+- tapOn:
+    id: "tb-block:paragraph"
+# The Format row scrolls sideways: the lists sit after the marks.
+- repeat:
+    times: 4
+    while:
+      notVisible:
+        id: "tb-taskList"
+    commands:
+      - swipe:
+          from:
+            id: "note-toolbar"
+          direction: LEFT
+- tapOn:
+    id: "tb-taskList"
+- tapOn:
+    id: "tb-taskList"
+- tapOn:
+    id: "tb-bulletList"
+- tapOn:
+    id: "tb-bulletList"
+- repeat:
+    times: 4
+    while:
+      notVisible:
+        id: "tb-block:codeBlock"
+    commands:
+      - swipe:
+          from:
+            id: "note-toolbar"
+          direction: RIGHT
+- tapOn:
+    id: "tb-block:codeBlock"
+# The row keeps its scroll: bring ¶ (second key) back into view.
+- repeat:
+    times: 4
+    while:
+      notVisible:
+        id: "tb-block:paragraph"
+    commands:
+      - swipe:
+          from:
+            id: "note-toolbar"
+          direction: RIGHT
+- tapOn:
+    id: "tb-block:paragraph"
+- tapOn:
+    id: "tb-closePanel"
+- inputText: "Q"
+- extendedWaitUntil:
+    visible: "Saved"
+    timeout: 15000
+- takeScreenshot: reports/27g-after

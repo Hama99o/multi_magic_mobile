@@ -1,0 +1,46 @@
+# NOTES, a LONG note in the editor (owner, 2026-11-13: smoothness). Opens
+# "[qa-edit] long", an invented ~900 KB note the rig creates (the size of the
+# owner's biggest note, never its content), straight into edit mode, caret at
+# the end of the first block, keyboard up, for qa/scripts/smooth_check.py.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: opening a 900 KB note in edit mode; typing into it (with the script).
+# CANNOT TELL YOU: anything about real notes' content; iOS.
+appId: ${APP_ID}
+tags:
+  - notes
+  - writes
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-notes"
+# The search pill: the grid is up (which section is on screen depends on how
+# many notes the QA account has pinned).
+- extendedWaitUntil:
+    visible:
+      id: "notes-search"
+    timeout: 60000
+# (No grid screenshot here: the QA account's grid shows copies of real
+# notes. The sheet's grid shot is 27c, filtered to invented notes.)
+- tapOn:
+    id: "notes-search"
+# The server matches the title as typed: "[qa-edit] long" has a "]" in it.
+- inputText: "qa-edit] long"
+- extendedWaitUntil:
+    visible: "\\[qa-edit\\] long.*"
+    timeout: 60000
+- tapOn: "\\[qa-edit\\] long.*"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-body"
+    timeout: 90000
+- takeScreenshot: reports/27f-notes-long-open
+- tapOn:
+    id: "note-edit-body"
+- inputText: " "
+- extendedWaitUntil:
+    visible: "Saved"
+    timeout: 15000
+- takeScreenshot: reports/27f-notes-long-keyboard-up

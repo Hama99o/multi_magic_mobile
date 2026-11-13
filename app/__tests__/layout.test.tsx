@@ -20,6 +20,18 @@ jest.mock("expo-status-bar", () => ({
 
 const mockStack = jest.fn();
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
+// Note reminders: the root keeps this phone's notifications in step with the
+// server, and a tapped reminder opens its note.
+const mockResync = jest.fn(async (..._args: unknown[]) => undefined);
+let mockTap: ((noteId: number) => void) | null = null;
+jest.mock("@/screens/notes/reminderNotifications", () => ({
+  resyncReminders: (...a: unknown[]) => mockResync(...a),
+  onReminderTap: (open: (noteId: number) => void) => {
+    mockTap = open;
+    return () => undefined;
+  },
+}));
 jest.mock("expo-router", () => ({
   // `Stack.Screen` too: the root declares the assistant as a modal.
   Stack: Object.assign(
@@ -29,7 +41,7 @@ jest.mock("expo-router", () => ({
     },
     { Screen: () => null },
   ),
-  router: { replace: (...args: unknown[]) => mockReplace(...args) },
+  router: { replace: (...args: unknown[]) => mockReplace(...args), push: (...args: unknown[]) => mockPush(...args) },
   // The root renders `ShareIntentBridge`, which asks where it is
   // (`src/screens/pages/ShareIntentBridge.tsx`).
   usePathname: () => "/",
@@ -140,5 +152,27 @@ describe("a deep link opens ON TOP OF HOME", () => {
   it("declares Home as the initial route", () => {
     const layout = jest.requireActual("../_layout");
     expect((layout as { unstable_settings?: { initialRouteName?: string } }).unstable_settings?.initialRouteName).toBe("home");
+  });
+});
+
+describe("note reminders (local notifications)", () => {
+  it("resyncs this phone's reminders once signed in, and again after a sign-in", async () => {
+    render(<RootLayout />);
+    await act(async () => {
+      useAuthStore.setState({ status: "signedIn" });
+    });
+    await waitFor(() => expect(mockResync).toHaveBeenCalledTimes(1));
+    await act(async () => {
+      useAuthStore.setState({ status: "signedOut" });
+      useAuthStore.setState({ status: "signedIn" });
+    });
+    await waitFor(() => expect(mockResync).toHaveBeenCalledTimes(2));
+  });
+
+  it("a tapped reminder opens its note", async () => {
+    render(<RootLayout />);
+    await waitFor(() => expect(mockTap).not.toBeNull());
+    act(() => mockTap!(42));
+    expect(mockPush).toHaveBeenCalledWith({ pathname: "/notes/edit", params: { id: "42" } });
   });
 });

@@ -83,6 +83,9 @@ module.exports = {
       // followed by "/", not a prefix.
       "expo-file-system|" +
       "expo-sharing|" +
+      // Notes reminders (local notifications).
+      "expo-notifications|" +
+      "expo-application|" +
       "expo-video|" +
       "expo-media-library|" +
       "expo-share-intent|" +

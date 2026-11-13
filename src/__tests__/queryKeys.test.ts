@@ -23,8 +23,8 @@
  * The plant is the bug it exists for: put `calendarApi.upcoming(7)` back in
  * useStarterPrompts and this goes red.
  *
- * What it cannot see: a key built at runtime (none today; a non-literal key
- * FAILS here rather than being skipped), and invalidation, which reads no data.
+ * What it cannot see: a key built at runtime (none today; a key that is not
+ * a literal or a const tuple from a factory FAILS here rather than being skipped), and invalidation, which reads no data.
  */
 import path from "path";
 import ts from "typescript";
@@ -50,17 +50,15 @@ function collect(): { accesses: Access[]; unreadable: string[]; checker: ts.Type
   const accesses: Access[] = [];
   const unreadable: string[] = [];
 
+  const part = (t: ts.Type) => (t.isStringLiteral() ? JSON.stringify(t.value) : t.isNumberLiteral() ? String(t.value) : "*");
   const keyOf = (node: ts.Expression, where: string): string[] | null => {
-    if (!ts.isArrayLiteralExpression(node)) {
-      unreadable.push(`${where}: a key that is not an array literal`);
-      return null;
-    }
-    return node.elements.map((el) => {
-      const t = checker.getTypeAtLocation(el);
-      if (t.isStringLiteral()) return JSON.stringify(t.value);
-      if (t.isNumberLiteral()) return String(t.value);
-      return "*";
-    });
+    if (ts.isArrayLiteralExpression(node)) return node.elements.map((el) => part(checker.getTypeAtLocation(el)));
+    // A key factory (notesKeys.detail(id), 2026-11-13) returns an `as const`
+    // tuple: its element types are the key, literal or wildcard as above.
+    const t = checker.getTypeAtLocation(node);
+    if (checker.isTupleType(t)) return checker.getTypeArguments(t as ts.TypeReference).map(part);
+    unreadable.push(`${where}: a key that is neither an array literal nor a const tuple`);
+    return null;
   };
   const awaited = (t: ts.Type) => checker.getAwaitedType(t) ?? t;
 

@@ -1,0 +1,86 @@
+# NOTES, Keep's parts after the editor is open (2026-11-13): the Format panel
+# (A), a code block and its language sheet, the ⋮ sheet, the reminder sheet,
+# the drawer with labels, Archive and Trash. Starts in "[qa-edit] scratch"
+# with the keyboard up (after 27-notes-edit). Writes only to that dev note.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: A → Format panel and back; Code block → language sheet → Python;
+# ⋮ → Edited …, Labels;
+# the drawer: Reminders, Archive, Trash, back to Notes.
+# The reminder and the lock are in 27e (they need multi_magic PRs #22/#23).
+# CANNOT TELL YOU: a reminder actually ringing (the device pass waits for it
+# separately); iOS.
+appId: ${APP_ID}
+tags:
+  - notes
+  - writes
+---
+# The keyboard closes between two Maestro runs: put the caret back first.
+- tapOn:
+    id: "note-edit-body"
+- tapOn:
+    id: "tb-format"
+- extendedWaitUntil:
+    visible:
+      id: "tb-closePanel"
+    timeout: 10000
+- takeScreenshot: reports/27b-format-panel
+- tapOn:
+    id: "tb-block:codeBlock"
+# The language key is on the bar itself: close the Format panel first.
+- tapOn:
+    id: "tb-closePanel"
+- extendedWaitUntil:
+    visible:
+      id: "tb-codeLanguage"
+    timeout: 10000
+- tapOn:
+    id: "tb-codeLanguage"
+- inputText: "pyth"
+- tapOn:
+    id: "note-code-language-python"
+- takeScreenshot: reports/27b-code-python
+- tapOn:
+    id: "tb-format"
+- tapOn:
+    id: "tb-block:paragraph"
+- tapOn:
+    id: "tb-closePanel"
+- tapOn:
+    id: "tb-more"
+- extendedWaitUntil:
+    visible:
+      id: "note-more-edited"
+    timeout: 10000
+- takeScreenshot: reports/27b-more-sheet
+- tapOn:
+    id: "note-more-labels"
+- takeScreenshot: reports/27b-labels-sheet
+- tapOn:
+    id: "note-labels-close"
+- tapOn:
+    id: "note-edit-back"
+- extendedWaitUntil:
+    visible:
+      id: "notes-menu"
+    timeout: 15000
+- tapOn:
+    id: "notes-menu"
+- takeScreenshot: reports/27b-drawer
+- tapOn:
+    id: "drawer-reminders"
+- takeScreenshot: reports/27b-reminders-view
+- tapOn:
+    id: "notes-menu"
+- tapOn:
+    id: "drawer-trash"
+- takeScreenshot: reports/27b-trash
+- tapOn:
+    id: "notes-menu"
+- tapOn:
+    id: "drawer-notes"
+# The search pill: the grid is up (the Others section may be off-screen).
+- extendedWaitUntil:
+    visible:
+      id: "notes-search"
+    timeout: 15000

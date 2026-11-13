@@ -1,8 +1,9 @@
 /**
  * A block the phone shows but does not edit yet (SPEC §C8, §E): a table, a
  * code block, a legacy image or embed the web itself drops, or a node type
- * this app does not know. It shows a static preview and "View on web". Its
- * markup is never touched: the codec writes it back byte for byte.
+ * this app does not know. It shows a static preview; there is no web link
+ * (owner, 2026-11-13: everything on mobile). A video card opens the video.
+ * Its markup is never touched: the codec writes it back byte for byte.
  */
 import React from "react";
 import { Pressable, ScrollView, Text, View } from "react-native";
@@ -21,17 +22,19 @@ export interface RawBlockCardProps {
   title: string;
   preview?: RawBlockPreview;
   colors: EditorColors;
-  labels: { viewOnWeb: string };
-  onViewOnWeb(): void;
+  /** The block points somewhere (a video): the whole card opens it. */
+  onOpen?(): void;
   testID?: string;
 }
 
 const MONO = "monospace";
 
-export function RawBlockCard({ kind, title, preview, colors, labels, onViewOnWeb, testID }: RawBlockCardProps) {
+export function RawBlockCard({ kind, title, preview, colors, onOpen, testID }: RawBlockCardProps) {
+  const Box = onOpen ? Pressable : View;
   return (
-    <View
+    <Box
       testID={testID}
+      {...(onOpen ? { onPress: onOpen, accessibilityRole: "link" as const, accessibilityLabel: title } : {})}
       style={{ borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, borderRadius: 12, padding: 12, gap: 10 }}
     >
       <Text style={{ color: colors.inkMuted, fontSize: 13, fontWeight: "600" }} accessibilityRole="header">
@@ -69,14 +72,6 @@ export function RawBlockCard({ kind, title, preview, colors, labels, onViewOnWeb
           {preview.text}
         </Text>
       ) : null}
-      <Pressable
-        onPress={onViewOnWeb}
-        accessibilityRole="link"
-        hitSlop={8}
-        style={{ alignSelf: "flex-start", backgroundColor: colors.accent, borderRadius: 999, paddingHorizontal: 14, paddingVertical: 8 }}
-      >
-        <Text style={{ color: colors.onAccent, fontWeight: "600", fontSize: 14 }}>{labels.viewOnWeb}</Text>
-      </Pressable>
-    </View>
+    </Box>
   );
 }

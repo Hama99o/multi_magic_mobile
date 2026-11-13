@@ -1,7 +1,7 @@
 /**
  * The read view never drops content: every text of the document is on
  * screen, and every block the phone cannot show as the web does becomes a
- * card with "View on web". The documents come from the stored-HTML shapes the
+ * card (owner, 2026-11-13: no web link anywhere). The documents come from the stored-HTML shapes the
  * codec is proven on in tiptop-editor (web 2.3.1 output, server-written
  * markdown, legacy markup).
  */
@@ -23,7 +23,6 @@ jest.mock("expo-image", () => {
 });
 
 const labels: EditorLabels = {
-  viewOnWeb: "View on web",
   table: (r, c) => `Table · ${r} × ${c}`,
   code: (l) => (l ? `Code · ${l}` : "Code"),
   legacyImage: "Old image",
@@ -48,15 +47,15 @@ function texts(node: DocNode): string[] {
   return (node.content ?? []).flatMap(texts);
 }
 
-const renderDoc = (html: string, onViewOnWeb = jest.fn(), onLinkPress = jest.fn()) => {
+const renderDoc = (html: string, onLinkPress = jest.fn()) => {
   const { doc } = parseNoteHtml(html);
-  render(<NoteDocument doc={doc} colors={TOKENS.light} labels={labels} onLinkPress={onLinkPress} onViewOnWeb={onViewOnWeb} />);
-  return doc;
+  const view = render(<NoteDocument doc={doc} colors={TOKENS.light} labels={labels} onLinkPress={onLinkPress} />);
+  return { doc, unmount: view.unmount };
 };
 
 describe("NoteDocument", () => {
   it.each(Object.entries(SHAPES))("%s: every text is on screen", (_name, html) => {
-    const doc = renderDoc(html);
+    const { doc } = renderDoc(html);
     for (const text of texts(doc).map((t) => t.trim()).filter(Boolean)) {
       expect(screen.getAllByText(new RegExp(text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))).length).toBeGreaterThan(0);
     }
@@ -76,22 +75,28 @@ describe("NoteDocument", () => {
     expect(screen.getByRole("checkbox", { checked: false })).toBeTruthy();
   });
 
-  it("keeps what the web drops: legacy images and videos become cards that open the right page", () => {
-    const onViewOnWeb = jest.fn();
-    renderDoc(SHAPES.legacy, onViewOnWeb);
+  it("keeps what the web drops: legacy images and videos become cards, and the video opens the video", () => {
+    const onLinkPress = jest.fn();
+    renderDoc(SHAPES.legacy, onLinkPress);
     expect(screen.getByText("Old image")).toBeTruthy();
     expect(screen.getByText("Video")).toBeTruthy();
     expect(screen.getByText("[Old image]", { exact: false })).toBeTruthy(); // the inline one
-    // Two block cards (the top-level image and the video); the inline image is a chip in its line.
-    const buttons = screen.getAllByText("View on web");
-    expect(buttons).toHaveLength(2);
-    fireEvent.press(buttons[1]);
-    expect(onViewOnWeb).toHaveBeenLastCalledWith("https://www.youtube.com/watch?v=abc123XYZ");
+    fireEvent.press(screen.getByText("Video"));
+    expect(onLinkPress).toHaveBeenLastCalledWith("https://www.youtube.com/watch?v=abc123XYZ");
+  });
+
+  it("never offers to open the note on the web (owner, 2026-11-13: everything on mobile)", () => {
+    for (const html of Object.values(SHAPES)) {
+      const { unmount } = renderDoc(html);
+      expect(screen.queryByText(/on web|on the web/i)).toBeNull();
+      expect(screen.queryByRole("link", { name: /web/i })).toBeNull();
+      unmount();
+    }
   });
 
   it("opens links through the screen", () => {
     const onLinkPress = jest.fn();
-    renderDoc(SHAPES["web 2.3.1"], jest.fn(), onLinkPress);
+    renderDoc(SHAPES["web 2.3.1"], onLinkPress);
     fireEvent.press(screen.getByText("pay"));
     expect(onLinkPress).toHaveBeenCalledWith("https://example.com");
   });
@@ -103,7 +108,7 @@ describe("NoteDocument", () => {
 
   it("an unknown node type is a card with its text, never dropped", () => {
     const doc: DocNode = { type: "doc", content: [{ type: "callout", content: [{ type: "paragraph", content: [{ type: "text", text: "future block" }] }] }] };
-    render(<NoteDocument doc={doc} colors={TOKENS.light} labels={labels} onLinkPress={jest.fn()} onViewOnWeb={jest.fn()} />);
+    render(<NoteDocument doc={doc} colors={TOKENS.light} labels={labels} onLinkPress={jest.fn()} />);
     expect(screen.getByText("Unknown callout")).toBeTruthy();
     expect(screen.getByText("future block")).toBeTruthy();
   });
@@ -130,5 +135,11 @@ describe("NoteDocument", () => {
     renderDoc('<div data-type="image-uploader" src="https://example.com/gone.png" uploading="false"></div>');
     act(() => screen.getByTestId("note-image").props.onError({ error: "404" }));
     expect(screen.getByText("No image")).toBeTruthy();
+  });
+});
+
+describe("the read view's parse (device, 2026-11-13: long notes)", () => {
+  it("does not build the source map it never uses (it parses the note twice more)", () => {
+    expect("source" in parseNoteHtml("<p>a</p>")).toBe(false);
   });
 });

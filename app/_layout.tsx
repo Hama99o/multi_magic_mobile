@@ -31,6 +31,8 @@ import { OpeningAnimation } from "@/components/OpeningAnimation";
 import { ShareIntentProvider } from "@/lib/shareIntent";
 import { ShareIntentBridge } from "@/screens/pages/ShareIntentBridge";
 import { useUploads } from "@/stores/uploads.store";
+import { onReminderTap, resyncReminders } from "@/screens/notes/reminderNotifications";
+import { NOTES_EDITOR_ENABLED } from "@/config/features";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -142,6 +144,23 @@ export default function RootLayout() {
           router.replace("/sign-in");
         }
       }),
+    [],
+  );
+
+  /**
+   * NOTE REMINDERS are local notifications (Hello, 2026-11-13): once signed
+   * in (at launch, or after a sign-in) this phone's schedule is made to match
+   * the server's reminders; a tapped reminder opens its note.
+   */
+  useEffect(() => {
+    const sync = () => void resyncReminders().catch(() => undefined);
+    if (useAuthStore.getState().status === "signedIn") sync();
+    return useAuthStore.subscribe((state, previous) => {
+      if (state.status === "signedIn" && previous.status !== "signedIn") sync();
+    });
+  }, []);
+  useEffect(
+    () => onReminderTap((noteId) => router.push({ pathname: NOTES_EDITOR_ENABLED ? "/notes/edit" : "/notes/note", params: { id: String(noteId) } })),
     [],
   );
 

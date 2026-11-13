@@ -40,6 +40,13 @@ const contrast = (a: RGB, b: RGB) => {
   return (hi + 0.05) / (lo + 0.05);
 };
 
+/** WCAG contrast ratio of two CSS colours (1 when either cannot be read). */
+export function contrastRatio(a: string, b: string): number {
+  const x = parseColor(a);
+  const y = parseColor(b);
+  return x && y ? contrast(x, y) : 1;
+}
+
 /** Of two text colours, the one that reads better on `background`; `first` when unsure. */
 export function readableInk(background: string, first: string, second: string): string {
   const bg = parseColor(background);

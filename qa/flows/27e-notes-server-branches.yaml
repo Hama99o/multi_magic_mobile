@@ -1,0 +1,42 @@
+# NOTES, the parts that need unmerged server branches (2026-11-13): the
+# reminder (multi_magic PR #22, notes-reminder-fields) and the lock (PR #23,
+# notes-lock). Against master the server drops both fields and answers 200, so
+# the phone shows the server's truth (no chip): run this only against a server
+# that has both branches. Starts in "[qa-edit] scratch" (after 27-notes-edit).
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: the bell → reminder sheet (Tomorrow morning, saved, chip); the lock
+# → read-only with its chip, then unlocked.
+# CANNOT TELL YOU: a reminder actually ringing; iOS; anything on master.
+appId: ${APP_ID}
+tags:
+  - notes
+  - writes
+  - server-branches
+---
+- tapOn:
+    id: "note-edit-reminder"
+- tapOn:
+    id: "reminder-quick-tomorrow"
+- takeScreenshot: reports/27e-reminder-sheet
+- tapOn:
+    id: "reminder-save"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-reminder-chip"
+    timeout: 15000
+- takeScreenshot: reports/27e-reminder-chip
+# Lock: read-only with a chip, then unlocked again (the note stays editable).
+- tapOn:
+    id: "note-edit-lock"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-locked-chip"
+    timeout: 15000
+- takeScreenshot: reports/27e-locked
+- tapOn:
+    id: "note-edit-lock"
+- extendedWaitUntil:
+    notVisible:
+      id: "note-edit-locked-chip"
+    timeout: 15000

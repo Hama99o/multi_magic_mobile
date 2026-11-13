@@ -1,4 +1,6 @@
-# NOTES, the read view (phase 2, 2026-11-12): the Home tile, the list
+# NOTES, every renderer on real content (phase 2, 2026-11-12; since the Keep
+# redesign of 2026-11-13 a tap opens the note straight in the editor in dev
+# builds, so this now proves the editor opens all 23 shapes without refusing): the Home tile, the list
 # (pinned first, then last edited), and a note drawn natively from the web's
 # stored HTML. docs/design/notes/SPEC.md.
 #
@@ -14,7 +16,7 @@
 # note; every renderer on real content; the legacy cards; RTL per block; a
 # 914 KB note opening.
 # CANNOT TELL YOU: the colours of a highlight by eye (shots are looked at);
-# "View on web" opening a browser (left to the manual pass); editing (phase 3).
+# editing (flow 27). No web link exists in Notes (owner, 2026-11-13).
 appId: ${APP_ID}
 tags:
   - notes
@@ -39,10 +41,12 @@ tags:
 - tapOn: "\\[qa-notes\\] 02.*"
 - extendedWaitUntil:
     visible:
-      id: "note-body"
+      id: "note-edit-body"
     timeout: 60000
 - assertNotVisible:
     id: "note-load-failed"
+- assertNotVisible:
+    id: "note-edit-cannot-open"
 - takeScreenshot: reports/26-notes-02
 - scroll
 - takeScreenshot: reports/26-notes-02-b
@@ -60,10 +64,12 @@ tags:
 - tapOn: "\\[qa-notes\\] 03.*"
 - extendedWaitUntil:
     visible:
-      id: "note-body"
+      id: "note-edit-body"
     timeout: 60000
 - assertNotVisible:
     id: "note-load-failed"
+- assertNotVisible:
+    id: "note-edit-cannot-open"
 - takeScreenshot: reports/26-notes-03
 - scroll
 - takeScreenshot: reports/26-notes-03-b
@@ -81,10 +87,12 @@ tags:
 - tapOn: "\\[qa-notes\\] 04.*"
 - extendedWaitUntil:
     visible:
-      id: "note-body"
+      id: "note-edit-body"
     timeout: 60000
 - assertNotVisible:
     id: "note-load-failed"
+- assertNotVisible:
+    id: "note-edit-cannot-open"
 - takeScreenshot: reports/26-notes-04
 - scroll
 - takeScreenshot: reports/26-notes-04-b
@@ -102,10 +110,12 @@ tags:
 - tapOn: "\\[qa-notes\\] 05.*"
 - extendedWaitUntil:
     visible:
-      id: "note-body"
+      id: "note-edit-body"
     timeout: 60000
 - assertNotVisible:
     id: "note-load-failed"
+- assertNotVisible:
+    id: "note-edit-cannot-open"
 - takeScreenshot: reports/26-notes-05
 - scroll
 - takeScreenshot: reports/26-notes-05-b
@@ -123,10 +133,12 @@ tags:
 - tapOn: "\\[qa-notes\\] 06.*"
 - extendedWaitUntil:
     visible:
-      id: "note-body"
+      id: "note-edit-body"
     timeout: 60000
 - assertNotVisible:
     id: "note-load-failed"
+- assertNotVisible:
+    id: "note-edit-cannot-open"
 - takeScreenshot: reports/26-notes-06
 - scroll
 - takeScreenshot: reports/26-notes-06-b
@@ -144,10 +156,12 @@ tags:
 - tapOn: "\\[qa-notes\\] 07.*"
 - extendedWaitUntil:
     visible:
-      id: "note-body"
+      id: "note-edit-body"
     timeout: 60000
 - assertNotVisible:
     id: "note-load-failed"
+- assertNotVisible:
+    id: "note-edit-cannot-open"
 - takeScreenshot: reports/26-notes-07
 - scroll
 - takeScreenshot: reports/26-notes-07-b
@@ -165,10 +179,12 @@ tags:
 - tapOn: "\\[qa-notes\\] 08.*"
 - extendedWaitUntil:
     visible:
-      id: "note-body"
+      id: "note-edit-body"
     timeout: 60000
 - assertNotVisible:
     id: "note-load-failed"
+- assertNotVisible:
+    id: "note-edit-cannot-open"
 - takeScreenshot: reports/26-notes-08
 - scroll
 - takeScreenshot: reports/26-notes-08-b
@@ -187,10 +203,12 @@ tags:
 - tapOn: "\\[qa-notes\\] 21.*"
 - extendedWaitUntil:
     visible:
-      id: "note-body"
+      id: "note-edit-body"
     timeout: 60000
 - assertNotVisible:
     id: "note-load-failed"
+- assertNotVisible:
+    id: "note-edit-cannot-open"
 - takeScreenshot: reports/26-notes-21
 - scroll
 - takeScreenshot: reports/26-notes-21-b
@@ -208,10 +226,12 @@ tags:
 - tapOn: "\\[qa-notes\\] 22.*"
 - extendedWaitUntil:
     visible:
-      id: "note-body"
+      id: "note-edit-body"
     timeout: 60000
 - assertNotVisible:
     id: "note-load-failed"
+- assertNotVisible:
+    id: "note-edit-cannot-open"
 - takeScreenshot: reports/26-notes-22
 - scroll
 - takeScreenshot: reports/26-notes-22-b
@@ -229,10 +249,12 @@ tags:
 - tapOn: "\\[qa-notes\\] 23.*"
 - extendedWaitUntil:
     visible:
-      id: "note-body"
+      id: "note-edit-body"
     timeout: 60000
 - assertNotVisible:
     id: "note-load-failed"
+- assertNotVisible:
+    id: "note-edit-cannot-open"
 - takeScreenshot: reports/26-notes-23
 - scroll
 - takeScreenshot: reports/26-notes-23-b

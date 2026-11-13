@@ -76,6 +76,8 @@ export type ScreenProps = {
   measure?: boolean;
   /** Lift content above the keyboard. On for anything with a text field. */
   avoidKeyboard?: boolean;
+  /** The page colour, under the status bar too (a coloured note). Default: the theme's ground. */
+  background?: string;
 };
 
 export function Screen({
@@ -83,6 +85,7 @@ export function Screen({
   scroll = false,
   measure = true,
   avoidKeyboard = false,
+  background,
 }: ScreenProps) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -130,9 +133,10 @@ export function Screen({
 
   return (
     <View
+      testID="screen-root"
       style={{
         flex: 1,
-        backgroundColor: colors.ground,
+        backgroundColor: background ?? colors.ground,
         paddingTop: insets.top,
         paddingBottom: insets.bottom,
       }}

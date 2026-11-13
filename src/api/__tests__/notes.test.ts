@@ -95,3 +95,158 @@ describe("roles", () => {
     expect(() => parseNote({ title: "x" })).toThrow(ApiShapeError);
   });
 });
+
+describe("notesApi writes (phase 3)", () => {
+  it("update sends the title and the body as the web does, and reads the saved note back", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note({ title: "Trip 2", description: "<p>x</p>", updated_at: "2026-11-13T10:00:00Z" }) });
+    const saved = await notesApi.update(7, { title: "Trip 2", html: "<p>x</p>" });
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ title: "Trip 2", description: "<p>x</p>" });
+    expect(saved).toMatchObject({ id: 7, title: "Trip 2", html: "<p>x</p>", updatedAt: "2026-11-13T10:00:00Z" });
+  });
+
+  it("create makes a published note of the caller's and returns it", async () => {
+    mock.onPost("/api/v1/note_app/notes").reply(200, { note: note({ id: 99, title: "Trip (conflict 12 Nov 15:40)", description: "<p>mine</p>" }) });
+    const made = await notesApi.create({ title: "Trip (conflict 12 Nov 15:40)", html: "<p>mine</p>" });
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ title: "Trip (conflict 12 Nov 15:40)", description: "<p>mine</p>" });
+    expect(made).toMatchObject({ id: 99, html: "<p>mine</p>" });
+  });
+
+  it("the body goes out byte for byte (CRLF and all)", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note() });
+    await notesApi.update(7, { title: "Trip", html: BODY });
+    expect(JSON.parse(mock.history.put[0].data).description).toBe(BODY);
+  });
+});
+
+describe("notesApi.update and the server's version check", () => {
+  it("sends the version the phone edited from", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note() });
+    await notesApi.update(7, { title: "Trip", html: "<p>x</p>" }, "2026-11-12T09:00:00.000Z");
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ title: "Trip", description: "<p>x</p>", expected_updated_at: "2026-11-12T09:00:00.000Z" });
+  });
+
+  it("a 409 becomes a StaleNoteError carrying the server's current note", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(409, { error: "stale", note: note({ description: "<p>web</p>", updated_at: "2026-11-13T08:00:00Z" }) });
+    await expect(notesApi.update(7, { title: "Trip", html: "<p>x</p>" }, "2026-11-12T09:00:00Z")).rejects.toMatchObject({
+      name: "StaleNoteError",
+      current: { html: "<p>web</p>", updatedAt: "2026-11-13T08:00:00Z" },
+    });
+  });
+});
+
+describe("Keep grid fields (colour, label colours)", () => {
+  it("reads the note's colour key and each label's colour", async () => {
+    mock.onGet("/api/v1/note_app/notes/7").reply(200, { note: note({ color: "orange", tags: [{ id: 3, name: "dev-stuff", color: "teal" }] }) });
+    const n = await notesApi.get(7);
+    expect(n.color).toBe("orange");
+    expect(n.tags).toEqual([{ id: 3, name: "dev-stuff", color: "teal" }]);
+  });
+
+  it("a missing or unknown colour is no colour", async () => {
+    mock.onGet("/api/v1/note_app/notes/7").reply(200, { note: note({ color: "chartreuse", tags: [{ id: 3, name: "x" }] }) });
+    const n = await notesApi.get(7);
+    expect(n.color).toBeNull();
+    expect(n.tags[0].color).toBeNull();
+  });
+});
+
+describe("grid actions (pin, colour, trash)", () => {
+  it("pins and unpins with the web's update", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note({ pinned: false }) });
+    await notesApi.setPinned(7, false);
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ pinned: false });
+  });
+
+  it("sets a colour key, and clears it with the web's no_color", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note({ color: "teal" }) });
+    const n = await notesApi.setColor(7, "teal");
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ color: "teal" });
+    expect(n.color).toBe("teal");
+    await notesApi.setColor(7, null);
+    expect(JSON.parse(mock.history.put[1].data)).toEqual({ color: "no_color" });
+  });
+
+  it("delete moves the note to the trash (the server's destroy trashes)", async () => {
+    mock.onDelete("/api/v1/note_app/notes/7").reply(200, { id: 7, status: "trashed" });
+    await notesApi.trash(7);
+    expect(mock.history.delete).toHaveLength(1);
+  });
+});
+
+describe("make a copy (the web's duplicate)", () => {
+  it("asks the server to duplicate and returns the copy", async () => {
+    mock.onPost("/api/v1/note_app/notes/7/duplicate").reply(201, { note: note({ id: 70, title: "Trip (copy)" }) });
+    const copy = await notesApi.duplicate(7);
+    expect(copy).toMatchObject({ id: 70, title: "Trip (copy)" });
+  });
+});
+
+describe("archive and trash (Keep, owner 2026-11-13)", () => {
+  const page = (notes: unknown[]) => ({ notes, meta: { pagy: { page: 1, pages: 1 }, total_count: notes.length } });
+
+  it("archives and unarchives (multi_magic PR #21 routes)", async () => {
+    mock.onPut("/api/v1/note_app/notes/7/archive").reply(200, { note: note({ status: "archived" }) });
+    mock.onPut("/api/v1/note_app/notes/7/unarchive").reply(200, { note: note() });
+    expect((await notesApi.archive(7)).status).toBe("archived");
+    expect((await notesApi.unarchive(7)).status).toBe("published");
+  });
+
+  it("lists the archive and the trash like the main list", async () => {
+    mock.onGet("/api/v1/note_app/notes/archives").reply(200, page([note({ status: "archived" })]));
+    mock.onGet("/api/v1/note_app/notes/trashes").reply(200, page([note({ status: "trashed" })]));
+    expect((await notesApi.list(1, undefined, undefined, "archive")).notes[0].status).toBe("archived");
+    expect((await notesApi.list(1, "x", undefined, "trash")).notes[0].status).toBe("trashed");
+    expect(mock.history.get[1].params).toEqual({ page: 1, search: "x" });
+  });
+
+  it("restores from the trash and deletes forever", async () => {
+    mock.onPut("/api/v1/note_app/notes/7/restore").reply(200, note());
+    mock.onDelete("/api/v1/note_app/notes/7/destroy_permanently").reply(200, { note: note() });
+    await notesApi.restore(7);
+    await notesApi.destroyForever(7);
+    expect(mock.history.put[0].url).toBe("/api/v1/note_app/notes/7/restore");
+    expect(mock.history.delete[0].url).toBe("/api/v1/note_app/notes/7/destroy_permanently");
+  });
+});
+
+describe("reminders (data.launch_time, data.repeat_frequency; multi_magic PR #22)", () => {
+  it("reads a note's reminder from its data", async () => {
+    mock.onGet("/api/v1/note_app/notes/7").reply(200, { note: note({ data: { launch_time: "2026-11-20T09:00:00Z", repeat_frequency: "weekly", color: "teal" } }) });
+    const n = await notesApi.get(7);
+    expect(n.reminder).toEqual({ at: new Date("2026-11-20T09:00:00Z"), repeat: "weekly" });
+  });
+
+  it("no reminder, or an unreadable one, is null", async () => {
+    mock.onGet("/api/v1/note_app/notes/7").reply(200, { note: note({ data: { launch_time: "soon" } }) });
+    expect((await notesApi.get(7)).reminder).toBeNull();
+  });
+
+  it("sets and removes a reminder", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note() });
+    await notesApi.setReminder(7, { at: new Date("2026-11-20T09:00:00Z"), repeat: "daily" });
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ launch_time: "2026-11-20T09:00:00.000Z", repeat_frequency: "daily" });
+    await notesApi.setReminder(7, null);
+    expect(JSON.parse(mock.history.put[1].data)).toEqual({ launch_time: "", repeat_frequency: "" });
+  });
+
+  it("lists the notes that have a reminder (?reminders=true)", async () => {
+    mock.onGet("/api/v1/note_app/notes").reply(200, { notes: [], meta: { pagy: { page: 1, pages: 1 }, total_count: 0 } });
+    await notesApi.list(1, undefined, undefined, "reminders");
+    expect(mock.history.get[0].params).toEqual({ page: 1, reminders: "true" });
+  });
+});
+
+describe("lock (data.locked, is_locked; multi_magic notes-lock branch)", () => {
+  it("reads the lock, and a note never locked is not", async () => {
+    mock.onGet("/api/v1/note_app/notes/7").reply(200, { note: note({ is_locked: true }) });
+    expect((await notesApi.get(7)).locked).toBe(true);
+    mock.onGet("/api/v1/note_app/notes/8").reply(200, { note: note({ id: 8 }) });
+    expect((await notesApi.get(8)).locked).toBe(false);
+  });
+
+  it("locks and unlocks through the web's update", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note({ is_locked: true }) });
+    expect((await notesApi.setLocked(7, true)).locked).toBe(true);
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ locked: true });
+  });
+});

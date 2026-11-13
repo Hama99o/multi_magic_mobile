@@ -1,0 +1,50 @@
+# NOTES, the editor in Keep's style (2026-11-13, dev builds: NOTES_EDITOR_ENABLED).
+# docs/design/notes/KEEP.md, EDIT_EVERYTHING.md.
+#
+# Edits ONE dev note, "[qa-edit] scratch" (created by the rig before the run,
+# never one of the 23 "[qa-notes]" reference notes). Opens it from the grid
+# (straight into edit mode, as in Keep), types in the title and the body,
+# waits for "Saved", and ENDS WITH THE KEYBOARD UP AND THE CARET MID-NOTE:
+# the runner then calls qa/scripts/keyboard_check.py (Maestro cannot see the
+# keyboard) and takes the "keyboard up" screenshot.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: the grid opening a note in edit mode; typing with the on-screen
+# keyboard; autosave to "Saved"; the one bar on the keyboard.
+# CANNOT TELL YOU: whether the caret is above the keyboard (keyboard_check.py
+# plus the screenshot do); a hardware keyboard (SPEC §H); iOS.
+appId: ${APP_ID}
+tags:
+  - notes
+  - writes
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-notes"
+# The search pill: the grid is up (which section is on screen depends on how
+# many notes the QA account has pinned).
+- extendedWaitUntil:
+    visible:
+      id: "notes-search"
+    timeout: 60000
+# (No grid screenshot here: the QA account's grid shows copies of real
+# notes. The sheet's grid shot is 27c, filtered to invented notes.)
+- scrollUntilVisible:
+    element: "\\[qa-edit\\] scratch.*"
+    direction: DOWN
+    timeout: 60000
+- tapOn: "\\[qa-edit\\] scratch.*"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-body"
+    timeout: 30000
+- takeScreenshot: reports/27-notes-edit-open
+- tapOn:
+    id: "note-edit-body"
+- inputText: " typed on the phone"
+- extendedWaitUntil:
+    visible: "Saved"
+    timeout: 15000
+- takeScreenshot: reports/27-notes-edit-keyboard-up

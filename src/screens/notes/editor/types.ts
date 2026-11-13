@@ -13,7 +13,6 @@ export type Align = null | "left" | "center" | "right" | "justify";
 
 /** Strings the parts show, already translated by the screen. */
 export interface EditorLabels {
-  viewOnWeb: string;
   /** "Table · {rows} × {cols}" */
   table: (rows: number, cols: number) => string;
   code: (language: string | null) => string;

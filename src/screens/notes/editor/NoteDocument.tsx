@@ -24,8 +24,6 @@ export interface NoteDocumentProps {
   /** The note's direction when a block has no strong character. */
   dir?: Dir;
   onLinkPress(href: string): void;
-  /** "View on web" on a read-only block; `url` when the block itself points somewhere (a video). */
-  onViewOnWeb(url?: string): void;
 }
 
 const TEXT: Record<"body" | "h1" | "h2" | "h3", TextStyle> = {
@@ -41,10 +39,12 @@ function textAlign(align: Align, dir: Dir): TextStyle["textAlign"] {
   return dir === "rtl" ? "right" : "left";
 }
 
-export function NoteDocument({ doc, colors, labels, dir = "ltr", onLinkPress, onViewOnWeb }: NoteDocumentProps) {
+export function NoteDocument({ doc, colors, labels, dir = "ltr", onLinkPress }: NoteDocumentProps) {
+  // An inline legacy chip that points somewhere (a video) opens it like a link.
   const rawPress = (html: string) => {
     const m = /^<(\w+)/.exec(html);
-    onViewOnWeb(rawInfo(m ? m[1].toLowerCase() : "", html).url);
+    const url = rawInfo(m ? m[1].toLowerCase() : "", html).url;
+    if (url) onLinkPress(url);
   };
 
   const textBlock = (node: DocNode, variant: keyof typeof TEXT, key: React.Key, extra?: TextStyle) => {
@@ -164,8 +164,7 @@ export function NoteDocument({ doc, colors, labels, dir = "ltr", onLinkPress, on
             title={labels.code(language)}
             preview={{ code: textOf(node), language }}
             colors={colors}
-            labels={labels}
-            onViewOnWeb={() => onViewOnWeb()}
+
           />
         );
       }
@@ -178,8 +177,7 @@ export function NoteDocument({ doc, colors, labels, dir = "ltr", onLinkPress, on
             title={labels.table(rows, cols)}
             preview={{ rows: tableRows(node) }}
             colors={colors}
-            labels={labels}
-            onViewOnWeb={() => onViewOnWeb()}
+
           />
         );
       }
@@ -204,14 +202,13 @@ export function NoteDocument({ doc, colors, labels, dir = "ltr", onLinkPress, on
             title={info.kind === "legacyImage" ? labels.legacyImage : info.kind === "embed" ? labels.embed : labels.unknown(String(attrs.tag ?? ""))}
             preview={info.imageUri ? { imageUri: info.imageUri } : info.url ? { text: info.url } : undefined}
             colors={colors}
-            labels={labels}
-            onViewOnWeb={() => onViewOnWeb(info.url)}
+            onOpen={info.url ? () => onLinkPress(info.url!) : undefined}
           />
         );
       }
       default:
         // A node type the web schema does not have (a newer web editor): its
-        // text, if any, and the way to see it on the web.
+        // text, if any, kept as is.
         return (
           <RawBlockCard
             key={key}
@@ -219,8 +216,7 @@ export function NoteDocument({ doc, colors, labels, dir = "ltr", onLinkPress, on
             title={labels.unknown(node.type)}
             preview={textOf(node) ? { text: textOf(node) } : undefined}
             colors={colors}
-            labels={labels}
-            onViewOnWeb={() => onViewOnWeb()}
+
           />
         );
     }

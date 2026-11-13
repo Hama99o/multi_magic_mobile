@@ -52,6 +52,7 @@ import { useDraft } from "@/hooks/useDraft";
 import { isToday } from "@/lib/relativeTime";
 import { NotificationRow } from "@/screens/people/NotificationRow";
 import { aiKeys, notificationKeys } from "@/api/keys";
+import { useMarkNotificationRead } from "@/hooks/useMarkNotificationRead";
 
 type Row =
   | { kind: "heading"; key: string; label: string }
@@ -114,18 +115,8 @@ export default function Notifications() {
     [reload],
   );
 
-  /**
-   * Marking read, and then re-reading the list.
-   *
-   * This comment used to say "optimistic, and put back on failure"; there is
-   * no optimistic step (no `onMutate`), so the row changes when the list
-   * reloads. A failure here stays quiet ON PURPOSE: the reload shows the
-   * truth, and the person pressed a row to open it, not to mark it.
-   */
-  const markRead = useMutation({
-    mutationFn: (id: number) => notificationsApi.markRead(id),
-    onSettled: reload,
-  });
+  // Optimistic, with its reasons: `src/hooks/useMarkNotificationRead.ts`.
+  const markRead = useMarkNotificationRead();
 
   const open = useCallback(
     (notification: AppNotification) => {

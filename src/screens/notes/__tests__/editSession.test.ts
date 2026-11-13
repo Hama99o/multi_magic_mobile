@@ -67,29 +67,41 @@ describe("openForEditing → saveFromEngine", () => {
     roundTrips(out.html);
   });
 
-  it("a block with sub/sup is read-only on the phone and keeps its bytes", () => {
+  it("sub/sup are edited on the phone: the block is plain text, and an edit in it keeps the marks", () => {
     const chem = "<p>H<sub>2</sub>O and E=mc<sup>2</sup></p>";
     const s = openForEditing(`<p>edit me</p>${chem}`);
-    const kinds = s.engineDoc.content!.map((n) => (n.type === READ_ONLY_ATOM ? `atom:${String(n.attrs?.kind)}` : n.type));
-    expect(kinds).toEqual(["paragraph", "atom:paragraph"]);
-    const out = saveFromEngine(typeInFirstParagraph(s.engineDoc, "!"), s);
+    expect(s.engineDoc.content!.map((n) => n.type)).toEqual(["paragraph", "paragraph"]);
+    const engine = JSON.parse(JSON.stringify(s.engineDoc)) as DocNode;
+    engine.content![1].content!.push({ type: "text", text: "!" });
+    const out = saveFromEngine(engine, s);
     if (!out.ok) throw new Error(out.message);
-    expect(out.html).toBe(`<p>edit me!</p>${chem}`);
+    expect(out.html).toBe("<p>edit me</p><p>H<sub>2</sub>O and E=mc<sup>2</sup>!</p>");
   });
 
-  it("a block holding a web comment is read-only and keeps the comment markup", () => {
-    const commented = '<p>see <span data-comment-id="c-42" class="comment">this part</span> here</p>';
+  it("a web comment survives an edit in its own paragraph, as an invisible mark (comments are off on both)", () => {
+    const commented = '<p>see <span data-comment-id="c-42" class="tiptop-comment">this part</span> here</p>';
     const s = openForEditing(`<p>edit me</p>${commented}`);
-    expect(s.engineDoc.content![1].type).toBe(READ_ONLY_ATOM);
-    const out = saveFromEngine(typeInFirstParagraph(s.engineDoc, "!"), s);
+    expect(s.engineDoc.content![1].type).toBe("paragraph");
+    const engine = JSON.parse(JSON.stringify(s.engineDoc)) as DocNode;
+    engine.content![1].content!.push({ type: "text", text: "!" });
+    const out = saveFromEngine(engine, s);
     if (!out.ok) throw new Error(out.message);
-    expect(out.html).toBe(`<p>edit me!</p>${commented}`);
+    expect(out.html).toBe('<p>edit me</p><p>see <span data-comment-id="c-42" class="tiptop-comment">this part</span> here!</p>');
   });
 
-  it("a read-only block nested in a list makes the whole top-level list read-only", () => {
+  it("deleting the commented text deletes the comment", () => {
+    const s = openForEditing('<p>see <span data-comment-id="c-42" class="tiptop-comment">this</span></p>');
+    const engine = JSON.parse(JSON.stringify(s.engineDoc)) as DocNode;
+    engine.content![0].content = [{ type: "text", text: "see " }];
+    const out = saveFromEngine(engine, s);
+    if (!out.ok) throw new Error(out.message);
+    expect(out.html).toBe("<p>see </p>");
+  });
+
+  it("a list with sup inside is edited like any list (no lock)", () => {
     const list = "<ul><li><p>x<sup>2</sup></p></li><li><p>plain</p></li></ul>";
     const s = openForEditing(`<p>a</p>${list}`);
-    expect(s.engineDoc.content![1]).toEqual(expect.objectContaining({ type: READ_ONLY_ATOM }));
+    expect(s.engineDoc.content![1].type).toBe("bulletList");
     const out = saveFromEngine(s.engineDoc, s);
     expect(out).toEqual(expect.objectContaining({ ok: true, html: `<p>a</p>${list}` }));
   });

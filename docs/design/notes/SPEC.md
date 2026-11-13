@@ -459,5 +459,5 @@ screen wires those together.
     in B; only truly unknown markup stays an atom (moveable, deletable,
     no web link).
 - **Known limitation: hardware keyboard.** With key events (a hardware keyboard, or `adb input`), Return in a list item desyncs the caret: the next characters land in another block, and one is lost. The on-screen keyboard (Gboard) is correct. A tablet with a keyboard must be checked before release. The upstream issue is ready and waits for the owner's "oui".
-- **Not drawn while editing:** highlight, sub and sup. The read view draws them. Fix planned: a Kotlin patch to B's renderer (`EDIT_EVERYTHING.md` §2).
+- **Drawn while editing since 2026-11-13:** text colour, highlight, sub and sup, through a patch-package patch of B 2.2.3 (Android `RenderBridgeInlineAndAtoms.kt`, iOS `RenderBridge+Atoms.swift`). Colours come from the glue's `display` (#rrggbb). Guarded by `enginePatch.test.ts`. iOS is **NOT MEASURED** on a device.
 - **Long notes:** the 914 KB dev note types about 3× slower than a small one on the emulator. Measure on a real phone before choosing a size limit for read-only.

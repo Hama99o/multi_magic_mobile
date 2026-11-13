@@ -102,3 +102,25 @@ describe("fromEngine", () => {
     expect(toHTML(back, { preserveUnknown: true, source })).toBe(html);
   });
 });
+
+describe("colours the engine can draw (the B render patch, EDIT_EVERYTHING §2)", () => {
+  it("adds a #rrggbb 'display' to text colour and highlight marks; the stored colour is untouched", () => {
+    const doc: DocNode = { type: "doc", content: [p(
+      t("a", [{ type: "textStyle", attrs: { color: "hsl(202, 64%, 52%)" } }]),
+      t("b", [{ type: "highlight", attrs: { color: "hsl(1, 69%, 60%)" } }]),
+    )] };
+    const marks = toEngine(doc).content![0].content!.map((n) => n.marks![0]);
+    expect(marks[0]).toEqual({ type: ENGINE_COLOR_MARK, attrs: { color: "hsl(202, 64%, 52%)", display: "#3699d3" } });
+    expect(marks[1]).toEqual({ type: "highlight", attrs: { color: "hsl(1, 69%, 60%)", display: "#df5553" } });
+  });
+
+  it("a colour the phone cannot resolve (a CSS variable) gets no display: drawn in the default ink", () => {
+    const doc: DocNode = { type: "doc", content: [p(t("a", [{ type: "textStyle", attrs: { color: "var(--x)" } }]))] };
+    expect(toEngine(doc).content![0].content![0].marks![0]).toEqual({ type: ENGINE_COLOR_MARK, attrs: { color: "var(--x)" } });
+  });
+
+  it("the display colour never comes back to the document", () => {
+    const doc: DocNode = { type: "doc", content: [p(t("b", [{ type: "highlight", attrs: { color: "#fef08a" } }]))] };
+    expect(fromEngine(toEngine(doc))).toEqual(doc);
+  });
+});

@@ -115,7 +115,7 @@ function typed(text: string): DocNode {
 it("open → edit → save: the server gets HTML the codec round-trips, read-only blocks byte for byte", async () => {
   open();
   await waitFor(() => expect(mockEngine.props).not.toBeNull());
-  expect(mockEngine.init.content.map((n: DocNode) => n.type)).toEqual(["paragraph", READ_ONLY_ATOM, "codeBlock", READ_ONLY_ATOM, READ_ONLY_ATOM]);
+  expect(mockEngine.init.content.map((n: DocNode) => n.type)).toEqual(["paragraph", READ_ONLY_ATOM, "codeBlock", "paragraph", "paragraph"]);
   act(() => mockEngine.props!.onContentChangeJSON(typed(" world")));
   await waitFor(() => expect(mock.history.put).toHaveLength(1), { timeout: 2000 });
   const sent = JSON.parse(mock.history.put[0].data).description as string;
@@ -279,7 +279,7 @@ describe("code blocks are edited on the phone (owner, 2026-11-13)", () => {
     fireEvent.changeText(screen.getByTestId("note-code-language-search"), "pyth");
     fireEvent.press(screen.getByTestId("note-code-language-python"));
     const block = lastSetJson()!.content!.find((n) => n.type === "codeBlock")!;
-    expect(block.attrs).toEqual({ language: "python" });
+    expect(block.attrs).toMatchObject({ language: "python" });
   });
 
   it("the code block's sheet deletes the block", async () => {

@@ -5,11 +5,9 @@
  *   open:  stored HTML → doc + source map → the engine's document
  *   save:  the engine's JSON → fromEngine → validate → toHTML({ source })
  *
- * Blocks the phone may not edit leave as opaque atoms and come back as the
- * exact node, so the source map writes their stored bytes back:
- *  - code blocks and tables (SPEC §C8);
- *  - any top-level block holding sub/sup (the engine does not draw them while
- *    editing, SPEC §H) or a web comment (comments are off on the phone, §G3).
+ * Untouched blocks are written back byte for byte (the source map). Tables
+ * and unknown markup still travel as atoms holding the exact node; sub/sup
+ * and web comments are ordinary marks now (EDIT_EVERYTHING.md §2, §4).
  * A document that cannot be trusted is never saved: the screen goes back to
  * the read view and offers the web.
  *
@@ -29,30 +27,14 @@ export type SaveResult =
   | { ok: true; html: string; doc: DocNode }
   | { ok: false; reason: "damaged" | "invalid"; message: string };
 
-const HTML_OPTIONS = { preserveUnknown: true } as const;
-const LOCKING_MARKS = new Set(["subscript", "superscript", "comment"]);
-// The web drops comment markup when comments are off, so the doc cannot show
-// it: the stored bytes of the block do.
-const COMMENT_MARKUP = /\bdata-comment-id\s*=|<span\b[^>]*\bclass\s*=\s*["'][^"']*\bcomment\b/i;
-
-function holdsLockingMark(node: DocNode): boolean {
-  if (node.marks?.some((m) => LOCKING_MARKS.has(m.type))) return true;
-  return (node.content ?? []).some(holdsLockingMark);
-}
-
-/** The stored HTML of each top-level block, by index (null without a source map). */
-function blockSources(source: SourceMap | null): (string | null)[] {
-  if (!source) return [];
-  return source.chunks.flatMap((c) => c.nodes.map(() => c.html));
-}
+// The comments profile: a web comment is kept in the document as a mark (and
+// commentId on blocks), carried through the engine invisibly and written back
+// as the web wrote it (EDIT_EVERYTHING.md §4; comments are off on both).
+const HTML_OPTIONS = { preserveUnknown: true, comments: true } as const;
 
 export function openForEditing(html: string): EditSession {
   const { doc, source } = fromHTMLWithSource(html, HTML_OPTIONS);
-  const stored = blockSources(source);
-  const engineDoc = toEngine(doc, {
-    lock: (node, index) => holdsLockingMark(node) || COMMENT_MARKUP.test(stored[index] ?? ""),
-  });
-  return { doc, source, engineDoc };
+  return { doc, source, engineDoc: toEngine(doc) };
 }
 
 export function saveFromEngine(engineDoc: DocNode, session: Pick<EditSession, "source">): SaveResult {
@@ -62,7 +44,7 @@ export function saveFromEngine(engineDoc: DocNode, session: Pick<EditSession, "s
   } catch (e) {
     return { ok: false, reason: "damaged", message: e instanceof Error ? e.message : String(e) };
   }
-  const result = validate(doc, { allowRaw: true });
+  const result = validate(doc, { allowRaw: true, comments: true });
   const errors = result.issues.filter((i) => i.severity === "error");
   if (errors.length) {
     return { ok: false, reason: "invalid", message: errors.map((i) => i.message).join(" ") };

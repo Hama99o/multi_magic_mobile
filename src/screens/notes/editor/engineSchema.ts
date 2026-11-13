@@ -6,8 +6,8 @@
  *
  * Differences from the web schema, each handled by engineGlue.ts:
  *  - the text colour is `fgColor` (B rewrites a mark named textStyle);
- *  - code blocks, tables, legacy raw blocks, images, and any top-level block
- *    locked by editSession travel as READ_ONLY_ATOM, drawn by ReadOnlyAtom.
+ *  - tables, legacy raw blocks and images travel as READ_ONLY_ATOM, drawn by
+ *    ReadOnlyAtom (code blocks, sub/sup and comments are ordinary nodes/marks).
  * B refuses objects shared between nodes: the whole schema is deep-copied.
  */
 import { defineAtomNode, defineSchema, withAtomsSchema } from "@apollohg/react-native-rich-text-editor";
@@ -24,22 +24,29 @@ export const readOnlyAtom = defineAtomNode({
 });
 
 const align = () => ({ textAlign: { default: null } });
+// Web comments travel invisibly (EDIT_EVERYTHING.md §4): commentId on the
+// commentable blocks (spec COMMENTABLE_NODE_TYPES), a comment mark on text.
+const commentId = () => ({ commentId: { default: null } });
 const raw = () => ({ html: { default: "" }, tag: { default: "" } });
 
 const base = defineSchema({
   nodes: {
     doc: { content: "block+", role: "doc" },
-    paragraph: { content: "inline*", group: "block", role: "textBlock", attrs: align(), parseDOM: [{ tag: "p" }], toDOM: ["p", 0] },
+    paragraph: { content: "inline*", group: "block", role: "textBlock", attrs: { ...align(), ...commentId() }, parseDOM: [{ tag: "p" }], toDOM: ["p", 0] },
     heading: {
-      content: "inline*", group: "block", role: "heading", attrs: { ...align(), level: { default: 1 } },
+      content: "inline*", group: "block", role: "heading", attrs: { ...align(), ...commentId(), level: { default: 1 } },
       parseDOM: [1, 2, 3].map((level) => ({ tag: `h${level}`, attrs: { level } })),
       toDOM: { switchOn: "level", cases: { 1: ["h1", 0], 2: ["h2", 0], 3: ["h3", 0] } },
     },
-    blockquote: { content: "block+", group: "block", role: "block", parseDOM: [{ tag: "blockquote" }], toDOM: ["blockquote", 0] },
-    bulletList: { content: "listItem+", group: "block", role: "list", parseDOM: [{ tag: "ul" }], toDOM: ["ul", 0] },
-    orderedList: { content: "listItem+", group: "block", role: "list", attrs: { start: { default: 1 }, type: { default: null } }, parseDOM: [{ tag: "ol" }], toDOM: ["ol", 0] },
+    blockquote: { content: "block+", group: "block", role: "block", attrs: commentId(), parseDOM: [{ tag: "blockquote" }], toDOM: ["blockquote", 0] },
+    codeBlock: {
+      content: "text*", group: "block", role: "textBlock", attrs: { language: { default: null }, ...commentId() },
+      parseDOM: [{ tag: "pre" }], toDOM: ["pre", 0],
+    },
+    bulletList: { content: "listItem+", group: "block", role: "list", attrs: commentId(), parseDOM: [{ tag: "ul" }], toDOM: ["ul", 0] },
+    orderedList: { content: "listItem+", group: "block", role: "list", attrs: { ...commentId(), start: { default: 1 }, type: { default: null } }, parseDOM: [{ tag: "ol" }], toDOM: ["ol", 0] },
     listItem: { content: "paragraph block*", role: "listItem", parseDOM: [{ tag: "li" }], toDOM: ["li", 0] },
-    taskList: { content: "taskItem+", group: "block", role: "list", parseDOM: [{ tag: "ul" }], toDOM: ["ul", 0], html: { tag: "ul", staticAttrs: { "data-type": "taskList" } } },
+    taskList: { content: "taskItem+", group: "block", role: "list", attrs: commentId(), parseDOM: [{ tag: "ul" }], toDOM: ["ul", 0], html: { tag: "ul", staticAttrs: { "data-type": "taskList" } } },
     taskItem: {
       content: "paragraph+", role: "listItem", attrs: { checked: { type: "boolean", default: false } },
       parseDOM: [{ tag: "li" }], toDOM: ["li", 0], html: { tag: "li", staticAttrs: { "data-type": "taskItem" }, attrMap: { checked: "data-checked" } },
@@ -55,13 +62,17 @@ const base = defineSchema({
       attrs: { href: { default: null }, target: { default: "_blank" }, rel: { default: "noopener noreferrer nofollow" }, class: { default: null }, title: { default: null } },
       inclusive: true, parseDOM: [{ tag: "a" }], toDOM: ["a", 0],
     },
-    [ENGINE_COLOR_MARK]: { attrs: { color: { default: null } }, htmlTag: "span" },
+    // `display`: the same colour as #rrggbb, drawn by the patched renderer (engineGlue).
+    [ENGINE_COLOR_MARK]: { attrs: { color: { default: null }, display: { default: null } }, htmlTag: "span" },
     bold: { parseDOM: [{ tag: "strong" }], toDOM: ["strong", 0] },
     code: { excludes: "_", parseDOM: [{ tag: "code" }], toDOM: ["code", 0] },
     italic: { parseDOM: [{ tag: "em" }], toDOM: ["em", 0] },
     strike: { parseDOM: [{ tag: "s" }], toDOM: ["s", 0] },
     underline: { parseDOM: [{ tag: "u" }], toDOM: ["u", 0] },
-    highlight: { attrs: { color: { default: null } }, htmlTag: "mark", parseDOM: [{ tag: "mark" }], toDOM: ["mark", 0] },
+    highlight: { attrs: { color: { default: null }, display: { default: null } }, htmlTag: "mark", parseDOM: [{ tag: "mark" }], toDOM: ["mark", 0] },
+    subscript: { htmlTag: "sub", parseDOM: [{ tag: "sub" }], toDOM: ["sub", 0] },
+    superscript: { htmlTag: "sup", parseDOM: [{ tag: "sup" }], toDOM: ["sup", 0] },
+    comment: { attrs: { commentId: { default: null } }, htmlTag: "span" },
   },
 } as never);
 

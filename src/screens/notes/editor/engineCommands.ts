@@ -5,7 +5,28 @@
  * link, image, code block, opening a panel.
  */
 import { ENGINE_COLOR_MARK } from "./engineGlue";
-import type { Command } from "./toolbarModel";
+import type { Command, TableOp } from "./toolbarModel";
+
+/** The engine's table commands we send (B TableCommand). */
+export type TableCommand =
+  | { type: "insertTable"; rows: number; columns: number; withHeaderRow: boolean }
+  | { type: "addTableRow" | "addTableColumn"; side: "before" | "after" }
+  | { type: "toggleTableHeader"; target: "row" | "column" }
+  | { type: "mergeTableCells" | "splitTableCell" | "deleteTableRows" | "deleteTableColumns" | "deleteTable" };
+
+const TABLE: Record<TableOp, TableCommand> = {
+  addRowBefore: { type: "addTableRow", side: "before" },
+  addRowAfter: { type: "addTableRow", side: "after" },
+  addColumnBefore: { type: "addTableColumn", side: "before" },
+  addColumnAfter: { type: "addTableColumn", side: "after" },
+  toggleHeaderRow: { type: "toggleTableHeader", target: "row" },
+  toggleHeaderColumn: { type: "toggleTableHeader", target: "column" },
+  mergeCells: { type: "mergeTableCells" },
+  splitCell: { type: "splitTableCell" },
+  deleteRow: { type: "deleteTableRows" },
+  deleteColumn: { type: "deleteTableColumns" },
+  deleteTable: { type: "deleteTable" },
+};
 
 /** The part of B's RichTextEditorRef the toolbar drives. */
 export interface EngineRef {
@@ -25,7 +46,7 @@ export interface EngineRef {
   undo(): void;
   redo(): void;
   blur(): void;
-  runTableCommand(command: { type: "insertTable"; rows: number; columns: number; withHeaderRow: boolean }): Promise<void>;
+  runTableCommand(command: TableCommand): Promise<void>;
 }
 
 export interface CommandContext {
@@ -83,6 +104,9 @@ export function runCommand(ref: EngineRef, command: Command, ctx: CommandContext
         return "done";
       }
       return "screen";
+    case "table":
+      void ref.runTableCommand(TABLE[command.op]);
+      return "done";
     case "indent":
       // In code, an indent is text (soft keyboards have no Tab key).
       if (ctx.nodes.codeBlock) ref.insertText("  ");

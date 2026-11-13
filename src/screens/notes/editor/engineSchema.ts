@@ -10,7 +10,7 @@
  *    ReadOnlyAtom (code blocks, sub/sup and comments are ordinary nodes/marks).
  * B refuses objects shared between nodes: the whole schema is deep-copied.
  */
-import { defineAtomNode, defineSchema, withAtomsSchema } from "@apollohg/react-native-rich-text-editor";
+import { defineAtomNode, defineSchema, withAtomsSchema, withTablesSchema } from "@apollohg/react-native-rich-text-editor";
 
 import { ENGINE_COLOR_MARK, READ_ONLY_ATOM } from "./engineGlue";
 import { ReadOnlyAtom } from "./ReadOnlyAtom";
@@ -29,7 +29,9 @@ const align = () => ({ textAlign: { default: null } });
 const commentId = () => ({ commentId: { default: null } });
 const raw = () => ({ html: { default: "" }, tag: { default: "" } });
 
-const base = defineSchema({
+// Tables are B's own nodes under Tiptap's names (table, tableRow, tableCell,
+// tableHeader, with colspan/rowspan/colwidth): the spike kept 23/23 notes equal.
+const base = withTablesSchema(defineSchema({
   nodes: {
     doc: { content: "block+", role: "doc" },
     paragraph: { content: "inline*", group: "block", role: "textBlock", attrs: { ...align(), ...commentId() }, parseDOM: [{ tag: "p" }], toDOM: ["p", 0] },
@@ -74,7 +76,18 @@ const base = defineSchema({
     superscript: { htmlTag: "sup", parseDOM: [{ tag: "sup" }], toDOM: ["sup", 0] },
     comment: { attrs: { commentId: { default: null } }, htmlTag: "span" },
   },
-} as never);
+} as never), { preset: "tiptap" } as never);
 
-export const notesEngineSchema = JSON.parse(JSON.stringify(withAtomsSchema(base, [readOnlyAtom])));
+// The web's table cells carry `align` (tiptop's table cell); B's table preset
+// does not declare it and B drops undeclared attributes, so add it (caught by
+// engineSchema.test, 2026-11-13).
+type NodeList = { name: string; attrs?: Record<string, unknown> }[];
+const withCellAlign = <S extends { nodes: NodeList }>(schema: S): S => ({
+  ...schema,
+  nodes: schema.nodes.map((n) =>
+    n.name === "tableCell" || n.name === "tableHeader" ? { ...n, attrs: { ...(n.attrs ?? {}), align: { default: null } } } : n,
+  ),
+});
+
+export const notesEngineSchema = JSON.parse(JSON.stringify(withAtomsSchema(withCellAlign(base as never) as never, [readOnlyAtom])));
 export const notesEngineAtoms = [readOnlyAtom];

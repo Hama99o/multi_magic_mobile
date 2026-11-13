@@ -25,6 +25,7 @@ jest.mock("@apollohg/react-native-rich-text-editor", () => {
     defineSchema: (s: unknown) => ({ nodes: [], spec: s }),
     defineAtomNode: (c: Record<string, unknown>) => ({ ...c, nodeSpec: { name: c.name } }),
     withAtomsSchema: (s: unknown) => s,
+    withTablesSchema: (s: unknown) => s,
     createNativeEditorDocumentHandle: (config: { initialization: { json: unknown } }) => {
       if (mockEngine.refuse) throw new Error("invalid localJson initialization");
       mockEngine.init = JSON.parse(JSON.stringify(config.initialization.json));
@@ -66,7 +67,8 @@ const TABLE = '<table style="min-width: 50px"><colgroup><col><col></colgroup><tb
 const CODE = '<pre><code class="language-ruby">def x\n  1\nend</code></pre>';
 const CHEM = "<p>H<sub>2</sub>O</p>";
 const COMMENT = '<p>see <span data-comment-id="c-1" class="comment">this</span></p>';
-const STORED = `<p>hello</p>${TABLE}${CODE}${CHEM}${COMMENT}`;
+const LEGACY = '<img src="https://example.com/old.png" data-width="300">';
+const STORED = `<p>hello</p>${TABLE}${CODE}${CHEM}${COMMENT}${LEGACY}`;
 
 const note = (over: Record<string, unknown> = {}) => ({
   id: 7, title: "Plan", description: STORED, data: {}, status: "published", pinned: false,
@@ -115,11 +117,11 @@ function typed(text: string): DocNode {
 it("open → edit → save: the server gets HTML the codec round-trips, read-only blocks byte for byte", async () => {
   open();
   await waitFor(() => expect(mockEngine.props).not.toBeNull());
-  expect(mockEngine.init.content.map((n: DocNode) => n.type)).toEqual(["paragraph", READ_ONLY_ATOM, "codeBlock", "paragraph", "paragraph"]);
+  expect(mockEngine.init.content.map((n: DocNode) => n.type)).toEqual(["paragraph", "table", "codeBlock", "paragraph", "paragraph", READ_ONLY_ATOM]);
   act(() => mockEngine.props!.onContentChangeJSON(typed(" world")));
   await waitFor(() => expect(mock.history.put).toHaveLength(1), { timeout: 2000 });
   const sent = JSON.parse(mock.history.put[0].data).description as string;
-  expect(sent).toBe(`<p>hello world</p>${TABLE}${CODE}${CHEM}${COMMENT}`);
+  expect(sent).toBe(`<p>hello world</p>${TABLE}${CODE}${CHEM}${COMMENT}${LEGACY}`);
   // What the web loads from it and writes back is stable: a second load-and-save changes nothing.
   const once = toHTML(fromHTML(sent, { preserveUnknown: true }), { preserveUnknown: true });
   expect(toHTML(fromHTML(once, { preserveUnknown: true }), { preserveUnknown: true })).toBe(once);
@@ -150,7 +152,7 @@ it("a change that cannot become valid HTML is never sent, and the screen says so
   open();
   await waitFor(() => expect(mockEngine.props).not.toBeNull());
   const damaged = JSON.parse(JSON.stringify(mockEngine.init)) as DocNode;
-  damaged.content![1].attrs = { kind: "table", node: "{broken" };
+  damaged.content![5].attrs = { kind: "rawBlock", node: "{broken" };
   act(() => mockEngine.props!.onContentChangeJSON(damaged));
   expect(await screen.findByTestId("note-edit-cannot-save")).toBeTruthy();
   expect(screen.queryByText(/web/i)).toBeNull();
@@ -174,7 +176,7 @@ it("a web edit meanwhile asks; Keep both saves a dated copy and leaves the web's
   });
   const copy = JSON.parse(mock.history.post[0].data);
   expect(copy.title).toMatch(/^Plan \(conflict \d+ \w+ \d\d:\d\d\)$/);
-  expect(copy.description).toBe(`<p>hello!</p>${TABLE}${CODE}${CHEM}${COMMENT}`);
+  expect(copy.description).toBe(`<p>hello!</p>${TABLE}${CODE}${CHEM}${COMMENT}${LEGACY}`);
   expect(server.description).toBe("<p>from the web</p>");
 });
 

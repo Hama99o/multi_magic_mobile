@@ -44,11 +44,11 @@ describe("openForEditing → saveFromEngine", () => {
     expect(validate(fromHTML(out.html)).valid).toBe(true);
   });
 
-  it("an edit elsewhere keeps tables and code blocks byte for byte", () => {
+  it("an edit elsewhere keeps tables and code blocks byte for byte (both edited in the engine now)", () => {
     const table = '<table style="min-width: 50px"><colgroup><col><col></colgroup><tbody><tr><th colspan="1" rowspan="1"><p>A</p></th><th colspan="1" rowspan="1"><p>B</p></th></tr></tbody></table>';
     const code = '<pre><code class="language-ruby">def x\n  1\nend</code></pre>';
     const s = openForEditing(`<p>top</p>${table}${code}`);
-    expect(s.engineDoc.content!.map((n) => n.type)).toEqual(["paragraph", READ_ONLY_ATOM, "codeBlock"]);
+    expect(s.engineDoc.content!.map((n) => n.type)).toEqual(["paragraph", "table", "codeBlock"]);
     const out = saveFromEngine(typeInFirstParagraph(s.engineDoc, "!"), s);
     if (!out.ok) throw new Error(out.message);
     expect(out.html).toBe(`<p>top!</p>${table}${code}`);
@@ -115,10 +115,10 @@ describe("openForEditing → saveFromEngine", () => {
   });
 
   it("a damaged read-only block is not saved: the screen falls back to the read view", () => {
-    const s = openForEditing('<table><tbody><tr><td><p>x</p></td></tr></tbody></table><p>a</p>');
+    const s = openForEditing('<img src="https://example.com/a.png" data-width="300"><p>a</p>');
     const damaged = JSON.parse(JSON.stringify(s.engineDoc)) as DocNode;
     expect(damaged.content![0].type).toBe(READ_ONLY_ATOM);
-    damaged.content![0].attrs = { kind: "table", node: "{broken" };
+    damaged.content![0].attrs = { kind: "rawBlock", node: "{broken" };
     expect(saveFromEngine(damaged, s)).toEqual({ ok: false, reason: "damaged", message: expect.stringMatching(/read-only block/) });
   });
 
@@ -133,5 +133,21 @@ describe("openForEditing → saveFromEngine", () => {
     const out = saveFromEngine({ type: "doc", content: [{ type: "paragraph" }] }, s);
     if (!out.ok) throw new Error(out.message);
     expect(fromHTML(out.html)).toEqual({ type: "doc", content: [{ type: "paragraph", attrs: { textAlign: null } }] });
+  });
+});
+
+describe("tables are edited on the phone (owner, 2026-11-13)", () => {
+  it("an edit in a cell writes the web's table, spans and widths kept", () => {
+    const table = '<table style="min-width: 50px"><colgroup><col style="width: 120px"><col style="min-width: 25px"></colgroup><tbody><tr><th colspan="2" rowspan="1" colwidth="120"><p>Head</p></th></tr><tr><td colspan="1" rowspan="1" colwidth="120"><p>a</p></td><td colspan="1" rowspan="1"><p>b</p></td></tr></tbody></table>';
+    const s = openForEditing(table);
+    const engine = JSON.parse(JSON.stringify(s.engineDoc)) as DocNode;
+    const cell = engine.content![0].content![1].content![0].content![0];
+    cell.content = [{ type: "text", text: "a!" }];
+    const out = saveFromEngine(engine, s);
+    if (!out.ok) throw new Error(out.message);
+    expect(out.html).toContain('colspan="2"');
+    expect(out.html).toContain('colwidth="120"');
+    expect(out.html).toContain("<p>a!</p>");
+    roundTrips(out.html);
   });
 });

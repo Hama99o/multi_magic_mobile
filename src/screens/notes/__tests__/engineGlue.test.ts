@@ -54,10 +54,10 @@ describe("toEngine", () => {
     expect(out.content![0]).toEqual(code);
   });
 
-  it("sends tables as atoms holding the exact node (until tables are editable, step 4)", () => {
+  it("sends tables as tables (editable in the engine), spans and widths as written", () => {
     const out = toEngine({ type: "doc", content: [table, p(t("after"))] });
-    expect(out.content!.map((n) => n.type)).toEqual([READ_ONLY_ATOM, "paragraph"]);
-    expect(out.content![0].attrs).toEqual({ kind: "table", node: JSON.stringify(table) });
+    expect(out.content!.map((n) => n.type)).toEqual(["table", "paragraph"]);
+    expect(out.content![0]).toEqual(table);
   });
 
   it("sends legacy raw blocks and images as atoms too, so the editor draws them with our card", () => {

@@ -165,3 +165,21 @@ describe("inside a code block (EDIT_EVERYTHING.md §1)", () => {
     expect(key({ ...inCode, panel: "format" }, "bulletList").disabled).toBe(true);
   });
 });
+
+describe("inside a table (the web's TableButtonMenu, EDIT_EVERYTHING §3)", () => {
+  it("the bar gains a table key that opens the table panel", () => {
+    const k = key({ focused: true, nodes: { table: true, tableCell: true, paragraph: true } }, "table");
+    expect(k.command).toEqual({ kind: "panel", panel: "table" });
+    expect(ids({ focused: true })).not.toContain("table");
+  });
+
+  it("the table panel has the web's eleven table commands, deletes last", () => {
+    expect(ids({ panel: "table" })).toEqual([
+      "closePanel",
+      "table:addRowBefore", "table:addRowAfter", "table:addColumnBefore", "table:addColumnAfter",
+      "table:toggleHeaderRow", "table:toggleHeaderColumn", "table:mergeCells", "table:splitCell",
+      "table:deleteRow", "table:deleteColumn", "table:deleteTable",
+    ]);
+    expect(key({ panel: "table" }, "table:addColumnAfter").command).toEqual({ kind: "table", op: "addColumnAfter" });
+  });
+});

@@ -96,3 +96,16 @@ it("in a code block, indent inserts two spaces and outdent does nothing (no list
   runCommand(ref, { kind: "outdent" }, ctx({ nodes: { codeBlock: true } }));
   expect(calls).toEqual([["insertText", "  "]]);
 });
+
+it("table commands map to the engine's table commands", () => {
+  const { ref, calls } = fakeRef();
+  const ops = ["addRowBefore", "addRowAfter", "addColumnBefore", "addColumnAfter", "toggleHeaderRow", "toggleHeaderColumn", "mergeCells", "splitCell", "deleteRow", "deleteColumn", "deleteTable"] as const;
+  for (const op of ops) runCommand(ref, { kind: "table", op }, ctx());
+  expect(calls.map((c) => c[1])).toEqual([
+    { type: "addTableRow", side: "before" }, { type: "addTableRow", side: "after" },
+    { type: "addTableColumn", side: "before" }, { type: "addTableColumn", side: "after" },
+    { type: "toggleTableHeader", target: "row" }, { type: "toggleTableHeader", target: "column" },
+    { type: "mergeTableCells" }, { type: "splitTableCell" },
+    { type: "deleteTableRows" }, { type: "deleteTableColumns" }, { type: "deleteTable" },
+  ]);
+});

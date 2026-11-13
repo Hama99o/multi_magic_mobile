@@ -34,6 +34,18 @@ import Minus from "lucide-react-native/dist/esm/icons/minus";
 import EllipsisVertical from "lucide-react-native/dist/esm/icons/ellipsis-vertical";
 import Palette from "lucide-react-native/dist/esm/icons/palette";
 import XIcon from "lucide-react-native/dist/esm/icons/x";
+import ArrowUpToLine from "lucide-react-native/dist/esm/icons/arrow-up-to-line";
+import ArrowDownToLine from "lucide-react-native/dist/esm/icons/arrow-down-to-line";
+import ArrowLeftToLine from "lucide-react-native/dist/esm/icons/arrow-left-to-line";
+import ArrowRightToLine from "lucide-react-native/dist/esm/icons/arrow-right-to-line";
+import PanelTop from "lucide-react-native/dist/esm/icons/panel-top";
+import PanelLeft from "lucide-react-native/dist/esm/icons/panel-left";
+import Merge from "lucide-react-native/dist/esm/icons/merge";
+import Split from "lucide-react-native/dist/esm/icons/split";
+import Rows3 from "lucide-react-native/dist/esm/icons/rows-3";
+import Columns3 from "lucide-react-native/dist/esm/icons/columns-3";
+import Grid2x2X from "lucide-react-native/dist/esm/icons/grid-2x2-x";
+import Table2 from "lucide-react-native/dist/esm/icons/table-2";
 import Pilcrow from "lucide-react-native/dist/esm/icons/pilcrow";
 import Plus from "lucide-react-native/dist/esm/icons/plus";
 import Quote from "lucide-react-native/dist/esm/icons/quote";
@@ -55,7 +67,12 @@ type Icon = React.ComponentType<{ color?: string; size?: number }>;
 
 const ICONS: Record<string, Icon> = {
   undo: Undo2, redo: Redo2, insert: Plus, format: Type, hideKeyboard: KeyboardOff,
-  noteColor: Palette, more: EllipsisVertical, closePanel: XIcon,
+  noteColor: Palette, more: EllipsisVertical, closePanel: XIcon, table: Table2,
+  "table:addRowBefore": ArrowUpToLine, "table:addRowAfter": ArrowDownToLine,
+  "table:addColumnBefore": ArrowLeftToLine, "table:addColumnAfter": ArrowRightToLine,
+  "table:toggleHeaderRow": PanelTop, "table:toggleHeaderColumn": PanelLeft,
+  "table:mergeCells": Merge, "table:splitCell": Split,
+  "table:deleteRow": Rows3, "table:deleteColumn": Columns3, "table:deleteTable": Grid2x2X,
   bold: Bold, italic: Italic, underline: Underline, strike: Strikethrough, code: Code,
   subscript: Subscript, superscript: Superscript, link: LinkIcon, textColor: Baseline, highlight: Highlighter,
   taskList: ListChecks, bulletList: List, orderedList: ListOrdered, indent: IndentIncrease, outdent: IndentDecrease,

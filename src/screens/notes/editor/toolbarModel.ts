@@ -20,7 +20,17 @@ export type ListType = "bulletList" | "orderedList" | "taskList";
 export type MarkName = "bold" | "italic" | "underline" | "strike" | "code" | "subscript" | "superscript";
 export type Align = "left" | "center" | "right" | "justify";
 export type InsertType = "horizontalRule" | "image" | "table";
-export type Panel = "format" | "insert" | "textColor" | "highlight" | "blockType" | "codeLanguage";
+export type Panel = "format" | "insert" | "textColor" | "highlight" | "blockType" | "codeLanguage" | "table";
+/** The web's table commands (tiptop-editor TableButtonMenu). */
+export type TableOp =
+  | "addRowBefore" | "addRowAfter" | "addColumnBefore" | "addColumnAfter"
+  | "toggleHeaderRow" | "toggleHeaderColumn" | "mergeCells" | "splitCell"
+  | "deleteRow" | "deleteColumn" | "deleteTable";
+export const TABLE_OPS: TableOp[] = [
+  "addRowBefore", "addRowAfter", "addColumnBefore", "addColumnAfter",
+  "toggleHeaderRow", "toggleHeaderColumn", "mergeCells", "splitCell",
+  "deleteRow", "deleteColumn", "deleteTable",
+];
 
 export type Command =
   | { kind: "mark"; mark: MarkName }
@@ -30,6 +40,7 @@ export type Command =
   | { kind: "block"; value: BlockType }
   | { kind: "list"; value: ListType }
   | { kind: "insert"; value: InsertType }
+  | { kind: "table"; op: TableOp }
   | { kind: "indent" }
   | { kind: "outdent" }
   | { kind: "undo" }
@@ -153,6 +164,8 @@ export function buildToolbar(input: ToolbarInput): { keys: ToolbarKey[] } {
       return { keys: [close, ...HIGHLIGHT_COLORS.map((c) => k(`highlight:${c.key}`, { kind: "color", which: "highlight", value: c.value }))] };
     case "blockType":
       return { keys: [close, ...BLOCKS.map((b) => k(`block:${b}`, { kind: "block", value: b }, block === b))] };
+    case "table":
+      return { keys: [close, ...TABLE_OPS.map((op) => k(`table:${op}`, { kind: "table", op }))] };
     case "codeLanguage": // a sheet, drawn by the screen; the row stays the main one
     default:
       break;
@@ -169,6 +182,7 @@ export function buildToolbar(input: ToolbarInput): { keys: ToolbarKey[] } {
       panelKey("insert", "insert"),
       k("noteColor", { kind: "sheet", sheet: "noteColor" }),
       k("format", toggle("format"), false, !input.focused), // the Format panel replaces this row while open
+      ...(input.nodes.table ? [k("table", { kind: "panel", panel: "table" })] : []),
       ...(inCodeBlock ? [k("codeLanguage", { kind: "panel", panel: "codeLanguage" } as Command, false, false, input.codeLanguage ?? "plain")] : []),
       spacer(),
       k("undo", { kind: "undo" }, false, !input.canUndo),
@@ -181,7 +195,7 @@ export function buildToolbar(input: ToolbarInput): { keys: ToolbarKey[] } {
 
 /** Every command some panel of the toolbar can run (for the parity check). */
 export function allCommands(): Command[] {
-  const panels: (Panel | null)[] = [null, "format", "insert", "textColor", "highlight", "blockType"];
+  const panels: (Panel | null)[] = [null, "format", "insert", "textColor", "highlight", "blockType", "table"];
   const seen = new Map<string, Command>();
   for (const panel of panels) {
     for (const hasSelection of [false, true]) {
@@ -194,9 +208,9 @@ export function allCommands(): Command[] {
 
 /**
  * Web editor feature → phone control. Keep it green: a web feature with no
- * control here fails toolbarModel.test.ts. Table editing (rows, columns,
- * header) is on the table's own sheet (EDIT_EVERYTHING.md §3), and the code
- * block's language on its chip (§1); both are reached from inside the block.
+ * control here fails toolbarModel.test.ts. The table commands are the table
+ * panel's (the table key appears when the caret is in a table), and the code
+ * block's language is its chip (§1).
  */
 export const WEB_PARITY: { web: string; command: Command }[] = [
   { web: "Paragraph (slash, turn into)", command: { kind: "block", value: "paragraph" } },
@@ -225,6 +239,7 @@ export const WEB_PARITY: { web: string; command: Command }[] = [
   { web: "Justify", command: { kind: "align", value: "justify" } },
   { web: "Indent (list)", command: { kind: "indent" } },
   { web: "Outdent (list)", command: { kind: "outdent" } },
+  ...TABLE_OPS.map((op) => ({ web: `Table: ${op}`, command: { kind: "table", op } as Command })),
   { web: "Undo", command: { kind: "undo" } },
   { web: "Redo", command: { kind: "redo" } },
   ...TEXT_COLORS.map((c) => ({ web: `Text colour: ${c.key}`, command: { kind: "color", which: "text", value: c.value } as Command })),

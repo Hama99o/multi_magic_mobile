@@ -38,7 +38,9 @@ This replaces SPEC §C8 ("read-only blocks are a view-on-web card"), the
    change; the Rust core is not rebuilt. The patch is pinned to B 2.2.3 and
    offered upstream after the owner's "oui". iOS gets the same patch when
    iOS starts.
-3. **Tables are edited inline** in B (`withTablesSchema`, Tiptap preset).
+3. **Tables are edited inline** in B (`withTablesSchema`, Tiptap preset;
+   built 2026-11-13: a table key in the bar opens the table panel with the
+   web's eleven commands; the "Edit table sheet" below became that panel).
    Tapping a cell puts the caret in it. The cell's ⋮ handle opens the
    **Edit table** sheet: Insert column left / right, Insert row above /
    below, Header row on/off, Delete row, Delete column, Delete table (the
@@ -109,16 +111,16 @@ how it is reached; the last column is the state on the device.
 | Paragraph, Heading 1–3 (slash, turn into) | block chips | `+`, `Aa`, block-type key | NOT MEASURED |
 | Bulleted / numbered / to-do list | list keys | main row, `Aa`, `+` | NOT MEASURED |
 | Blockquote | block chip | `Aa`, `+` | NOT MEASURED |
-| Code block (create, convert, language, edit) | block chip + language chip | `Aa`, `+`, on the block | step 2 |
+| Code block (create, convert, language, edit) | block chip + language chip | `Aa`, `+`, on the block | NOT MEASURED |
 | Separator | insert item | `+` | NOT MEASURED |
 | Image | insert item + picker | main row, `+` | step 5 |
-| Table (insert 3 × 3 with header) | insert item | `+` | step 4 |
-| Table rows / columns / header / delete | Edit table sheet | the cell's ⋮ handle | step 4 |
+| Table (insert 3 × 3 with header) | insert item | `+` | NOT MEASURED |
+| Table: row above/below, column left/right, header row/column, merge, split, delete row/column/table (the web's 11) | table panel | the bar's table key, while the caret is in a table | NOT MEASURED |
 | Bold, italic, underline, strike, inline code | mark keys | selection row, `Aa` | NOT MEASURED |
-| Subscript, superscript | mark keys | selection row, `Aa` | drawn after the B patch (step 3) |
+| Subscript, superscript | mark keys | selection row, `Aa` | drawn by the B patch; NOT MEASURED |
 | Link | link key + address dialog | selection row | NOT MEASURED |
 | Text colour (10 web colours) | colour panel | selection row, `Aa` | NOT MEASURED |
-| Highlight (10 web colours) | colour panel | selection row, `Aa` | drawn after the B patch (step 3) |
+| Highlight (10 web colours) | colour panel | selection row, `Aa` | drawn by the B patch; NOT MEASURED |
 | Align left / centre / right / justify | align keys | `Aa` | NOT MEASURED |
 | Indent / outdent (lists) | keys | main row, `Aa` | NOT MEASURED |
 | Undo / redo | keys | main row | NOT MEASURED |

@@ -17,7 +17,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import MockAdapter from "axios-mock-adapter";
 import { Alert, Share } from "react-native";
 
-const mockEngine: { props: Record<string, any> | null; init: any; refuse: boolean; calls: unknown[][] } = { props: null, init: null, refuse: false, calls: [] };
+const mockEngine: { props: Record<string, any> | null; init: any; refuse: boolean; calls: unknown[][]; selections: unknown[] } = { props: null, init: null, refuse: false, calls: [], selections: [] };
 jest.mock("@apollohg/react-native-rich-text-editor", () => {
   const ReactActual = jest.requireActual("react");
   const { View } = jest.requireActual("react-native");
@@ -29,7 +29,13 @@ jest.mock("@apollohg/react-native-rich-text-editor", () => {
     createNativeEditorDocumentHandle: (config: { initialization: { json: unknown } }) => {
       if (mockEngine.refuse) throw new Error("invalid localJson initialization");
       mockEngine.init = JSON.parse(JSON.stringify(config.initialization.json));
-      return { destroy: () => undefined };
+      return {
+        destroy: () => undefined,
+        bridge: {
+          getState: () => ({ documentRevision: "7" }),
+          setSelection: (req: unknown) => void mockEngine.selections.push(req),
+        },
+      };
     },
     // The ref records every command the screen sends to the engine.
     RichTextEditor: ReactActual.forwardRef((props: Record<string, unknown>, ref: unknown) => {
@@ -86,6 +92,7 @@ beforeEach(() => {
   mockEngine.props = null;
   mockEngine.refuse = false;
   mockEngine.calls = [];
+  mockEngine.selections = [];
   server = note();
   mock.onGet("/api/v1/note_app/notes/7").reply(() => [200, { note: server }]);
   mock.onPut("/api/v1/note_app/notes/7").reply((cfg) => {
@@ -478,5 +485,43 @@ describe("reminders (Keep's bell; local notifications, Hello 2026-11-13)", () =>
     fireEvent.press(await screen.findByTestId("reminder-remove"));
     await waitFor(() => expect(mock.history.put.some((r) => JSON.parse(r.data).launch_time === "")).toBe(true));
     await waitFor(() => expect(resync).toHaveBeenCalled());
+  });
+});
+
+describe("the bar keeps the editor's focus (device finding, 2026-11-13)", () => {
+  it("passes the bar to the engine as a focus-preserving view, so a tap on A keeps the keyboard and caret", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    const refs = mockEngine.props!.focusPreservingRefs as { current: unknown }[] | { current: unknown };
+    const list = Array.isArray(refs) ? refs : [refs];
+    expect(list.length).toBeGreaterThan(0);
+    expect(list[0]).toHaveProperty("current");
+  });
+
+  it("a blur does not close an open panel (its close key does)", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    act(() => mockEngine.props!.onFocus());
+    fireEvent.press(screen.getByTestId("tb-format"));
+    act(() => mockEngine.props!.onBlur());
+    expect(screen.getByTestId("tb-closePanel")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("tb-closePanel"));
+    expect(screen.queryByTestId("tb-closePanel")).toBeNull();
+  });
+});
+
+describe("a structural edit keeps the caret where it was (device finding, 2026-11-13)", () => {
+  it("after turning a paragraph into code, the caret goes back to the same place (B's scalar selection)", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    act(() => {
+      mockEngine.props!.onSelectionChange({ type: "text", anchor: 3, head: 3, anchorScalar: 2, headScalar: 2 });
+      mockEngine.props!.onFocus();
+    });
+    fireEvent.press(screen.getByTestId("tb-format"));
+    fireEvent.press(screen.getByTestId("tb-block:codeBlock"));
+    expect(mockEngine.selections).toEqual([
+      { baseDocumentRevision: "7", selection: { type: "text", anchor: { offset: 2, kind: "scalar", affinity: "after" }, head: { offset: 2, kind: "scalar", affinity: "after" } } },
+    ]);
   });
 });

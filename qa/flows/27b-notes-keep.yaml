@@ -14,6 +14,9 @@ tags:
   - notes
   - writes
 ---
+# The keyboard closes between two Maestro runs: put the caret back first.
+- tapOn:
+    id: "note-edit-body"
 - tapOn:
     id: "tb-format"
 - extendedWaitUntil:
@@ -23,6 +26,9 @@ tags:
 - takeScreenshot: reports/27b-format-panel
 - tapOn:
     id: "tb-block:codeBlock"
+# The language key is on the bar itself: close the Format panel first.
+- tapOn:
+    id: "tb-closePanel"
 - extendedWaitUntil:
     visible:
       id: "tb-codeLanguage"

@@ -35,10 +35,15 @@ def keyboard_top(serial):
     if not re.search(r"mInputShown=true|mIsInputViewShown=true|isInputViewShown=true", out):
         return None
     win = adb(serial, "shell", "dumpsys", "window", "InputMethod")
-    tops = [int(m.group(1)) for m in re.finditer(r"(?:mFrame|frame)=\[\d+,(\d+)\]\[\d+,\d+\]", win)]
-    tops = [t for t in tops if t > 0]
-    if tops:
-        return max(tops)
+    # The IME window's frame covers the screen on recent Android; the keys are
+    # its touchable region (or the frame's top plus the given content inset).
+    m = re.search(r"touchable region=SkRegion\(\(\d+,(\d+),\d+,\d+\)", win)
+    if m:
+        return int(m.group(1))
+    frame = re.search(r"frame=\[\d+,(\d+)\]\[\d+,\d+\]", win)
+    inset = re.search(r"mGivenContentInsets=\[\d+,(\d+)\]", win)
+    if frame and inset:
+        return int(frame.group(1)) + int(inset.group(1))
     ins = adb(serial, "shell", "dumpsys", "window", "windows")
     m = re.search(r"imeInsets.*?Rect\(\d+, (\d+) - \d+, \d+\)", ins)
     return int(m.group(1)) if m else None

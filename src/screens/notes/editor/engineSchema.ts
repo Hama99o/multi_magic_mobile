@@ -48,7 +48,7 @@ const base = withTablesSchema(defineSchema({
     bulletList: { content: "listItem+", group: "block", role: "list", attrs: commentId(), parseDOM: [{ tag: "ul" }], toDOM: ["ul", 0] },
     orderedList: { content: "listItem+", group: "block", role: "list", attrs: { ...commentId(), start: { default: 1 }, type: { default: null } }, parseDOM: [{ tag: "ol" }], toDOM: ["ol", 0] },
     listItem: { content: "paragraph block*", role: "listItem", parseDOM: [{ tag: "li" }], toDOM: ["li", 0] },
-    taskList: { content: "taskItem+", group: "block", role: "list", attrs: commentId(), parseDOM: [{ tag: "ul" }], toDOM: ["ul", 0], html: { tag: "ul", staticAttrs: { "data-type": "taskList" } } },
+    taskList: { content: "taskItem+", group: "block", role: "list", attrs: commentId(), parseDOM: [{ tag: "ul" }], toDOM: ["ul", 0], html: { tag: "ul", staticAttrs: { "data-type": "taskList" }, attrMap: { commentId: "data-node-comment-id" } } },
     taskItem: {
       content: "paragraph+", role: "listItem", attrs: { checked: { type: "boolean", default: false } },
       parseDOM: [{ tag: "li" }], toDOM: ["li", 0], html: { tag: "li", staticAttrs: { "data-type": "taskItem" }, attrMap: { checked: "data-checked" } },

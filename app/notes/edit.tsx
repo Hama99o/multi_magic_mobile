@@ -123,7 +123,10 @@ export default function NoteEditScreen() {
         policy: { allowBase64Images: true },
       } as never);
       return { session, handle, failed: false as const };
-    } catch {
+    } catch (e) {
+      // Why the engine refused (it names the node or attribute): visible in
+      // the dev log, which is how a refusal gets fixed (plan §11 cond. 1).
+      console.warn("[notes] engine B refused the note:", e instanceof Error ? e.message : String(e));
       return { session, handle: null, failed: true as const };
     }
   }, [opened, generation]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -206,12 +209,16 @@ export default function NoteEditScreen() {
 
   // Our toolbar (SPEC §C3, owner 2026-11-13): the engine's state drives it.
   const editorRef = useRef<RichTextEditorRef | null>(null);
+  // Taps on our bar must not take the focus (and the keyboard) from the
+  // engine: B treats this view as part of the editor (focusPreservingRefs).
+  const barRef = useRef<View | null>(null);
   const [active, setActive] = useState<{ marks: Record<string, boolean>; nodes: Record<string, boolean> }>({ marks: {}, nodes: { paragraph: true } });
   const [history, setHistory] = useState({ canUndo: false, canRedo: false });
   const [hasSelection, setHasSelection] = useState(false);
   const [panel, setPanel] = useState<Panel | null>(null);
   const [linkDraft, setLinkDraft] = useState<string | null>(null);
   const [caretPos, setCaretPos] = useState<number | null>(null);
+  const caretScalar = useRef<{ anchor: number; head: number } | null>(null);
   const scheme = useScheme();
   const [focused, setFocused] = useState(false);
   const [sheet, setSheet] = useState<"noteColor" | "more" | "confirmDelete" | "labels" | "reminder" | null>(null);
@@ -237,10 +244,31 @@ export default function NoteEditScreen() {
   const applyStructural = (edit: (doc: DocNode, path: number[]) => DocNode) => {
     const ref = editorRef.current;
     const doc = engineDocRef.current;
-    if (!ref || !doc || !caretBlock) return;
+    if (!ref || !doc || !caretBlock) {
+      console.warn("[notes] no block under the caret for a structural edit", { caretPos, types: doc?.content?.map((n) => n.type) });
+      return;
+    }
     const next = edit(doc, caretBlock.path);
     ref.setContentJson(next as never);
     onEngineChange(next);
+    // B puts the caret at the start after a whole-document replace (seen on
+    // the device): put it back where it was, as B's own mention code does.
+    const at = caretScalar.current;
+    const bridge = (engine?.handle as unknown as { bridge?: { getState(): { documentRevision: string }; setSelection(r: unknown): unknown } } | null)?.bridge;
+    if (at && bridge) {
+      try {
+        bridge.setSelection({
+          baseDocumentRevision: bridge.getState().documentRevision,
+          selection: {
+            type: "text",
+            anchor: { offset: at.anchor, kind: "scalar", affinity: "after" },
+            head: { offset: at.head, kind: "scalar", affinity: "after" },
+          },
+        });
+      } catch {
+        // A position the new document cannot hold: the caret stays where B put it.
+      }
+    }
   };
 
   const onCommand = (command: Command) => {
@@ -510,11 +538,9 @@ export default function NoteEditScreen() {
             documentHandle={engine.handle}
             atoms={notesEngineAtoms}
             theme={engineTheme(colors, pageFill) as never}
+            focusPreservingRefs={barRef}
             onFocus={() => setFocused(true)}
-            onBlur={() => {
-              setFocused(false);
-              setPanel(null);
-            }}
+            onBlur={() => setFocused(false)}
             placeholder={t("notes.edit.bodyPlaceholder")}
             showToolbar={false}
             onActiveStateChange={(state) => setActive({ marks: { ...state.marks }, nodes: { ...state.nodes } })}
@@ -522,6 +548,8 @@ export default function NoteEditScreen() {
             onSelectionChange={(sel) => {
               setHasSelection(sel.type === "text" && sel.anchor !== sel.head);
               setCaretPos(typeof sel.head === "number" ? sel.head : null);
+              caretScalar.current =
+                typeof sel.anchorScalar === "number" && typeof sel.headScalar === "number" ? { anchor: sel.anchorScalar, head: sel.headScalar } : null;
             }}
             autoCorrect={!active.nodes.codeBlock}
             autoCapitalize={active.nodes.codeBlock ? "none" : "sentences"}
@@ -533,7 +561,7 @@ export default function NoteEditScreen() {
           />
         </View>
       </ReadOnlyAtomProvider>
-      <View style={{ marginHorizontal: -metrics.space.lg }}>
+      <View ref={barRef} collapsable={false} style={{ marginHorizontal: -metrics.space.lg }}>
         <EditorToolbar keys={toolbarKeys} labels={labelsForToolbar} colors={{ ...colors, surface: pageFill }} onCommand={onCommand} />
       </View>
       </View>

@@ -58,3 +58,18 @@ it("keeps every attribute the web has on the nodes it declares (B drops undeclar
   }
   expect(lost).toEqual([]);
 });
+
+// B's Rust core refuses a schema where a node with HTML rules does not map
+// every attribute it declares, exactly once ("node 'taskList' HTML attrMap
+// must cover every declared attribute exactly once", seen on the device
+// 2026-11-13). The core is native, so its rule is restated here.
+it("every node with HTML rules maps each of its attributes exactly once (B core rule)", () => {
+  const broken: string[] = [];
+  for (const node of Object.values(spec.nodes) as (Spec & { html?: { attrMap?: Record<string, string> } })[]) {
+    if (!node.html) continue;
+    const declared = Object.keys(node.attrs ?? {}).sort();
+    const mapped = Object.keys(node.html.attrMap ?? {}).sort();
+    if (JSON.stringify(declared) !== JSON.stringify(mapped)) broken.push(`${node.name}: declares [${declared}] maps [${mapped}]`);
+  }
+  expect(broken).toEqual([]);
+});

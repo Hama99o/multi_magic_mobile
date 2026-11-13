@@ -18,6 +18,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import MockAdapter from "axios-mock-adapter";
 import { Alert, Share } from "react-native";
 
+const mockEngineErrors: { listeners: ((e: unknown) => void)[] } = { listeners: [] };
 const mockEngine: { props: Record<string, any> | null; init: any; doc: any; refuse: boolean; holds: "all" | "nothing" | "part"; calls: unknown[][]; selections: unknown[] } = { props: null, init: null, doc: null, refuse: false, holds: "all", calls: [], selections: [] };
 /** The person typed: B now holds `json` and says so (it exports only when asked). */
 const engineChanged = (json: unknown) => {
@@ -43,6 +44,10 @@ jest.mock("@apollohg/react-native-rich-text-editor", () => {
           // What B really holds after accepting the document (device,
           // 2026-11-13: a 900 KB note was accepted and shown EMPTY).
           getDocumentIsEmpty: () => mockEngine.holds === "nothing",
+          addErrorListener: (fn: (e: unknown) => void) => {
+            mockEngineErrors.listeners.push(fn);
+            return () => void (mockEngineErrors.listeners = mockEngineErrors.listeners.filter((l) => l !== fn));
+          },
           getDocumentJson: () =>
             mockEngine.holds === "all"
               ? JSON.parse(JSON.stringify(mockEngine.init))
@@ -192,6 +197,16 @@ it.each(["nothing", "part"] as const)("when engine B accepts the note but holds 
   open();
   expect(await screen.findByTestId("note-edit-cannot-open")).toBeTruthy();
   expect(screen.getByText("hello")).toBeTruthy();
+  await new Promise((r) => setTimeout(r, 700));
+  expect(mock.history.put).toHaveLength(0);
+});
+
+it("an error from engine B while editing (e.g. its view could not draw the note) turns the editor into the read view; nothing more is sent", async () => {
+  open();
+  await waitFor(() => expect(mockEngine.props).not.toBeNull());
+  expect(mockEngineErrors.listeners.length).toBeGreaterThan(0);
+  act(() => mockEngineErrors.listeners.forEach((l) => l({ code: "DOCUMENT_LIMIT_EXCEEDED", message: "render too large" })));
+  expect(await screen.findByTestId("note-edit-cannot-open")).toBeTruthy();
   await new Promise((r) => setTimeout(r, 700));
   expect(mock.history.put).toHaveLength(0);
 });

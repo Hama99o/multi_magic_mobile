@@ -153,6 +153,24 @@ export default function NoteEditScreen() {
     }
   }, [opened, generation]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => engine?.handle?.destroy(), [engine]);
+  // Any error from engine B (its view could not draw the note, a limit…):
+  // stop editing, show the read view, send nothing more (device, 2026-11-13:
+  // a 900 KB note was held by the engine but drawn EMPTY).
+  const [engineError, setEngineError] = useState<string | null>(null);
+  const engineStopped = useRef(false);
+  useEffect(() => {
+    const bridge = (engine?.handle as unknown as { bridge?: { addErrorListener?(fn: (e: unknown) => void): () => void } } | null)?.bridge;
+    if (!bridge?.addErrorListener) return;
+    return bridge.addErrorListener((e) => {
+      const why = e && typeof e === "object" ? `${(e as { code?: string }).code ?? ""} ${(e as { message?: string }).message ?? ""}`.trim() : String(e);
+      console.warn("[notes] engine B error, editing stopped:", why);
+      // What the engine produces from now on is not trusted; what was saved
+      // or drafted before stays.
+      engineStopped.current = true;
+      exporterRef.current?.dispose();
+      setEngineError(why || "engine error");
+    });
+  }, [engine]);
 
   // Autosave.
   const [state, setState] = useState<SaverState>({ kind: "saved" });
@@ -199,7 +217,7 @@ export default function NoteEditScreen() {
 
   const [, setDocVersion] = useState(0);
   const onEngineChange = (json: unknown) => {
-    if (!engine?.session) return;
+    if (!engine?.session || engineStopped.current) return;
     engineDocRef.current = json as DocNode;
     setDocVersion((v) => v + 1); // the bar re-reads the caret's block
     const out = saveFromEngine(json as DocNode, engine.session);
@@ -556,7 +574,7 @@ export default function NoteEditScreen() {
   }
 
   // B refused this document: the read view, nothing sent (plan §11 condition 1).
-  if (engine.failed || !engine.handle) {
+  if (engine.failed || !engine.handle || engineError) {
     return (
       <Screen>
         {header}

@@ -196,3 +196,23 @@ Native: Android already accepts every type (`androidIntentFilters: */*`);
 iOS gains `NSExtensionActivationSupportsText`. A `.vcf` from iOS Contacts is
 shared as a file; whether the extension's file rule takes it is **NOT
 MEASURED** (no iOS device on this box).
+
+## Query keys (React Query audit, 2026-11-13)
+
+Every key comes from `contactsKeys` in `src/api/keys.ts`, never a literal
+(`docs/DATA_LAYER.md`; the guard is lint rule `api-in-effect`).
+
+| Factory member | Key |
+|---|---|
+| `contactsKeys.all` | `["contacts"]` |
+| `contactsKeys.list()` | `["contacts", "list"]` |
+| `contactsKeys.searches()` | `["contacts", "search"]` |
+| `contactsKeys.search()` | `["contacts", "search", term]` |
+| `contactsKeys.detail()` | `["contacts", "contact", contactId]` |
+| `contactsKeys.trash()` | `["contacts", "trash"]` |
+| `contactsKeys.allBirthdays()` | `["contacts", "birthdays"]` |
+| `contactsKeys.birthdays()` | `["contacts", "birthdays", days]` |
+| `contactsKeys.duplicates()` | `["contacts", "duplicates"]` |
+
+Writes: useContactMutations.ts. favourite, delete, restore, delete for ever, removing a family tie are optimistic; adding a tie, the form's save, the merges and the vCard export are not (reasons in the file).
+

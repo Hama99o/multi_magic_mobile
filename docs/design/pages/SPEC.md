@@ -269,3 +269,28 @@ and App Group, so the iOS build needs a provisioning profile for it
 App Group `group.com.multimagics.mobile` is registered by hand on
 developer.apple.com, because the App Store Connect API cannot register app
 groups (as reported by the TestFlight attempt of 2026-11-07, not seen in this session).
+
+## Query keys (React Query audit, 2026-11-13)
+
+Every key comes from `pagesKeys` in `src/api/keys.ts`, never a literal
+(`docs/DATA_LAYER.md`; the guard is lint rule `api-in-effect`).
+
+| Factory member | Key |
+|---|---|
+| `pagesKeys.all` | `["pages"]` |
+| `pagesKeys.spaces()` | `["pages", "spaces"]` |
+| `pagesKeys.spacesFor()` | `["pages", "spaces", purpose]` |
+| `pagesKeys.shared()` | `["pages", "shared"]` |
+| `pagesKeys.children()` | `["pages", "children", spaceId, parentId, sortBy, sortDir, type]` |
+| `pagesKeys.node()` | `["pages", "node", spaceId, nodeId]` |
+| `pagesKeys.drive()` | `["pages", "drive", view, query]` |
+| `pagesKeys.driveSearch()` | `["pages", "drive", "search", query, type]` |
+| `pagesKeys.folderSearch()` | `["pages", "folder-search", query]` |
+| `pagesKeys.folders()` | `["pages", "folders", spaceId, parentId]` |
+| `pagesKeys.moveFolders()` | `["pages", "folders", "move", spaceId, parentId]` |
+| `pagesKeys.moveStart()` | `["pages", "moveStart", nodeId]` |
+| `pagesKeys.gallery()` | `["pages", "gallery", spaceId, parentId]` |
+| `pagesKeys.text()` | `["pages", "text", uri]` |
+
+Writes: src/screens/pages/usePageMutations.ts. star, rename, trash (with Undo), restore, delete for ever, empty the trash and move are optimistic in EVERY cached list a node sits in; a new folder is not.
+

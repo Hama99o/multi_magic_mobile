@@ -690,3 +690,18 @@ says what happened, in the reply, after a reload. An "interrupted" badge
 would repeat it, and a "continue" button for a cut-off answer would do what
 the sentence already asks the person to type. If a flag has no reader,
 serializing it would only add a field.
+
+## Query keys (React Query audit, 2026-11-13)
+
+Every key comes from `aiKeys` in `src/api/keys.ts`, never a literal
+(`docs/DATA_LAYER.md`; the guard is lint rule `api-in-effect`).
+
+| Factory member | Key |
+|---|---|
+| `aiKeys.all` | `["ai"]` |
+| `aiKeys.currentSession()` | `["ai", "currentSession"]` |
+| `aiKeys.sessions()` | `["ai", "sessions"]` |
+| `aiKeys.documents()` | `["ai", "documents", conversationId]` |
+
+Writes: app/chat.tsx, src/components/chat/AnswerActions.tsx, src/hooks/useAttachments.ts. ask, session activate, feedback, undo and uploads are mutations; the pending bubble and the thumb keep their own local state. The thread's messages (useConversation) are the audit's last slice.
+

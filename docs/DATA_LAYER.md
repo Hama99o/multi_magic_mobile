@@ -57,6 +57,7 @@ wider net, run by hand.
 | `src/stores/uploads.store.ts` | the resumable upload engine: a queue of device files, chunked PUTs and retries that outlive any screen. It is device state; it tells React Query when it is done by invalidating `pagesKeys.all` |
 | `src/stores/reachability.store.ts` | a health ping, not data: it answers "is the server there", and the offline banner reads that |
 | SafeZone `item.tsx` `safezoneApi.show` | secrets (rule 4) |
+| `src/stores/readAloud.store.ts` `speechApi.forMessage` | the playback engine asks for a SIGNED audio URL at the moment of playing; a cached one can expire under it, so there is nothing a cache would add but a dead link |
 | the sign-in answer in `auth.store` | it IS the session, like the token; the profile itself is `useMe()` → `profileKeys.me()` |
 
 ## How it was found

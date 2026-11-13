@@ -115,7 +115,7 @@ describe("guests", () => {
   });
 
   it("inviting is NOT optimistic: nobody appears until the server names them", async () => {
-    const g = gated(201, { id: 3, permission: "viewer", response: "pending", shared_with_id: 103, shared_with_name: "Guest 3" });
+    const g = gated(201, { share: { id: 3, permission: "viewer", response: "pending", shared_with_id: 103, shared_with_name: "Guest 3" } });
     mock.onPost(`${BASE}/7/event_shares`).reply(g.reply);
     const { result } = renderHook(() => useInviteGuest(7), { wrapper });
     act(() => result.current.mutate({ email: "g3@example.test", access: "viewer" }));

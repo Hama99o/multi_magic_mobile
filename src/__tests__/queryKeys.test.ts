@@ -144,7 +144,10 @@ describe("one query key, one shape", () => {
     const files = ts.sys
       .readDirectory(ROOT, [".ts", ".tsx"], ["node_modules"], ["app/**/*", "src/**/*"])
       .filter((f) => !f.includes("__tests__") && !/\.test\.tsx?$/.test(f));
-    const pattern = /\buse(?:Infinite)?Query(?:<[^>]*>)?\(\{|\.setQueryData(?:<[^>]*>)?\(|\.getQuery(?:Data|State)<(?:[^<>]|<[^<>]*>)*>\(/g;
+    // One level of nested generics on every form: `setQueryData<InfiniteData<Page>>(`
+    // was invisible to this count until 2026-11-13 (the walk saw it; the
+    // regex stopped at the first `>`), so the two counts disagreed.
+    const pattern = /\buse(?:Infinite)?Query(?:<(?:[^<>]|<[^<>]*>)*>)?\(\{|\.setQueryData(?:<(?:[^<>]|<[^<>]*>)*>)?\(|\.getQuery(?:Data|State)<(?:[^<>]|<[^<>]*>)*>\(/g;
     const counted = files.reduce((n, f) => n + (ts.sys.readFile(f)?.match(pattern)?.length ?? 0), 0);
     expect(accesses.length).toBe(counted);
     expect(counted).toBeGreaterThan(20);

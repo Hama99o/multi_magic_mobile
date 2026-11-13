@@ -38,8 +38,8 @@ export function useMarkNotificationRead() {
       return { list, count };
     },
     onError: (_e, _id, ctx) => {
-      if (ctx?.list) client.setQueryData(notificationKeys.list(), ctx.list);
-      if (typeof ctx?.count === "number") client.setQueryData(notificationKeys.unreadCount(), ctx.count);
+      if (ctx?.list) client.setQueryData<InfiniteData<NotificationPage>>(notificationKeys.list(), ctx.list);
+      if (typeof ctx?.count === "number") client.setQueryData<number>(notificationKeys.unreadCount(), ctx.count);
     },
     onSettled: () =>
       Promise.all([

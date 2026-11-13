@@ -9,6 +9,7 @@
  * so SafeZone still opens and the vault says the build cannot protect it.
  */
 import { useEffect } from "react";
+import { QA_ALLOW_CAPTURE } from "./qaCapture";
 
 interface ScreenCaptureModule {
   preventScreenCaptureAsync: (key?: string) => Promise<void>;
@@ -26,6 +27,8 @@ try {
 export const secureScreen = {
   available: () => typeof native?.preventScreenCaptureAsync === "function",
   prevent: async (key: string): Promise<boolean> => {
+    // A local QA build asked to let shots through (`qaCapture.ts`): never in a release.
+    if (QA_ALLOW_CAPTURE) return false;
     try {
       await native?.preventScreenCaptureAsync(key);
       return Boolean(native);

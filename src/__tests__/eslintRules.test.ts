@@ -97,6 +97,13 @@ const CASES: Case[] = [
     times: 1,
   },
   {
+    // THREE, one per branch: an …Api call, http, fetch.
+    rule: "a request inside useEffect (server data goes through React Query)",
+    fixture: "api-in-effect.tsx",
+    says: /server data goes through useQuery/,
+    times: 3,
+  },
+  {
     // FOUR, one per branch of the compound selector — a compound selector can
     // have dead branches and still look alive, which is this file's subject.
     rule: "a bare worded string in an accessibility attribute",

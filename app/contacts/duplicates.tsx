@@ -13,12 +13,13 @@ import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { contactsApi } from "@/api/contacts";
+import { contactsKeys } from "@/api/keys";
 
 export default function ContactsDuplicates() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const query = useQuery({ queryKey: ["contacts", "duplicates"], queryFn: contactsApi.duplicates });
+  const query = useQuery({ queryKey: contactsKeys.duplicates(), queryFn: contactsApi.duplicates });
   const groups = query.data ?? [];
 
   return (

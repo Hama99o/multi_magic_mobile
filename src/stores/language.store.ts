@@ -28,7 +28,6 @@
 import { create } from "zustand";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import i18n, { DEFAULT_LANGUAGE, isLanguage, type LanguageCode } from "@/i18n";
-import { profileApi } from "@/api/profile";
 
 const KEY = "mm-language";
 
@@ -38,7 +37,8 @@ interface LanguageState {
   hydrated: boolean;
   /** True once this phone has a choice of its own, which outranks the server. */
   chosenHere: boolean;
-  setLanguage: (language: LanguageCode, userId?: number | null) => void;
+  /** This phone's choice only; telling the server is `useChooseLanguage`. */
+  setLanguage: (language: LanguageCode) => void;
   hydrate: () => Promise<void>;
   /** The server's answer, applied only if this phone has not chosen. */
   applyFromServer: (language: string | null) => void;
@@ -53,15 +53,10 @@ export const useLanguage = create<LanguageState>((set, get) => ({
   hydrated: false,
   chosenHere: false,
 
-  setLanguage: (language, userId) => {
+  setLanguage: (language) => {
     set({ language, chosenHere: true });
     apply(language);
     void AsyncStorage.setItem(KEY, language).catch(() => {});
-    // The same field the web writes, so the two stay in step. Fire and
-    // forget — see the header.
-    if (userId != null) {
-      void profileApi.update(userId, { lang: language }).catch(() => {});
-    }
   },
 
   hydrate: async () => {

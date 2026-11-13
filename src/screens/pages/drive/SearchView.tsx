@@ -22,7 +22,6 @@ import { LoadFailure } from "@/components/LoadFailure";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { Check, ChevronDown, ChevronLeft, X } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { useAuthStore } from "@/stores/auth.store";
 import { pagesApi, type PageNode } from "@/api/pages";
 import { EmptyLine } from "../parts";
 import { openNode } from "../navigation";
@@ -30,6 +29,8 @@ import { typeLabel } from "../labels";
 import { BottomSheet } from "./sheets";
 import { NodeCollection } from "./NodeCollection";
 import { FILTERS, listFilter, type Filter } from "./filters";
+import { pagesKeys } from "@/api/keys";
+import { useMe } from "@/hooks/useMe";
 
 export type Modified = "any" | "today" | "week" | "month" | "year";
 export type Owner = "anyone" | "me" | "others";
@@ -136,7 +137,7 @@ export function SearchView() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const me = useAuthStore((s) => s.user?.fullName ?? null);
+  const me = useMe()?.fullName ?? null;
 
   const [typed, setTyped] = useState("");
   const [query, setQuery] = useState("");
@@ -153,7 +154,7 @@ export function SearchView() {
 
   const asking = query.length > 0 || type != null || modified !== "any" || owner !== "anyone";
   const found = useInfiniteQuery({
-    queryKey: ["pages", "drive", "search", query, type],
+    queryKey: pagesKeys.driveSearch(query, type),
     queryFn: ({ pageParam }) => pagesApi.drive("search", pageParam, { search: query, ...listFilter(type) }),
     initialPageParam: 1,
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),

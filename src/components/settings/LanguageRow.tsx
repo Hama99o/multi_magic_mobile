@@ -26,13 +26,14 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { LANGUAGES } from "@/i18n";
 import { useLanguage } from "@/stores/language.store";
 import { useTranslation } from "react-i18next";
+import { useChooseLanguage } from "@/hooks/useChooseLanguage";
 
 export function LanguageRow({ userId }: { userId?: number | null }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const language = useLanguage((s) => s.language);
-  const setLanguage = useLanguage((s) => s.setLanguage);
+  const choose = useChooseLanguage(userId);
 
   return (
     <View style={{ gap: metrics.space.sm }} testID="language-row">
@@ -48,7 +49,7 @@ export function LanguageRow({ userId }: { userId?: number | null }) {
               accessibilityRole="radio"
               accessibilityState={{ selected }}
               accessibilityLabel={option.label}
-              onPress={() => setLanguage(option.code, userId)}
+              onPress={() => choose(option.code)}
               style={{
                 flexDirection: "row",
                 alignItems: "center",

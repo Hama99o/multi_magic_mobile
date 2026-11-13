@@ -40,7 +40,7 @@ import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "@/components/icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
-import { useQuery, useQueryClient, type InfiniteData, type QueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -62,6 +62,7 @@ import { BubblesSkeleton } from "@/components/reusables/skeleton";
 import { PersonComposer } from "@/screens/people/PersonComposer";
 import { ReactionSheet } from "@/screens/people/ReactionSheet";
 import { DayDivider, UnreadDivider, dayLabel } from "@/screens/people/DayDivider";
+import { conversationKeys } from "@/api/keys";
 
 /** How long a typing indicator survives its last frame. */
 const TYPING_LINGER_MS = 4_000;
@@ -200,7 +201,7 @@ const ThreadRow = memo(
 export const SEED_MAX_AGE_MS = 60_000;
 
 export function lastKnownMessages(client: QueryClient, conversationId: number, now = Date.now()): ChatMessage[] | undefined {
-  const state = client.getQueryState<InfiniteData<ConversationList>>(["conversations", "list"]);
+  const state = client.getQueryState<InfiniteData<ConversationList>>(conversationKeys.list());
   if (!state?.data || now - state.dataUpdatedAt > SEED_MAX_AGE_MS) return undefined;
   for (const page of state.data.pages) {
     const found = page.conversations.find((c) => c.id === conversationId);
@@ -278,16 +279,16 @@ export default function PersonThread() {
    * edge one. The list's badge is invalidated after, so going back shows the
    * row already cleared.
    */
+  // A mutation the effect FIRES; the request itself lives in the mutation
+  // (docs/DATA_LAYER.md). Losing it is survivable: it is re-sent the next
+  // time the thread opens, and the badge is stale rather than wrong.
+  const { mutate: markRead } = useMutation({
+    mutationFn: (id: number) => conversationsApi.markRead(id),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: conversationKeys.all }),
+  });
   useEffect(() => {
-    if (!Number.isFinite(conversationId)) return;
-    void conversationsApi
-      .markRead(conversationId)
-      .then(() => queryClient.invalidateQueries({ queryKey: ["conversations"] }))
-      .catch(() => {
-        // Losing this is survivable: it is re-sent the next time the thread
-        // opens, and the badge is stale rather than wrong.
-      });
-  }, [conversationId, queryClient]);
+    if (Number.isFinite(conversationId)) markRead(conversationId);
+  }, [conversationId, markRead]);
 
   /**
    * `ConversationChannel` — typing and read state, and nothing else.
@@ -336,6 +337,20 @@ export default function PersonThread() {
     });
   }, [conversationId]);
 
+  /**
+   * The thread's writes are mutations (docs/DATA_LAYER.md), held as their
+   * STABLE mutate functions so `ThreadRow`'s props do not change on a
+   * keystroke (a whole mutation object is a new one every render). NOT optimistic,
+   * on purpose, and unchanged: an outgoing message waits in the OUTBOX (local
+   * UI state, shown as sending) and stays on screen if it fails (BRIEF.md
+   * §5); reaction counts come back from the server, never guessed. Each
+   * answer is merged into the thread's cache by `mergeMessage`.
+   */
+  const { mutateAsync: sendBody } = useMutation({ mutationFn: (body: string) => threadApi.send(conversationId, body) });
+  const { mutateAsync: editBody } = useMutation({ mutationFn: ({ id, body }: { id: number; body: string }) => threadApi.edit(conversationId, id, body) });
+  const { mutateAsync: reactTo } = useMutation({ mutationFn: ({ id, emoji }: { id: number; emoji: string }) => threadApi.react(conversationId, id, emoji) });
+  const { mutateAsync: removeById } = useMutation({ mutationFn: (id: number) => threadApi.remove(conversationId, id) });
+
   const send = useCallback(async () => {
     const body = draft.trim();
     if (!body || !Number.isFinite(conversationId)) return;
@@ -347,7 +362,7 @@ export default function PersonThread() {
       setEditing(null);
       setDraft("");
       try {
-        mergeMessage(await threadApi.edit(conversationId, target.id, body));
+        mergeMessage(await editBody({ id: target.id, body }));
       } catch (e) {
         // Put it back in the composer rather than losing the words, AND say
         // so: the text silently reappearing read as the tap not working.
@@ -363,12 +378,12 @@ export default function PersonThread() {
     setOutbox((current) => [...current, { key, body, failed: false }]);
 
     try {
-      const saved = await threadApi.send(conversationId, body);
+      const saved = await sendBody(body);
       // Merged by the server's own id, so the MessageChannel echo of the same
       // message lands on top of it rather than appearing twice.
       mergeMessage(saved);
       setOutbox((current) => current.filter((item) => item.key !== key));
-      void queryClient.invalidateQueries({ queryKey: ["conversations"] });
+      void queryClient.invalidateQueries({ queryKey: conversationKeys.all });
     } catch (e) {
       // It STAYS ON SCREEN. `BRIEF.md` §5 — a message arrives or says it did
       // not; it never disappears into an optimistic bubble. With the server's
@@ -380,7 +395,7 @@ export default function PersonThread() {
         ),
       );
     }
-  }, [draft, conversationId, editing, mergeMessage, queryClient, t]);
+  }, [draft, conversationId, editing, mergeMessage, queryClient, t, sendBody, editBody]);
 
   const retry = useCallback(
     async (item: Outgoing) => {
@@ -388,7 +403,7 @@ export default function PersonThread() {
         current.map((row) => (row.key === item.key ? { ...row, failed: false } : row)),
       );
       try {
-        mergeMessage(await threadApi.send(conversationId, item.body));
+        mergeMessage(await sendBody(item.body));
         setOutbox((current) => current.filter((row) => row.key !== item.key));
       } catch (e) {
         setOutbox((current) =>
@@ -398,7 +413,7 @@ export default function PersonThread() {
         );
       }
     },
-    [conversationId, mergeMessage],
+    [mergeMessage, sendBody],
   );
 
   const react = useCallback(
@@ -410,13 +425,13 @@ export default function PersonThread() {
         // One endpoint both adds and removes — the same emoji twice takes it
         // back (`routes.rb:295`). The response is the whole updated message,
         // so the counts come back rather than being guessed at.
-        mergeMessage(await threadApi.react(conversationId, target.id, emoji));
+        mergeMessage(await reactTo({ id: target.id, emoji }));
       } catch {
         // The chip simply does not change. A failed reaction is not worth an
         // error banner over somebody's conversation.
       }
     },
-    [sheetFor, conversationId, mergeMessage],
+    [sheetFor, mergeMessage, reactTo],
   );
 
   const removeMessage = useCallback(async () => {
@@ -426,13 +441,13 @@ export default function PersonThread() {
     try {
       // Comes back `deleted: true` with `body: null` — the row keeps its place,
       // because "a hole in the thread reads as a bug".
-      mergeMessage(await threadApi.remove(conversationId, target.id));
+      mergeMessage(await removeById(target.id));
     } catch (e) {
       // The message stays, which is the truth, and now it says why: the
       // sheet closing with nothing changed read as a missed tap.
       setThreadError(failureMessage(e, t("thread.deleteFailed")));
     }
-  }, [sheetFor, conversationId, mergeMessage, t]);
+  }, [sheetFor, mergeMessage, removeById, t]);
 
   /**
    * The message the UNREAD divider sits above, fixed on first load.
@@ -516,7 +531,7 @@ export default function PersonThread() {
    * left unrendered on purpose (`docs/design/people-chat/SPEC.md` §2.3).
    */
   const { data: detail } = useQuery({
-    queryKey: ["conversation", conversationId],
+    queryKey: conversationKeys.thread(conversationId),
     queryFn: () => conversationsApi.show(conversationId),
     enabled: Number.isFinite(conversationId),
   });

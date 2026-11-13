@@ -285,6 +285,34 @@ const config = {
         message:
           "A spy on Animated sees an animation BUILT, not started: a component that never calls .start() passes it. Use watchTimings() from src/__tests__/animated.ts. See docs/TESTING.md §19.",
       },
+      /**
+       * SERVER DATA GOES THROUGH REACT QUERY, NEVER THROUGH AN EFFECT
+       * (`docs/DATA_LAYER.md`; the owner, 2026-11-13: "in ALL apps").
+       *
+       * A request fired from a `useEffect` has no cache, no retry, no
+       * de-duplication, no cancellation on unmount, and its answer lands in
+       * component state where no other screen can see it or invalidate it.
+       * The audit that wrote this rule found three: the move sheet's place,
+       * the thread's mark-read, and the profile copied into the auth store.
+       * The legitimate forms are `useQuery` for a read and
+       * `mutation.mutate()` for a write (calling a mutation FROM an effect is
+       * fine: it is the request that must not live there).
+       *
+       * Matches `xxxApi.m()`, `http.m()` and `fetch()` anywhere inside a
+       * `useEffect`/`useLayoutEffect` callback. Exempt: `xxxApi.parse*()`,
+       * which are pure parsers (a cable frame), not requests.
+       *
+       * DOES NOT COVER: a request reached through a helper function defined
+       * outside the effect, or an API object not named `…Api`. The audit's
+       * scan (`docs/DATA_LAYER.md`, "How it was found") is the wider net.
+       */
+      {
+        id: "api-in-effect",
+        selector:
+          "CallExpression[callee.name=/^use(Layout)?Effect$/] CallExpression[callee.object.name=/Api$/]:not([callee.property.name=/^parse/]), CallExpression[callee.name=/^use(Layout)?Effect$/] CallExpression[callee.object.name='http'], CallExpression[callee.name=/^use(Layout)?Effect$/] CallExpression[callee.name='fetch']",
+        message:
+          "A request inside useEffect: server data goes through useQuery (a read) or a useMutation's mutate() (a write), never an effect. See docs/DATA_LAYER.md.",
+      },
       {
         selector:
           "JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > ConditionalExpression > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > LogicalExpression > Literal[value=/[A-Za-z]{3,}/]",
@@ -333,7 +361,7 @@ config.overrides = [
   {
     files: ["**/__tests__/**"],
     rules: {
-      "no-restricted-syntax": strip(restricted.filter((entry) => entry.id !== "text-literal")),
+      "no-restricted-syntax": strip(restricted.filter((entry) => entry.id !== "text-literal" && entry.id !== "api-in-effect")),
     },
   },
   {
@@ -341,7 +369,7 @@ config.overrides = [
     files: ["src/__tests__/animated.ts"],
     rules: {
       "no-restricted-syntax": strip(
-        restricted.filter((entry) => entry.id !== "text-literal" && entry.id !== "animated-spy"),
+        restricted.filter((entry) => entry.id !== "text-literal" && entry.id !== "animated-spy" && entry.id !== "api-in-effect"),
       ),
     },
   },

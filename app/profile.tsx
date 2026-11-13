@@ -28,16 +28,18 @@ import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, ExternalLink, Pencil } from "@/components/icons";
 import * as Linking from "expo-linking";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { profileApi, type ProfileChanges } from "@/api/profile";
+import { profileApi } from "@/api/profile";
 import { failureMessage } from "@/api/failure";
 import { LoadFailure } from "@/components/LoadFailure";
 import { API_URL } from "@/config/env";
 import { Avatar } from "@/screens/people/Avatar";
-import { PhotoSheet, type PickedPhoto } from "@/screens/account/PhotoSheet";
+import { PhotoSheet } from "@/screens/account/PhotoSheet";
+import { profileKeys } from "@/api/keys";
+import { useProfilePhoto, useSaveProfile } from "@/hooks/useAccountMutations";
 
 function Field({
   label,
@@ -88,10 +90,9 @@ export default function ProfileScreen() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
 
   const { data: profile, isLoading, error, refetch, dataUpdatedAt } = useQuery({
-    queryKey: ["profile"],
+    queryKey: profileKeys.me(),
     queryFn: profileApi.me,
   });
 
@@ -120,31 +121,18 @@ export default function ProfileScreen() {
       lastName !== (profile.lastName ?? "") ||
       about !== (profile.about ?? ""));
 
-  const onSaved = (updated: Awaited<ReturnType<typeof profileApi.me>>) => {
-    queryClient.setQueryData(["profile"], updated);
+  // The hooks put the server's answer in the cache (`useAccountMutations.ts`).
+  const onSaved = () => {
     setFailure(null);
     setSaved(true);
   };
 
   const onFailed = (e: unknown) => setFailure(failureMessage(e, t("profile.saveFailed")));
 
-  const save = useMutation({
-    mutationFn: (changes: ProfileChanges) => profileApi.update(profile!.id, changes),
-    onSuccess: onSaved,
-    onError: onFailed,
-  });
-
-  const setPhoto = useMutation({
-    mutationFn: (photo: PickedPhoto) => profileApi.uploadPhoto(profile!.id, photo),
-    onSuccess: onSaved,
-    onError: onFailed,
-  });
-
-  const clearPhoto = useMutation({
-    mutationFn: () => profileApi.removePhoto(profile!.id),
-    onSuccess: onSaved,
-    onError: onFailed,
-  });
+  const save = useSaveProfile(profile?.id ?? null, { onSaved, onError: onFailed });
+  const photo = useProfilePhoto(profile?.id ?? null, { onSaved, onError: onFailed });
+  const setPhoto = photo.set;
+  const clearPhoto = photo.clear;
 
   const busy = save.isPending || setPhoto.isPending || clearPhoto.isPending;
 

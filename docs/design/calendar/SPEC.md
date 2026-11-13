@@ -381,3 +381,21 @@ light and dark. Two breaks were planted and watched fail first.
 Was `SPECIFIED`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
 
 `08-calendar` passes and `ours/` holds the three widths — **but it took the `calendar-nothing-today` branch.** The with-events half is NOT MEASURED for the same reason as notifications, and `20-refresh` covered the control rather than a populated list.
+
+## Query keys (React Query audit, 2026-11-13)
+
+Every key comes from `calendarKeys` in `src/api/keys.ts`, never a literal
+(`docs/DATA_LAYER.md`; the guard is lint rule `api-in-effect`).
+
+| Factory member | Key |
+|---|---|
+| `calendarKeys.all` | `["calendar"]` |
+| `calendarKeys.allOccurrences()` | `["calendar", "occurrences"]` |
+| `calendarKeys.allUpcoming()` | `["calendar", "upcoming"]` |
+| `calendarKeys.occurrences()` | `["calendar", "occurrences", from, to]` |
+| `calendarKeys.upcoming()` | `["calendar", "upcoming", days]` |
+| `calendarKeys.event()` | `["calendar", "event", eventId]` |
+| `calendarKeys.shares()` | `["calendar", "event", eventId, "shares"]` |
+
+Writes: src/screens/calendar/useCalendarMutations.ts. deleting an event, answering an invitation, changing or removing a guest are optimistic; inviting, leaving and the form's save are not (reasons in the file).
+

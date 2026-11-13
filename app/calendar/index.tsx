@@ -51,6 +51,8 @@ import { eventColor } from "@/screens/calendar/colors";
 import { addDays, dayKey, formatDayLong, gridWindow, startOfMonth, weekStartsOn } from "@/screens/calendar/dates";
 import { useCalendarView } from "@/stores/calendarView.store";
 import { useCalendarUndo } from "@/stores/calendarUndo.store";
+import { calendarKeys } from "@/api/keys";
+import { useRestoreEvent } from "@/screens/calendar/useCalendarMutations";
 
 /** "The next few days", his phrase. The assistant reads this same key. */
 const WINDOW_DAYS = 7;
@@ -107,7 +109,7 @@ export default function Calendar() {
   }, [hydrate]);
 
   const agenda = useQuery({
-    queryKey: ["calendar", "upcoming", days],
+    queryKey: calendarKeys.upcoming(days),
     // The page, not the bare list: it carries how many occurrences could not
     // be read, which the screen says (`UnreadableNotice`).
     queryFn: () => calendarApi.upcomingPage(days),
@@ -117,7 +119,7 @@ export default function Calendar() {
 
   const window = gridWindow(month, weekStartsOn(i18n.language));
   const monthQuery = useQuery({
-    queryKey: ["calendar", "occurrences", window.from, window.to],
+    queryKey: calendarKeys.occurrences(window.from, window.to),
     queryFn: () => calendarApi.occurrences(window.from, window.to),
     enabled: view === "month",
     placeholderData: keepPreviousData,
@@ -129,7 +131,7 @@ export default function Calendar() {
   /** Re-read every calendar window, not only the one on screen: the other
    *  view and any open month are just as stale after a write. */
   const reload = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ["calendar"] });
+    void queryClient.invalidateQueries({ queryKey: calendarKeys.all });
   }, [queryClient]);
 
   // The assistant just wrote an event — re-read, without being asked.
@@ -197,19 +199,15 @@ export default function Calendar() {
     const timer = setTimeout(() => clearTrashed(null), Math.max(0, left));
     return () => clearTimeout(timer);
   }, [trashed, clearTrashed, screenReader]);
-  const undo = async () => {
+  const restoring = useRestoreEvent({ onError: (e) => setUndoError(failureMessage(e, t("calendar.undoFailed"))) });
+  const undo = () => {
     if (!trashed || undoing) return;
-    setUndoing(true);
     setUndoError(null);
-    try {
-      await calendarApi.restore(trashed.id);
-      clearTrashed(null);
-      reload();
-    } catch (e) {
-      setUndoError(failureMessage(e, t("calendar.undoFailed")));
-    } finally {
-      setUndoing(false);
-    }
+    setUndoing(true);
+    restoring.mutate(trashed.id, {
+      onSuccess: () => clearTrashed(null),
+      onSettled: () => setUndoing(false),
+    });
   };
 
   const newDay = view === "month" ? picked : today;
@@ -369,7 +367,7 @@ export default function Calendar() {
           <Text style={{ flex: 1, color: colors.ground }} numberOfLines={2}>
             {undoError ?? t("calendar.movedToTrash", { title: trashed.title })}
           </Text>
-          <Pressable testID="calendar-undo-button" onPress={() => void undo()} disabled={undoing} accessibilityRole="button" accessibilityLabel={t("calendar.undo")} hitSlop={8} style={{ minHeight: metrics.touch, justifyContent: "center" }}>
+          <Pressable testID="calendar-undo-button" onPress={undo} disabled={undoing} accessibilityRole="button" accessibilityLabel={t("calendar.undo")} hitSlop={8} style={{ minHeight: metrics.touch, justifyContent: "center" }}>
             {/* The ground's colour on the inverted bar, underlined: the accent
                 on `ink` measured under 3:1 in dark mode. */}
             <Text variant="label" style={{ color: colors.ground, textDecorationLine: "underline" }}>

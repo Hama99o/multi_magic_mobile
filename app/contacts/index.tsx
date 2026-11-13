@@ -40,6 +40,8 @@ import { COUNTRIES, countryByCode } from "@/screens/contacts/phone";
 import { useContactsUndo } from "@/stores/contactsUndo.store";
 import { useContactsCountry } from "@/stores/contactsCountry.store";
 import { localMatch } from "@/screens/contacts/search";
+import { contactsKeys } from "@/api/keys";
+import { useFavourite, useRestoreContact, useTrashContact } from "@/screens/contacts/useContactMutations";
 
 const ROW = 64;
 const HEADER = 32;
@@ -81,17 +83,17 @@ export default function Contacts() {
     return () => clearTimeout(timer);
   }, [typed]);
 
-  const book = useQuery({ queryKey: ["contacts", "list"], queryFn: contactsApi.list });
+  const book = useQuery({ queryKey: contactsKeys.list(), queryFn: contactsApi.list });
   const searching = typed.trim().length > 0;
   const server = useQuery({
-    queryKey: ["contacts", "search", term],
+    queryKey: contactsKeys.search(term),
     queryFn: () => contactsApi.search(term),
     enabled: term.length >= 2,
   });
-  const birthdays = useQuery({ queryKey: ["contacts", "birthdays", 30], queryFn: () => contactsApi.birthdays(30) });
+  const birthdays = useQuery({ queryKey: contactsKeys.birthdays(30), queryFn: () => contactsApi.birthdays(30) });
 
   const reload = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ["contacts"] });
+    void queryClient.invalidateQueries({ queryKey: contactsKeys.all });
   }, [queryClient]);
   useAssistantEcho(CONTACT_KEYS, reload);
 
@@ -162,21 +164,9 @@ export default function Contacts() {
   // ── a row's long press ─────────────────────────────────────────────────
   const [pressed, setPressed] = useState<Contact | null>(null);
   const actions = useContactActions(pressed);
-  const favourite = useMutation({
-    mutationFn: (c: Contact) => contactsApi.setFavorite(c.id, !c.favorite),
-    onSuccess: reload,
-  });
+  const favourite = useFavourite();
   const trashedSet = useContactsUndo((s) => s.set);
-  const remove = useMutation({
-    mutationFn: async (c: Contact) => {
-      await contactsApi.remove(c.id);
-      return c;
-    },
-    onSuccess: (c) => {
-      trashedSet({ id: c.id, name: displayName(c), at: Date.now() });
-      reload();
-    },
-  });
+  const remove = useTrashContact();
   const rowActions = (c: Contact): SheetAction[] => [
     { key: "call", icon: Phone, label: t("contacts.actions.call"), disabled: !c.phones.length, onPress: () => actions.act("call") },
     { key: "whatsapp", icon: MessageCircle, label: t("contacts.actions.whatsapp"), disabled: !c.phones.length, onPress: () => actions.act("whatsapp") },
@@ -230,19 +220,15 @@ export default function Contacts() {
     const timer = setTimeout(() => trashedSet(null), Math.max(0, left));
     return () => clearTimeout(timer);
   }, [trashed, trashedSet, screenReader]);
-  const undo = async () => {
+  const restoring = useRestoreContact({ onError: (e) => setUndoError(failureMessage(e, t("contacts.undoFailed"))) });
+  const undo = () => {
     if (!trashed || undoing) return;
-    setUndoing(true);
     setUndoError(null);
-    try {
-      await contactsApi.restore(trashed.id);
-      trashedSet(null);
-      reload();
-    } catch (e) {
-      setUndoError(failureMessage(e, t("contacts.undoFailed")));
-    } finally {
-      setUndoing(false);
-    }
+    setUndoing(true);
+    restoring.mutate(trashed.id, {
+      onSuccess: () => trashedSet(null),
+      onSettled: () => setUndoing(false),
+    });
   };
 
   const count = allIds.length;
@@ -467,7 +453,7 @@ export default function Contacts() {
           <Text style={{ flex: 1, color: colors.ground }} numberOfLines={2}>
             {undoError ?? t("contacts.movedToTrash", { name: trashed.name })}
           </Text>
-          <Pressable testID="contacts-undo-button" onPress={() => void undo()} disabled={undoing} accessibilityRole="button" accessibilityLabel={t("contacts.undo")} hitSlop={8} style={{ minHeight: metrics.touch, justifyContent: "center" }}>
+          <Pressable testID="contacts-undo-button" onPress={undo} disabled={undoing} accessibilityRole="button" accessibilityLabel={t("contacts.undo")} hitSlop={8} style={{ minHeight: metrics.touch, justifyContent: "center" }}>
             <Text variant="label" style={{ color: colors.ground, textDecorationLine: "underline" }}>
               {t("contacts.undo")}
             </Text>

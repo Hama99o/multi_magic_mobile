@@ -20,6 +20,8 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { useAuthStore } from "@/stores/auth.store";
 import { Avatar } from "@/screens/people/Avatar";
 import { notificationsApi } from "@/api/notifications";
+import { notificationKeys } from "@/api/keys";
+import { useMe } from "@/hooks/useMe";
 
 function Tile({
   icon: Icon,
@@ -82,9 +84,9 @@ function Tile({
 export default function Home() {
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const user = useAuthStore((s) => s.user);
+  const user = useMe();
   const [profileOpen, setProfileOpen] = useState(false);
-  const { data: unread } = useQuery({ queryKey: ["notifications", "unread"], queryFn: notificationsApi.unreadCount });
+  const { data: unread } = useQuery({ queryKey: notificationKeys.unreadCount(), queryFn: notificationsApi.unreadCount });
   const first = user?.firstName?.trim();
 
   return (

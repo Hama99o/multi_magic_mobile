@@ -435,6 +435,18 @@ describe("one event", () => {
     expect(screen.getByTestId("event-detail").props.keyboardShouldPersistTaps).toBe("handled");
   });
 
+  it("a later occurrence of an event that ends after midnight names ITS next day (device QA 2026-11-13)", async () => {
+    mockParams.current = { id: "41", on: "2026-11-20" };
+    mock.onGet("/api/v1/calendar_app/events/41").reply(200, {
+      event: serverEvent({ recurrence: "weekly", starts_at: new Date(2026, 10, 13, 23, 0).toISOString(), ends_at: new Date(2026, 10, 14, 0, 0).toISOString() }),
+    });
+    mock.onGet(/event_shares/).reply(200, { shares: [] });
+    renderScreen(<EventDetail />);
+    const when = await screen.findByTestId("event-when");
+    expect(when).toHaveTextContent(/21/);
+    expect(when).not.toHaveTextContent(/Nov 14|14 nov/i);
+  });
+
   it("deleting a REPEATING event says every occurrence goes (the web has no 'this one only')", async () => {
     mockParams.current = { id: "41", on: "2026-11-12" };
     mock.onGet("/api/v1/calendar_app/events/41").reply(200, { event: serverEvent({ recurrence: "weekly" }) });

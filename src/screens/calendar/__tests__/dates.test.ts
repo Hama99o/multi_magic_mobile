@@ -14,6 +14,7 @@ import {
   uses12h,
   weekStartsOn,
   weekdayLabels,
+  onOccurrence,
   timeRange,
   yearsOn,
 } from "../dates";
@@ -123,5 +124,34 @@ describe("a time range", () => {
   it("an all-day span names its last day", () => {
     expect(timeRange({ allDay: true, startsAt: null, endsAt: null, startsOn: "2026-11-13", endsOn: "2026-11-15" }, "fr", "Toute la journée")).toMatch(/^Toute la journée → .*15/);
     expect(timeRange({ allDay: true, startsAt: null, endsAt: null, startsOn: "2026-11-13", endsOn: null }, "fr", "Toute la journée")).toBe("Toute la journée");
+  });
+});
+
+// Device QA 2026-11-13: a weekly event Fri 23:00 → Sat 00:00, opened on its
+// Nov 20 occurrence, read "11:00 PM → Sat, Nov 14 12:00 AM": the end named
+// the FIRST occurrence's day.
+describe("one occurrence of a repeating event", () => {
+  const weekly = { allDay: false, startsAt: new Date(2026, 10, 13, 23, 0).toISOString(), endsAt: new Date(2026, 10, 14, 0, 0).toISOString(), startsOn: null, endsOn: null };
+
+  it("an end on the next day names the OCCURRENCE's next day", () => {
+    const line = timeRange(onOccurrence(weekly, "2026-11-20"), "fr");
+    expect(line).toMatch(/^23:00 → .*21.* 00:00$/);
+    expect(line).not.toMatch(/14/);
+  });
+
+  it("keeps the times and the length", () => {
+    const shifted = onOccurrence(weekly, "2026-11-20");
+    expect(new Date(shifted.startsAt!).getTime()).toBe(new Date(2026, 10, 20, 23, 0).getTime());
+    expect(new Date(shifted.endsAt!).getTime()).toBe(new Date(2026, 10, 21, 0, 0).getTime());
+  });
+
+  it("an all-day span moves with it", () => {
+    const span = { allDay: true, startsAt: null, endsAt: null, startsOn: "2026-11-13", endsOn: "2026-11-15" };
+    expect(onOccurrence(span, "2026-11-20")).toMatchObject({ startsOn: "2026-11-20", endsOn: "2026-11-22" });
+  });
+
+  it("the first occurrence, or no day, is the event as it is", () => {
+    expect(onOccurrence(weekly, "2026-11-13")).toEqual(weekly);
+    expect(onOccurrence(weekly, null)).toEqual(weekly);
   });
 });

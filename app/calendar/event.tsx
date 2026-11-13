@@ -31,7 +31,7 @@ import { aiApi } from "@/api/ai";
 import { failureMessage } from "@/api/failure";
 import { useDraft } from "@/hooks/useDraft";
 import { eventColor } from "@/screens/calendar/colors";
-import { dayKey, formatDayLong, timeRange, yearsOn } from "@/screens/calendar/dates";
+import { dayKey, formatDayLong, onOccurrence, timeRange, yearsOn } from "@/screens/calendar/dates";
 import { GuestsSection } from "@/screens/calendar/GuestsSection";
 import { useCalendarUndo } from "@/stores/calendarUndo.store";
 
@@ -141,8 +141,9 @@ export default function EventDetail() {
   const myShare = me ? event.shares.find((share) => share.sharedWithId === me.id) : undefined;
 
   const dayLine = shownOn ? formatDayLong(shownOn, language) : "";
-  // The event's own times: every occurrence has the same time of day.
-  const timeLine = timeRange(event, language, t("calendar.allDay"));
+  // The event's times on THIS occurrence: the same time of day, and an end on
+  // another day named from the occurrence's day, not the first one's.
+  const timeLine = timeRange(onOccurrence(event, shownOn), language, t("calendar.allDay"));
 
   const ask = () => {
     setDraft(t("calendar.question", { title, when: dayLine }));

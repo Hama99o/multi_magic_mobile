@@ -139,6 +139,31 @@ export function yearsOn(event: Pick<CalendarEvent, "recurrence" | "allDay" | "st
   return years > 0 && years < 200 ? years : null;
 }
 
+type Timed = { allDay: boolean; startsAt: string | null; endsAt: string | null; startsOn: string | null; endsOn: string | null };
+
+/** The same local clock time, `days` calendar days later (DST-safe). */
+function shiftInstant(iso: string, days: number): string {
+  const d = new Date(iso);
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + days, d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds()).toISOString();
+}
+
+/**
+ * The event as it falls on one occurrence's day `on`: start and end moved by
+ * the same number of days, so an end on another day names THAT occurrence's
+ * next day (device QA 2026-11-13: the Nov 20 occurrence of a weekly
+ * Fri 23:00 → Sat 00:00 read "→ Sat, Nov 14"). No day, or the first one: the
+ * event as it is.
+ */
+export function onOccurrence<E extends Timed>(event: E, on: string | null): E {
+  const first = event.allDay ? event.startsOn : event.startsAt ? dayKey(new Date(event.startsAt)) : null;
+  if (!on || !first || on === first) return event;
+  const days = Math.round((parseDay(on).getTime() - parseDay(first).getTime()) / 86_400_000);
+  if (event.allDay) {
+    return { ...event, startsOn: addDays(event.startsOn as string, days), endsOn: event.endsOn ? addDays(event.endsOn, days) : event.endsOn };
+  }
+  return { ...event, startsAt: shiftInstant(event.startsAt as string, days), endsAt: event.endsAt ? shiftInstant(event.endsAt, days) : event.endsAt };
+}
+
 /**
  * The detail page's "when" line, on the phone's clock.
  * - starts and ends at the same minute: ONE time ("10:00 – 10:00" says

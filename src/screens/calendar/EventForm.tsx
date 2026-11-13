@@ -240,6 +240,11 @@ export function EventForm({
             onOpen={openPicker}
             minDay={draft.day}
           />
+          {found.includes("end") ? (
+            <Text testID="event-form-end-error" tone="danger" variant="caption" accessibilityLiveRegion="polite">
+              {t("calendar.form.endBeforeStart")}
+            </Text>
+          ) : null}
           {found.includes("day") ? (
             <Text tone="danger" variant="caption" accessibilityLiveRegion="polite">
               {t("calendar.form.dayRequired")}

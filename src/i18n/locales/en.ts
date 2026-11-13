@@ -637,6 +637,7 @@ export const en = {
       until: "Until",
       forever: "Forever",
       untilBeforeStart: "“Until” is before the event starts.",
+      endBeforeStart: "The event ends before it starts.",
       locationLabel: "Location",
       locationPlaceholder: "Add a place",
       notesLabel: "Notes",

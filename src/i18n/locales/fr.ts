@@ -653,6 +653,7 @@ export const fr: Translations = {
       until: "Jusqu’au",
       forever: "Toujours",
       untilBeforeStart: "« Jusqu’au » est avant le début de l’événement.",
+      endBeforeStart: "L’événement se termine avant de commencer.",
       locationLabel: "Lieu",
       locationPlaceholder: "Ajouter un lieu",
       notesLabel: "Notes de l’événement",

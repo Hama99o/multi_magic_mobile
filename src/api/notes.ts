@@ -16,6 +16,7 @@
  */
 import { http } from "./http";
 import { arr, id, num, obj, optStr, readableRows, str } from "./parse";
+import { StaleNoteError } from "@/lib/staleNote";
 
 /** `owner`, or a share role (`note_app/share.rb`: viewer, contributor, administrator). */
 export type NoteRole = "owner" | "administrator" | "contributor" | "viewer";
@@ -90,6 +91,33 @@ export const notesApi = {
   /** One note, with its full body. */
   get: async (noteId: number): Promise<Note> => {
     const res = await http.get(`/api/v1/note_app/notes/${noteId}`);
+    return parseNote(obj(res.data, "note").note);
+  },
+
+  /**
+   * Save the title and body (`notes_controller#update` permits them at the top
+   * level). With `expectedUpdatedAt`, a server that has the version check
+   * refuses a stale write with 409 → StaleNoteError; one without it ignores it.
+   */
+  update: async (noteId: number, body: { title: string; html: string }, expectedUpdatedAt?: string): Promise<Note> => {
+    try {
+      const res = await http.put(`/api/v1/note_app/notes/${noteId}`, {
+        title: body.title,
+        description: body.html,
+        ...(expectedUpdatedAt ? { expected_updated_at: expectedUpdatedAt } : {}),
+      });
+      return parseNote(obj(res.data, "note").note);
+    } catch (e) {
+      // 409: the note moved since `expectedUpdatedAt` (multi_magic branch notes-update-version-check).
+      const res = (e as { response?: { status?: number; data?: unknown } }).response;
+      if (res?.status === 409) throw new StaleNoteError(parseNote(obj(res.data, "note").note));
+      throw e;
+    }
+  },
+
+  /** A new published note of the caller's (used by "Keep both" on a conflict, SPEC §G2). */
+  create: async (body: { title: string; html: string }): Promise<Note> => {
+    const res = await http.post("/api/v1/note_app/notes", { title: body.title, description: body.html });
     return parseNote(obj(res.data, "note").note);
   },
 };

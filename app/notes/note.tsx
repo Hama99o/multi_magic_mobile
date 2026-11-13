@@ -3,8 +3,8 @@
  *
  * The body is the HTML the web stored; it is parsed with the same rules the
  * web editor uses (src/screens/notes/document.ts) and drawn natively by
- * NoteDocument. Nothing is written in this phase: editing is phase 3, after
- * the engine checkpoint.
+ * NoteDocument. Editing is `edit.tsx` (phase 3), reached by the pencil when
+ * NOTES_EDITOR_ENABLED is on and the reader may edit.
  *
  * Re-read on open (`GET /note_app/notes/:id`) so the body is current, not the
  * list's copy.
@@ -18,9 +18,10 @@ import { useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
-import { ChevronLeft, Globe } from "@/components/icons";
+import { ChevronLeft, Globe, Pencil } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { notesApi } from "@/api/notes";
+import { canEdit, notesApi } from "@/api/notes";
+import { NOTES_EDITOR_ENABLED } from "@/config/features";
 import { failureMessage } from "@/api/failure";
 import { NoteDocument } from "@/screens/notes/editor/NoteDocument";
 import type { EditorLabels } from "@/screens/notes/editor/types";
@@ -73,6 +74,18 @@ export default function NoteScreen() {
         <ChevronLeft size={24} color={colors.ink} />
       </Pressable>
       <View style={{ flex: 1 }} />
+      {note && NOTES_EDITOR_ENABLED && canEdit(note) ? (
+        <Pressable
+          testID="note-edit"
+          onPress={() => router.push({ pathname: "/notes/edit", params: { id: String(noteId) } })}
+          accessibilityRole="button"
+          accessibilityLabel={t("notes.edit.open")}
+          hitSlop={8}
+          style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
+        >
+          <Pencil size={22} color={colors.ink} />
+        </Pressable>
+      ) : null}
       {note ? (
         <Pressable
           testID="note-open-web"

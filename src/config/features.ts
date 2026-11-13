@@ -32,3 +32,14 @@
  * follows.
  */
 export const READ_ALOUD_ENABLED = true;
+
+/**
+ * Edit a note on the phone — phase 3, `docs/design/notes/SPEC.md` §C, §H.
+ *
+ * ON IN DEV BUILDS ONLY (2026-11-13). The editor runs on engine B (plan §11,
+ * "B with conditions"); it ships to a store build only after its own device
+ * QA (keyboard never hides the caret, undo, drafts, conflicts, RTL, dark,
+ * 360/800) and the owner's check of the Pashto keyboard, Samsung keyboard and
+ * iOS dictation. Off, the note screen is the read view it was in phase 2.
+ */
+export const NOTES_EDITOR_ENABLED: boolean = __DEV__;

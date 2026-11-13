@@ -96,7 +96,8 @@
             "*/*"
           ]
         }
-      ]
+      ],
+      "@apollohg/react-native-rich-text-editor"
     ],
     "experiments": {
       "typedRoutes": true

@@ -1,0 +1,60 @@
+# NOTES, the editor (phase 3, 2026-11-13, dev builds: NOTES_EDITOR_ENABLED).
+# docs/design/notes/EDITOR_SCREEN.md.
+#
+# Edits ONE dev note, "[qa-edit] scratch" (created by the rig before the run,
+# never one of the 23 "[qa-notes]" reference notes). Types in the title and
+# body, waits for "Saved", leaves, reopens, and checks the text is there.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: the pencil; the editor opening on engine B; typing with the
+# on-screen keyboard; autosave to "Saved"; the text surviving a reopen; the
+# read-only cards inside the editor.
+# CANNOT TELL YOU: the conflict dialog (needs a web edit at the same time;
+# Jest covers it); a hardware keyboard (SPEC §H); the caret above the
+# keyboard by eye (shots are looked at).
+appId: ${APP_ID}
+tags:
+  - notes
+  - writes
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-notes"
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 30000
+- scrollUntilVisible:
+    element: "\\[qa-edit\\] scratch.*"
+    direction: DOWN
+    timeout: 60000
+- tapOn: "\\[qa-edit\\] scratch.*"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit"
+    timeout: 30000
+- tapOn:
+    id: "note-edit"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-body"
+    timeout: 30000
+- takeScreenshot: reports/27-notes-edit-open
+- tapOn:
+    id: "note-edit-body"
+- inputText: " typed on the phone"
+- takeScreenshot: reports/27-notes-edit-typing
+- extendedWaitUntil:
+    visible: "Saved"
+    timeout: 15000
+- takeScreenshot: reports/27-notes-edit-saved
+- tapOn:
+    id: "note-edit-back"
+- extendedWaitUntil:
+    visible:
+      id: "note-body"
+    timeout: 30000
+- assertVisible: ".*typed on the phone.*"
+- takeScreenshot: reports/27-notes-edit-reread

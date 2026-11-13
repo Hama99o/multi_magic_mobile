@@ -95,3 +95,41 @@ describe("roles", () => {
     expect(() => parseNote({ title: "x" })).toThrow(ApiShapeError);
   });
 });
+
+describe("notesApi writes (phase 3)", () => {
+  it("update sends the title and the body as the web does, and reads the saved note back", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note({ title: "Trip 2", description: "<p>x</p>", updated_at: "2026-11-13T10:00:00Z" }) });
+    const saved = await notesApi.update(7, { title: "Trip 2", html: "<p>x</p>" });
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ title: "Trip 2", description: "<p>x</p>" });
+    expect(saved).toMatchObject({ id: 7, title: "Trip 2", html: "<p>x</p>", updatedAt: "2026-11-13T10:00:00Z" });
+  });
+
+  it("create makes a published note of the caller's and returns it", async () => {
+    mock.onPost("/api/v1/note_app/notes").reply(200, { note: note({ id: 99, title: "Trip (conflict 12 Nov 15:40)", description: "<p>mine</p>" }) });
+    const made = await notesApi.create({ title: "Trip (conflict 12 Nov 15:40)", html: "<p>mine</p>" });
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ title: "Trip (conflict 12 Nov 15:40)", description: "<p>mine</p>" });
+    expect(made).toMatchObject({ id: 99, html: "<p>mine</p>" });
+  });
+
+  it("the body goes out byte for byte (CRLF and all)", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note() });
+    await notesApi.update(7, { title: "Trip", html: BODY });
+    expect(JSON.parse(mock.history.put[0].data).description).toBe(BODY);
+  });
+});
+
+describe("notesApi.update and the server's version check", () => {
+  it("sends the version the phone edited from", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note() });
+    await notesApi.update(7, { title: "Trip", html: "<p>x</p>" }, "2026-11-12T09:00:00.000Z");
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ title: "Trip", description: "<p>x</p>", expected_updated_at: "2026-11-12T09:00:00.000Z" });
+  });
+
+  it("a 409 becomes a StaleNoteError carrying the server's current note", async () => {
+    mock.onPut("/api/v1/note_app/notes/7").reply(409, { error: "stale", note: note({ description: "<p>web</p>", updated_at: "2026-11-13T08:00:00Z" }) });
+    await expect(notesApi.update(7, { title: "Trip", html: "<p>x</p>" }, "2026-11-12T09:00:00Z")).rejects.toMatchObject({
+      name: "StaleNoteError",
+      current: { html: "<p>web</p>", updatedAt: "2026-11-13T08:00:00Z" },
+    });
+  });
+});

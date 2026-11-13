@@ -1008,6 +1008,23 @@ export const en = {
       checked: "Done",
       unchecked: "Not done",
     },
+    edit: {
+      open: "Edit",
+      titlePlaceholder: "Title",
+      bodyPlaceholder: "Write something",
+      editOnWeb: "Edit on the web",
+      state: { saved: "Saved", unsaved: "Not saved yet", saving: "Saving…", local: "On this phone only", conflict: "Edited on the web too" },
+      cannotOpen: "This note cannot be edited on the phone yet. You can read it here and edit it on the web.",
+      cannotSave: "This change cannot be saved from the phone. Your text is kept on this phone; open the note on the web.",
+      restored: "Your unsent changes were restored.",
+      conflict: {
+        title: "This note changed on the web",
+        body: "Someone edited it on the web while you were writing here. Which version do you keep?",
+        both: "Keep both",
+        mine: "Keep mine",
+        web: "Keep the web's",
+      },
+    },
   },
   pages: {
     modified: "Modified {{when}}",

@@ -1024,6 +1024,23 @@ export const fr: Translations = {
       checked: "Fait",
       unchecked: "À faire",
     },
+    edit: {
+      open: "Modifier",
+      titlePlaceholder: "Titre",
+      bodyPlaceholder: "Écrivez quelque chose",
+      editOnWeb: "Modifier sur le web",
+      state: { saved: "Enregistré", unsaved: "Pas encore enregistré", saving: "Enregistrement…", local: "Sur ce téléphone seulement", conflict: "Modifiée aussi sur le web" },
+      cannotOpen: "Cette note ne peut pas encore être modifiée sur le téléphone. Vous pouvez la lire ici et la modifier sur le web.",
+      cannotSave: "Cette modification ne peut pas être enregistrée depuis le téléphone. Votre texte reste sur ce téléphone ; ouvrez la note sur le web.",
+      restored: "Vos modifications non envoyées ont été restaurées.",
+      conflict: {
+        title: "Cette note a changé sur le web",
+        body: "Quelqu’un l’a modifiée sur le web pendant que vous écriviez ici. Quelle version gardez-vous ?",
+        both: "Garder les deux",
+        mine: "Garder la mienne",
+        web: "Garder celle du web",
+      },
+    },
   },
   pages: {
     modified: "Modifié {{when}}",

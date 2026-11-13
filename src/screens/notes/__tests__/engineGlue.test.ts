@@ -54,6 +54,14 @@ describe("toEngine", () => {
     expect(out.content!.map((n) => n.type)).toEqual([READ_ONLY_ATOM, READ_ONLY_ATOM, "paragraph"]);
     expect(out.content![0].attrs).toEqual({ kind: "codeBlock", node: JSON.stringify(code) });
   });
+
+  it("sends legacy raw blocks and images as atoms too, so the editor draws them with our card", () => {
+    const raw: DocNode = { type: "rawBlock", attrs: { html: '<iframe src="https://www.youtube.com/embed/x"></iframe>', tag: "iframe" } };
+    const img: DocNode = { type: "imageUploader", attrs: { src: "https://x/a.png", uploading: false } };
+    const out = toEngine({ type: "doc", content: [raw, img] });
+    expect(out.content!.map((n) => n.attrs?.kind)).toEqual(["rawBlock", "imageUploader"]);
+    expect(fromEngine(out).content).toEqual([raw, img]);
+  });
 });
 
 describe("fromEngine", () => {

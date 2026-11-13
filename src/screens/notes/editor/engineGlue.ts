@@ -8,15 +8,17 @@
  *  - it validates and rewrites a mark named `textStyle` (refuses `var(--x)`,
  *    turns `rgb(0, 0, 255)` into `#0000ffff`): the colour travels as
  *    ENGINE_COLOR_MARK, an opaque string, and comes back as written;
- *  - code blocks and tables are read-only on the phone (SPEC §C8): they
- *    travel as one opaque atom holding the exact node, so they come back
- *    byte for byte and the source map keeps their stored HTML.
+ *  - code blocks, tables, legacy raw blocks and images are read-only on the
+ *    phone (SPEC §C8): they travel as one opaque atom holding the exact node,
+ *    so they come back byte for byte and the source map keeps their stored
+ *    HTML. ReadOnlyAtom draws them; `lock` adds more (editSession: sub/sup,
+ *    web comments).
  */
 import type { DocMark, DocNode } from "./types";
 
 export const ENGINE_COLOR_MARK = "fgColor";
 export const READ_ONLY_ATOM = "readOnlyBlock";
-const READ_ONLY_TYPES = new Set(["codeBlock", "table"]);
+const READ_ONLY_TYPES = new Set(["codeBlock", "table", "rawBlock", "imageUploader"]);
 
 const renameMark = (marks: DocMark[], from: string, to: string): DocMark[] =>
   marks.map((m) => (m.type === from ? { ...m, type: to } : { ...m }));

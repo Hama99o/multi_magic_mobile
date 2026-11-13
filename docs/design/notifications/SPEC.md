@@ -278,3 +278,17 @@ light and dark. Two breaks were planted and watched fail first.
 Was `SPECIFIED`. `docs/design/README.md` §4 defines `DONE` as `ours/` holding a device screenshot at **360, 411 and 800 dp**, the flows for that screen run, and the SPEC updated. Checked against the files rather than from memory.
 
 `07-notifications` passes and `ours/` holds the three widths — **but it took the EMPTY branch.** The QA account has no notifications, so what ran is reachability and the empty state; the row, the composed question, mark-all-read and the clear confirm are NOT MEASURED. Reaching them needs an account with content, which is his.
+
+## Query keys (React Query audit, 2026-11-13)
+
+Every key comes from `notificationKeys` in `src/api/keys.ts`, never a literal
+(`docs/DATA_LAYER.md`; the guard is lint rule `api-in-effect`).
+
+| Factory member | Key |
+|---|---|
+| `notificationKeys.all` | `["notifications"]` |
+| `notificationKeys.list()` | `["notifications", "list"]` |
+| `notificationKeys.unreadCount()` | `["notifications", "unreadCount"]` |
+
+Writes: src/hooks/useMarkNotificationRead.ts. opening a notification marks it read optimistically: the row and every unread badge (Home, the chat header, the list) at once.
+

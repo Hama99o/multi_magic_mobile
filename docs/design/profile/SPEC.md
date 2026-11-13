@@ -284,3 +284,18 @@ server refuses, and says when the first brief comes. Tests:
 `MorningBriefRow.test.tsx`, three plants red. **NOT MEASURED on a device**,
 and production does not have the field yet (nothing after multi_magic
 `4a39266` is deployed), so until the deploy the switch does not appear there.
+
+## Query keys (React Query audit, 2026-11-13)
+
+Every key comes from `profileKeys` in `src/api/keys.ts`, never a literal
+(`docs/DATA_LAYER.md`; the guard is lint rule `api-in-effect`).
+
+| Factory member | Key |
+|---|---|
+| `profileKeys.all` | `["profile"]` |
+| `profileKeys.me()` | `["profile"]` |
+| `profileKeys.summary()` | `["me", "summary"]` |
+| `profileKeys.aiKeys()` | `["aiKeys"]` |
+
+Writes: src/hooks/useAccountMutations.ts, src/hooks/useChooseLanguage.ts, src/hooks/useMe.ts. the name/about and an AI key activated or removed are optimistic; the photo and adding a key are not. The signed-in user is `useMe()` over `profileKeys.me()`, never a copy in the auth store.
+

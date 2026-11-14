@@ -112,3 +112,23 @@ zero-crash result. Next slot:
    dev-client link.
 3. The same soak on a release build, to answer the open question of whether
    the crash is dev-only.
+
+## Result: the #4413 backport, soaked (2026-11-14)
+
+`patches/react-native-screens+4.26.2.patch` (`12772b0`). Both builds were
+checked to carry it: the patched `librnscreens.so` has the new
+`setListener`/`clearListener` symbols, and the unpatched one does not. The
+Android 15 emulator ran a tile tap about 6 s after Home on every launch.
+
+| Build | Launches | Crashes | Same protocol, unpatched |
+|---|---|---|---|
+| debug, dev-client link, overlay off | 60 | **0** | 1 in 20 |
+| release, launcher start | 30 | **0** | not run |
+
+**0 in 90 is evidence, not proof.** Against the 1-in-20 base rate, 0 in 60
+on its own has p ≈ 0.05. The load average was 11–16 during the runs, so
+conditions were not easy. The crash was intermittent from the start, so
+the watch stays open: a new tombstone with this signature on a patched
+build reopens it. The patch goes when screens moves past 4.28;
+`screensPatch.test.ts` fails if the version moves without it.
+

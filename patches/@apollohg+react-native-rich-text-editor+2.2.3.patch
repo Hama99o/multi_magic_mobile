@@ -147,3 +147,54 @@ index 0721192..3b3ee2f 100644
          },
          [ admitNativeBindingEvent,
              applySelectionEventState,
+diff --git a/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorUpdates.tsx b/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorUpdates.tsx
+index 8d81e37..a189e34 100644
+--- a/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorUpdates.tsx
++++ b/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorUpdates.tsx
+@@ -54,6 +54,7 @@ export function useRichTextEditorUpdates(
+         | 'lastNativeDrivenRevisionRef'
+         | 'latestPresentedStateRevisionRef'
+         | 'onLocalCommitRef'
++        | 'onSelectionChangeRef'
+     >
+ ) {
+     const {
+@@ -86,8 +87,18 @@ export function useRichTextEditorUpdates(
+         lastNativeDrivenRevisionRef,
+         latestPresentedStateRevisionRef,
+         onLocalCommitRef,
++        onSelectionChangeRef,
+     } = context;
+ 
++    // mm-notes patch: a render update (Enter, a list command…) moves the caret
++    // without a native selection event; report it, or the app keeps a stale
++    // caret (device, 2026-11-14).
++    const reportSelection = (previous: unknown, next: unknown) => {
++        if (next && JSON.stringify(previous) !== JSON.stringify(next)) {
++            onSelectionChangeRef.current?.(next as never);
++        }
++    };
++
+     const stateBindingGeneration = pushedUpdateBindingGenerationRef.current;
+ 
+     const isCurrentStateBinding = useCallback(
+@@ -249,7 +260,9 @@ export function useRichTextEditorUpdates(
+             const admittedRevision = latestPresentedStateRevisionRef.current;
+             const isCurrentState = () => isCurrent() && isCurrentStateRevision(admittedRevision);
+ 
++            const previous = selectionRef.current;
+             selectionRef.current = update.selection;
++            reportSelection(previous, update.selection);
+             updateAtomSelection(update.selection);
+ 
+             if (!isCurrentState()) {
+@@ -349,7 +362,9 @@ export function useRichTextEditorUpdates(
+                 }
+             } else {
+                 if (nextSelection) {
++                    const previous = selectionRef.current;
+                     selectionRef.current = nextSelection;
++                    reportSelection(previous, nextSelection);
+                 } else if (nextActiveState) {
+                     activeStateRef.current = nextActiveState;
+                     const key = stringifyCachedJson(nextActiveState);

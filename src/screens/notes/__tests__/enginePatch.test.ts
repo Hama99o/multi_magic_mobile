@@ -40,3 +40,17 @@ it("onSelectionChange receives B's scalar caret (anchorScalar/headScalar)", () =
   expect(events).not.toContain("onSelectionChangeRef.current?.(publicSelection(selection));");
   expect(patch).toContain("src/useRichTextEditorEvents.tsx");
 });
+
+// Device, 2026-11-14: Enter twice to leave a checklist, then "Code block":
+// nothing happened (before the toCodeBlockAt guard: a crash). B moves the
+// caret through render updates (Enter, list commands) and updates only its
+// own selectionRef there; onSelectionChange fires for native selection events
+// only, so the screen kept a caret inside the checklist item. The patch
+// reports a changed selection from updates too.
+it("onSelectionChange also fires when a render update moves the caret", () => {
+  const updates = readFileSync(join(root, "node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorUpdates.tsx"), "utf8");
+  expect(updates).toContain("onSelectionChangeRef");
+  expect(updates).toMatch(/reportSelection\(previous, update\.selection\)/);
+  expect(updates).toMatch(/reportSelection\(previous, nextSelection\)/);
+  expect(patch).toContain("src/useRichTextEditorUpdates.tsx");
+});

@@ -98,3 +98,20 @@ index ff5b100..b1b40f5 100644
                      "fileName" to fileName,
                      "fileSize" to fileSize,
                      "mimeType" to mimeType,
+diff --git a/node_modules/expo-share-intent/plugin/build/ios/constants.js b/node_modules/expo-share-intent/plugin/build/ios/constants.js
+index b147600..79e11c4 100644
+--- a/node_modules/expo-share-intent/plugin/build/ios/constants.js
++++ b/node_modules/expo-share-intent/plugin/build/ios/constants.js
+@@ -8,6 +8,12 @@ exports.shareExtensionStoryBoardFileName = "MainInterface.storyboard";
+ exports.shareExtensionViewControllerFileName = "ShareViewController.swift";
+ exports.shareExtensionPreprocessorFileName = "ShareExtensionPreprocessor.js";
+ const getShareExtensionName = (parameters) => {
++    // MultiMagic patch: the Xcode target name can differ from the name shown in
++    // the share sheet. Without it, a display name equal to the app's own name
++    // ("MultiMagic") makes two targets with one name, and EAS signs the app
++    // target with the extension's profile (1.1.1 build, 2026-11-14).
++    if (parameters?.iosShareExtensionTargetName)
++        return parameters.iosShareExtensionTargetName.replace(/[^a-zA-Z0-9]/g, "");
+     if (!parameters?.iosShareExtensionName)
+         return shareExtensionName;
+     return parameters.iosShareExtensionName.replace(/[^a-zA-Z0-9]/g, "");

@@ -51,3 +51,23 @@ it("Android accepts every type, vCards included (text/vcard, text/x-vcard)", () 
   expect(params.androidIntentFilters).toEqual(["*/*"]);
   expect(params.androidMultiIntentFilters).toEqual(["*/*"]);
 });
+
+describe("the extension's Xcode target (1.1.1 iOS build, 2026-11-14)", () => {
+  // The target name was derived from the display name, so "MultiMagic" made a
+  // second target named like the app's own, and EAS signed the app target with
+  // the extension's profile. Our expo-share-intent patch reads
+  // iosShareExtensionTargetName first.
+  const target = constants.getShareExtensionName(params);
+
+  it("is not named like the app's own target", () => {
+    expect(target).not.toBe(appJson.expo.name.replace(/[^a-zA-Z0-9]/g, ""));
+  });
+
+  it("matches the target the App Store credentials are keyed by (credentials.json: MultiMagicPages)", () => {
+    expect(target).toBe("MultiMagicPages");
+  });
+
+  it("still shows MultiMagic in the share sheet", () => {
+    expect(params.iosShareExtensionName).toBe("MultiMagic");
+  });
+});

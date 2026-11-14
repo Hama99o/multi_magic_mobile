@@ -13,6 +13,10 @@ import sys
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 BUILD = re.compile(rb"/(?:build|\.cxx|\.gradle|Pods|DerivedData)/")
+# An Expo config plugin is PUBLISHED as compiled JS in <pkg>/plugin/build/:
+# that is the package's source as shipped, not output of our build. Allowed
+# for .js files only (expo-share-intent target-name patch, 2026-11-14).
+PLUGIN_JS = re.compile(rb"^node_modules/[^/]+/plugin/build/\S+\.js$")
 LOCAL = re.compile(rb"/(?:home|Users)/[A-Za-z0-9._-]+/")
 FAILS = []
 
@@ -29,7 +33,7 @@ for p in paths:
     name = os.path.basename(p)
     data = open(p, "rb").read()
     targets = re.findall(rb"(?m)^diff --git a/(\S+)", data)
-    built = [t.decode(errors="replace") for t in targets if BUILD.search(t)]
+    built = [t.decode(errors="replace") for t in targets if BUILD.search(t) and not PLUGIN_JS.match(t)]
     check(f"{name}: no build output patched", not built, f"{len(built)} e.g. {built[:2]}")
     local = LOCAL.findall(data)
     check(f"{name}: no local machine paths", not local, f"{len(local)} e.g. {local[:1]}")

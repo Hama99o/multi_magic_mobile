@@ -233,6 +233,13 @@ export default function NoteEditScreen() {
       saver.dispose();
     };
   }, [opened]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Every write (reminder, lock, pin, colour, archive, labels, our own saves)
+  // puts the server's note in the cache: hand it to the saver, so a metadata
+  // write's new updated_at is not taken for a web edit (integration server,
+  // 2026-11-14). The saver ignores a copy whose body differs.
+  useEffect(() => {
+    if (note) saverRef.current?.rebase(toServer(note));
+  }, [note]);
 
   const push = () => saverRef.current?.change({ title: title.current, html: html.current });
 

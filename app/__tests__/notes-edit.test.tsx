@@ -582,6 +582,48 @@ describe("the bar keeps the editor's focus (device finding, 2026-11-13)", () => 
   });
 });
 
+describe("a reminder or lock write is not a web edit (integration server, 2026-11-14)", () => {
+  // The lock PUT bumps updated_at, as the server does for reminder/lock/pin.
+  const metaPut = () =>
+    mock.onPut("/api/v1/note_app/notes/7").reply((cfg) => {
+      const body = JSON.parse(cfg.data);
+      server = "description" in body
+        ? { ...server, title: body.title, description: body.description, updated_at: "2026-11-14T09:00:00Z" }
+        : { ...server, is_locked: body.locked, updated_at: "2026-11-14T08:00:00Z" };
+      return [200, { note: server }];
+    });
+
+  it("lock then unlock, then typing: no \"changed on the web\", the text is saved", async () => {
+    metaPut();
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    fireEvent.press(screen.getByTestId("note-edit-lock"));
+    await waitFor(() => expect(mockEngine.props!.editable).toBe(false));
+    fireEvent.press(screen.getByTestId("note-edit-lock"));
+    await waitFor(() => expect(mockEngine.props!.editable).not.toBe(false));
+    act(() => engineChanged({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "after the lock" }] }] }));
+    await waitFor(() => expect(mock.history.put.some((r) => String(JSON.parse(r.data).description ?? "").includes("after the lock"))).toBe(true), { timeout: 4000 });
+    expect(screen.queryByText("This note changed on the web")).toBeNull();
+  });
+
+  it("the screen hands the saver the note each write returned (saver.rebase)", async () => {
+    metaPut();
+    const saverMod = jest.requireActual("@/screens/notes/editor/noteSaver");
+    const real = saverMod.createNoteSaver;
+    const rebased: string[] = [];
+    jest.spyOn(saverMod, "createNoteSaver").mockImplementation((o: unknown) => {
+      const saver = real(o);
+      const r = saver.rebase;
+      saver.rebase = (n: { updatedAt: string }) => { rebased.push(n.updatedAt); r(n); };
+      return saver;
+    });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    fireEvent.press(screen.getByTestId("note-edit-lock"));
+    await waitFor(() => expect(rebased).toContain("2026-11-14T08:00:00Z"));
+  });
+});
+
 describe("a note too long to edit on the phone (device, 2026-11-14: ANR at 200 KB)", () => {
   // Invented text. Typing in a 200 KB note blocked the UI thread for more
   // than 5 s and Android killed the app (the key was lost). Above the limit

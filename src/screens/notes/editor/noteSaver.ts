@@ -42,6 +42,12 @@ export interface NoteSaver {
   change(content: Content): void;
   flush(): Promise<void>;
   resolve(choice: ConflictChoice): Promise<{ reload: ServerNote | null; copyId?: number }>;
+  /**
+   * The note as a non-content write returned it (reminder, lock, pin, colour,
+   * archive, labels): same body, new updated_at. Taken as the new base; a copy
+   * with a different body is a web edit and is ignored (the check must see it).
+   */
+  rebase(note: ServerNote): void;
   dispose(): void;
 }
 
@@ -88,12 +94,23 @@ export function createNoteSaver(o: NoteSaverOptions): NoteSaver {
     o.onState({ kind: "saving" });
     try {
       const server = await o.api.get(o.noteId);
+      // A new updated_at with the base's body is a metadata write (reminder,
+      // lock…), not a web edit: take it as the base (integration server,
+      // 2026-11-14: a false "changed on the web" after a reminder).
+      if (server.updatedAt !== base.updatedAt && same(server, base)) base = server;
       if (server.updatedAt !== base.updatedAt) {
         conflict = server;
         o.onState({ kind: "conflict", web: server });
         return;
       }
-      base = same(server, c) ? server : await o.api.update(o.noteId, c, base.updatedAt);
+      try {
+        base = same(server, c) ? server : await o.api.update(o.noteId, c, base.updatedAt);
+      } catch (e) {
+        // A metadata write between our check and our write: same body, so save again on its version.
+        if (!(e instanceof StaleNoteError) || !same(e.current, base)) throw e;
+        base = e.current as ServerNote;
+        base = await o.api.update(o.noteId, c, base.updatedAt);
+      }
       if (pending === c) pending = null;
       await draftWrite;
       await o.drafts.settled(o.noteId, c).catch(() => undefined);
@@ -134,7 +151,12 @@ export function createNoteSaver(o: NoteSaverOptions): NoteSaver {
     o.onState({ kind: "saved" });
   };
 
+  const rebase = (note: ServerNote) => {
+    if (same(note, base) && note.updatedAt !== base.updatedAt) base = { ...note };
+  };
+
   return {
+    rebase,
     change(content) {
       pending = { ...content };
       writeDraft(pending);

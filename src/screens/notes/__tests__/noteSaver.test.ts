@@ -48,6 +48,8 @@ function rig(initial: Server = { title: "Plan", html: "<p>a</p>", updatedAt: "t1
   return {
     saver, api, drafts, states, calls,
     webEdits: (html: string) => { server = { ...server, html, updatedAt: `t${++tick}` }; },
+    /** A reminder, lock, pin, colour, archive or label write: same body, new updated_at. */
+    metadataWrite: () => { server = { ...server, updatedAt: `t${++tick}` }; return { ...server }; },
     setOffline: (v: boolean) => { offline = v; },
     server: () => server,
   };
@@ -240,5 +242,68 @@ describe("with the server's version check (409)", () => {
     await r.saver.resolve("mine");
     expect(r.api.update).toHaveBeenLastCalledWith(7, { title: "Plan", html: "<p>mine</p>" }, web.updatedAt);
     expect(r.server().html).toBe("<p>mine</p>");
+  });
+});
+
+// Integration server, 2026-11-14 (SafeZone, all MM server PRs merged): after
+// a reminder or lock/unlock, typing in the same note showed a FALSE "This note
+// changed on the web". Those writes bump updated_at; the saver's base only
+// moved on its own body saves, so the next check saw a new version.
+describe("a metadata write is not a web edit", () => {
+  it("between two body edits, with rebase(note) from the write: no conflict, the edit is saved", async () => {
+    const r = rig();
+    r.saver.change({ title: "Plan", html: "<p>b</p>" });
+    await settle();
+    r.saver.rebase(r.metadataWrite());
+    r.saver.change({ title: "Plan", html: "<p>c</p>" });
+    await settle();
+    expect(r.states.some((s) => s.kind === "conflict")).toBe(false);
+    expect(r.server().html).toBe("<p>c</p>");
+  });
+
+  it("even without rebase: same body on the server, only a new updated_at, is no conflict", async () => {
+    const r = rig();
+    r.saver.change({ title: "Plan", html: "<p>b</p>" });
+    await settle();
+    r.metadataWrite();
+    r.saver.change({ title: "Plan", html: "<p>c</p>" });
+    await settle();
+    expect(r.states.some((s) => s.kind === "conflict")).toBe(false);
+    expect(r.server().html).toBe("<p>c</p>");
+  });
+
+  it("a 409 whose current copy has the same body (a metadata write in between) saves again instead of asking", async () => {
+    const r = rig();
+    let first = true;
+    (r.api.update as jest.Mock).mockImplementationOnce(async () => {
+      first = false;
+      throw new StaleNoteError({ ...r.metadataWrite() });
+    });
+    r.saver.change({ title: "Plan", html: "<p>b</p>" });
+    await settle();
+    await settle(100);
+    expect(first).toBe(false);
+    expect(r.states.some((s) => s.kind === "conflict")).toBe(false);
+    expect(r.server().html).toBe("<p>b</p>");
+  });
+
+  it("a real web edit of the body still asks", async () => {
+    const r = rig();
+    r.saver.change({ title: "Plan", html: "<p>b</p>" });
+    await settle();
+    r.webEdits("<p>from the web</p>");
+    r.saver.change({ title: "Plan", html: "<p>c</p>" });
+    await settle();
+    expect(r.states.at(-1)).toEqual({ kind: "conflict", web: expect.objectContaining({ html: "<p>from the web</p>" }) });
+    expect(r.server().html).toBe("<p>from the web</p>");
+  });
+
+  it("rebase ignores a copy whose body differs (that is a web edit, the check must still see it)", async () => {
+    const r = rig();
+    r.webEdits("<p>from the web</p>");
+    r.saver.rebase(r.server());
+    r.saver.change({ title: "Plan", html: "<p>c</p>" });
+    await settle();
+    expect(r.states.at(-1)?.kind).toBe("conflict");
   });
 });

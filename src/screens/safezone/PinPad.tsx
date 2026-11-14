@@ -4,7 +4,7 @@
  * a screen reader hears "3 of 6 digits", never a digit typed. The sixth digit
  * submits, and the digits are cleared at that moment, whatever the answer.
  */
-import { useReducer, useState } from "react";
+import { useReducer, useState, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Delete } from "@/components/icons";
@@ -17,10 +17,14 @@ const KEYS = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "", "0", "back"] as c
 export function PinPad({
   onComplete,
   disabled = false,
+  underDots,
   testID = "safezone-pin",
 }: {
   onComplete: (pin: string) => void;
   disabled?: boolean;
+  /** Shown between the dots and the keys, never dimmed: "Forgot your PIN?"
+   *  must stay on screen however short the phone (SPEC §C.5). */
+  underDots?: ReactNode;
   testID?: string;
 }) {
   const colors = useColors();
@@ -42,12 +46,12 @@ export function PinPad({
   };
 
   return (
-    <View testID={testID} style={{ alignItems: "center", gap: metrics.space.xl, opacity: disabled ? 0.4 : 1 }}>
+    <View testID={testID} style={{ alignItems: "center", gap: metrics.space.xl }}>
       <View
         testID={`${testID}-dots`}
         accessible
         accessibilityLabel={t("safezone.pin.progress", { typed: pin.digits.length, total: PIN_LENGTH })}
-        style={{ flexDirection: "row", gap: metrics.space.md }}
+        style={{ flexDirection: "row", gap: metrics.space.md, opacity: disabled ? 0.4 : 1 }}
       >
         {Array.from({ length: PIN_LENGTH }, (_, i) => (
           <View
@@ -63,7 +67,8 @@ export function PinPad({
           />
         ))}
       </View>
-      <View style={{ flexDirection: "row", flexWrap: "wrap", width: 3 * 84, justifyContent: "center" }}>
+      {underDots}
+      <View style={{ flexDirection: "row", flexWrap: "wrap", width: 3 * 84, justifyContent: "center", opacity: disabled ? 0.4 : 1 }}>
         {KEYS.map((key, i) =>
           key === "" ? (
             <View key={`gap-${i}`} style={{ width: 84, height: 64 }} />

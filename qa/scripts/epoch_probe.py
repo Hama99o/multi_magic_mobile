@@ -138,17 +138,23 @@ def verdict(seen, typed, saved, b_errors, refused_after):
     return "unclear"
 
 
-def token(seed):
-    """Digits only, no digit twice in a row: Gboard autocorrects a letter
-    token on the next space (device, 2026-11-14) and adb drops a doubled key."""
-    n = seed * 7919 + int(time.time() * 1000) % 10**9 * 1000 + seed
-    out = str(n % 9 + 1)
-    while n or len(out) < 9:
-        n, d = divmod(n, 10)
-        c = str(d)
-        if c == out[-1]:
-            c = str((d + 1) % 10)
-        out += c
+def token(seed, run=0):
+    """Digits only, no digit twice in a row (Gboard autocorrects a letter token
+    on the next space; adb drops a doubled key), and the same for the same
+    seed and run: no clock inside (CI 43553280033). Unique by construction:
+    the run id (6 base-9 digits) then the seed in base 9; each base-9 digit
+    picks one of the 9 digits that differ from the one before (the first
+    from 1-9), which can be decoded back, so different inputs never collide."""
+    def base9(n, width):
+        out = []
+        while n or len(out) < width:
+            n, d = divmod(n, 9)
+            out.append(d)
+        return out[::-1]
+    out = ""
+    for d in base9(run % 9**6, 6) + base9(seed, 3):
+        choices = "123456789" if not out else "".join(c for c in "0123456789" if c != out[-1])
+        out += choices[d]
     return out
 
 
@@ -237,7 +243,7 @@ def open_app(serial, dev_url, timeout=120):
     return False
 
 
-def probe(serial, tok, kb, n, open_timeout=150, dev_url=None):
+def probe(serial, tok, kb, n, open_timeout=150, dev_url=None, run_id=0):
     nid, h = seed_note(tok, kb)
     row = {"kb": kb, "id": nid, **note_stats(h)}
     adb(serial, "shell", "am", "force-stop", PKG)
@@ -262,7 +268,7 @@ def probe(serial, tok, kb, n, open_timeout=150, dev_url=None):
         if "note-edit-cannot-open" in ids:
             refused_after = True
         elif "note-edit-body" in ids:
-            tk = token(n)
+            tk = token(n, run_id)
             x, y = ids["note-edit-body"]
             adb(serial, "shell", "input", "tap", str(x), str(y))
             time.sleep(1)
@@ -305,11 +311,12 @@ def main():
         sys.exit(f"STOP {PKG} not installed on {a.serial}")
     ladder = [int(x) for x in a.ladder.split(",")]
     tok = login()
+    run_id = int(time.time())  # once per run: tokens stay pure (token())
     results, rows, n = {}, [], 0
     out = open(a.out, "a") if a.out else None
     while (kb := next_kb(results, ladder, a.step)) is not None:
         n += 1
-        row = probe(a.serial, tok, kb, n, dev_url=a.dev_url)
+        row = probe(a.serial, tok, kb, n, dev_url=a.dev_url, run_id=run_id)
         if row["verdict"] == "unclear" and results.get(kb) == "unclear":
             row["verdict"] = "unclear!"
         results[kb] = row["verdict"]

@@ -26,7 +26,8 @@ This replaces SPEC §C8 ("read-only blocks are a view-on-web card"), the
 ## Decisions
 
 1. **Code blocks are edited inline** by engine B (B edits `codeBlock`; we saw
-   it on the spike). Monospace, no autocorrect or capitalisation, whitespace
+   it on the spike). Monospace, no autocorrect or capitalisation (not yet:
+   switching them breaks B's input, see MISSING_FEATURES, 2026-11-14), whitespace
    kept as typed. A **language chip** on the block opens a sheet with search
    (Notion). The list is the web's lowlight languages. The block writes the
    web's `<pre><code class="language-x">`.

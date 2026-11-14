@@ -680,8 +680,11 @@ export default function NoteEditScreen() {
               caretScalar.current =
                 typeof sel.anchorScalar === "number" && typeof sel.headScalar === "number" ? { anchor: sel.anchorScalar, head: sel.headScalar } : null;
             }}
-            autoCorrect={!active.nodes.codeBlock}
-            autoCapitalize={active.nodes.codeBlock ? "none" : "sentences"}
+            // Constant: switching these when the caret entered code restarted
+            // the keyboard under B and corrupted what was typed next (device,
+            // 2026-11-14). Code is typed with autocorrect on for now.
+            autoCorrect
+            autoCapitalize="sentences"
             heightBehavior="fixed"
             style={{ flex: 1 }}
             containerStyle={{ flex: 1 }}

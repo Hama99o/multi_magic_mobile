@@ -373,13 +373,17 @@ describe("code blocks are edited on the phone (owner, 2026-11-13)", () => {
     expect(lastSetJson()!.content!.some((n) => n.type === "codeBlock")).toBe(false);
   });
 
-  it("autocorrect and capitalisation are off while the caret is in code", async () => {
+  // Device, 2026-11-14: switching autoCorrect/autoCapitalize when the caret
+  // entered code restarted the keyboard under engine B; from the next keys on
+  // the caret stopped moving, letters came out reversed and were not saved
+  // ("total = 42" -> "tot"). They stay as they are (MISSING_FEATURES: no
+  // autocorrect-free code typing until B handles the switch).
+  it("autocorrect and capitalisation do not change when the caret enters code", async () => {
     open();
     await waitFor(() => expect(mockEngine.props).not.toBeNull());
-    expect(mockEngine.props!.autoCorrect).toBe(true);
+    const before = { autoCorrect: mockEngine.props!.autoCorrect, autoCapitalize: mockEngine.props!.autoCapitalize };
     act(() => mockEngine.props!.onActiveStateChange({ marks: {}, markAttrs: {}, nodes: { codeBlock: true }, commands: {}, allowedMarks: [], insertableNodes: [] }));
-    expect(mockEngine.props!.autoCorrect).toBe(false);
-    expect(mockEngine.props!.autoCapitalize).toBe("none");
+    expect({ autoCorrect: mockEngine.props!.autoCorrect, autoCapitalize: mockEngine.props!.autoCapitalize }).toEqual(before);
   });
 });
 

@@ -25,6 +25,7 @@ import { SearchView } from "@/screens/pages/drive/SearchView";
 import { TrashView } from "@/screens/pages/drive/TrashView";
 import { EmptyLine, PagesHeader, Separator } from "@/screens/pages/parts";
 import { openNode } from "@/screens/pages/navigation";
+import { pagesKeys } from "@/api/keys";
 
 type View_ = DriveView | "shared";
 
@@ -106,13 +107,13 @@ export default function Drive() {
   const view: View_ = (["recent", "starred", "trash", "search", "shared"] as const).find((v) => v === params.view) ?? "recent";
 
   const nodesQuery = useInfiniteQuery({
-    queryKey: ["pages", "drive", view, ""],
+    queryKey: pagesKeys.drive(view, ""),
     queryFn: ({ pageParam }) => pagesApi.drive(view as DriveView, pageParam),
     initialPageParam: 1,
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
     enabled: view === "recent" || view === "starred",
   });
-  const sharedQuery = useQuery({ queryKey: ["pages", "shared"], queryFn: pagesApi.sharedWithMe, enabled: view === "shared" });
+  const sharedQuery = useQuery({ queryKey: pagesKeys.shared(), queryFn: pagesApi.sharedWithMe, enabled: view === "shared" });
 
   const nodes = useMemo(() => (nodesQuery.data?.pages ?? []).flatMap((p) => p.rows), [nodesQuery.data]);
   const active = view === "shared" ? sharedQuery : nodesQuery;

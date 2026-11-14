@@ -140,6 +140,45 @@ master: a master push deploys production):**
     moment is worse than a clear "not saved"). The banner says so on contact
     screens.
 
+11. **Tablet split (2026-11-13, `docs/MISSING_FEATURES.md` row 3).** At
+    **800 dp and wider** (`SPLIT_AT`, `src/screens/contacts/split.ts`) the
+    list is the left pane and the card the right, master-detail. The owner
+    saw one phone-width column on an 800 dp tablet, small and lost in the
+    middle.
+    - **Sources** (Rule Zero, Mobbin 2026-11-13, images in `references/`
+      `split-*.jpg`): [Meetup messages](https://mobbin.com/screens/22e2b656-c848-4446-af19-8b578d0394d6)
+      and [Quo](https://mobbin.com/screens/ceac50d8-3d61-4420-8a0a-5b7a0b88d88d)
+      (a phone-width list on the left, the selected row on a tinted
+      surface, the record on the right);
+      [Base44](https://mobbin.com/screens/4b82e9b8-2f62-4b9f-a873-495745fef526)
+      and [Givingli](https://mobbin.com/screens/85a98c32-aef7-4c8a-926c-37afb2349ac3)
+      (an empty right pane with an icon, a title and one line saying what
+      to pick). **iPad Contacts, Gmail and Outlook tablet layouts are not on
+      Mobbin** (searched: it has iPhone and web screens only); said here so
+      nobody thinks they were skipped.
+    - **The list pane keeps a phone's width**: 38 % of the screen, clamped
+      to 360–420 dp (`listPaneWidth`). The rows, the 44 dp avatars, the A–Z
+      index and the type size are exactly the phone's; nothing is scaled.
+      The card takes the rest, capped at `maxMeasure` (640) and centred.
+    - **The open contact** is tinted (`surface`) with a 3 dp accent edge,
+      and `accessibilityState.selected` for a screen reader.
+    - **The card in the pane has no back button**, and deleting it empties
+      the pane (the list shows Undo, as on a phone) instead of going back.
+    - **Nothing open yet**: "Select a contact. Their card opens here, beside
+      the list." (`contacts.split.*`).
+    - **Rotation keeps the open contact**: it lives in `ContactsScreen`,
+      above both layouts. Crossing under 800 dp shows the list alone, and
+      coming back shows the same card.
+    - **Not changed**: + New contact, Edit, Import and Trash still open
+      their own screens on top; a new contact therefore opens full screen
+      after Save. That's acceptable for now, and noted for the device pass.
+    - Code: `app/contacts/index.tsx` (`ContactsScreen` → `ContactsList`
+      `pane`/`openId`/`onOpen`), `src/screens/contacts/ContactCard.tsx`
+      (the card, `embedded`/`onGone`; `app/contacts/contact.tsx` is its
+      phone route), `split.ts`. Tests: `contactsSplit.test.tsx` at 360, 411,
+      800, 1280. Device check: with the SafeZone device pass (an 800 dp
+      shot and a 1280 dp landscape shot into `ours/`).
+
 ## D · Not taken (and why)
 
 - The web's **family tree drawing** (`FamilyTreeView`, 783 lines): a phone
@@ -160,7 +199,8 @@ master: a master push deploys production):**
   openWhatsApp), `vcard.ts` (phone contact → vCard text), `draft.ts`,
   `ContactForm.tsx`, `Avatar.tsx`, `AzIndex.tsx`, `QuickActions.tsx`,
   `NumberChooser.tsx`.
-- `app/contacts/{index,[id],edit,trash,import,duplicates}.tsx`; a Home tile.
+- `app/contacts/{index,contact,edit,trash,import,duplicates}.tsx`; a Home tile.
+  The card is `src/screens/contacts/ContactCard.tsx` (route + split pane).
 - Stores: `contactsCountry.store.ts` (default country), the Calendar's undo
   pattern.
 - Native: `expo-contacts` (READ/WRITE_CONTACTS; `NSContactsUsageDescription`
@@ -196,3 +236,104 @@ Native: Android already accepts every type (`androidIntentFilters: */*`);
 iOS gains `NSExtensionActivationSupportsText`. A `.vcf` from iOS Contacts is
 shared as a file; whether the extension's file rule takes it is **NOT
 MEASURED** (no iOS device on this box).
+
+### F.3 · A contact shared to MultiMagic opens Contacts, never Pages (owner, 2026-11-13)
+
+*"iOS/Android share of a contact (.vcf) to MultiMagic must open Contacts
+import, not Pages."*
+
+**Which file is a card** (`partitionShare`, `src/screens/contacts/shareIn.ts`):
+- by its type: `text/vcard`, `text/x-vcard`, `text/directory` (vCard's
+  older MIME type, RFC 2425);
+- or by its extension: `.vcf` in any case, whatever the type;
+- or by its bytes, for a file that only MAY be one: a generic type with no
+  extension (seen on a device, 2026-11-12), or `text/plain`. The first bytes
+  must start `BEGIN:VCARD` (`looksLikeVcard`). Nothing else is read.
+
+**Where it goes** (`planShare`, `ShareIntentBridge.tsx`):
+- only cards: one card → the new-contact form, filled in; several → the
+  bulk import with its preview and duplicate skip (both as before);
+- **mixed (cards + photos or documents): Contacts first.** The cards open as
+  above; the other files wait as the pending Pages import, and the Contacts
+  screen shows **"N other files from that share are not contacts. Save to
+  Pages"** (`SharedRestToPages`, on the form and on the import's summary).
+  Tapping it opens Save to Pages with them, where the person picks a place.
+  **A banner, not a toast:** a toast is gone before the person has
+  decided, and the files would vanish without a word;
+- **a file that could not be read is said, never saved** (device pass,
+  2026-11-13): no path, an empty file by the sender's own word, or a cache
+  copy that is missing or empty (`unreadableFile`, `shareIn.ts`). An alert,
+  "Couldn't read this file · Try sharing it again." (`shareDoor.*`); the
+  rest of the share goes on; a share with nothing readable goes nowhere,
+  and from the cold-start landing goes Home. Found on the dev build: with
+  the app stopped, a lone `.vcf` reached Save to Pages as "1 file · 0 B"
+  and MediaProvider refused the read. That the read grant is lost in the
+  dev launcher's hop is INFERRED; the release-build check is the
+  measurement. `expo-share-intent` already copies each shared file into the
+  cache natively, on arrival, so there is no earlier moment for JS;
+- no card at all: Pages, at once, without reading anything (as before);
+- signed out: the share waits and acts after sign-in (as before, tested
+  for a mixed share too).
+
+**Native:**
+- iOS: the extension's activation rule is now a predicate naming
+  `public.vcard` explicitly (with images, movies, plain text, file URLs,
+  `public.content` and archives, up to 100). The old dictionary rule left it
+  unclear whether a contact shared from iOS Contacts (vCard DATA, not
+  necessarily a file URL) matched "file". Bare web links stay out on
+  purpose: `public.url` and `public.data` are not in the rule.
+- iOS display name **"MultiMagic"** (was "MultiMagic Pages"). The bundle id
+  is computed from the app's, not the name, so it stays
+  `com.multimagics.mobile.share-extension`; `shareExtensionConfig.test.ts`
+  checks it with the plugin's own function. The Xcode target name changes
+  (`MultiMagicPages` → `MultiMagic`); prebuild regenerates it.
+- Android: `*/*` already accepts `text/vcard` and `text/x-vcard`. The plugin
+  only accepts `text/*`, `image/*`, `video/*` or `*/*`, so an explicit vCard
+  filter cannot be expressed and would add nothing.
+
+**Measured:** Jest only (classifier, bridge, banner, config).
+**Device pass** (with SafeZone/split, `devpass.sh`): share a `.vcf` from the
+Android Contacts app, alone and with a photo. **iPhone: NOT MEASURED**, on
+the owner's checklist: share one contact and several contacts from iOS
+Contacts, and check that the share sheet shows "MultiMagic".
+
+### F.4 · Measured on the device, 2026-11-13/14
+
+Android 15 emulator, QA account, synthetic cards; nothing saved. Re-run on
+main 2456ee5 for V1.
+
+| # | Verdict | What was measured |
+|---|---|---|
+| S1 | **PASS** | 411 dp: the list, no pane |
+| S2 | **PASS** | 800 and 1280 dp: "Select a contact" in the empty pane |
+| S3 | **PASS** | 800 and 1280 dp: the card on the right, no back button |
+| S4 | **PASS** | a row's name box is 168 × 44 px at 411 and at 800 dp (same density): not scaled down |
+| S5 | NOT MEASURED | rotation: the app is portrait-locked (owner's decision) |
+| V1 | **PASS** | Files → `.vcf` → Share → MultiMagic (listed): the filled new-contact form |
+| V2 | **PASS** | `.vcf` + a photo: the form + "1 other file … Save to Pages" → Save to Pages with the photo (156 B) |
+| V3 | **PASS** | Google Contacts → Share → MultiMagic: the filled form |
+| V4, V5 | NOT MEASURED | iPhone (owner's RC) |
+| cold start | **FINDING, guarded** | dev build only so far: with the app stopped, a lone `.vcf` reached Save to Pages as "1 file · 0 B" (MediaProvider refused the read), twice. Now "Couldn't read this file" (§F.3). The cause, a read grant lost in the dev launcher's hop, is INFERRED: a release build is the measurement |
+
+The split's selected row is white on near-white and hard to see (polish,
+not fixed here).
+
+## Query keys (React Query audit, 2026-11-13)
+
+Every key comes from `contactsKeys` in `src/api/keys.ts`, never a literal
+(`docs/DATA_LAYER.md`; the guard is lint rule `api-in-effect`).
+
+| Factory member | Key |
+|---|---|
+| `contactsKeys.all` | `["contacts"]` |
+| `contactsKeys.list()` | `["contacts", "list"]` |
+| `contactsKeys.searches()` | `["contacts", "search"]` |
+| `contactsKeys.search()` | `["contacts", "search", term]` |
+| `contactsKeys.detail()` | `["contacts", "contact", contactId]` |
+| `contactsKeys.trash()` | `["contacts", "trash"]` |
+| `contactsKeys.allBirthdays()` | `["contacts", "birthdays"]` |
+| `contactsKeys.birthdays()` | `["contacts", "birthdays", days]` |
+| `contactsKeys.duplicates()` | `["contacts", "duplicates"]` |
+
+Writes: useContactMutations.ts. favourite, delete, restore, delete for ever, removing a family tie are optimistic; adding a tie, the form's save, the merges and the vCard export are not (reasons in the file).
+

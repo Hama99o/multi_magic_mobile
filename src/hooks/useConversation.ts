@@ -40,9 +40,11 @@
  * are the same code, differing only in which channel carries the live events.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppState, type AppStateStatus } from "react-native";
 import { subscribeToChannel, type ChannelParams } from "@/lib/cable";
 import { messagesApi, type ChatMessage } from "@/api/ai";
+import { conversationKeys } from "@/api/keys";
 
 /** While waiting for a reply we also ask the API, so a lost broadcast cannot
  *  strand the chat. `AI_ASSISTANT.md` §11. */
@@ -200,47 +202,68 @@ function merge(existing: ChatMessage[], incoming: ChatMessage[]): ChatMessage[] 
   return [...byId.values()].sort((a, b) => a.id - b.id);
 }
 
+/** What the cache holds for one conversation (`conversationKeys.transcript`). */
+interface Transcript {
+  messages: ChatMessage[];
+  hasOlder: boolean;
+  unreadableLatest: number;
+  unreadableOlder: number;
+}
+const EMPTY: Transcript = { messages: [], hasOlder: false, unreadableLatest: 0, unreadableOlder: 0 };
+
+/**
+ * ── WHERE THE TRANSCRIPT LIVES (React Query audit, 2026-11-13) ─────────────
+ * The messages, `hasOlder` and the unreadable counts are in the React Query
+ * cache under `conversationKeys.transcript(id)` (`docs/DATA_LAYER.md`), not in
+ * this hook's state. So a conversation opened again draws what it had at once
+ * while it re-reads, and any screen can read or merge into it. The READ is
+ * that query's `queryFn` (the resync below, gap fill and all); the 3-second
+ * poll while a reply is pending is its `refetchInterval`; a reconnect, the
+ * return to the foreground and a bad frame call `resync`, which refetches it.
+ * Socket frames, sends, edits and the optimistic question go in with
+ * `setQueryData`, keyed through a ref so every callback here stays STABLE
+ * (the people thread's rows depend on that).
+ *
+ * What stays local, because it is THIS screen's state and not the server's:
+ * `status`, `loadError`, waiting for a reply, `failed`, and the local-id
+ * bookkeeping (`askedAfterIdRef`, `drawnAs`).
+ */
 export function useConversation({
   conversationId,
   channel,
   channelParams,
   seed,
 }: UseConversationOptions): UseConversationResult {
+  const client = useQueryClient();
   // The seed belongs to the id it arrived with, fixed at mount.
   const seedFor = useRef({ id: conversationId, messages: seed ?? [] });
-  const seedOf = (id: number | null) => (id != null && id === seedFor.current.id ? seedFor.current.messages : []);
-  const [messages, setMessages] = useState<ChatMessage[]>(() => seedOf(conversationId));
   const [status, setStatus] = useState<ConversationStatus>("loading");
-  const [hasOlder, setHasOlder] = useState(false);
   const [awaitingReply, setAwaitingReply] = useState(false);
   const [failed, setFailed] = useState(false);
-  /** Messages the parser could not read: the latest read's, plus every older
-   *  page's (`readableRows`). The screen says so (`UnreadableNotice`). */
-  const [unreadableLatest, setUnreadableLatest] = useState(0);
-  const [unreadableOlder, setUnreadableOlder] = useState(0);
   const [loadError, setLoadError] = useState<unknown>(null);
 
   /**
    * The live conversation id, read inside callbacks that must not be rebuilt
    * when it changes — a changing subscription callback would tear the socket
-   * subscription down and back up on every render.
+   * subscription down and back up on every render. Written in an effect, not
+   * during render: the React Compiler (SDK 57) rejects a ref assignment in a
+   * render body, and every read below happens in a callback or a frame.
    */
   const conversationRef = useRef(conversationId);
-  /** What is on screen, for a resync to know where its gap starts. */
-  const messagesRef = useRef<ChatMessage[]>([]);
-  // BOTH refs are written in an EFFECT, not during render: the React Compiler
-  // (SDK 57) rejects a ref assignment in a render body, and it is the safer
-  // shape anyway — every read below happens inside a callback or a socket
-  // frame, never during a render, so "after commit" is soon enough and
-  // "during render" was never needed.
-  //
-  // `messagesRef` arrived on main for the reconnect gap fill and was written
-  // during render; it moves in here with `conversationRef` rather than being
-  // left behind as the one write the compiler would still reject.
   useEffect(() => {
     conversationRef.current = conversationId;
-    messagesRef.current = messages;
   });
+
+  /** Read and write the cached transcript of the CURRENT conversation. */
+  const read = useCallback((id: number | null) => (id == null ? undefined : client.getQueryData<Transcript>(conversationKeys.transcript(id))), [client]);
+  const edit = useCallback(
+    (fn: (t: Transcript) => Transcript) => {
+      const id = conversationRef.current;
+      if (id == null) return;
+      client.setQueryData<Transcript>(conversationKeys.transcript(id), (t) => fn(t ?? EMPTY));
+    },
+    [client],
+  );
 
   /**
    * The id of the question we are waiting on an answer to.
@@ -251,77 +274,113 @@ export function useConversation({
    */
   const askedAfterIdRef = useRef(0);
 
+  /** The read, as the transcript query's `queryFn`. */
+  const readTranscript = useCallback(
+    async (id: number): Promise<Transcript> => {
+      try {
+        const page = await messagesApi.latest(id);
+        // ── THE GAP A RECONNECT LEAVES (the socket audit, 2026-09-24) ─────
+        // The latest page is 25 messages. If more than that arrived while the
+        // socket was down, the ones between what is on screen and this page
+        // were never fetched, and `loadOlder` only reaches back from the OLDEST
+        // loaded message, so the hole stayed for as long as the screen was
+        // open: a thread that reconnects and quietly misses messages. So read
+        // back until the page meets what is already here, or history ends.
+        const known = read(id)?.messages ?? [];
+        const newestKnown = Math.max(0, ...known.filter((m) => !isOptimisticId(m.id)).map((m) => m.id));
+        let hasMore = page.hasMore;
+        let unreadable = page.unreadable ?? 0;
+        const filled = [...page.messages];
+        for (let i = 0; i < MAX_GAP_PAGES && newestKnown > 0 && hasMore; i++) {
+          const oldest = Math.min(...filled.map((m) => m.id));
+          if (oldest <= newestKnown + 1) break;
+          const older = await messagesApi.before(id, oldest);
+          filled.unshift(...older.messages);
+          hasMore = older.hasMore;
+          unreadable += older.unreadable ?? 0;
+        }
+        // Merged into the cache AS IT IS NOW, not as it was when this read
+        // started: a reply can land on the socket while this request is in
+        // flight, and replacing would drop it — the one message the user is
+        // actually waiting for.
+        const now = read(id) ?? EMPTY;
+        const next: Transcript = { ...now, messages: merge(now.messages, filled), hasOlder: page.hasMore, unreadableLatest: unreadable };
+        if (id === conversationRef.current) {
+          setStatus("ready");
+          setLoadError(null);
+          // Newer than the question, not merely present: an older assistant
+          // message already on screen must not be read as this question's answer.
+          if (filled.some((m) => m.role === "assistant" && m.id > askedAfterIdRef.current)) setAwaitingReply(false);
+        }
+        return next;
+      } catch (e) {
+        // A 404 is a fact, not a failure: the conversation was deleted on
+        // another device while this screen had it open. Silent here, it let
+        // him keep typing, and the send then failed looking like a network
+        // problem. Anything else keeps the old rule: a thread already shown
+        // stays shown.
+        if (id === conversationRef.current) {
+          if ((e as { response?: { status?: number } })?.response?.status === 404) setStatus("gone");
+          else {
+            setLoadError(e);
+            setStatus((current) => (current === "ready" ? current : "failed"));
+          }
+        }
+        throw e;
+      }
+    },
+    [read],
+  );
+
+  const seedTranscript = conversationId != null && conversationId === seedFor.current.id && seedFor.current.messages.length
+    ? { ...EMPTY, messages: seedFor.current.messages }
+    : undefined;
+  const transcript = useQuery({
+    queryKey: conversationKeys.transcript(conversationId),
+    queryFn: () => readTranscript(conversationId!),
+    enabled: conversationId != null,
+    retry: false,
+    // A seed is drawn at once and is stale from the start, so it is read too.
+    initialData: seedTranscript,
+    initialDataUpdatedAt: 0,
+    // While a reply is pending, ask the API as well as listening. Not a
+    // fallback that runs "if the socket fails": there is no reliable way to
+    // know that it has. Whichever arrives first clears the wait.
+    refetchInterval: awaitingReply ? RESYNC_MS : false,
+    refetchIntervalInBackground: false,
+  });
+  const data = transcript.data ?? EMPTY;
+  const { refetch } = transcript;
+
   const resync = useCallback(async () => {
-    const id = conversationRef.current;
-    if (id == null) return;
-    try {
-      const page = await messagesApi.latest(id);
-      // ── THE GAP A RECONNECT LEAVES (the socket audit, 2026-09-24) ─────
-      // The latest page is 25 messages. If more than that arrived while the
-      // socket was down, the ones between what is on screen and this page
-      // were never fetched, and `loadOlder` only reaches back from the OLDEST
-      // loaded message, so the hole stayed for as long as the screen was
-      // open: a thread that reconnects and quietly misses messages. So read
-      // back until the page meets what is already here, or history ends.
-      const newestKnown = Math.max(0, ...messagesRef.current.filter((m) => !isOptimisticId(m.id)).map((m) => m.id));
-      let hasMore = page.hasMore;
-      let unreadable = page.unreadable ?? 0;
-      const filled = [...page.messages];
-      for (let i = 0; i < MAX_GAP_PAGES && newestKnown > 0 && hasMore; i++) {
-        const oldest = Math.min(...filled.map((m) => m.id));
-        if (oldest <= newestKnown + 1) break;
-        const older = await messagesApi.before(id, oldest);
-        filled.unshift(...older.messages);
-        hasMore = older.hasMore;
-        unreadable += older.unreadable ?? 0;
-      }
-      page.messages = filled;
-      setUnreadableLatest(unreadable);
-      // Merged, not replaced. A reply can land on the socket while this request
-      // is in flight, and replacing would drop it — the one message the user is
-      // actually waiting for.
-      setMessages((current) => merge(current, page.messages));
-      setHasOlder(page.hasMore);
-      setStatus("ready");
-      setLoadError(null);
-      // Newer than the question, not merely present: an older assistant message
-      // already on screen must not be read as this question's answer.
-      if (page.messages.some((m) => m.role === "assistant" && m.id > askedAfterIdRef.current)) {
-        setAwaitingReply(false);
-      }
-    } catch (e) {
-      // A 404 is a fact, not a failure: the conversation was deleted on
-      // another device while this screen had it open. Silent here, it let
-      // him keep typing, and the send then failed looking like a network
-      // problem. Anything else keeps the old rule: a thread already shown
-      // stays shown.
-      if ((e as { response?: { status?: number } })?.response?.status === 404) setStatus("gone");
-      else {
-        setLoadError(e);
-        setStatus((current) => (current === "ready" ? current : "failed"));
-      }
-    }
-  }, []);
+    if (conversationRef.current == null) return;
+    // A refused read has already said so through `status` and `loadError`.
+    await refetch().catch(() => undefined);
+  }, [refetch]);
 
   const loadOlder = useCallback(async () => {
     const id = conversationRef.current;
-    const oldest = messages[0]?.id;
-    if (id == null || oldest == null || !hasOlder) return;
+    const oldest = read(id)?.messages[0]?.id;
+    if (id == null || oldest == null || !read(id)?.hasOlder) return;
     try {
-      // A CURSOR, not a page number — see `messagesApi.before`.
-      const page = await messagesApi.before(id, oldest);
-      setMessages((current) => merge(current, page.messages));
-      setUnreadableOlder((n) => n + (page.unreadable ?? 0));
-      setHasOlder(page.hasMore);
+      // A CURSOR, not a page number — see `messagesApi.before`. Read through
+      // the cache, then merged into the transcript.
+      const page = await client.fetchQuery({
+        queryKey: conversationKeys.olderPage(id, oldest),
+        queryFn: () => messagesApi.before(id, oldest),
+        gcTime: 0,
+      });
+      edit((t) => ({ ...t, messages: merge(t.messages, page.messages), unreadableOlder: t.unreadableOlder + (page.unreadable ?? 0), hasOlder: page.hasMore }));
     } catch {
       // Leave what is on screen. Failing to load history is not a reason to
       // lose the part already read.
     }
-  }, [messages, hasOlder]);
+  }, [client, read, edit]);
 
-  const mergeMessage = useCallback((message: ChatMessage) => {
-    setMessages((current) => merge(current, [message]));
-  }, []);
+  const mergeMessage = useCallback(
+    (message: ChatMessage) => edit((t) => ({ ...t, messages: merge(t.messages, [message]) })),
+    [edit],
+  );
 
   const addPending = useCallback(
     (message: ChatMessage) => {
@@ -341,50 +400,53 @@ export function useConversation({
     [],
   );
 
-  const addOptimistic = useCallback((draft: Omit<ChatMessage, "id">) => {
-    const localId = nextLocalId.current++;
-    setMessages((current) => {
-      // The answer is whatever assistant message is newer than everything we
-      // have now; the question's own id is not known yet.
-      const newest = current.reduce((max, m) => (isOptimisticId(m.id) ? max : Math.max(max, m.id)), 0);
-      askedAfterIdRef.current = newest;
-      return merge(current, [{ ...draft, id: localId }]);
-    });
-    setAwaitingReply(true);
-    setFailed(false);
-    return localId;
-  }, []);
+  const addOptimistic = useCallback(
+    (draft: Omit<ChatMessage, "id">) => {
+      const localId = nextLocalId.current++;
+      edit((t) => {
+        // The answer is whatever assistant message is newer than everything we
+        // have now; the question's own id is not known yet.
+        askedAfterIdRef.current = t.messages.reduce((max, m) => (isOptimisticId(m.id) ? max : Math.max(max, m.id)), 0);
+        return { ...t, messages: merge(t.messages, [{ ...draft, id: localId }]) };
+      });
+      setAwaitingReply(true);
+      setFailed(false);
+      return localId;
+    },
+    [edit],
+  );
 
-  const confirmPending = useCallback((localId: number, serverId: number) => {
-    setMessages((current) => {
-      const local = current.find((m) => m.id === localId);
-      const rest = current.filter((m) => m.id !== localId);
-      // Already superseded by an echo that beat the 202: nothing to swap.
-      if (local) drawnAs.current.set(serverId, localId);
-      return local ? merge(rest, [{ ...local, id: serverId }]) : rest;
-    });
-    askedAfterIdRef.current = Math.max(askedAfterIdRef.current, serverId);
-  }, []);
+  const confirmPending = useCallback(
+    (localId: number, serverId: number) => {
+      edit((t) => {
+        const local = t.messages.find((m) => m.id === localId);
+        const rest = t.messages.filter((m) => m.id !== localId);
+        // Already superseded by an echo that beat the 202: nothing to swap.
+        if (local) drawnAs.current.set(serverId, localId);
+        return { ...t, messages: local ? merge(rest, [{ ...local, id: serverId }]) : rest };
+      });
+      askedAfterIdRef.current = Math.max(askedAfterIdRef.current, serverId);
+    },
+    [edit],
+  );
 
-  const dropPending = useCallback((localId: number) => {
-    setMessages((current) => current.filter((m) => m.id !== localId));
-    setAwaitingReply(false);
-  }, []);
+  const dropPending = useCallback(
+    (localId: number) => {
+      edit((t) => ({ ...t, messages: t.messages.filter((m) => m.id !== localId) }));
+      setAwaitingReply(false);
+    },
+    [edit],
+  );
 
-  // Opening a different conversation starts over.
+  // Opening a different conversation starts over (its transcript, if the
+  // cache has one, is drawn at once and re-read by the query).
   useEffect(() => {
     drawnAs.current.clear();
-    // Not [] for the conversation it was opened with: the seed stays on screen
-    // until the first read merges into it (the mount effect runs on open too).
-    // main's feature; sdk-57 had `setMessages([])` here because it predates it.
-    setMessages(seedOf(conversationId));
-    // Was `conversationId == null ? "loading" : "loading"` — both branches the
-    // same value, so the ternary said nothing and read as though it did.
     setStatus("loading");
     setAwaitingReply(false);
     setFailed(false);
-    if (conversationId != null) void resync();
-  }, [conversationId, resync]);
+    setLoadError(null);
+  }, [conversationId]);
 
   /**
    * Serialised so the effect below has a statically checkable primitive to
@@ -419,7 +481,7 @@ export function useConversation({
             // unparsed frame is the one place a bad shape would reach state.
             const parsed = messagesApi.parseOne(payload.message);
             if (parsed.conversationId !== conversationRef.current) return;
-            setMessages((current) => merge(current, [parsed]));
+            mergeMessage(parsed);
             if (parsed.role === "assistant" && parsed.id > askedAfterIdRef.current) {
               setAwaitingReply(false);
               setFailed(false);
@@ -438,20 +500,7 @@ export function useConversation({
       },
       params ?? undefined,
     );
-  }, [conversationId, channel, channelParamsKey, resync]);
-
-  /**
-   * While a reply is pending, ask the API as well as listening.
-   *
-   * Not a fallback that runs "if the socket fails" — there is no reliable way
-   * to know that it has. It runs alongside, and whichever arrives first clears
-   * the wait.
-   */
-  useEffect(() => {
-    if (!awaitingReply) return;
-    const timer = setInterval(() => void resync(), RESYNC_MS);
-    return () => clearInterval(timer);
-  }, [awaitingReply, resync]);
+  }, [conversationId, channel, channelParamsKey, resync, mergeMessage]);
 
   /**
    * Back from the background: pick up whatever was missed.
@@ -462,8 +511,8 @@ export function useConversation({
    * transcript is re-read regardless.
    */
   useEffect(() => {
-    const sub = AppState.addEventListener("change", (status: AppStateStatus) => {
-      if (status === "active") void resync();
+    const sub = AppState.addEventListener("change", (state: AppStateStatus) => {
+      if (state === "active") void resync();
     });
     return () => sub.remove();
   }, [resync]);
@@ -485,9 +534,9 @@ export function useConversation({
   }, [awaitingReply]);
 
   return {
-    messages, status, awaitingReply, hasOlder, loadOlder,
+    messages: data.messages, status, awaitingReply, hasOlder: data.hasOlder, loadOlder,
     addPending, addOptimistic, confirmPending, dropPending, keyOf, mergeMessage, failed, resync,
-    unreadable: unreadableLatest + unreadableOlder,
+    unreadable: data.unreadableLatest + data.unreadableOlder,
     loadError,
   };
 }

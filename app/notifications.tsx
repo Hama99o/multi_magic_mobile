@@ -51,6 +51,8 @@ import {
 import { useDraft } from "@/hooks/useDraft";
 import { isToday } from "@/lib/relativeTime";
 import { NotificationRow } from "@/screens/people/NotificationRow";
+import { aiKeys, notificationKeys } from "@/api/keys";
+import { useMarkNotificationRead } from "@/hooks/useMarkNotificationRead";
 
 type Row =
   | { kind: "heading"; key: string; label: string }
@@ -72,7 +74,7 @@ export default function Notifications() {
    */
   const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage } =
     useInfiniteQuery({
-      queryKey: ["notifications", "list"],
+      queryKey: notificationKeys.list(),
       queryFn: ({ pageParam }) => notificationsApi.list(pageParam),
       initialPageParam: 1,
       getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
@@ -85,13 +87,13 @@ export default function Notifications() {
    * none, so this never comes back empty.
    */
   const { data: sessionId } = useQuery({
-    queryKey: ["ai", "currentSession"],
+    queryKey: aiKeys.currentSession(),
     queryFn: aiApi.currentSessionId,
   });
   const { setDraft } = useDraft(sessionId ?? null);
 
   const reload = useCallback(() => {
-    void queryClient.invalidateQueries({ queryKey: ["notifications"] });
+    void queryClient.invalidateQueries({ queryKey: notificationKeys.all });
   }, [queryClient]);
 
   /**
@@ -113,18 +115,8 @@ export default function Notifications() {
     [reload],
   );
 
-  /**
-   * Marking read, and then re-reading the list.
-   *
-   * This comment used to say "optimistic, and put back on failure"; there is
-   * no optimistic step (no `onMutate`), so the row changes when the list
-   * reloads. A failure here stays quiet ON PURPOSE: the reload shows the
-   * truth, and the person pressed a row to open it, not to mark it.
-   */
-  const markRead = useMutation({
-    mutationFn: (id: number) => notificationsApi.markRead(id),
-    onSettled: reload,
-  });
+  // Optimistic, with its reasons: `src/hooks/useMarkNotificationRead.ts`.
+  const markRead = useMarkNotificationRead();
 
   const open = useCallback(
     (notification: AppNotification) => {

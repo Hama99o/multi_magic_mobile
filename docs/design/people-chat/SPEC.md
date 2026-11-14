@@ -432,3 +432,18 @@ Rule Zero: Mobbin's threads (Messages, corner, LinkedIn) show content and an
 unread divider, which is the target state. A still cannot show the opening
 moment, so the design half is supported and the motion half is not answered
 by it.
+
+## Query keys (React Query audit, 2026-11-13)
+
+Every key comes from `conversationKeys` in `src/api/keys.ts`, never a literal
+(`docs/DATA_LAYER.md`; the guard is lint rule `api-in-effect`).
+
+| Factory member | Key |
+|---|---|
+| `conversationKeys.all` | `["conversations"]` |
+| `conversationKeys.list()` | `["conversations", "list"]` |
+| `conversationKeys.unreadCount()` | `["conversations", "unreadCount"]` |
+| `conversationKeys.thread()` | `["conversation", conversationId]` |
+
+Writes: app/chat/[id].tsx. send, edit, react, delete and mark-read are mutations; deliberately NOT optimistic: the outbox (BRIEF.md §5) and server-counted reactions.
+

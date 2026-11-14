@@ -27,7 +27,7 @@ import { Pressable, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, Eye, EyeOff } from "@/components/icons";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -37,6 +37,7 @@ import {
   profileApi,
 } from "@/api/profile";
 import { failureMessage } from "@/api/failure";
+import { profileKeys } from "@/api/keys";
 
 function SecretField({
   label,
@@ -122,7 +123,7 @@ export default function ChangePassword() {
   const metrics = useMetrics();
   const { t } = useTranslation();
 
-  const { data: profile } = useQuery({ queryKey: ["profile"], queryFn: profileApi.me });
+  const { data: profile } = useQuery({ queryKey: profileKeys.me(), queryFn: profileApi.me });
 
   const [current, setCurrent] = useState("");
   const [next, setNext] = useState("");
@@ -132,6 +133,10 @@ export default function ChangePassword() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState(false);
 
+  const changing = useMutation({
+    mutationFn: ({ id, ...body }: { id: number; currentPassword: string; password: string; passwordConfirmation: string }) =>
+      profileApi.changePassword(id, body),
+  });
   const tooShort = next.length > 0 && next.length < PASSWORD_MIN_LENGTH;
   const mismatch = confirm.length > 0 && confirm !== next;
   const canSubmit =
@@ -140,17 +145,14 @@ export default function ChangePassword() {
     next.length >= PASSWORD_MIN_LENGTH &&
     confirm === next;
 
+  // A write with nothing to cache: a mutation all the same (docs/DATA_LAYER.md).
   const submit = async () => {
     if (!canSubmit || !profile) return;
     setBusy(true);
     setError(null);
     setWrongCurrent(false);
     try {
-      await profileApi.changePassword(profile.id, {
-        currentPassword: current,
-        password: next,
-        passwordConfirmation: confirm,
-      });
+      await changing.mutateAsync({ id: profile.id, currentPassword: current, password: next, passwordConfirmation: confirm });
       setDone(true);
       setCurrent("");
       setNext("");

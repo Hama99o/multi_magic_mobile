@@ -20,10 +20,11 @@ import { queryClient } from "@/lib/queryClient";
 import * as SplashScreen from "expo-splash-screen";
 import { wireAuthStore, useAuthStore } from "@/stores/auth.store";
 import { wireReachability } from "@/stores/reachability.store";
+import { wireClipboardSweep } from "@/screens/safezone/clipboardGuard";
 import { OfflineBanner } from "@/components/OfflineBanner";
 import { useLanguage } from "@/stores/language.store";
 import { useThemeStore } from "@/stores/theme.store";
-import { profileApi } from "@/api/profile";
+import { SessionProfile } from "@/components/SessionProfile";
 import { useScheme } from "@/hooks/useColors";
 import { loadToken } from "@/api/http";
 import { TOKENS } from "@/theme/tokens";
@@ -39,6 +40,9 @@ void SplashScreen.preventAutoHideAsync();
 
 wireAuthStore();
 wireReachability();
+// A SafeZone copy left on the clipboard by a killed app is cleared on the next
+// open, wherever the app opens (device pass D12, `SECURITY.md` §9).
+wireClipboardSweep();
 
 /**
  * A DEEP LINK OPENS ON TOP OF HOME. Measured 2026-11-07 on qa_phone: a cold
@@ -83,7 +87,11 @@ export default function RootLayout() {
       await SplashScreen.hideAsync();
 
       /**
-       * WHO IS SIGNED IN, fetched once — deliberately AFTER the splash.
+       * WHO IS SIGNED IN is no longer fetched here: `SessionProfile` (below,
+       * inside the QueryClientProvider) keeps it in the cache under
+       * `profileKeys.me()` and applies its language (docs/DATA_LAYER.md).
+       * What follows was the reasoning for fetching it AFTER the splash,
+       * which still holds for the query:
        *
        * `useAuthStore.user` was null after every cold start: the token was
        * restored and `connected_user` was never called, which the profile
@@ -100,27 +108,6 @@ export default function RootLayout() {
       // Uploads left from last time: checked against the server and resumed,
       // whether or not Pages is opened (`stores/uploads.store.ts`, §3).
       void useUploads.getState().hydrate();
-      try {
-        const profile = await profileApi.me();
-        useAuthStore.setState({
-          user: {
-            id: profile.id,
-            email: profile.email ?? "",
-            firstName: profile.firstName,
-            lastName: profile.lastName,
-            fullName: profile.fullName,
-            // `profileApi.me()` has always carried it; the auth store did not
-            // have a field to put it in. This is what makes the header show a
-            // face after a cold start rather than initials.
-            avatar: profile.avatar,
-          },
-        });
-        // Only if this phone has no choice of its own — see the store.
-        useLanguage.getState().applyFromServer(profile.lang);
-      } catch {
-        // Offline, or a token the server no longer accepts. The 401 path has
-        // already handled the second; the first costs nothing here.
-      }
     })();
   }, []);
 
@@ -200,6 +187,7 @@ export default function RootLayout() {
         </OfflineBanner>
         {opening ? <OpeningAnimation ground={TOKENS[scheme].ground} onDone={endOpening} /> : null}
         <ShareIntentBridge />
+        <SessionProfile />
       </SafeAreaProvider>
     </QueryClientProvider>
     </ShareIntentProvider>

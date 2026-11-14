@@ -43,6 +43,12 @@ it("the Conversations tile opens the assistant ON its history", () => {
   expect(mockPush).toHaveBeenCalledWith({ pathname: "/chat", params: { sessions: "1" } });
 });
 
+it("the SafeZone tile opens SafeZone", () => {
+  renderHome();
+  fireEvent.press(screen.getByTestId("home-tile-safezone"));
+  expect(mockPush).toHaveBeenCalledWith("/safezone");
+});
+
 it("the Assistant tile opens the plain assistant, not the history", () => {
   renderHome();
   fireEvent.press(screen.getByTestId("home-tile-ai"));

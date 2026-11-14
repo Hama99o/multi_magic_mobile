@@ -29,6 +29,7 @@ import { EmptyLine } from "@/screens/pages/parts";
 import { openNode } from "@/screens/pages/navigation";
 import { explainPick, pickDocuments, pickMedia, takePhotoOrVideo, usePendingImport, type PickResult } from "@/screens/pages/addFiles";
 import { useUploads } from "@/stores/uploads.store";
+import { pagesKeys } from "@/api/keys";
 
 function SpaceRow({ space, mode, width }: { space: Space; mode: "list" | "grid"; width: number }) {
   const colors = useColors();
@@ -126,15 +127,15 @@ export default function PagesHome() {
 
   const view = tab === "starred" ? "starred" : "recent";
   const drive = useInfiniteQuery({
-    queryKey: ["pages", "drive", view, ""],
+    queryKey: pagesKeys.drive(view, ""),
     queryFn: ({ pageParam }) => pagesApi.drive(view, pageParam),
     initialPageParam: 1,
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
     enabled: tab === "home" || tab === "starred",
   });
   const nodes = useMemo(() => (drive.data?.pages ?? []).flatMap((p) => p.rows), [drive.data]);
-  const spaces = useQuery({ queryKey: ["pages", "spaces"], queryFn: () => pagesApi.spaces(1), enabled: tab === "files" });
-  const shared = useQuery({ queryKey: ["pages", "shared"], queryFn: pagesApi.sharedWithMe, enabled: tab === "shared" });
+  const spaces = useQuery({ queryKey: pagesKeys.spaces(), queryFn: () => pagesApi.spaces(1), enabled: tab === "files" });
+  const shared = useQuery({ queryKey: pagesKeys.shared(), queryFn: pagesApi.sharedWithMe, enabled: tab === "shared" });
 
   const pick = async (fn: () => Promise<PickResult>) => {
     const files = explainPick(await fn(), t);

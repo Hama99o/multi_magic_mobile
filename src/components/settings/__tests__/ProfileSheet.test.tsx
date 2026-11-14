@@ -19,8 +19,22 @@ const mockPush = jest.fn();
 jest.mock("expo-router", () => ({ router: { push: (...a: unknown[]) => mockPush(...a) } }));
 
 /* eslint-disable import/first */
+// `useMe()` reads the profile from React Query (docs/DATA_LAYER.md); this
+// suite is not about that, and sets the signed-in user through the auth store
+// as before. `useMe` itself is `src/hooks/__tests__/useMe.test.tsx`.
+jest.mock("@/hooks/useMe", () => ({
+  useMe: () => (jest.requireActual("@/stores/auth.store") as typeof import("@/stores/auth.store")).useAuthStore((s) => s.user),
+}));
 import { ProfileSheet } from "../ProfileSheet";
 import { useAuthStore } from "@/stores/auth.store";
+import type React from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { testQueryClient } from "@/__tests__/queryClient";
+/** The language row tells the server through a mutation (useChooseLanguage), so it needs a client. */
+function withClient({ children }: { children: React.ReactNode }) {
+  return <QueryClientProvider client={testQueryClient()}>{children}</QueryClientProvider>;
+}
+
 
 const noop = () => {};
 
@@ -54,7 +68,7 @@ beforeEach(() => {
 });
 
 const open = () =>
-  render(<ProfileSheet visible onClose={noop} onSignOut={noop} userId={7} />);
+  render(<ProfileSheet visible onClose={noop} onSignOut={noop} userId={7} />, { wrapper: withClient });
 
 // ── A TAP ON THE CONVERSATION BEHIND THE SHEET CLOSES IT ─────────────────
 // Owner, 2026-09-24: tapping outside the Conversations or profile sheet, on
@@ -62,7 +76,7 @@ const open = () =>
 describe("outside the sheet", () => {
   it("covers the screen and closes on a tap", () => {
     const onClose = jest.fn();
-    render(<ProfileSheet visible onClose={onClose} onSignOut={noop} userId={7} />);
+    render(<ProfileSheet visible onClose={onClose} onSignOut={noop} userId={7} />, { wrapper: withClient });
     const scrim = screen.getByTestId("profile-scrim");
     expectCovers(scrim);
     fireEvent.press(scrim);
@@ -104,13 +118,13 @@ describe("what is behind the photo", () => {
 
   it("signs out", () => {
     const onSignOut = jest.fn();
-    render(<ProfileSheet visible onClose={noop} onSignOut={onSignOut} userId={7} />);
+    render(<ProfileSheet visible onClose={noop} onSignOut={onSignOut} userId={7} />, { wrapper: withClient });
     fireEvent.press(screen.getByTestId("profile-sign-out"));
     expect(onSignOut).toHaveBeenCalled();
   });
 
   it("renders nothing at all when it is not open", () => {
-    render(<ProfileSheet visible={false} onClose={noop} onSignOut={noop} userId={7} />);
+    render(<ProfileSheet visible={false} onClose={noop} onSignOut={noop} userId={7} />, { wrapper: withClient });
     expect(screen.queryByTestId("profile-sheet")).toBeNull();
   });
 });
@@ -147,9 +161,7 @@ describe("the choosers are their own pane, not a radio group in a menu", () => {
   });
 
   it("does not resume inside a chooser the next time it opens", () => {
-    const { rerender } = render(
-      <ProfileSheet visible onClose={noop} onSignOut={noop} userId={7} />,
-    );
+    const { rerender } = render(<ProfileSheet visible onClose={noop} onSignOut={noop} userId={7} />, { wrapper: withClient });
     fireEvent.press(screen.getByTestId("profile-open-language"));
     expect(screen.getByTestId("language-row")).toBeTruthy();
 

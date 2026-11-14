@@ -59,6 +59,8 @@ import {
   type IncomingFile,
   type LastDestination,
 } from "@/stores/uploads.store";
+import { pagesKeys } from "@/api/keys";
+import { useCreateFolder } from "@/screens/pages/usePageMutations";
 
 const THUMB = 64;
 
@@ -194,8 +196,8 @@ export default function SaveToPages() {
 
   const totalBytes = useMemo(() => files.reduce((n, f) => n + (f.size ?? 0), 0), [files]);
 
-  const spaces = useQuery({ queryKey: ["pages", "spaces", "picker"], queryFn: () => pagesApi.spaces(1) });
-  const shared = useQuery({ queryKey: ["pages", "shared"], queryFn: () => pagesApi.sharedWithMe() });
+  const spaces = useQuery({ queryKey: pagesKeys.spacesFor("picker"), queryFn: () => pagesApi.spaces(1) });
+  const shared = useQuery({ queryKey: pagesKeys.shared(), queryFn: () => pagesApi.sharedWithMe() });
   const accessFor = useMemo(
     () => accessResolver(spaces.data?.rows ?? [], shared.data?.rows ?? []),
     [spaces.data, shared.data],
@@ -204,7 +206,7 @@ export default function SaveToPages() {
 
   const parentId = place ? parentOf(place) : null;
   const folders = useInfiniteQuery({
-    queryKey: ["pages", "folders", place?.space.id, parentId],
+    queryKey: pagesKeys.folders(place?.space.id, parentId),
     queryFn: ({ pageParam }) =>
       pagesApi.children(place!.space.id, parentId, pageParam, { kind: "folder", sortBy: "name", sortDir: "asc" }),
     initialPageParam: 1,
@@ -214,7 +216,7 @@ export default function SaveToPages() {
   const folderRows = useMemo(() => (folders.data?.pages ?? []).flatMap((p) => p.rows), [folders.data]);
 
   const found = useQuery({
-    queryKey: ["pages", "folder-search", query.trim()],
+    queryKey: pagesKeys.folderSearch(query.trim()),
     queryFn: () => pagesApi.drive("search", 1, { search: query.trim(), kind: "folder" }),
     enabled: searching,
   });
@@ -237,7 +239,8 @@ export default function SaveToPages() {
       setBusy(true);
       setError(null);
       try {
-        const full = await pagesApi.node(space.id, folder.id);
+        // A read, so through the cache (docs/DATA_LAYER.md): de-duplicated, and kept.
+        const full = await queryClient.fetchQuery({ queryKey: pagesKeys.node(space.id, folder.id), queryFn: () => pagesApi.node(space.id, folder.id) });
         setPlace(placeFromFolder(full, space, Boolean(whole)));
       } catch {
         setPlace(placeFromFolder({ ...folder, ancestors: [] }, space, false));
@@ -246,17 +249,17 @@ export default function SaveToPages() {
         setQuery("");
       }
     },
-    [spaces.data, shared.data],
+    [spaces.data, shared.data, queryClient],
   );
 
+  const creating = useCreateFolder();
   const makeFolder = useCallback(
     async (name: string) => {
       if (!place) return;
       setBusy(true);
       setError(null);
       try {
-        const created = await pagesApi.createFolder(place.space.id, parentId, name);
-        void queryClient.invalidateQueries({ queryKey: ["pages"] });
+        const created = await creating.mutateAsync({ spaceId: place.space.id, parentId, title: name });
         setNewName(null);
         enterFolder(created);
       } catch (e) {
@@ -265,7 +268,7 @@ export default function SaveToPages() {
         setBusy(false);
       }
     },
-    [place, parentId, enterFolder, queryClient, t],
+    [place, parentId, enterFolder, creating, t],
   );
 
   /** One tap: today's folder, made if missing, entered either way. */

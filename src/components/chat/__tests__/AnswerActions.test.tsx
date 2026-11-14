@@ -17,11 +17,18 @@
  * What is NOT here: a flow. Exercising this for real would delete something of
  * his, and `qa/RIG_CONTRACT.md` §3 is why that is not a test.
  */
-import { render, screen, fireEvent, waitFor, act } from "@testing-library/react-native";
+import { render as rntlRender, screen, fireEvent, waitFor, act } from "@testing-library/react-native";
 import * as Clipboard from "expo-clipboard";
 import { KEY_PROBLEMS, feedbackApi, undoApi, type ChatMessage } from "@/api/ai";
 
 import { AnswerActions } from "../AnswerActions";
+import type { ReactElement } from "react";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { testQueryClient } from "@/__tests__/queryClient";
+
+/** The answer's actions write through mutations (docs/DATA_LAYER.md), so every
+ *  render here gets a fresh test client, as the app always has one. */
+const render = (ui: ReactElement) => rntlRender(<QueryClientProvider client={testQueryClient()}>{ui}</QueryClientProvider>);
 
 jest.mock("expo-clipboard", () => ({ setStringAsync: jest.fn() }));
 

@@ -16,7 +16,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearFade } from "@/screens/pages/drive/fade";
 import { Screen } from "@/components/ScreenContainer";
@@ -39,6 +39,8 @@ import { NodeCollection } from "@/screens/pages/drive/NodeCollection";
 import { BottomSheet, NewSheet } from "@/screens/pages/drive/sheets";
 import { IconButton, NewFab, PagesTabBar, SortRow, UploadBar, useViewPrefs } from "@/screens/pages/drive/ui";
 import { useUploads } from "@/stores/uploads.store";
+import { pagesKeys } from "@/api/keys";
+import { useCreateFolder } from "@/screens/pages/usePageMutations";
 
 function Chip({ label, selected, onPress, testID }: { label: string; selected: boolean; onPress: () => void; testID: string }) {
   const colors = useColors();
@@ -75,7 +77,6 @@ export default function Folder() {
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const queryClient = useQueryClient();
   const params = useLocalSearchParams<{ spaceId: string; parentId?: string; title?: string; trail?: string }>();
   const spaceId = Number(params.spaceId);
   const parentId = params.parentId ? Number(params.parentId) : null;
@@ -101,7 +102,7 @@ export default function Folder() {
   }, [hydrateUploads, hydrateView]);
 
   const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
-    queryKey: ["pages", "children", spaceId, parentId, sortBy, sortDir, type],
+    queryKey: pagesKeys.children(spaceId, parentId, sortBy, sortDir, type),
     queryFn: ({ pageParam }) => pagesApi.children(spaceId, parentId, pageParam, { sortBy, sortDir, ...listFilter(type) }),
     initialPageParam: 1,
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
@@ -124,21 +125,21 @@ export default function Folder() {
     [enqueue, destination, t],
   );
 
+  const creating = useCreateFolder();
   const createFolder = useCallback(
     async (name: string) => {
       setNameBusy(true);
       setNameError(null);
       try {
-        await pagesApi.createFolder(spaceId, parentId, name);
+        await creating.mutateAsync({ spaceId, parentId, title: name });
         setNaming(false);
-        void queryClient.invalidateQueries({ queryKey: ["pages"] });
       } catch (e) {
         setNameError(failureMessage(e, t("pages.save.folderFailed")));
       } finally {
         setNameBusy(false);
       }
     },
-    [spaceId, parentId, queryClient, t],
+    [spaceId, parentId, creating, t],
   );
 
   const header = (

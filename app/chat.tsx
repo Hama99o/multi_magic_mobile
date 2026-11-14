@@ -19,7 +19,7 @@ import { AccessibilityInfo, FlatList, Pressable, View, type ViewStyle } from "re
 import { Bell, CalendarDays, MessageSquareText, Users, X } from "@/components/icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
@@ -53,6 +53,8 @@ import { useAttachments } from "@/hooks/useAttachments";
 import { documentsApi, sessionsApi } from "@/api/ai";
 import { notificationsApi } from "@/api/notifications";
 import { conversationsApi } from "@/api/conversations";
+import { aiKeys, conversationKeys, notificationKeys } from "@/api/keys";
+import { useMe } from "@/hooks/useMe";
 
 /**
  * One quiet door in the title bar.
@@ -161,10 +163,10 @@ export default function Chat() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const user = useAuthStore((s) => s.user);
+  const user = useMe();
 
   const { data: sessionId, error: sessionError, refetch: refetchSession } = useQuery({
-    queryKey: ["ai", "currentSession"],
+    queryKey: aiKeys.currentSession(),
     queryFn: aiApi.currentSessionId,
   });
 
@@ -192,6 +194,11 @@ export default function Chat() {
   // rather than risk changing when the callback is rebuilt. A narrowed local
   // is the same value, visibly.
   const userId = user?.id;
+  // Writes are mutations (docs/DATA_LAYER.md). `activate` stays fire-and-
+  // forget (a failed background sync must not interrupt a chat switch);
+  // `ask` keeps its own pending bubble, confirmed by the server's id.
+  const { mutate: activateSession } = useMutation({ mutationFn: (id: number) => sessionsApi.activate(id), onError: () => undefined });
+  const { mutateAsync: askServer } = useMutation({ mutationFn: (q: Parameters<typeof aiApi.ask>[0]) => aiApi.ask(q) });
 
   // Restore this device's choice once, before the server's default is used.
   useEffect(() => {
@@ -224,9 +231,9 @@ export default function Chat() {
       // once above. Both halves are kept deliberately — neither change knew
       // about the other, and a merge is the wrong place to drop either.
       if (userId) void rememberSession(userId, id);
-      void sessionsApi.activate(id).catch(() => undefined);
+      activateSession(id);
     },
-    [userId],
+    [userId, activateSession],
   );
   const { messages, status, awaitingReply, failed, hasOlder, loadOlder, addOptimistic, confirmPending, dropPending, keyOf, mergeMessage, resync, unreadable, loadError } =
     useConversation({ conversationId, channel: "MessageChannel" });
@@ -267,7 +274,7 @@ export default function Chat() {
   const pendingSince = useRef<{ ids: string; at: number } | null>(null);
   const [readingSlow, setReadingSlow] = useState(false);
   const { data: uploaded = [] } = useQuery({
-    queryKey: ["ai", "documents", conversationId],
+    queryKey: aiKeys.documents(conversationId),
     queryFn: () => documentsApi.list(conversationId as number),
     enabled: conversationId != null,
     refetchInterval: (query) => {
@@ -313,11 +320,11 @@ export default function Chat() {
    * two meanings, one endpoint apart. The icon wants threads.
    */
   const { data: unreadNotifications = 0 } = useQuery<number>({
-    queryKey: ["notifications", "unreadCount"],
+    queryKey: notificationKeys.unreadCount(),
     queryFn: notificationsApi.unreadCount,
   });
   const { data: unread } = useQuery({
-    queryKey: ["conversations", "unreadCount"],
+    queryKey: conversationKeys.unreadCount(),
     queryFn: conversationsApi.unreadCount,
   });
   // THREADS with something unread, not messages — see the note above.
@@ -434,7 +441,7 @@ export default function Chat() {
       clear();
 
       try {
-        const { userMessageId } = await aiApi.ask({ conversationId, body: question });
+        const { userMessageId } = await askServer({ conversationId, body: question });
         // The server's OWN id replaces the local one, so when the socket echoes
         // the same message it merges rather than appearing twice.
         confirmPending(localId, userMessageId);
@@ -458,7 +465,7 @@ export default function Chat() {
         setPosting(false);
       }
     },
-    [conversationId, posting, clear, addOptimistic, confirmPending, dropPending, setDraft, user, t],
+    [conversationId, posting, clear, addOptimistic, confirmPending, dropPending, setDraft, user, t, askServer],
   );
 
   // A question of theirs is a request to be at the newest, whatever they were

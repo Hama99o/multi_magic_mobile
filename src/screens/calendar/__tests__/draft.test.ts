@@ -135,3 +135,32 @@ describe("an existing event", () => {
     expect(isDirty({ ...draft, title: "changed" }, draft)).toBe(true);
   });
 });
+
+// Device QA 2026-11-13, 23:20: "New event" proposed Starts Fri 11:00 PM,
+// Ends Fri 12:00 AM; Save stored ends_at = null (event 270 on the QA account),
+// so the hour the person meant became an event with no end, silently.
+describe("an hour that crosses midnight", () => {
+  it("a new draft late tonight ends at 00:00 TOMORROW, an hour after it starts", () => {
+    const draft = newDraft("2026-11-13", new Date(2026, 10, 13, 23, 20));
+    expect(draft).toMatchObject({ startTime: "23:00", endTime: "00:00", endDay: "2026-11-14" });
+    const payload = toPayload({ ...draft, title: "x" });
+    expect(new Date(payload.ends_at!).getTime() - new Date(payload.starts_at!).getTime()).toBe(3_600_000);
+  });
+
+  it("moving the start to 23:15 carries the end to 00:15 the next day", () => {
+    const draft = withStartTime(base({ day: "2026-11-12", startTime: "09:00", endTime: "10:00" }), "23:15");
+    expect(draft).toMatchObject({ endTime: "00:15", endDay: "2026-11-13" });
+  });
+
+  it("and moving it back to the morning brings the end back to the same day", () => {
+    const late = withStartTime(base({ day: "2026-11-12", startTime: "09:00", endTime: "10:00" }), "23:15");
+    expect(withStartTime(late, "10:00")).toMatchObject({ endTime: "11:00", endDay: "" });
+  });
+
+  it("an end the person set before the start is named, not dropped", () => {
+    expect(problems(base({ title: "x", startTime: "15:00", endTime: "14:00" }))).toContain("end");
+    expect(problems(base({ title: "x", startTime: "15:00", endTime: "16:00" }))).toEqual([]);
+    expect(problems(base({ title: "x", startTime: "23:00", endTime: "00:30", endDay: "2026-11-13" }))).toEqual([]);
+    expect(problems(base({ title: "x", allDay: true, startTime: "15:00", endTime: "14:00" }))).toEqual([]);
+  });
+});

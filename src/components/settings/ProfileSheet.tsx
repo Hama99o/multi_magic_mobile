@@ -42,11 +42,11 @@ import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { Avatar } from "@/screens/people/Avatar";
-import { useAuthStore } from "@/stores/auth.store";
 import { ThemeRow } from "./ThemeRow";
 import { LanguageRow } from "./LanguageRow";
 import { DictationRow } from "./DictationRow";
 import { useDictationLang } from "@/hooks/useSpeechToText";
+import { useMe } from "@/hooks/useMe";
 
 type Pane = "root" | "language" | "theme" | "dictation";
 
@@ -104,7 +104,7 @@ export function ProfileSheet({
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const user = useAuthStore((s) => s.user);
+  const user = useMe();
   const [pane, setPane] = useState<Pane>("root");
   const dictation = useDictationLang();
 

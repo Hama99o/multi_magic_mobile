@@ -133,10 +133,19 @@ const COMPOSED = [
   ...["call", "whatsapp", "sms", "email"].map((v) => `contacts.choose.${v}`),
   ...["parent", "child", "spouse", "sibling", "friend", "colleague", "neighbour", "other"].map((v) => `contacts.family.kinds.${v}`),
   ...["mobile", "home", "work", "other", "main", "fax"].map((v) => `contacts.labels.${v}`),
+  // SafeZone: t(`safezone.tabs|empty.${kind}`) over `SAFEZONE_KINDS`,
+  // t(`safezone.field.${key}`) over `ITEM_FIELDS` (`api/safezone.ts`), and the
+  // server's enums `SafezoneApp::Identity::TYPES`, `PaymentCard.card_types`.
+  ...["passwords", "payment_cards", "identities"].flatMap((v) => [`safezone.tabs.${v}`, `safezone.empty.${v}`]),
+  ...["username", "email", "password", "link", "note", "card_type", "card_number", "expiry_date", "cvv", "code", "type", "document_number", "issued_at", "expires_at"].map((v) => `safezone.field.${v}`),
+  ...["passport", "national_id", "drivers_license", "residence_permit", "other"].map((v) => `safezone.identityTypes.${v}`),
+  ...["credit_card", "debit_card"].map((v) => `safezone.cardTypes.${v}`),
 ];
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
 const PLURAL = new Set([
+  "shareDoor.unreadableTitle",
+  "shareDoor.unreadableBody",
   "calendar.eventCount",
   "calendar.detail.age",
   "pages.trash.emptied",
@@ -172,6 +181,8 @@ const PLURAL = new Set([
   "contacts.list.searchPlaceholder",
   "contacts.list.selected",
   "contacts.phone.limited",
+  "contacts.share.restBody",
+  "safezone.pin.wrong",
 ]);
 
 const CALLED = calledKeys();

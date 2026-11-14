@@ -15,11 +15,13 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { AiButton } from "@/components/AiButton";
 import { ProfileSheet } from "@/components/settings/ProfileSheet";
-import { Bell, BookUser, CalendarDays, FolderOpen, MessageSquareText, NotebookPen, Sparkles, Users, type LucideIcon } from "@/components/icons";
+import { Bell, BookUser, CalendarDays, FolderOpen, MessageSquareText, NotebookPen, ShieldCheck, Sparkles, Users, type LucideIcon } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useAuthStore } from "@/stores/auth.store";
 import { Avatar } from "@/screens/people/Avatar";
 import { notificationsApi } from "@/api/notifications";
+import { notificationKeys } from "@/api/keys";
+import { useMe } from "@/hooks/useMe";
 
 function Tile({
   icon: Icon,
@@ -82,9 +84,9 @@ function Tile({
 export default function Home() {
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const user = useAuthStore((s) => s.user);
+  const user = useMe();
   const [profileOpen, setProfileOpen] = useState(false);
-  const { data: unread } = useQuery({ queryKey: ["notifications", "unread"], queryFn: notificationsApi.unreadCount });
+  const { data: unread } = useQuery({ queryKey: notificationKeys.unreadCount(), queryFn: notificationsApi.unreadCount });
   const first = user?.firstName?.trim();
 
   return (
@@ -116,6 +118,7 @@ export default function Home() {
           <Tile icon={Bell} title={t("chat.notifications")} body={t("home.notificationsBody")} onPress={() => router.push("/notifications")} testID="home-tile-notifications" badge={unread || undefined} />
           <Tile icon={CalendarDays} title={t("chat.calendar")} body={t("home.calendarBody")} onPress={() => router.push("/calendar")} testID="home-tile-calendar" />
           <Tile icon={BookUser} title={t("contacts.title")} body={t("home.contactsBody")} onPress={() => router.push("/contacts")} testID="home-tile-contacts" />
+          <Tile icon={ShieldCheck} title={t("safezone.title")} body={t("home.safezoneBody")} onPress={() => router.push("/safezone")} testID="home-tile-safezone" />
           <Tile icon={MessageSquareText} title={t("chat.conversations")} body={t("home.conversationsBody")} onPress={() => router.push({ pathname: "/chat", params: { sessions: "1" } })} testID="home-tile-conversations" />
         </View>
       </ScrollView>

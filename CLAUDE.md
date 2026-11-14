@@ -306,6 +306,20 @@ read (`docs/TESTING.md` §8).
 
 ---
 
+## Data layer
+
+**Server data lives in React Query, in every app** (the owner,
+2026-11-13). Read with `useQuery`, write with `useMutation`; never a
+request inside `useEffect`, never server data copied into `useState` or a
+zustand store. Keys come from the factories in `src/api/keys.ts`, never a
+literal. A mutation the person sees at once is optimistic, with a
+rollback and a test for both. SafeZone's secrets never enter the cache.
+**The guard is lint rule `api-in-effect`** (`.eslintrc.js`), proven to fire
+by `src/__tests__/eslintRules.test.ts`; what it cannot see, and the
+exemptions with their reasons, are in `docs/DATA_LAYER.md`.
+
+---
+
 ## Code rules with gates behind them
 
 All three are `no-restricted-syntax` in `.eslintrc.js`, and each is there

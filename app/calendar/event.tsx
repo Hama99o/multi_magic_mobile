@@ -19,21 +19,23 @@ import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Bell, CalendarDays, ChevronLeft, ExternalLink, LogOut, MapPin, MessageSquareText, NotebookPen, Pencil, Repeat, Trash2, Users } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { calendarApi, sharesApi } from "@/api/calendar";
+import { calendarApi } from "@/api/calendar";
 import { profileApi } from "@/api/profile";
 import { aiApi } from "@/api/ai";
 import { failureMessage } from "@/api/failure";
 import { useDraft } from "@/hooks/useDraft";
 import { eventColor } from "@/screens/calendar/colors";
-import { dayKey, formatDayLong, timeRange, yearsOn } from "@/screens/calendar/dates";
+import { dayKey, formatDayLong, onOccurrence, timeRange, yearsOn } from "@/screens/calendar/dates";
 import { GuestsSection } from "@/screens/calendar/GuestsSection";
 import { useCalendarUndo } from "@/stores/calendarUndo.store";
+import { aiKeys, calendarKeys, profileKeys } from "@/api/keys";
+import { useLeaveEvent, useRemoveEvent, useRespond } from "@/screens/calendar/useCalendarMutations";
 
 function Row({ icon, label, children, testID }: { icon: ReactNode; label: string; children: ReactNode; testID?: string }) {
   const colors = useColors();
@@ -61,46 +63,31 @@ export default function EventDetail() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
-  const queryClient = useQueryClient();
   const params = useLocalSearchParams<{ id?: string; on?: string }>();
   const eventId = params.id && /^\d+$/.test(params.id) ? Number(params.id) : 0;
   const setTrashed = useCalendarUndo((state) => state.set);
   const [actionError, setActionError] = useState<string | null>(null);
 
   const { data: event, error, refetch, isPending } = useQuery({
-    queryKey: ["calendar", "event", eventId],
+    queryKey: calendarKeys.event(eventId),
     queryFn: () => calendarApi.show(eventId),
     enabled: eventId > 0,
   });
-  const { data: me } = useQuery({ queryKey: ["profile"], queryFn: profileApi.me, enabled: Boolean(event && event.permission !== "owner") });
-  const { data: sessionId } = useQuery({ queryKey: ["ai", "currentSession"], queryFn: aiApi.currentSessionId });
+  const { data: me } = useQuery({ queryKey: profileKeys.me(), queryFn: profileApi.me, enabled: Boolean(event && event.permission !== "owner") });
+  const { data: sessionId } = useQuery({ queryKey: aiKeys.currentSession(), queryFn: aiApi.currentSessionId });
   const { setDraft } = useDraft(sessionId ?? null);
 
-  const refreshAll = () => queryClient.invalidateQueries({ queryKey: ["calendar"] });
-
-  const remove = useMutation({
-    mutationFn: () => calendarApi.remove(eventId),
-    onSuccess: () => {
+  const remove = useRemoveEvent(eventId, {
+    onDone: () => {
       setTrashed({ id: eventId, title: event?.title ?? t("calendar.untitled"), at: Date.now() });
-      void refreshAll();
       router.back();
     },
     onError: (e) => setActionError(failureMessage(e, t("calendar.detail.deleteFailed"))),
   });
-  const respond = useMutation({
-    mutationFn: (answer: "accepted" | "declined") => sharesApi.respond(eventId, answer),
-    onMutate: () => setActionError(null),
-    onSuccess: () => void refreshAll(),
-    onError: (e) => setActionError(failureMessage(e, t("calendar.guests.failed"))),
-  });
-  const leave = useMutation({
-    mutationFn: (shareId: number) => sharesApi.remove(eventId, shareId),
-    onSuccess: () => {
-      void refreshAll();
-      router.back();
-    },
-    onError: (e) => setActionError(failureMessage(e, t("calendar.guests.failed"))),
-  });
+  const guestFailed = (e: unknown) => setActionError(failureMessage(e, t("calendar.guests.failed")));
+  const respondTo = useRespond(eventId, { onError: guestFailed });
+  const respond = { ...respondTo, mutate: (answer: "accepted" | "declined") => (setActionError(null), respondTo.mutate(answer)) };
+  const leave = useLeaveEvent(eventId, { onDone: () => router.back(), onError: guestFailed });
 
   if (!event) {
     return (
@@ -141,8 +128,9 @@ export default function EventDetail() {
   const myShare = me ? event.shares.find((share) => share.sharedWithId === me.id) : undefined;
 
   const dayLine = shownOn ? formatDayLong(shownOn, language) : "";
-  // The event's own times: every occurrence has the same time of day.
-  const timeLine = timeRange(event, language, t("calendar.allDay"));
+  // The event's times on THIS occurrence: the same time of day, and an end on
+  // another day named from the occurrence's day, not the first one's.
+  const timeLine = timeRange(onOccurrence(event, shownOn), language, t("calendar.allDay"));
 
   const ask = () => {
     setDraft(t("calendar.question", { title, when: dayLine }));
@@ -184,7 +172,7 @@ export default function EventDetail() {
           ) : null
         }
       />
-      <ScrollView testID="event-detail" contentContainerStyle={{ paddingBottom: metrics.space.xl * 2 }}>
+      <ScrollView testID="event-detail" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingBottom: metrics.space.xl * 2 }}>
         <View style={{ flexDirection: "row", gap: metrics.space.md, paddingBottom: metrics.space.md }}>
           <View style={{ width: 6, borderRadius: 3, backgroundColor: eventColor(event) }} />
           <View style={{ flex: 1, minWidth: 0, gap: 4 }}>

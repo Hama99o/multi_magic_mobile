@@ -1,0 +1,45 @@
+# NOTES, a stale edit: the web changes the note while the phone has it open
+# (2026-11-14). Needs a server WITH the version check (multi_magic PR #20):
+# on master the server ignores expected_updated_at and the phone simply
+# overwrites, so this flow can only pass against a server that has #20.
+# Starts in "[qa-edit] scratch" with the editor open (after 27-notes-edit).
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: a web edit while the phone edits → the next phone save meets the
+# version check → "This note changed on the web" → Keep mine → Saved.
+# CANNOT TELL YOU: Keep both / Keep the web's (one choice per run); a real
+# browser (the web edit is an API call from the host); iOS.
+#
+# env: API_LOCAL — the server the app talks to, as the HOST reaches it
+#      (http://localhost:3001 for the dev rig). The QA account comes from
+#      MAESTRO_QA_EMAIL / MAESTRO_QA_PASSWORD, never written here.
+appId: ${APP_ID}
+tags:
+  - notes
+---
+# ── 1. THE WEB EDITS THE NOTE ──────────────────────────────────────────────
+- runScript:
+    file: scripts/webEdit.js
+    env:
+      API: ${API_LOCAL || 'http://localhost:3001'}
+      EMAIL: ${MAESTRO_QA_EMAIL}
+      PASSWORD: ${MAESTRO_QA_PASSWORD}
+- assertTrue:
+    condition: ${output.webEdit == 'edited'}
+    label: "the web edit reached the server"
+# ── 2. THE PHONE TYPES ON ITS OLDER VERSION ────────────────────────────────
+- tapOn:
+    id: "note-edit-body"
+- inputText: " phone after web"
+# ── 3. THE VERSION CHECK ASKS ──────────────────────────────────────────────
+- extendedWaitUntil:
+    visible: "This note changed on the web"
+    timeout: 20000
+- takeScreenshot: reports/27i-conflict
+- tapOn: "KEEP MINE|Keep mine"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-state"
+      text: "Saved"
+    timeout: 20000
+- takeScreenshot: reports/27i-kept-mine

@@ -34,6 +34,27 @@ describe("a very long note (device, 2026-11-13: a 900 KB note did not open in 90
     return block.repeat(Math.ceil((kb * 1024) / block.length));
   };
 
+  // PERF BUDGET (device, 2026-11-14, [notes-open] on the emulator): opening a
+  // 100 KB note took 3.8 s to the first engine event, 1.6 s of it our codec,
+  // mostly the source map (2-3x a plain parse). Opening 100 KB may cost at
+  // most 1.6x a plain fromHTML: a ratio, so any machine can run it.
+  it("PERF BUDGET: opening a 100 KB note costs at most 1.6x a plain parse", () => {
+    const html = long(100);
+    const best = (fn: () => unknown) => {
+      fn();
+      let min = Infinity;
+      for (let i = 0; i < 5; i++) {
+        const a = performance.now();
+        fn();
+        min = Math.min(min, performance.now() - a);
+      }
+      return min;
+    };
+    const plain = best(() => fromHTML(html, { preserveUnknown: true, comments: true }));
+    const opening = best(() => openForEditing(html));
+    expect(opening / plain).toBeLessThanOrEqual(1.6);
+  });
+
   it(`above ${SOURCE_MAP_LIMIT / 1024} KB it opens without the source map, and saves what the web writes`, () => {
     const html = long(SOURCE_MAP_LIMIT / 1024 + 10);
     const s = openForEditing(html);

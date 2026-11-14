@@ -247,6 +247,10 @@ def probe(serial, tok, kb, n, open_timeout=150, dev_url=None, run_id=0):
     nid, h = seed_note(tok, kb)
     row = {"kb": kb, "id": nid, **note_stats(h)}
     adb(serial, "shell", "am", "force-stop", PKG)
+    # A draft left by an earlier run (stopped before its save) plus the reseed
+    # is a real conflict, and the app rightly asks "changed on the web"
+    # instead of saving (device, 2026-11-14). Each size starts clean.
+    adb(serial, "shell", "run-as", PKG, "rm", "-rf", "files/note-drafts")
     if dev_url and not open_app(serial, dev_url):
         return {**row, "verdict": "unclear", "seen": [], "why": "dev build did not load"}
     adb(serial, "logcat", "-c")

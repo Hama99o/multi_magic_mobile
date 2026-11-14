@@ -8,7 +8,9 @@
  * Untouched blocks are written back byte for byte (the source map), up to
  * SOURCE_MAP_LIMIT: building the map parses the note twice more (880 KB:
  * 4.7 s instead of 1.2 s on a laptop, far more on a phone; a 900 KB note did
- * not open in 90 s on the emulator, 2026-11-13). Above it, a save writes the
+ * not open in 90 s on the emulator, 2026-11-13). 64 KB since 2026-11-14: on
+ * the emulator a 100 KB note took 3.8 s to open, 1.6 s of it our codec, mostly
+ * the map (2-3x a plain parse; editSession.test PERF BUDGET). Above it, a save writes the
  * whole note as the web itself writes it (toHTML = getHTML, the oracle). Tables
  * and unknown markup still travel as atoms holding the exact node; sub/sup
  * and web comments are ordinary marks now (EDIT_EVERYTHING.md §2, §4).
@@ -36,7 +38,7 @@ export type SaveResult =
 // as the web wrote it (EDIT_EVERYTHING.md §4; comments are off on both).
 const HTML_OPTIONS = { preserveUnknown: true, comments: true } as const;
 
-export const SOURCE_MAP_LIMIT = 256 * 1024;
+export const SOURCE_MAP_LIMIT = 64 * 1024;
 
 export function openForEditing(html: string): EditSession {
   const { doc, source } =

@@ -343,18 +343,25 @@ export default function NoteEditScreen() {
       // After B has applied the new document (setContentJson goes through a
       // render): restoring before it is undone by the replace (seen on device).
       setTimeout(() => {
-        try {
-          bridge.setSelection({
-            baseDocumentRevision: bridge.getState().documentRevision,
-            selection: {
-              type: "text",
-              anchor: { offset: at.anchor, kind: "scalar", affinity: "after" },
-              head: { offset: at.head, kind: "scalar", affinity: "after" },
-            },
-          });
-          ref.focus();
-        } catch {
-          // A position the new document cannot hold: the caret stays where B put it.
+        // "after" first, as B's mention code; at the end of a block B (Yrs)
+        // cannot hold it and throws, so "before" (device, 2026-11-14: the
+        // caret went to the top of the note and typing landed there).
+        for (const affinity of ["after", "before"] as const) {
+          try {
+            bridge.setSelection({
+              baseDocumentRevision: bridge.getState().documentRevision,
+              selection: {
+                type: "text",
+                anchor: { offset: at.anchor, kind: "scalar", affinity },
+                head: { offset: at.head, kind: "scalar", affinity },
+              },
+            });
+            ref.focus();
+            return;
+          } catch {
+            // A position the new document cannot hold this way: the next
+            // affinity, then the caret stays where B put it.
+          }
         }
       }, 150);
     }

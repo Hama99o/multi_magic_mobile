@@ -19,7 +19,7 @@ import MockAdapter from "axios-mock-adapter";
 import { Alert, Share } from "react-native";
 
 const mockEngineErrors: { listeners: ((e: unknown) => void)[] } = { listeners: [] };
-const mockEngine: { props: Record<string, any> | null; init: any; doc: any; refuse: boolean; rejectSet: boolean; holds: "all" | "nothing" | "part"; calls: unknown[][]; selections: unknown[] } = { props: null, init: null, doc: null, refuse: false, rejectSet: false, holds: "all", calls: [], selections: [] };
+const mockEngine: { props: Record<string, any> | null; init: any; doc: any; refuse: boolean; rejectSet: boolean; rejectAfter: boolean; holds: "all" | "nothing" | "part"; calls: unknown[][]; selections: unknown[] } = { props: null, init: null, doc: null, refuse: false, rejectSet: false, rejectAfter: false, holds: "all", calls: [], selections: [] };
 /** The person typed: B now holds `json` and says so (it exports only when asked). */
 const engineChanged = (json: unknown) => {
   mockEngine.doc = json;
@@ -54,7 +54,11 @@ jest.mock("@apollohg/react-native-rich-text-editor", () => {
               : mockEngine.holds === "part"
                 ? { ...mockEngine.init, content: mockEngine.init.content.slice(0, 1) }
                 : { type: "doc", content: [{ type: "paragraph" }] },
-          setSelection: (req: unknown) => void mockEngine.selections.push(req),
+          setSelection: (req: any) => {
+            mockEngine.selections.push(req);
+            // B (Yrs) cannot hold "after" at the end of a block (device, 2026-11-14).
+            if (mockEngine.rejectAfter && req.selection.anchor.affinity === "after") throw new Error("selection cannot be represented with the requested Yrs affinity");
+          },
         },
       };
     },
@@ -129,6 +133,7 @@ beforeEach(() => {
   mockEngine.props = null;
   mockEngine.refuse = false;
   mockEngine.rejectSet = false;
+  mockEngine.rejectAfter = false;
   mockEngine.holds = "all";
   mockEngine.init = null;
   mockEngine.calls = [];
@@ -615,6 +620,27 @@ describe("a structural edit keeps the caret where it was (device finding, 2026-1
     expect(mockEngine.selections).toEqual([
       { baseDocumentRevision: "7", selection: { type: "text", anchor: { offset: 2, kind: "scalar", affinity: "after" }, head: { offset: 2, kind: "scalar", affinity: "after" } } },
     ]);
+  });
+});
+
+describe("the caret at the end of the converted block (device finding, 2026-11-14)", () => {
+  it("when B refuses affinity \"after\" there, the caret goes back with \"before\" (not to the top of the note)", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    act(() => {
+      mockEngine.props!.onSelectionChange({ type: "text", anchor: 6, head: 6, anchorScalar: 5, headScalar: 5 }); // end of "hello"
+      mockEngine.props!.onFocus();
+    });
+    mockEngine.rejectAfter = true;
+    fireEvent.press(screen.getByTestId("tb-format"));
+    fireEvent.press(screen.getByTestId("tb-block:codeBlock"));
+    await waitFor(() => expect(mockEngine.selections).toHaveLength(2));
+    expect((mockEngine.selections[1] as any).selection).toEqual({
+      type: "text",
+      anchor: { offset: 5, kind: "scalar", affinity: "before" },
+      head: { offset: 5, kind: "scalar", affinity: "before" },
+    });
+    expect(mockEngine.calls).toContainEqual(["focus"]);
   });
 });
 

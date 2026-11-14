@@ -28,3 +28,15 @@ it("reads the colour the app's glue sends (display, #rrggbb)", () => {
   expect(patch).toContain('optString("display"');
   expect(patch).toContain('markObject?["display"]');
 });
+
+// Device, 2026-11-14: after Format > Code block the caret jumped to the top of
+// the note, so the next letters landed in the wrong block. The screen puts the
+// caret back from B's scalar selection (anchorScalar/headScalar), but B 2.2.3
+// strips those fields before onSelectionChange (publicSelection). The patch
+// hands the whole selection over; Metro resolves B's src/ (react-native field).
+it("onSelectionChange receives B's scalar caret (anchorScalar/headScalar)", () => {
+  const events = readFileSync(join(root, "node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorEvents.tsx"), "utf8");
+  expect(events).toContain("onSelectionChangeRef.current?.(selection);");
+  expect(events).not.toContain("onSelectionChangeRef.current?.(publicSelection(selection));");
+  expect(patch).toContain("src/useRichTextEditorEvents.tsx");
+});

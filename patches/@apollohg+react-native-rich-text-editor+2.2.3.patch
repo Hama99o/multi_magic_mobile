@@ -132,3 +132,18 @@ index 4ed1fde..703b4f3 100644
      /// Create an attributed string for a void inline element (e.g. hardBreak).
      ///
      /// A hardBreak is rendered as a newline character with custom attributes
+diff --git a/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorEvents.tsx b/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorEvents.tsx
+index 0721192..3b3ee2f 100644
+--- a/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorEvents.tsx
++++ b/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorEvents.tsx
+@@ -248,7 +248,9 @@ export function useRichTextEditorEvents(
+ 
+             selectionRef.current = selection;
+             updateAtomSelection(selection);
+-            onSelectionChangeRef.current?.(publicSelection(selection));
++            // mm-notes patch: the scalar caret (anchorScalar/headScalar) is kept,
++            // so the app can put the caret back after a whole-document replace.
++            onSelectionChangeRef.current?.(selection);
+         },
+         [ admitNativeBindingEvent,
+             applySelectionEventState,

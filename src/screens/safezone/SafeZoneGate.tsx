@@ -13,7 +13,8 @@
  * And it keeps screen capture blocked (`useSecureScreen`).
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
-import { ActivityIndicator, AppState, Pressable, TextInput, View } from "react-native";
+import { ActivityIndicator, AppState, Pressable, ScrollView, TextInput, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Lock } from "@/components/icons";
@@ -148,6 +149,7 @@ function Checking({ error, onRetry }: { error: unknown; onRetry: () => void }) {
 function Unlock({ attemptsLeft }: { attemptsLeft: number | null }) {
   const colors = useColors();
   const metrics = useMetrics();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [wrong, setWrong] = useState(false);
@@ -193,7 +195,16 @@ function Unlock({ attemptsLeft }: { attemptsLeft: number | null }) {
   };
 
   return (
-    <View testID="safezone-unlock" style={{ flex: 1, alignItems: "center", gap: metrics.space.lg, paddingTop: metrics.space.xl }}>
+    // Scrolls, with room under its last line for the gesture bar: as a fixed
+    // stack, "Forgot your PIN?" was off a 360 dp screen and under the gesture
+    // bar at 411 dp (device shots, 2026-11-14).
+    <ScrollView
+      testID="safezone-unlock"
+      style={{ flex: 1 }}
+      contentContainerStyle={{ flexGrow: 1, alignItems: "center", gap: metrics.space.lg, paddingTop: metrics.space.xl, paddingBottom: insets.bottom + metrics.space.xl }}
+      keyboardShouldPersistTaps="handled"
+      showsVerticalScrollIndicator={false}
+    >
       <Lock size={32} color={colors.accent} />
       <Text variant="title" accessibilityRole="header" style={{ textAlign: "center" }}>
         {t("safezone.pin.title")}
@@ -223,12 +234,13 @@ function Unlock({ attemptsLeft }: { attemptsLeft: number | null }) {
           {t("safezone.pin.forgotBody")}
         </Text>
       ) : null}
-    </View>
+    </ScrollView>
   );
 }
 
 function LockedOut({ until, onOver }: { until: string; onOver: () => void }) {
   const metrics = useMetrics();
+  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const [left, setLeft] = useState(() => lockoutLeft(until));
 
@@ -245,7 +257,12 @@ function LockedOut({ until, onOver }: { until: string; onOver: () => void }) {
   }, [until, onOver]);
 
   return (
-    <View testID="safezone-locked-out" style={{ flex: 1, alignItems: "center", gap: metrics.space.lg, paddingTop: metrics.space.xl }}>
+    <ScrollView
+      testID="safezone-locked-out"
+      style={{ flex: 1 }}
+      contentContainerStyle={{ flexGrow: 1, alignItems: "center", gap: metrics.space.lg, paddingTop: metrics.space.xl, paddingBottom: insets.bottom + metrics.space.xl }}
+      showsVerticalScrollIndicator={false}
+    >
       <Text variant="title" accessibilityRole="header" style={{ textAlign: "center" }}>
         {t("safezone.pin.lockedOutTitle")}
       </Text>
@@ -253,7 +270,7 @@ function LockedOut({ until, onOver }: { until: string; onOver: () => void }) {
         {t("safezone.pin.lockedOut", { time: formatCountdown(left) })}
       </Text>
       <PinPad onComplete={() => {}} disabled />
-    </View>
+    </ScrollView>
   );
 }
 

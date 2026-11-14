@@ -111,6 +111,20 @@ async function unlockVault() {
 }
 
 describe("the gate", () => {
+  // Device D13 shots, 2026-11-14 (main 2456ee5): on the PIN pad "Forgot your
+  // PIN?" was off the screen at 360 dp and under the gesture bar at 411 dp. A
+  // fixed stack on a phone-height screen clips; the pad now scrolls, with room
+  // under its last line for the system's gesture bar.
+  it("the PIN pad scrolls, so 'Forgot your PIN?' can always be reached", async () => {
+    mock.onGet(`${BASE}/pin`).reply(200, status());
+    renderScreen(<SafeZone />);
+    const unlock = await screen.findByTestId("safezone-unlock");
+    expect(unlock.props.contentContainerStyle).toBeDefined();
+    const style = Object.assign({}, ...[unlock.props.contentContainerStyle].flat());
+    expect(style.paddingBottom).toBeGreaterThanOrEqual(24);
+    expect(screen.getByTestId("safezone-forgot")).toBeTruthy();
+  });
+
   it("no PIN yet: the vault refuses to open and offers to set one", async () => {
     mock.onGet(`${BASE}/pin`).replyOnce(200, status({ enabled: false })).onGet(`${BASE}/pin`).reply(200, status());
     mock.onPost(`${BASE}/pin/enable`).reply((config) => {

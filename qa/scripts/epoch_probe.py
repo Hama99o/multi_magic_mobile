@@ -27,7 +27,10 @@ QA_PASSWORD. The box is short of RAM: it refuses to start under 2 GB free
 (ask Hello for the device slot first).
 
 Usage: epoch_probe.py <serial> [--ladder 100,200,400,600,800] [--step 25]
-                      [--out results.jsonl]
+                      [--out results.jsonl] [--dev-url http://10.0.2.2:3041]
+A dev build opens its launcher on a cold deep link: with --dev-url the
+probe first loads the app from that Metro, then sends the note's link
+(device, 2026-11-14).
 Prints one JSON line per size, then a summary line. Exit 0 = a threshold was
 bracketed (or every size edited); exit 1 = it could not tell.
 
@@ -216,10 +219,30 @@ def free_gb():
     return kb / 1024 / 1024
 
 
-def probe(serial, tok, kb, n, open_timeout=150):
+def open_app(serial, dev_url, timeout=120):
+    """Cold start of a dev build from Metro; True once the app is up."""
+    adb(serial, "shell", "am", "start", "-W", "-a", "android.intent.action.VIEW",
+        "-d", "multimagic://expo-development-client/?url=" + urllib.parse.quote(dev_url, safe=""), PKG)
+    t0 = time.time()
+    while time.time() - t0 < timeout:
+        xml = adb(serial, "exec-out", "uiautomator", "dump", "/dev/tty")
+        if 'text="Continue"' in xml:  # the dev menu's first-run sheet
+            m = re.search(r'text="Continue"[^>]*bounds="\[(\d+),(\d+)\]\[(\d+),(\d+)\]"', xml)
+            if m:
+                x1, y1, x2, y2 = map(int, m.groups())
+                adb(serial, "shell", "input", "tap", str((x1 + x2) // 2), str((y1 + y2) // 2))
+        if 'resource-id="home-' in xml or 'resource-id="notes-' in xml:
+            return True
+        time.sleep(3)
+    return False
+
+
+def probe(serial, tok, kb, n, open_timeout=150, dev_url=None):
     nid, h = seed_note(tok, kb)
     row = {"kb": kb, "id": nid, **note_stats(h)}
     adb(serial, "shell", "am", "force-stop", PKG)
+    if dev_url and not open_app(serial, dev_url):
+        return {**row, "verdict": "unclear", "seen": [], "why": "dev build did not load"}
     adb(serial, "logcat", "-c")
     t0 = time.time()
     adb(serial, "shell", "am", "start", "-W", "-a", "android.intent.action.VIEW",
@@ -265,6 +288,7 @@ def main():
     ap.add_argument("--step", type=int, default=25)
     ap.add_argument("--out")
     ap.add_argument("--min-free-gb", type=float, default=2.0)
+    ap.add_argument("--dev-url", help="Metro URL as the device sees it, for a dev build")
     a = ap.parse_args()
     if free_gb() < a.min_free_gb:
         sys.exit(f"STOP only {free_gb():.1f} GB free (need {a.min_free_gb}); ask Hello for the slot")
@@ -278,7 +302,7 @@ def main():
     out = open(a.out, "a") if a.out else None
     while (kb := next_kb(results, ladder, a.step)) is not None:
         n += 1
-        row = probe(a.serial, tok, kb, n)
+        row = probe(a.serial, tok, kb, n, dev_url=a.dev_url)
         if row["verdict"] == "unclear" and results.get(kb) == "unclear":
             row["verdict"] = "unclear!"
         results[kb] = row["verdict"]

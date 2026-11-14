@@ -194,6 +194,18 @@ describe("the drawer and labels (the web's note tags)", () => {
     expect(screen.getByTestId("drawer-notes").props.accessibilityState).toMatchObject({ selected: true });
   });
 
+  // Demo video, 2026-11-14: the first open of the drawer showed "LABELS" with
+  // no label for half a second (fetched only when it opened). The labels are
+  // fetched with the grid, so they are there the moment it opens.
+  it("the labels are there the moment the drawer opens (fetched with the grid)", async () => {
+    open();
+    await screen.findByText("Pinned seed");
+    await waitFor(() => expect(mock.history.get.some((c) => c.url === "/api/v1/note_app/tags")).toBe(true));
+    await act(async () => undefined);
+    fireEvent.press(screen.getByTestId("notes-menu"));
+    expect(screen.getByTestId("drawer-label-3")).toHaveTextContent("dev-stuff");
+  });
+
   it("a label filters the grid with the server's tag filter, and can be cleared", async () => {
     open();
     await screen.findByText("Pinned seed");

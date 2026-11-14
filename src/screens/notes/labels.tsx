@@ -37,7 +37,9 @@ export function NotesDrawer({
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const { data: tags = [] } = useNoteTags(visible);
+  // Fetched with the grid (the drawer stays mounted): the labels are there the
+  // moment it opens, not half a second later (demo video, 2026-11-14).
+  const { data: tags = [] } = useNoteTags();
   // The drawer is a Modal: it starts under the status bar unless told (seen on the device).
   const insets = useSafeAreaInsets();
   const row = (testID: string, label: string, icon: React.ReactNode, selected: boolean, onPress: () => void) => (

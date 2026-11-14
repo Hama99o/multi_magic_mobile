@@ -313,7 +313,7 @@ main 2456ee5 for V1.
 | V2 | **PASS** | `.vcf` + a photo: the form + "1 other file … Save to Pages" → Save to Pages with the photo (156 B) |
 | V3 | **PASS** | Google Contacts → Share → MultiMagic: the filled form |
 | V4, V5 | NOT MEASURED | iPhone (owner's RC) |
-| cold start | **FINDING, guarded** | dev build only so far: with the app stopped, a lone `.vcf` reached Save to Pages as "1 file · 0 B" (MediaProvider refused the read), twice. Now "Couldn't read this file" (§F.3). The cause, a read grant lost in the dev launcher's hop, is INFERRED: a release build is the measurement |
+| cold start | **PASS on a release build** (2026-11-14) | app stopped, a lone `.vcf` opens the filled form. On the DEV build it reached Save to Pages as "1 file · 0 B" (MediaProvider refused the read), twice: the dev launcher's hop, measured by the release run. The "Couldn't read this file" guard (§F.3) stays |
 
 The split's selected row is white on near-white and hard to see (polish,
 not fixed here).

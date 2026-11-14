@@ -1,7 +1,9 @@
 {
-  "NSContactsUsageDescription": "MultiMagic utilise vos contacts pour importer ou enregistrer ceux que vous choisissez. Rien n’est lu avant que vous touchiez Importer ou Enregistrer.",
-  "NSMicrophoneUsageDescription": "MultiMagic utilise le micro pour que vous puissiez dicter une question au lieu de la taper.",
-  "NSSpeechRecognitionUsageDescription": "La reconnaissance vocale transforme ce que vous dites en texte avec le moteur vocal de votre téléphone. Pour certaines langues, Apple traite l’audio pour le faire.",
-  "NSPhotoLibraryUsageDescription": "Choisissez des photos et vidéos à enregistrer dans vos Pages, ou joignez-en une à une conversation pour que l’assistant la lise.",
-  "NSCameraUsageDescription": "Prenez un document en photo pour le joindre à une conversation."
+  "ios": {
+    "NSContactsUsageDescription": "MultiMagic utilise vos contacts pour importer ou enregistrer ceux que vous choisissez. Rien n’est lu avant que vous touchiez Importer ou Enregistrer.",
+    "NSMicrophoneUsageDescription": "MultiMagic utilise le micro pour que vous puissiez dicter une question au lieu de la taper.",
+    "NSSpeechRecognitionUsageDescription": "La reconnaissance vocale transforme ce que vous dites en texte avec le moteur vocal de votre téléphone. Pour certaines langues, Apple traite l’audio pour le faire.",
+    "NSPhotoLibraryUsageDescription": "Choisissez des photos et vidéos à enregistrer dans vos Pages, ou joignez-en une à une conversation pour que l’assistant la lise.",
+    "NSCameraUsageDescription": "Prenez un document en photo pour le joindre à une conversation."
+  }
 }

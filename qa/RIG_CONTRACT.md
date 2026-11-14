@@ -230,3 +230,13 @@ applied one is exactly the case a high-water mark misses.)*
 The rig also touches nothing when the backend is **already answering** — `up -d`
 on a running stack can recreate a container under whoever is using it, and there
 is nothing to gain.
+
+### `qa_mm_phone`, a throwaway AVD — 2026-11-14
+
+For one rerun on main 2456ee5 this app created **`qa_mm_phone`** (Pixel 6,
+android-35 google_apis x86_64) on port 5562, because `qa_phone3` was busy
+with another session's recording and `qa_phone` is Karwan's. It was
+**deleted after the rerun** (disk at 98%). Lesson from the same night: stop
+an emulator only through its own serial (`adb -s emulator-5562 emu kill`) or
+a PID recorded at boot and matched to its `-port`, never by AVD name: a kill
+by AVD name stopped another session's emulator mid-recording.

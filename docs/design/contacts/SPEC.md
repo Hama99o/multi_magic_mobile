@@ -297,6 +297,27 @@ Android Contacts app, alone and with a photo. **iPhone: NOT MEASURED**, on
 the owner's checklist: share one contact and several contacts from iOS
 Contacts, and check that the share sheet shows "MultiMagic".
 
+### F.4 · Measured on the device, 2026-11-13/14
+
+Android 15 emulator, QA account, synthetic cards; nothing saved. Re-run on
+main 2456ee5 for V1.
+
+| # | Verdict | What was measured |
+|---|---|---|
+| S1 | **PASS** | 411 dp: the list, no pane |
+| S2 | **PASS** | 800 and 1280 dp: "Select a contact" in the empty pane |
+| S3 | **PASS** | 800 and 1280 dp: the card on the right, no back button |
+| S4 | **PASS** | a row's name box is 168 × 44 px at 411 and at 800 dp (same density): not scaled down |
+| S5 | NOT MEASURED | rotation: the app is portrait-locked (owner's decision) |
+| V1 | **PASS** | Files → `.vcf` → Share → MultiMagic (listed): the filled new-contact form |
+| V2 | **PASS** | `.vcf` + a photo: the form + "1 other file … Save to Pages" → Save to Pages with the photo (156 B) |
+| V3 | **PASS** | Google Contacts → Share → MultiMagic: the filled form |
+| V4, V5 | NOT MEASURED | iPhone (owner's RC) |
+| cold start | **FINDING, guarded** | dev build only so far: with the app stopped, a lone `.vcf` reached Save to Pages as "1 file · 0 B" (MediaProvider refused the read), twice. Now "Couldn't read this file" (§F.3). The cause, a read grant lost in the dev launcher's hop, is INFERRED: a release build is the measurement |
+
+The split's selected row is white on near-white and hard to see (polish,
+not fixed here).
+
 ## Query keys (React Query audit, 2026-11-13)
 
 Every key comes from `contactsKeys` in `src/api/keys.ts`, never a literal

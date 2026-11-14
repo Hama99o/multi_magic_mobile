@@ -115,6 +115,30 @@ describe("the gate", () => {
   // PIN?" was off the screen at 360 dp and under the gesture bar at 411 dp. A
   // fixed stack on a phone-height screen clips; the pad now scrolls, with room
   // under its last line for the system's gesture bar.
+  // Mobbin check 2026-11-14 (SPEC §C.5): Starling, Crypto.com and One put the
+  // link right under the dots, above the keys, so it is on screen however
+  // short the phone. Ours sat under the keys and went below the fold at 360
+  // and 411 dp.
+  it("'Forgot your PIN?' sits under the dots, above the keys, and is never dimmed", async () => {
+    mock.onGet(`${BASE}/pin`).reply(200, status());
+    renderScreen(<SafeZone />);
+    await screen.findByTestId("safezone-unlock");
+    const order: string[] = [];
+    const walk = (n: unknown): void => {
+      if (!n || typeof n !== "object") return;
+      if (Array.isArray(n)) return n.forEach(walk);
+      const node = n as { props?: { testID?: string }; children?: unknown };
+      if (node.props?.testID) order.push(node.props.testID);
+      walk(node.children);
+    };
+    walk(screen.toJSON());
+    const dots = order.indexOf("safezone-pin-dots"), forgot = order.indexOf("safezone-forgot"), key1 = order.indexOf("safezone-pin-key-1");
+    expect(dots).toBeGreaterThanOrEqual(0);
+    expect(forgot).toBeGreaterThan(dots);
+    expect(forgot).toBeLessThan(key1);
+    expect(screen.getByTestId("safezone-pin").props.style?.opacity ?? 1).toBe(1);
+  });
+
   it("the PIN pad scrolls, so 'Forgot your PIN?' can always be reached", async () => {
     mock.onGet(`${BASE}/pin`).reply(200, status());
     renderScreen(<SafeZone />);

@@ -95,6 +95,33 @@ again. Copy: "Copied, clears in 30 s" in place of the value for 2 s.
 `SafeZoneCover`: a full-screen padlock over the vault while `AppState` is
 `inactive`, so the app-switcher snapshot shows nothing.
 
+### C.5 "Forgot your PIN?" on a short phone (Mobbin, 2026-11-14)
+
+**Why:** the D13 shots (§G.1) showed the link off screen at 360 dp and under
+the gesture bar at 411 dp: it sat under a four-row key grid.
+`fix/safezone-pin-reach` made the pad scroll; this places the link where a
+short screen still shows it.
+
+**Looked at** (passcode entry, banking and money apps, iOS):
+
+| Where the link sits | Apps |
+|---|---|
+| under the dots, above the keys | [Starling](https://mobbin.com/screens/419cd61e-163c-4b82-9f44-e0b69e3944e6), [Crypto.com](https://mobbin.com/screens/cf7f9e79-5c94-40f8-96d7-51888393d94b), [One](https://mobbin.com/screens/ca1e6d4c-142b-4d8d-92b4-687a4ba78f5e) |
+| pinned under the keys | [Setel](https://mobbin.com/screens/4aac3f00-6c12-438e-94a0-c7cfdf7e9e9b), [Vivid](https://mobbin.com/screens/f5eb236c-1809-4240-8f7b-9365e5ed2420), [Revolut](https://mobbin.com/screens/0e43cd7e-a319-48bd-9774-a334136a749a), [GoHenry](https://mobbin.com/screens/041365ff-b42c-496c-b2ee-8551b6a0638b) |
+| in the keypad's empty cell ("Forgot?") | [Zing](https://mobbin.com/screens/913c2cd4-0d10-49ec-9677-180009d40d04) |
+
+**Decided:** under the dots, above the keys. Pinned-under only works when the
+whole pad fits, which is exactly what fails at 360 dp; the empty cell needs a
+one-word label, and ours is a sentence in two languages. Above the keys
+needs no height rule at all.
+
+**How:** `PinPad`'s `underDots` slot (`src/screens/safezone/PinPad.tsx`),
+filled by `Unlock` in `SafeZoneGate.tsx` with the link and its explanation.
+The dimming while busy moved onto the dots and the keys, so the link is
+never dimmed. The scroll stays as the safety net. Test:
+`safezoneApp.test.tsx`, "sits under the dots, above the keys".
+**Device: NOT MEASURED yet** (built after the slot was released).
+
 ## D · How we code it (identifiers)
 
 | Piece | File | Pure? | Test |

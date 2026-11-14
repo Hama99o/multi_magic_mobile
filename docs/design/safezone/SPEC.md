@@ -157,11 +157,36 @@ stays NOT MEASURED: not a pass, and not a failure.
 | D13 | The pad, the vault and an item at 360 / 411 / 800 dp, light and dark, en and fr: shots into `ours/` | Android | the `DONE` bar |
 | D14 | The heap: a dropped secret is unreachable, not overwritten (SECURITY §9). Not measurable with our tools; listed so nobody counts it | | none |
 
+### G.1 · Measured on the device, 2026-11-13/14
+
+Android 15 emulator. First the combined pre-merge build (`qa_phone3`), then
+**main 2456ee5** (`qa_mm_phone`, a throwaway AVD, deleted after). QA
+account, synthetic rows only. Evidence: the device-pass log and screenshots
+filed in Pages → MultiMagic / 2026-11-14.
+
+| # | Verdict | What was measured |
+|---|---|---|
+| D1 | **PASS** | `screencap` of the vault and of an item with the password revealed: black (mean 0.0) outside a system fps overlay that is not our window. The emulator's own framebuffer still shows the screen (FLAG_SECURE does not cover it, by design of the emulator) |
+| D2 | **PASS** | `screenrecord` frame at 3 s: black, same reading |
+| D3 | **PASS** | item revealed → Home → Settings → Recents: MultiMagic's card is blank |
+| D4 | **PASS** | back on Home, `screencap` is normal (mean 233) |
+| D5, D6, D9 | NOT MEASURED | iPhone only (owner's RC) |
+| D7 | **PASS** | copied password pastes at once; nothing after 31 s |
+| D8 | **PASS** | copy, Home, 31 s away, back: nothing to paste |
+| D10 | **PASS** (was a known gap) | with `modules/sensitive-clipboard` (5bc5d22) the preview chip shows "••••••", on main too |
+| D11 | **PASS** | background → back: the PIN pad |
+| D12 | **PASS** (was a measured gap) | before the fix the password still pasted in Settings after a force-stop. With the marker (beb243f): copy, force-stop, Settings paste still gives it (until the next open, SECURITY §9), reopen at 57–61 s, Settings paste gives nothing; probe before and after. On main too |
+| D13 | **TAKEN** | pad, vault, item at 360/411/800 dp, light and dark, en, and fr at 411: contact sheets in Pages. Taken from the emulator framebuffer, so no QA capture switch was needed; 800 dp is `wm size` on a phone panel (layout faithful, density not). They showed **"Forgot your PIN?" off screen at 360 dp and under the gesture bar at 411 dp**: fixed on `fix/safezone-pin-reach` (the pad scrolls) |
+| D14 | NOT MEASURED | not measurable with our tools |
+
+Two void runs are recorded as void, not as results: a D12 run killed before
+the copy finished, and one whose positive control failed.
+
 ## H · Branches (2026-11-13)
 
 | Branch | State |
 |---|---|
 | `feat/safezone-app` | SafeZone itself: **current** |
-| `feat/safezone-qa-capture-v2` | the QA-only screenshot switch (`qaCapture.ts`, SECURITY §7), rebased on `feat/safezone-app` 361df40: **current**. It joins main only if the device shots really come out black |
+| `feat/safezone-qa-capture-v2` | the QA-only screenshot switch (`qaCapture.ts`, SECURITY §7), rebased on `feat/safezone-app` 361df40. **Not merged and not needed so far**: the D13 shots came from the emulator framebuffer, which FLAG_SECURE does not reach (G.1) |
 | `feat/safezone-qa-capture` | the same switch on the OLDER SafeZone (400e51c): **superseded by v2, kept as it was**. Not force-pushed (a pushed branch is not rewritten), not used |
 

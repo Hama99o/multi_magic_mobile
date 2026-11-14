@@ -166,7 +166,7 @@ secrets (`lockEpoch` increments; `useSecretFields` clears on change). It runs:
   SafeZone copy goes through the local module `modules/sensitive-clipboard`
   (`sensitiveClipboard.ts`), and falls back to `expo-clipboard` on iOS, on a
   build without the module, or if it fails. Whether the preview is really
-  hidden is the device check D10 (SPEC §G); until it runs, NOT MEASURED.
+  hidden is the device check D10: **measured 2026-11-14 on Android 15 (emulator): the preview chip shows "••••••"** (SPEC §G.1). Not measured on a physical phone or below Android 13.
 - **iOS screenshots cannot be blocked**, only detected, and detection is not built: a recording of an open SafeZone on an iPhone would show what is on screen.
 - **The unlock token is not bound to the device** (server). A stolen JWT plus
   a stolen unlock token works for at most 120 s.

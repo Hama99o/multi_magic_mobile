@@ -68,7 +68,9 @@ check("verdict unclear: nothing opened", p.verdict(**{**ok, "seen": set(), "type
 # ── the typed token: adb drops a doubled character in engine B ─────────
 for seed in range(200):
     t = p.token(seed)
-    if re.search(r"(.)\1", t) or not re.fullmatch(r"ep[a-z0-9]{6,}", t):
+    # Digits only: Gboard autocorrects a letter token on the next space
+    # ("epqzk7" -> "epqz", device 2026-11-14), so the server never had it.
+    if re.search(r"(.)\1", t) or not re.fullmatch(r"[1-9][0-9]{7,}", t):
         check("token has no doubled character", False, t)
         break
 else:

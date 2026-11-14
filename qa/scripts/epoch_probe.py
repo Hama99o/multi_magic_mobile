@@ -34,8 +34,9 @@ probe first loads the app from that Metro, then sends the note's link
 Prints one JSON line per size, then a summary line. Exit 0 = a threshold was
 bracketed (or every size edited); exit 1 = it could not tell.
 
-The typed token has no doubled character: `adb input text` drops the second
-of two identical keys in engine B (see smooth_check.py).
+The typed token is digits with no doubled digit: `adb input text` drops the
+second of two identical keys in engine B (see smooth_check.py), and Gboard
+autocorrects a letter token on the next space.
 """
 import argparse
 import html as htmllib
@@ -138,16 +139,15 @@ def verdict(seen, typed, saved, b_errors, refused_after):
 
 
 def token(seed):
-    """ep + base-36 digits of the seed and the clock, with no character
-    twice in a row."""
-    alphabet = "0123456789abcdefghijklmnopqrstuvwxyz"
+    """Digits only, no digit twice in a row: Gboard autocorrects a letter
+    token on the next space (device, 2026-11-14) and adb drops a doubled key."""
     n = seed * 7919 + int(time.time() * 1000) % 10**9 * 1000 + seed
-    out = "ep"
-    while n or len(out) < 8:
-        n, d = divmod(n, 36)
-        c = alphabet[d]
+    out = str(n % 9 + 1)
+    while n or len(out) < 9:
+        n, d = divmod(n, 10)
+        c = str(d)
         if c == out[-1]:
-            c = alphabet[(d + 1) % 36]
+            c = str((d + 1) % 10)
         out += c
     return out
 
@@ -266,7 +266,14 @@ def probe(serial, tok, kb, n, open_timeout=150, dev_url=None):
             x, y = ids["note-edit-body"]
             adb(serial, "shell", "input", "tap", str(x), str(y))
             time.sleep(1)
-            adb(serial, "shell", "input", "text", f"%s{tk}%s")
+            # At a person's pace: an instant adb burst into a long note keeps
+            # only its first keys (100 KB: 4 of 13; device, 2026-11-14), while
+            # one key every 0.3 s arrives whole.
+            adb(serial, "shell", "input", "keyevent", "62")
+            for ch in tk:
+                time.sleep(0.3)
+                adb(serial, "shell", "input", "text", ch)
+            adb(serial, "shell", "input", "keyevent", "62")
             typed = True
             row["token"] = tk
             end = time.time() + 45

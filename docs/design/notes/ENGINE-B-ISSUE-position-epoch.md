@@ -2,7 +2,7 @@
 
 **Status: NOT FILED.** Filing it is outward-facing and needs the owner's "oui".
 - Target: https://github.com/apollohg/react-native-rich-text-editor/issues
-- Before filing: run `qa/scripts/epoch_probe.py` in a device slot and replace every `<…>` below with its numbers.
+- Numbers measured 2026-11-14 with `qa/scripts/epoch_probe.py` on an Android 14 emulator (software rendering, so a phone is likely faster).
 - Everything quoted here comes from invented `[qa-edit]` notes. No real note content goes upstream.
 
 ---
@@ -38,7 +38,18 @@ With a document of about 900 KB of HTML (≈815 000 text characters, ≈2 600 to
    POSITION_EPOCH_LIMIT_EXCEEDED: position epoch exceeds maxPositionEpochRetainedBytes
    ```
 
-The same schema and content shape edit fine at `<largest editable size from the probe>` KB. They are refused from `<smallest refused size>` KB (`<text chars>` characters, `<blocks>` blocks).
+Measured with the same schema and content shape (one size per row):
+
+| HTML size | Text characters | Top-level blocks | Open time | Result |
+|---|---|---|---|---|
+| 100 KB | 90 988 | 294 | 8 s | edits and saves |
+| 200 KB | 181 948 | 587 | 22 s | accepted; a typed edit not exported within 45 s |
+| 300 KB | 271 864 | 876 | 30 s | same |
+| 450 KB | 408 425 | 1 316 | 52–71 s | same |
+| 600 KB | 544 070 | 1 753 | 73–110 s | same |
+| 800 KB | 725 063 | 2 336 | 14 s | **refused**: `POSITION_EPOCH_LIMIT_EXCEEDED` |
+
+So the hard limit sits between 600 and 800 KB. Above roughly 100–200 KB the editor is already too slow to use.
 
 ## Why it matters
 

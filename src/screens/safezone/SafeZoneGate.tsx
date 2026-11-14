@@ -212,7 +212,22 @@ function Unlock({ attemptsLeft }: { attemptsLeft: number | null }) {
       <Text tone="muted" style={{ textAlign: "center" }}>
         {t("safezone.pin.subtitle", { digits: PIN_LENGTH })}
       </Text>
-      <PinPad onComplete={submit} disabled={busy || pausedUntil > 0} />
+      <PinPad
+        onComplete={submit}
+        disabled={busy || pausedUntil > 0}
+        underDots={
+          <View style={{ alignItems: "center", gap: metrics.space.xs }}>
+            <Pressable testID="safezone-forgot" onPress={() => setShowForgot((v) => !v)} accessibilityRole="button" hitSlop={8}>
+              <Text tone="accent">{t("safezone.pin.forgot")}</Text>
+            </Pressable>
+            {showForgot ? (
+              <Text testID="safezone-forgot-body" tone="muted" style={{ textAlign: "center", paddingHorizontal: metrics.space.lg }}>
+                {t("safezone.pin.forgotBody")}
+              </Text>
+            ) : null}
+          </View>
+        }
+      />
       <View style={{ minHeight: 44, alignItems: "center", gap: metrics.space.xs }} accessibilityLiveRegion="polite">
         {busy ? <ActivityIndicator testID="safezone-unlocking" /> : null}
         {wrong && attemptsLeft !== null ? (
@@ -226,14 +241,6 @@ function Unlock({ attemptsLeft }: { attemptsLeft: number | null }) {
           </Text>
         ) : null}
       </View>
-      <Pressable testID="safezone-forgot" onPress={() => setShowForgot((v) => !v)} accessibilityRole="button" hitSlop={8}>
-        <Text tone="accent">{t("safezone.pin.forgot")}</Text>
-      </Pressable>
-      {showForgot ? (
-        <Text testID="safezone-forgot-body" tone="muted" style={{ textAlign: "center", paddingHorizontal: metrics.space.lg }}>
-          {t("safezone.pin.forgotBody")}
-        </Text>
-      ) : null}
     </ScrollView>
   );
 }

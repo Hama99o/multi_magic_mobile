@@ -40,7 +40,8 @@ import { noteDrafts } from "@/stores/noteDrafts.files";
 import { decideOnOpen } from "@/stores/noteDrafts.store";
 import { NoteDocument } from "@/screens/notes/editor/NoteDocument";
 import { ReadOnlyAtomProvider } from "@/screens/notes/editor/ReadOnlyAtom";
-import { openForEditing, saveFromEngine, type EditSession } from "@/screens/notes/editor/editSession";
+import { EDIT_SIZE_LIMIT, openForEditing, saveFromEngine, type EditSession } from "@/screens/notes/editor/editSession";
+import { parseNoteHtml } from "@/screens/notes/document";
 import { createExportScheduler, type ExportScheduler } from "@/screens/notes/editor/exportScheduler";
 import { createOpenTiming, timingLog } from "@/screens/notes/editor/openTiming";
 import { engineHolds } from "@/screens/notes/editor/engineHolds";
@@ -139,6 +140,11 @@ export default function NoteEditScreen() {
   // Codec session and engine handle, once per opened content.
   const engine = useMemo(() => {
     if (!opened) return null;
+    if (opened.html.length > EDIT_SIZE_LIMIT) {
+      // Too long to edit on the phone yet (ANR at 200 KB): read view, no engine.
+      const { doc } = parseNoteHtml(opened.html);
+      return { session: { doc, source: null, engineDoc: doc }, handle: null, failed: true as const, tooLong: true as const };
+    }
     let session: EditSession | null = null;
     try {
       const html = opened.html;
@@ -620,7 +626,11 @@ export default function NoteEditScreen() {
       <Screen>
         {header}
         <ScrollView contentContainerStyle={{ paddingBottom: metrics.space.xl, gap: metrics.space.md }}>
-          <Text testID="note-edit-cannot-open" tone="muted">{t("notes.edit.cannotOpen")}</Text>
+          {"tooLong" in engine && engine.tooLong ? (
+            <Text testID="note-edit-too-long" tone="muted">{t("notes.edit.tooLong")}</Text>
+          ) : (
+            <Text testID="note-edit-cannot-open" tone="muted">{t("notes.edit.cannotOpen")}</Text>
+          )}
           {engine.session ? (
             <NoteDocument doc={engine.session.doc} colors={colors} labels={labels} onLinkPress={openLink} />
           ) : null}

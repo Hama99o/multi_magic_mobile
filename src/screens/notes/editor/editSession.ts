@@ -40,6 +40,17 @@ const HTML_OPTIONS = { preserveUnknown: true, comments: true } as const;
 
 export const SOURCE_MAP_LIMIT = 64 * 1024;
 
+/**
+ * Above this a note opens in the read view, and engine B is never created
+ * (device, 2026-11-14): typing in a 200 KB note blocked the UI thread for
+ * more than 5 s and Android killed the app, losing the key. 128 KB is a
+ * conservative start (100 KB measured fine); the probe sets the final value.
+ * A dev build may raise it to probe larger sizes (EXPO_PUBLIC_NOTES_EDIT_LIMIT_KB,
+ * read only when __DEV__; a release build always uses the default).
+ */
+const probeLimitKb = typeof __DEV__ !== "undefined" && __DEV__ ? Number(process.env.EXPO_PUBLIC_NOTES_EDIT_LIMIT_KB) : NaN;
+export const EDIT_SIZE_LIMIT = (Number.isFinite(probeLimitKb) && probeLimitKb > 0 ? probeLimitKb : 128) * 1024;
+
 export function openForEditing(html: string): EditSession {
   const { doc, source } =
     html.length > SOURCE_MAP_LIMIT ? { doc: fromHTML(html, HTML_OPTIONS), source: null } : fromHTMLWithSource(html, HTML_OPTIONS);

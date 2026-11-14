@@ -212,3 +212,26 @@ describe("tables are edited on the phone (owner, 2026-11-13)", () => {
     roundTrips(out.html);
   });
 });
+
+describe("the edit size limit (device, 2026-11-14: ANR at 200 KB)", () => {
+  const load = (env?: string) => {
+    let limit = 0;
+    const before = process.env.EXPO_PUBLIC_NOTES_EDIT_LIMIT_KB;
+    if (env === undefined) delete process.env.EXPO_PUBLIC_NOTES_EDIT_LIMIT_KB;
+    else process.env.EXPO_PUBLIC_NOTES_EDIT_LIMIT_KB = env;
+    jest.isolateModules(() => {
+      limit = require("../editor/editSession").EDIT_SIZE_LIMIT;
+    });
+    if (before === undefined) delete process.env.EXPO_PUBLIC_NOTES_EDIT_LIMIT_KB;
+    else process.env.EXPO_PUBLIC_NOTES_EDIT_LIMIT_KB = before;
+    return limit;
+  };
+  it("is 128 KB by default", () => {
+    expect(load()).toBe(128 * 1024);
+  });
+  it("a dev build can raise it for the probe (EXPO_PUBLIC_NOTES_EDIT_LIMIT_KB); nonsense is ignored", () => {
+    expect(load("175")).toBe(175 * 1024);
+    expect(load("abc")).toBe(128 * 1024);
+    expect(load("0")).toBe(128 * 1024);
+  });
+});

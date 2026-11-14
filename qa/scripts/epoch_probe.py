@@ -130,8 +130,10 @@ def next_kb(results, ladder, step):
     return mid if mid not in results and lo < mid < hi else None
 
 
-def verdict(seen, typed, saved, b_errors, refused_after):
-    if "note-edit-cannot-open" in seen or b_errors or refused_after:
+def verdict(seen, typed, saved, b_errors, refused_after, anr=False):
+    # An ANR is a failure even if the view looked fine: Android killed the
+    # app on a key and the key was lost (device, 2026-11-14, 200 KB).
+    if "note-edit-cannot-open" in seen or "note-edit-too-long" in seen or b_errors or refused_after or anr:
         return "refused"
     if "note-edit-body" in seen and typed and saved:
         return "editable"
@@ -156,6 +158,21 @@ def token(seed, run=0):
         choices = "123456789" if not out else "".join(c for c in "0123456789" if c != out[-1])
         out += choices[d]
     return out
+
+
+def keys_for(seed, run, n_keys):
+    """Distinct tokens to type, space-separated, until at least n_keys keys."""
+    toks, keys, i = [], 1, 0
+    while keys < n_keys:
+        t = token(seed * 1000 + i, run)
+        toks.append(t)
+        keys += len(t) + 1
+        i += 1
+    return toks
+
+
+def anr_seen(serial):
+    return "ANR in " + PKG in adb(serial, "logcat", "-d")
 
 
 # ── device and server ──────────────────────────────────────────────────
@@ -243,7 +260,7 @@ def open_app(serial, dev_url, timeout=120):
     return False
 
 
-def probe(serial, tok, kb, n, open_timeout=150, dev_url=None, run_id=0):
+def probe(serial, tok, kb, n, open_timeout=150, dev_url=None, run_id=0, n_keys=11):
     nid, h = seed_note(tok, kb)
     row = {"kb": kb, "id": nid, **note_stats(h)}
     adb(serial, "shell", "am", "force-stop", PKG)
@@ -260,7 +277,7 @@ def probe(serial, tok, kb, n, open_timeout=150, dev_url=None, run_id=0):
     seen, ids = set(), {}
     while time.time() - t0 < open_timeout:
         ids = screen(serial)
-        seen |= {k for k in ids if k in ("note-edit-body", "note-edit-cannot-open", "note-load-failed")}
+        seen |= {k for k in ids if k in ("note-edit-body", "note-edit-cannot-open", "note-edit-too-long", "note-load-failed")}
         if seen:
             break
         time.sleep(3)
@@ -272,7 +289,8 @@ def probe(serial, tok, kb, n, open_timeout=150, dev_url=None, run_id=0):
         if "note-edit-cannot-open" in ids:
             refused_after = True
         elif "note-edit-body" in ids:
-            tk = token(n, run_id)
+            toks = keys_for(n, run_id, n_keys)
+            tk = " ".join(toks)
             x, y = ids["note-edit-body"]
             adb(serial, "shell", "input", "tap", str(x), str(y))
             time.sleep(1)
@@ -282,18 +300,21 @@ def probe(serial, tok, kb, n, open_timeout=150, dev_url=None, run_id=0):
             adb(serial, "shell", "input", "keyevent", "62")
             for ch in tk:
                 time.sleep(0.3)
-                adb(serial, "shell", "input", "text", ch)
+                if ch == " ":
+                    adb(serial, "shell", "input", "keyevent", "62")
+                else:
+                    adb(serial, "shell", "input", "text", ch)
             adb(serial, "shell", "input", "keyevent", "62")
             typed = True
             row["token"] = tk
             end = time.time() + 45
             while time.time() < end and not saved:
                 time.sleep(2)
-                saved = server_has(tok, nid, tk)
+                saved = all(server_has(tok, nid, t) for t in toks)
             refused_after = "note-edit-cannot-open" in screen(serial)
     row.update(seen=sorted(seen), typed=typed, saved=saved, b_errors=b_errors(serial),
-               refused_after=refused_after)
-    row["verdict"] = verdict(seen, typed, saved, row["b_errors"], refused_after)
+               refused_after=refused_after, anr=anr_seen(serial))
+    row["verdict"] = verdict(seen, typed, saved, row["b_errors"], refused_after, row["anr"])
     adb(serial, "shell", "am", "force-stop", PKG)
     return row
 
@@ -306,6 +327,7 @@ def main():
     ap.add_argument("--out")
     ap.add_argument("--min-free-gb", type=float, default=2.0)
     ap.add_argument("--dev-url", help="Metro URL as the device sees it, for a dev build")
+    ap.add_argument("--keys", type=int, default=11, help="keys typed per size, at a person's pace")
     a = ap.parse_args()
     if free_gb() < a.min_free_gb:
         sys.exit(f"STOP only {free_gb():.1f} GB free (need {a.min_free_gb}); ask Hello for the slot")
@@ -320,7 +342,7 @@ def main():
     out = open(a.out, "a") if a.out else None
     while (kb := next_kb(results, ladder, a.step)) is not None:
         n += 1
-        row = probe(a.serial, tok, kb, n, dev_url=a.dev_url, run_id=run_id)
+        row = probe(a.serial, tok, kb, n, dev_url=a.dev_url, run_id=run_id, n_keys=a.keys)
         if row["verdict"] == "unclear" and results.get(kb) == "unclear":
             row["verdict"] = "unclear!"
         results[kb] = row["verdict"]

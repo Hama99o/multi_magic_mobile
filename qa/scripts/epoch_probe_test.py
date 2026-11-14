@@ -63,6 +63,10 @@ check("verdict refused: the cannot-open view", p.verdict(**{**ok, "seen": {"note
 check("verdict refused: B error after typing", p.verdict(**{**ok, "b_errors": 1}) == "refused")
 check("verdict refused: cannot-open shown after typing", p.verdict(**{**ok, "refused_after": True}) == "refused")
 check("verdict unclear: the typed token never reached the server", p.verdict(**{**ok, "saved": False}) == "unclear")
+check("verdict refused: an ANR (Android killed the app on a key), even if the view looked fine",
+      p.verdict(**{**ok, "saved": False, "anr": True}) == "refused")
+check("keys_for: tokens typed until at least N keys, all distinct",
+      sum(len(t) + 1 for t in p.keys_for(3, 777, 20)) + 1 >= 20 and len(set(p.keys_for(3, 777, 20))) == len(p.keys_for(3, 777, 20)))
 check("verdict unclear: nothing opened", p.verdict(**{**ok, "seen": set(), "typed": False, "saved": False}) == "unclear")
 
 # ── the typed token: adb drops a doubled character in engine B ─────────

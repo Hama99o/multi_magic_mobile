@@ -1234,6 +1234,7 @@ export const en = {
       bodyPlaceholder: "Write something",
       state: { saved: "Saved", unsaved: "Not saved yet", saving: "Saving…", local: "On this phone only", conflict: "Edited on the web too" },
       cannotOpen: "This note cannot be edited on the phone yet. You can still read it here.",
+      tooLong: "This note is too long to edit on the phone yet. You can read it here, and edit it on the web.",
       cannotSave: "This change could not be saved. Your text is kept on this phone.",
       restored: "Your unsent changes were restored.",
       conflict: {

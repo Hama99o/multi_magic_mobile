@@ -582,6 +582,35 @@ describe("the bar keeps the editor's focus (device finding, 2026-11-13)", () => 
   });
 });
 
+describe("a note too long to edit on the phone (device, 2026-11-14: ANR at 200 KB)", () => {
+  // Invented text. Typing in a 200 KB note blocked the UI thread for more
+  // than 5 s and Android killed the app (the key was lost). Above the limit
+  // the note opens in the read view, engine B is never created, nothing is sent.
+  const { EDIT_SIZE_LIMIT } = jest.requireActual("@/screens/notes/editor/editSession");
+  const longHtml = (chars: number) => {
+    const block = `<p>${"river lantern copper meadow orbit velvet harbor quiet pixel ".repeat(16)}</p>`; // ~1 KB: fewer nodes, same size
+    return block.repeat(Math.ceil(chars / block.length));
+  };
+
+  it("above the limit: read view with a clear message, no engine, nothing saved", async () => {
+    server = note({ description: longHtml(EDIT_SIZE_LIMIT + 1024) });
+    open();
+    expect(await screen.findByTestId("note-edit-too-long")).toHaveTextContent(/This note is too long to edit on the phone yet/);
+    expect(screen.queryByTestId("engine-b")).toBeNull();
+    expect(mockEngine.init).toBeNull();
+    expect(screen.getAllByText(/river lantern copper/).length).toBeGreaterThan(0);
+    await new Promise((r) => setTimeout(r, 700));
+    expect(mock.history.put).toHaveLength(0);
+  });
+
+  it("just under the limit the note is edited as before", async () => {
+    server = note({ description: longHtml(EDIT_SIZE_LIMIT - 2048) });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(screen.queryByTestId("note-edit-too-long")).toBeNull();
+  });
+});
+
 describe("where the open time goes (probe, 2026-11-14: 8 s at 100 KB)", () => {
   it("logs one [notes-open] line with every stage at B's first event", async () => {
     const { timingLog } = jest.requireActual("@/screens/notes/editor/openTiming");

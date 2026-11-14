@@ -226,12 +226,15 @@ describe("the edit size limit (device, 2026-11-14: ANR at 200 KB)", () => {
     else process.env.EXPO_PUBLIC_NOTES_EDIT_LIMIT_KB = before;
     return limit;
   };
-  it("is 128 KB by default", () => {
-    expect(load()).toBe(128 * 1024);
+  // Measured 2026-11-14 (epoch_probe, 20 keys at a person's pace, emulator):
+  // 50, 75, 100 (twice) and 112 KB edit and save; 125 KB is an ANR. 96 KB
+  // keeps a margin of about 15 % under the largest size that passed.
+  it("is 96 KB by default (measured: 112 KB passed, 125 KB was an ANR)", () => {
+    expect(load()).toBe(96 * 1024);
   });
   it("a dev build can raise it for the probe (EXPO_PUBLIC_NOTES_EDIT_LIMIT_KB); nonsense is ignored", () => {
     expect(load("175")).toBe(175 * 1024);
-    expect(load("abc")).toBe(128 * 1024);
-    expect(load("0")).toBe(128 * 1024);
+    expect(load("abc")).toBe(96 * 1024);
+    expect(load("0")).toBe(96 * 1024);
   });
 });

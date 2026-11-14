@@ -43,13 +43,14 @@ export const SOURCE_MAP_LIMIT = 64 * 1024;
 /**
  * Above this a note opens in the read view, and engine B is never created
  * (device, 2026-11-14): typing in a 200 KB note blocked the UI thread for
- * more than 5 s and Android killed the app, losing the key. 128 KB is a
- * conservative start (100 KB measured fine); the probe sets the final value.
+ * more than 5 s and Android killed the app, losing the key. Measured with
+ * epoch_probe (20 keys at a person's pace, emulator): 50, 75, 100 and 112 KB
+ * edit and save; 125 KB is an ANR. 96 KB keeps a ~15 % margin.
  * A dev build may raise it to probe larger sizes (EXPO_PUBLIC_NOTES_EDIT_LIMIT_KB,
  * read only when __DEV__; a release build always uses the default).
  */
 const probeLimitKb = typeof __DEV__ !== "undefined" && __DEV__ ? Number(process.env.EXPO_PUBLIC_NOTES_EDIT_LIMIT_KB) : NaN;
-export const EDIT_SIZE_LIMIT = (Number.isFinite(probeLimitKb) && probeLimitKb > 0 ? probeLimitKb : 128) * 1024;
+export const EDIT_SIZE_LIMIT = (Number.isFinite(probeLimitKb) && probeLimitKb > 0 ? probeLimitKb : 96) * 1024;
 
 export function openForEditing(html: string): EditSession {
   const { doc, source } =

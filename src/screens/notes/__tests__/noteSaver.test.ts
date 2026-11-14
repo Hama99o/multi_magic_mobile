@@ -307,3 +307,17 @@ describe("a metadata write is not a web edit", () => {
     expect(r.states.at(-1)?.kind).toBe("conflict");
   });
 });
+
+describe("lastSaved: what the server confirmed (the header's Saved is checked against it)", () => {
+  it("is the opened copy, then what a save sent and the server accepted, never a failed one", async () => {
+    const r = rig();
+    expect(r.saver.lastSaved()).toEqual({ title: "Plan", html: "<p>a</p>" });
+    r.saver.change({ title: "Plan", html: "<p>b</p>" });
+    await settle();
+    expect(r.saver.lastSaved()).toEqual({ title: "Plan", html: "<p>b</p>" });
+    r.setOffline(true);
+    r.saver.change({ title: "Plan", html: "<p>c</p>" });
+    await settle();
+    expect(r.saver.lastSaved()).toEqual({ title: "Plan", html: "<p>b</p>" });
+  });
+});

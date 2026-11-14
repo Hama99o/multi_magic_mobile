@@ -48,6 +48,8 @@ export interface NoteSaver {
    * with a different body is a web edit and is ignored (the check must see it).
    */
   rebase(note: ServerNote): void;
+  /** The content the server last confirmed (what we sent and it accepted, or the opened copy): the header's "Saved" is checked against it. */
+  lastSaved(): Content;
   dispose(): void;
 }
 
@@ -69,6 +71,7 @@ const same = (a: Content, b: Content) => a.title === b.title && a.html === b.htm
 export function createNoteSaver(o: NoteSaverOptions): NoteSaver {
   const delay = o.delayMs ?? 500;
   let base: ServerNote = { ...o.base };
+  let confirmed: Content = { title: o.base.title, html: o.base.html };
   let pending: Content | null = null;
   let conflict: ServerNote | null = null;
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -111,6 +114,7 @@ export function createNoteSaver(o: NoteSaverOptions): NoteSaver {
         base = e.current as ServerNote;
         base = await o.api.update(o.noteId, c, base.updatedAt);
       }
+      confirmed = { title: c.title, html: c.html };
       if (pending === c) pending = null;
       await draftWrite;
       await o.drafts.settled(o.noteId, c).catch(() => undefined);
@@ -157,6 +161,7 @@ export function createNoteSaver(o: NoteSaverOptions): NoteSaver {
 
   return {
     rebase,
+    lastSaved: () => ({ ...confirmed }),
     change(content) {
       pending = { ...content };
       writeDraft(pending);

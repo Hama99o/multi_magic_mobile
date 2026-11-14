@@ -288,10 +288,10 @@ export default function NoteEditScreen() {
   // Leaving by any way (our back, Android's, a router call): convert what is
   // still pending while the editor is still there to export it.
   const navigation = useNavigation();
-  useEffect(() => navigation.addListener("beforeRemove", () => exporterRef.current?.flush()), [navigation]);
+  useEffect(() => navigation.addListener("beforeRemove", () => exporterRef.current?.force()), [navigation]);
   /** The engine's latest document converted and handed to the saver, then sent. */
   const flushAll = () => {
-    exporterRef.current?.flush();
+    exporterRef.current?.force();
     return saverRef.current?.flush();
   };
 
@@ -536,7 +536,11 @@ export default function NoteEditScreen() {
     local: t("notes.edit.state.local"),
     conflict: t("notes.edit.state.conflict"),
   };
-  const stateLabel = stateLabels[state.kind];
+  // "Saved" only when the server confirmed exactly what the editor holds; the
+  // status comes from a real save, never assumed (integration server, 2026-11-14).
+  const confirmed = saverRef.current?.lastSaved();
+  const reallySaved = !confirmed || (confirmed.title === title.current && confirmed.html === html.current);
+  const stateLabel = stateLabels[state.kind === "saved" && !reallySaved ? "unsaved" : state.kind];
 
   // Keep's header (owner's screenshots, 2026-11-13, not stored): a round back
   // button; on the right a rounded pill of the note's actions (pin for now;
@@ -702,14 +706,21 @@ export default function NoteEditScreen() {
         <View style={{ flex: 1 }} testID="note-edit-body">
           <RichTextEditor
             ref={editorRef}
-            key={`body-${generation}`}
+            // A fresh view for each lock state: switching a live B view between
+            // read-only and editable broke its input (letters reversed, never
+            // saved: integration server, 2026-11-14), like autoCorrect did.
+            key={`body-${generation}-${locked ? "ro" : "rw"}`}
             documentHandle={engine.handle}
             atoms={notesEngineAtoms}
             theme={engineTheme(colors, pageFill) as never}
             focusPreservingRefs={barRef}
             editable={!locked}
             onFocus={() => setFocused(true)}
-            onBlur={() => setFocused(false)}
+            onBlur={() => {
+              setFocused(false);
+              // Whatever B holds goes to the saver, even if its change signal was lost.
+              exporterRef.current?.force();
+            }}
             placeholder={t("notes.edit.bodyPlaceholder")}
             showToolbar={false}
             onActiveStateChange={(state) => {

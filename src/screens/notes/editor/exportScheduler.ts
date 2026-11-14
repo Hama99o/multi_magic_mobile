@@ -18,6 +18,8 @@
 export interface ExportScheduler {
   dirty(): void;
   flush(): void;
+  /** Export now even if no change was signalled (B's signal can be lost: integration server, 2026-11-14). */
+  force(): void;
   urgent(): void;
   dispose(): void;
 }
@@ -61,6 +63,9 @@ export function createExportScheduler(o: {
     },
     flush() {
       if (pending) runNow();
+    },
+    force() {
+      runNow();
     },
     urgent() {
       nextAtOnce = true;

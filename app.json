@@ -93,6 +93,7 @@
         }
       ],
       "@apollohg/react-native-rich-text-editor",
+      "./plugins/withoutPushEntitlement",
       [
         "expo-notifications",
         {

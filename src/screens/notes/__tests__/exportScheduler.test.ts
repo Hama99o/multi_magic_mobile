@@ -81,3 +81,15 @@ it("after a toolbar command (urgent), the next change runs at once even when cos
   s.dirty();
   expect(runs).toHaveLength(2);
 });
+
+// Integration server, 2026-11-14: after unlock, B's change signal could be
+// lost. `force` exports even with nothing marked dirty (blur, leave, actions).
+it("force runs the export even when no change was signalled", () => {
+  const run = jest.fn();
+  const s = createExportScheduler({ run });
+  s.force();
+  expect(run).toHaveBeenCalledTimes(1);
+  s.dirty();
+  s.force();
+  expect(run).toHaveBeenCalledTimes(3);
+});

@@ -19,7 +19,7 @@ import MockAdapter from "axios-mock-adapter";
 import { Alert, Share } from "react-native";
 
 const mockEngineErrors: { listeners: ((e: unknown) => void)[] } = { listeners: [] };
-const mockEngine: { props: Record<string, any> | null; init: any; doc: any; refuse: boolean; rejectSet: boolean; rejectAfter: boolean; holds: "all" | "nothing" | "part"; calls: unknown[][]; selections: unknown[] } = { props: null, init: null, doc: null, refuse: false, rejectSet: false, rejectAfter: false, holds: "all", calls: [], selections: [] };
+const mockEngine: { props: Record<string, any> | null; init: any; doc: any; refuse: boolean; rejectSet: boolean; rejectAfter: boolean; mounts: { editable: unknown }[]; holds: "all" | "nothing" | "part"; calls: unknown[][]; selections: unknown[] } = { props: null, init: null, doc: null, refuse: false, rejectSet: false, rejectAfter: false, mounts: [], holds: "all", calls: [], selections: [] };
 /** The person typed: B now holds `json` and says so (it exports only when asked). */
 const engineChanged = (json: unknown) => {
   mockEngine.doc = json;
@@ -65,6 +65,8 @@ jest.mock("@apollohg/react-native-rich-text-editor", () => {
     // The ref records every command the screen sends to the engine.
     RichTextEditor: ReactActual.forwardRef((props: Record<string, unknown>, ref: unknown) => {
       mockEngine.props = props;
+      // Each native view mounted, and whether it was editable from its first render.
+      ReactActual.useEffect(() => void mockEngine.mounts.push({ editable: props.editable }), []);
       ReactActual.useImperativeHandle(ref, () =>
         new Proxy({}, {
           get: (_t: unknown, name: string) => (...args: unknown[]) => {
@@ -134,6 +136,7 @@ beforeEach(() => {
   mockEngine.refuse = false;
   mockEngine.rejectSet = false;
   mockEngine.rejectAfter = false;
+  mockEngine.mounts = [];
   mockEngine.holds = "all";
   mockEngine.init = null;
   mockEngine.calls = [];
@@ -579,6 +582,69 @@ describe("the bar keeps the editor's focus (device finding, 2026-11-13)", () => 
     expect(screen.getByTestId("tb-closePanel")).toBeTruthy();
     fireEvent.press(screen.getByTestId("tb-closePanel"));
     expect(screen.queryByTestId("tb-closePanel")).toBeNull();
+  });
+});
+
+describe("typing after unlock (integration server, 2026-11-14: reversed letters, never saved)", () => {
+  // After lock -> unlock, letters went in reversed mid-word and nothing was
+  // sent while the header said "Saved". Switching a live B view between
+  // read-only and editable breaks its input, as switching autoCorrect did.
+  const lockPut = () =>
+    mock.onPut("/api/v1/note_app/notes/7").reply((cfg) => {
+      const body = JSON.parse(cfg.data);
+      server = "description" in body
+        ? { ...server, title: body.title, description: body.description, updated_at: "2026-11-14T09:00:00Z" }
+        : { ...server, is_locked: body.locked, updated_at: "2026-11-14T08:00:00Z" };
+      return [200, { note: server }];
+    });
+  const doc = (text: string) => ({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text }] }] });
+  const putWith = (text: string) => mock.history.put.some((r) => String(JSON.parse(r.data).description ?? "").includes(text));
+
+  it("lock and unlock never switch a live view: each state is a fresh view, editable (or not) from its first render", async () => {
+    lockPut();
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(mockEngine.mounts).toHaveLength(1);
+    fireEvent.press(screen.getByTestId("note-edit-lock"));
+    await waitFor(() => expect(mockEngine.mounts).toHaveLength(2));
+    expect(mockEngine.mounts[1].editable).toBe(false);
+    fireEvent.press(screen.getByTestId("note-edit-lock"));
+    await waitFor(() => expect(mockEngine.mounts).toHaveLength(3));
+    expect(mockEngine.mounts[2].editable).not.toBe(false);
+  });
+
+  it("a change B holds without a change signal is still saved when the editor loses focus", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    mockEngine.doc = doc("no signal came"); // B has it; onDocumentChange never fired
+    act(() => mockEngine.props!.onBlur());
+    await waitFor(() => expect(putWith("no signal came")).toBe(true), { timeout: 4000 });
+  });
+
+  it("and before leaving the note", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    mockEngine.doc = doc("left without a signal");
+    act(() => mockLeave.listeners.forEach((l) => l()));
+    await waitFor(() => expect(putWith("left without a signal")).toBe(true), { timeout: 4000 });
+  });
+
+  it("the header never says Saved while the last saved body differs from the editor's content", async () => {
+    const saverMod = jest.requireActual("@/screens/notes/editor/noteSaver");
+    jest.spyOn(saverMod, "createNoteSaver").mockImplementation(((o: { base: { title: string; html: string }; onState(s: unknown): void }) => ({
+      // A saver that claims "saved" without saving (the status must come from a real save).
+      change: () => o.onState({ kind: "saved" }),
+      flush: async () => undefined,
+      resolve: async () => ({ reload: null }),
+      rebase: () => undefined,
+      lastSaved: () => ({ title: o.base.title, html: o.base.html }),
+      dispose: () => undefined,
+    })) as never);
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(screen.getByTestId("note-edit-state")).toHaveTextContent("Saved");
+    act(() => engineChanged(doc("typed but not saved")));
+    await waitFor(() => expect(screen.getByTestId("note-edit-state")).toHaveTextContent("Not saved yet"));
   });
 });
 

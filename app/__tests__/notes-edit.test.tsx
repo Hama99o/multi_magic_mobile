@@ -582,6 +582,23 @@ describe("the bar keeps the editor's focus (device finding, 2026-11-13)", () => 
   });
 });
 
+describe("where the open time goes (probe, 2026-11-14: 8 s at 100 KB)", () => {
+  it("logs one [notes-open] line with every stage at B's first event", async () => {
+    const { timingLog } = jest.requireActual("@/screens/notes/editor/openTiming");
+    const write = jest.spyOn(timingLog, "write").mockImplementation(() => undefined);
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(write).not.toHaveBeenCalled();
+    act(() => {
+      mockEngine.props!.onHistoryStateChange({ canUndo: false, canRedo: false });
+      mockEngine.props!.onActiveStateChange({ marks: {}, markAttrs: {}, nodes: {}, commands: {}, allowedMarks: [], insertableNodes: [] });
+    });
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(write.mock.calls[0][0]).toMatch(/^\[notes-open\] kb=\d+ fetched=\d+ opened=\d+ codecMs=\d+ createMs=\d+ holdsMs=\d+ firstEvent=\d+$/);
+    write.mockRestore();
+  });
+});
+
 describe("B refusing a structural edit (device finding, 2026-11-14)", () => {
   it("does not crash: the note stays as it was, nothing is sent, and editing goes on", async () => {
     open();

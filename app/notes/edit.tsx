@@ -42,6 +42,7 @@ import { NoteDocument } from "@/screens/notes/editor/NoteDocument";
 import { ReadOnlyAtomProvider } from "@/screens/notes/editor/ReadOnlyAtom";
 import { openForEditing, saveFromEngine, type EditSession } from "@/screens/notes/editor/editSession";
 import { createExportScheduler, type ExportScheduler } from "@/screens/notes/editor/exportScheduler";
+import { createOpenTiming, timingLog } from "@/screens/notes/editor/openTiming";
 import { engineHolds } from "@/screens/notes/editor/engineHolds";
 import { notesEngineAtoms, notesEngineSchema } from "@/screens/notes/editor/engineSchema";
 import { engineTheme } from "@/screens/notes/editor/engineTheme";
@@ -77,6 +78,9 @@ export default function NoteEditScreen() {
   const noteId = Number(params.id) || 0;
 
   const { data: note, error, refetch, isFetchedAfterMount } = useNote(noteId);
+  // Where the open time goes: one [notes-open] line in dev (openTiming.ts).
+  const timing = useRef(createOpenTiming()).current;
+  const timingLogged = useRef(false);
   const save = useSaveNote();
   const createNote = useCreateNote();
   const saveCalls = useRef({ save: save.mutateAsync, create: createNote.mutateAsync });
@@ -97,9 +101,11 @@ export default function NoteEditScreen() {
     // visit (device, 2026-11-13: a web edit did not show). Offline, the
     // refetch fails and the cached copy (plus any draft) is what opens.
     if (!note || opened || !isFetchedAfterMount) return;
+    timing.mark("fetched");
     let live = true;
     void noteDrafts.get(noteId).then((draft) => {
       if (!live) return;
+      timing.mark("opened");
       const server = toServer(note);
       const d = decideOnOpen(draft, server);
       if (d.kind === "server") {
@@ -114,7 +120,7 @@ export default function NoteEditScreen() {
     return () => {
       live = false;
     };
-  }, [note, noteId, opened, isFetchedAfterMount]);
+  }, [note, noteId, opened, isFetchedAfterMount, timing]);
 
   const labels: EditorLabels = {
     table: (rows, cols) => t("notes.block.table", { rows, cols }),
@@ -135,13 +141,17 @@ export default function NoteEditScreen() {
     if (!opened) return null;
     let session: EditSession | null = null;
     try {
-      session = openForEditing(opened.html);
-      const handle = createNativeEditorDocumentHandle({
-        initialization: { type: "localJson", json: session.engineDoc },
+      const html = opened.html;
+      session = timing.measure("codec", () => openForEditing(html));
+      const engineDoc = session.engineDoc;
+      const handle = timing.measure("create", () => createNativeEditorDocumentHandle({
+        initialization: { type: "localJson", json: engineDoc },
         schema: notesEngineSchema,
         policy: { allowBase64Images: true },
-      } as never);
-      const held = engineHolds((handle as unknown as { bridge?: Parameters<typeof engineHolds>[0] }).bridge, session.engineDoc);
+      } as never));
+      const held = timing.measure("holds", () =>
+        engineHolds((handle as unknown as { bridge?: Parameters<typeof engineHolds>[0] }).bridge, engineDoc),
+      );
       if (!held.ok) {
         console.warn("[notes] engine B did not keep the note:", held.reason);
         handle.destroy();
@@ -174,6 +184,14 @@ export default function NoteEditScreen() {
       setEngineError(why || "engine error");
     });
   }, [engine]);
+
+  // B's first event after the view is bound: the note is on screen.
+  const firstEngineEvent = () => {
+    if (timingLogged.current) return;
+    timingLogged.current = true;
+    timing.mark("firstEvent");
+    timingLog.write(`[notes-open] kb=${Math.round((opened?.html.length ?? 0) / 1024)} ${timing.report()}`);
+  };
 
   // Autosave.
   const [state, setState] = useState<SaverState>({ kind: "saved" });
@@ -239,8 +257,13 @@ export default function NoteEditScreen() {
   useEffect(() => {
     const exporter = createExportScheduler({
       run: () => {
+        const a = performance.now();
         const json = editorRef.current?.getContentJson();
+        const b = performance.now();
         if (json) onEngineChange(json);
+        const c = performance.now();
+        // A slow export, in dev: B's export vs our conversion + save prep.
+        if (c - a > 50) timingLog.write(`[notes-export] getMs=${Math.round(b - a)} convertMs=${Math.round(c - b)}`);
       },
     });
     exporterRef.current = exporter;
@@ -672,8 +695,14 @@ export default function NoteEditScreen() {
             onBlur={() => setFocused(false)}
             placeholder={t("notes.edit.bodyPlaceholder")}
             showToolbar={false}
-            onActiveStateChange={(state) => setActive({ marks: { ...state.marks }, nodes: { ...state.nodes } })}
-            onHistoryStateChange={(h) => setHistory({ canUndo: h.canUndo, canRedo: h.canRedo })}
+            onActiveStateChange={(state) => {
+              firstEngineEvent();
+              setActive({ marks: { ...state.marks }, nodes: { ...state.nodes } });
+            }}
+            onHistoryStateChange={(h) => {
+              firstEngineEvent();
+              setHistory({ canUndo: h.canUndo, canRedo: h.canRedo });
+            }}
             onSelectionChange={(sel) => {
               setHasSelection(sel.type === "text" && sel.anchor !== sel.head);
               setCaretPos(typeof sel.head === "number" ? sel.head : null);

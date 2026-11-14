@@ -66,16 +66,18 @@ check("verdict unclear: the typed token never reached the server", p.verdict(**{
 check("verdict unclear: nothing opened", p.verdict(**{**ok, "seen": set(), "typed": False, "saved": False}) == "unclear")
 
 # ── the typed token: adb drops a doubled character in engine B ─────────
-for seed in range(200):
-    t = p.token(seed)
-    # Digits only: Gboard autocorrects a letter token on the next space
-    # ("epqzk7" -> "epqz", device 2026-11-14), so the server never had it.
-    if re.search(r"(.)\1", t) or not re.fullmatch(r"[1-9][0-9]{7,}", t):
-        check("token has no doubled character", False, t)
-        break
-else:
-    check("token has no doubled character (200 seeds)", True)
-check("tokens differ", len({p.token(s) for s in range(200)}) == 200)
+# Pure for a seed and a run id (CI 43553280033 went red on "tokens differ":
+# the clock was read on every call, so distinctness depended on timing).
+toks = [p.token(seed, run=123) for seed in range(500)]
+bad = [t for t in toks if re.search(r"(.)\1", t) or not re.fullmatch(r"[1-9][0-9]{7,}", t)]
+# Digits only: Gboard autocorrects a letter token on the next space
+# ("epqzk7" -> "epqz", device 2026-11-14), so the server never had it.
+check("token: digits, no doubled digit (500 seeds)", not bad, bad[:3])
+check("tokens differ within a run (500 seeds)", len(set(toks)) == 500, len(set(toks)))
+many = [p.token(seed, run=886849) for seed in range(10000)]
+check("tokens differ for 10 000 seeds with a fixed run (one-to-one)", len(set(many)) == 10000, 10000 - len(set(many)))
+check("token is pure: same seed and run, same token", p.token(7, run=123) == p.token(7, run=123))
+check("tokens differ between runs", p.token(7, run=123) != p.token(7, run=124))
 
 print(f"epoch_probe: {len(FAILS)} failed" if FAILS else "epoch_probe: all ok")
 sys.exit(1 if FAILS else 0)

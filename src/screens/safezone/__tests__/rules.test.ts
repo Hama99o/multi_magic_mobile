@@ -47,9 +47,9 @@ describe("no storage, no logs, nowhere else", () => {
   // start, as the web's sessionStorage does across a reload. Exactly those two
   // fields, under one key; never the PIN or a secret.
   const UNLOCK_VAULT = join(ROOT, "src/stores/safezoneUnlockVault.ts");
-  it("the unlock vault writes only {token, expiresAt} under safezone.unlock", () => {
+  it("the unlock vault writes only {token, expiresAt} under safezone_unlock", () => {
     const source = readFileSync(UNLOCK_VAULT, "utf8");
-    expect(source).toMatch(/^const KEY = "safezone\.unlock";$/m);
+    expect(source).toMatch(/^const KEY = "safezone_unlock";/m);
     expect(source).toMatch(/JSON\.stringify\(\{ token: u\.token, expiresAt: u\.expiresAt \}\)/);
     expect(source.match(/setItemAsync/g)).toHaveLength(1);
     expect(source).not.toMatch(/async-storage|zustand\/middleware|\bpersist\(|\bconsole\./);

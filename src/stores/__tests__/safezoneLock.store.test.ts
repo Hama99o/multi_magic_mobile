@@ -101,11 +101,11 @@ describe("the unlock window survives a cold start, like the web's reload", () =>
     getItemAsync: jest.Mock; setItemAsync: jest.Mock; deleteItemAsync: jest.Mock;
   };
   const stored = async () => {
-    const raw = await SecureStore.getItemAsync("safezone.unlock");
+    const raw = await SecureStore.getItemAsync("safezone_unlock");
     return raw ? JSON.parse(raw) : null;
   };
   beforeEach(async () => {
-    await SecureStore.deleteItemAsync("safezone.unlock");
+    await SecureStore.deleteItemAsync("safezone_unlock");
   });
 
   it("unlocking keeps only the token and its expiry; locking wipes them", async () => {
@@ -118,18 +118,18 @@ describe("the unlock window survives a cold start, like the web's reload", () =>
   });
 
   it("restore: inside the window the vault opens again; past it, nothing and the copy is wiped", async () => {
-    await SecureStore.setItemAsync("safezone.unlock", JSON.stringify({ token: "tok", expiresAt: T0 + 60_000 }));
+    await SecureStore.setItemAsync("safezone_unlock", JSON.stringify({ token: "tok", expiresAt: T0 + 60_000 }));
     expect(await useSafezoneLock.getState().restore(T0)).toBe(true);
     expect(useSafezoneLock.getState()).toMatchObject({ status: { kind: "unlocked" }, token: "tok", expiresAt: T0 + 60_000 });
     useSafezoneLock.getState().reset();
-    await SecureStore.setItemAsync("safezone.unlock", JSON.stringify({ token: "tok", expiresAt: T0 - 1 }));
+    await SecureStore.setItemAsync("safezone_unlock", JSON.stringify({ token: "tok", expiresAt: T0 - 1 }));
     expect(await useSafezoneLock.getState().restore(T0)).toBe(false);
     expect(useSafezoneLock.getState().token).toBeNull();
     expect(await stored()).toBeNull();
   });
 
   it("a damaged copy is ignored and wiped", async () => {
-    await SecureStore.setItemAsync("safezone.unlock", "{not json");
+    await SecureStore.setItemAsync("safezone_unlock", "{not json");
     expect(await useSafezoneLock.getState().restore(T0)).toBe(false);
     expect(await stored()).toBeNull();
   });

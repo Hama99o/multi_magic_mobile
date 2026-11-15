@@ -18,7 +18,6 @@ import { http, __resetTokenCache } from "@/api/http";
 import { __resetFingerprintCache } from "@/lib/fingerprint";
 import { testQueryClient } from "@/__tests__/queryClient";
 import { useSafezoneLock } from "@/stores/safezoneLock.store";
-import { safezoneKeys } from "@/api/safezone";
 import { clipboardGuard } from "../clipboardGuard";
 import SafeZone from "../../../../app/safezone";
 import SafeZoneItem from "../../../../app/safezone/item";
@@ -96,7 +95,7 @@ beforeEach(async () => {
   mock.onGet(`${BASE}/identities`).reply(200, list("identities", []));
   let renewals = 0;
   mock.onPost(`${BASE}/pin/refresh`).reply(() => [200, { unlock_token: `tok-r${++renewals}`, expires_in: 120 }]);
-  await jest.requireMock("expo-secure-store").deleteItemAsync("safezone.unlock");
+  await jest.requireMock("expo-secure-store").deleteItemAsync("safezone_unlock");
 });
 afterEach(() => {
   mock.restore();
@@ -374,12 +373,12 @@ describe("locking", () => {
   it("a cold start inside the window opens the vault without the PIN; outside, it asks", async () => {
     const SecureStore = jest.requireMock("expo-secure-store");
     mock.onGet(`${BASE}/pin`).reply(200, status());
-    await SecureStore.setItemAsync("safezone.unlock", JSON.stringify({ token: "tok", expiresAt: Date.now() + 60_000 }));
+    await SecureStore.setItemAsync("safezone_unlock", JSON.stringify({ token: "tok", expiresAt: Date.now() + 60_000 }));
     renderScreen(<SafeZone />);
     expect(await screen.findByTestId("safezone-list")).toBeTruthy();
     screen.unmount();
     useSafezoneLock.getState().reset(); // a new process: memory empty
-    await SecureStore.setItemAsync("safezone.unlock", JSON.stringify({ token: "tok", expiresAt: Date.now() - 1 }));
+    await SecureStore.setItemAsync("safezone_unlock", JSON.stringify({ token: "tok", expiresAt: Date.now() - 1 }));
     renderScreen(<SafeZone />);
     expect(await screen.findByTestId("safezone-unlock")).toBeTruthy();
   });

@@ -8,7 +8,7 @@
  */
 import * as SecureStore from "expo-secure-store";
 
-const KEY = "safezone.unlock";
+const KEY = "safezone_unlock"; // the web's sessionStorage key
 
 export interface StoredUnlock {
   token: string;

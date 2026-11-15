@@ -94,6 +94,9 @@ beforeEach(async () => {
   mock.onGet(`${BASE}/passwords`).reply(200, list("passwords", [password]));
   mock.onGet(`${BASE}/payment_cards`).reply(200, list("payment_cards", [card]));
   mock.onGet(`${BASE}/identities`).reply(200, list("identities", []));
+  let renewals = 0;
+  mock.onPost(`${BASE}/pin/refresh`).reply(() => [200, { unlock_token: `tok-r${++renewals}`, expires_in: 120 }]);
+  await jest.requireMock("expo-secure-store").deleteItemAsync("safezone.unlock");
 });
 afterEach(() => {
   mock.restore();
@@ -252,8 +255,9 @@ describe("the gate", () => {
     act(() => jest.advanceTimersByTime(1_000));
     expect(screen.queryByTestId("safezone-pin-notice")).toBeNull();
     typePin("333333");
-    await waitFor(() => expect(mock.history.post).toHaveLength(2));
-    expect(JSON.parse(mock.history.post[1].data as string)).toEqual({ pin: "333333" });
+    const unlocks = () => mock.history.post.filter((r) => r.url?.endsWith("/pin/unlock"));
+    await waitFor(() => expect(unlocks()).toHaveLength(2));
+    expect(JSON.parse(unlocks()[1].data as string)).toEqual({ pin: "333333" });
   });
 
   it("the lockout counts down to 0, then asks the server again and gives the pad back", async () => {
@@ -299,12 +303,25 @@ describe("the gate", () => {
 });
 
 describe("locking", () => {
-  it("going to the background locks, and drops even the stripped list", async () => {
+  // The web's window (owner, TestFlight 1.2.0, 2026-11-15: "it is asking each
+  // time the password, not same as web"): a hidden tab stays unlocked until
+  // its token expires, so the background no longer locks.
+  it("the background keeps the vault open; back inside the window, the token is renewed at once", async () => {
     await unlockVault();
     act(() => appState.forEach((fn) => fn("background")));
+    expect(useSafezoneLock.getState().status).toEqual({ kind: "unlocked" });
+    const before = mock.history.post.filter((r) => r.url?.endsWith("/pin/refresh")).length;
+    act(() => appState.forEach((fn) => fn("active")));
+    await waitFor(() => expect(mock.history.post.filter((r) => r.url?.endsWith("/pin/refresh")).length).toBe(before + 1));
+    expect(screen.getByTestId("safezone-list")).toBeTruthy();
+  });
+
+  it("back after the window has passed, it asks for the PIN", async () => {
+    await unlockVault();
+    act(() => appState.forEach((fn) => fn("background")));
+    act(() => useSafezoneLock.setState({ expiresAt: Date.now() - 1 }));
+    act(() => appState.forEach((fn) => fn("active")));
     await screen.findByTestId("safezone-unlock");
-    expect(useSafezoneLock.getState().token).toBeNull();
-    expect(client.getQueryCache().findAll({ queryKey: safezoneKeys.lists() })).toHaveLength(0);
   });
 
   it("the app switcher (inactive) covers the vault", async () => {
@@ -321,12 +338,15 @@ describe("locking", () => {
     await screen.findByTestId("safezone-unlock");
   });
 
-  it("leaving SafeZone locks it, and drops even the stripped list", async () => {
+  it("leaving SafeZone stops renewing but keeps the token: back inside the window, no PIN", async () => {
     await unlockVault();
-    expect(client.getQueryCache().findAll({ queryKey: safezoneKeys.lists() }).length).toBeGreaterThan(0);
     screen.unmount();
-    expect(useSafezoneLock.getState()).toMatchObject({ token: null, status: { kind: "locked" } });
-    expect(client.getQueryCache().findAll({ queryKey: safezoneKeys.lists() })).toHaveLength(0);
+    expect(useSafezoneLock.getState().status).toEqual({ kind: "unlocked" });
+    const renewed = mock.history.post.filter((r) => r.url?.endsWith("/pin/refresh")).length;
+    renderScreen(<SafeZone />);
+    expect(await screen.findByTestId("safezone-list")).toBeTruthy();
+    expect(screen.queryByTestId("safezone-unlock")).toBeNull();
+    expect(mock.history.post.filter((r) => r.url?.endsWith("/pin/refresh")).length).toBeGreaterThan(renewed);
   });
 
   it("an expired token locks the open vault on the next tick", async () => {
@@ -338,17 +358,30 @@ describe("locking", () => {
     expect(screen.getByTestId("safezone-unlock")).toBeTruthy();
   });
 
-  it("a touch past half the token's life asks the server to slide it", async () => {
-    mock.onPost(`${BASE}/pin/refresh`).reply((config) => {
-      expect(config.headers?.["X-Safezone-Unlock"]).toBe("tok");
-      return [200, { unlock_token: "tok-2", expires_in: 120 }];
-    });
+  it("while SafeZone is open the token is renewed at once and every 60 s, touch or not (3 min idle stays open)", async () => {
+    jest.useFakeTimers({ doNotFake: ["nextTick", "setImmediate"] });
     await unlockVault();
-    fireEvent(screen.getByTestId("safezone-list"), "touchStart");
-    expect(mock.history.post.filter((r) => r.url?.endsWith("/pin/refresh"))).toHaveLength(0);
-    act(() => useSafezoneLock.setState({ expiresAt: Date.now() + 30_000 }));
-    fireEvent(screen.getByTestId("safezone-list"), "touchStart");
-    await waitFor(() => expect(useSafezoneLock.getState().token).toBe("tok-2"));
+    const renewals = () => mock.history.post.filter((r) => r.url?.endsWith("/pin/refresh")).length;
+    await waitFor(() => expect(renewals()).toBe(1));
+    await act(async () => { jest.advanceTimersByTime(60_000); });
+    await waitFor(() => expect(renewals()).toBe(2));
+    await act(async () => { jest.advanceTimersByTime(120_000); });
+    await waitFor(() => expect(renewals()).toBe(4));
+    expect(useSafezoneLock.getState().status).toEqual({ kind: "unlocked" });
+    expect(screen.getByTestId("safezone-list")).toBeTruthy();
+  });
+
+  it("a cold start inside the window opens the vault without the PIN; outside, it asks", async () => {
+    const SecureStore = jest.requireMock("expo-secure-store");
+    mock.onGet(`${BASE}/pin`).reply(200, status());
+    await SecureStore.setItemAsync("safezone.unlock", JSON.stringify({ token: "tok", expiresAt: Date.now() + 60_000 }));
+    renderScreen(<SafeZone />);
+    expect(await screen.findByTestId("safezone-list")).toBeTruthy();
+    screen.unmount();
+    useSafezoneLock.getState().reset(); // a new process: memory empty
+    await SecureStore.setItemAsync("safezone.unlock", JSON.stringify({ token: "tok", expiresAt: Date.now() - 1 }));
+    renderScreen(<SafeZone />);
+    expect(await screen.findByTestId("safezone-unlock")).toBeTruthy();
   });
 
   it("back from the background, an overdue clipboard clear runs", async () => {
@@ -391,7 +424,8 @@ describe("the item: reveal and copy", () => {
     fireEvent.press(screen.getByTestId("safezone-field-password-reveal"));
     await waitFor(() => expect(screen.getByTestId("safezone-field-password-value").props.children).toBe(SECRET));
     expect(mock.history.get.length).toBe(before + 1);
-    expect(mock.history.get.at(-1)?.headers?.["X-Safezone-Unlock"]).toBe("tok");
+    // The token in use, renewed on entry (the web's window): never a stale one.
+    expect(mock.history.get.at(-1)?.headers?.["X-Safezone-Unlock"]).toBe(useSafezoneLock.getState().token);
     act(() => jest.advanceTimersByTime(19_000));
     expect(screen.getByTestId("safezone-field-password-value").props.children).toBe(SECRET);
     act(() => jest.advanceTimersByTime(1_000));

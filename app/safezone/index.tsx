@@ -37,7 +37,7 @@ export default function SafeZoneScreen() {
         </Text>
         <LockButton />
       </View>
-      <SafeZoneGate lockOnLeave>
+      <SafeZoneGate>
         <Vault />
       </SafeZoneGate>
     </Screen>

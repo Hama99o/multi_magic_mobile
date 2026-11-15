@@ -7,6 +7,7 @@
  * app sits on a conversation that silently fails every request.
  */
 import { create } from "zustand";
+import { endSession } from "@/lib/sessionEnd";
 import {
   signIn as apiSignIn,
   signOut as apiSignOut,
@@ -35,6 +36,7 @@ import { t } from "@/i18n";
  * that somehow skipped the sign-out still starts clean.
  */
 export function forgetSession(): void {
+  endSession(); // SafeZone's unlock window and anything else per-session
   queryClient.clear();
   resetCable();
   void useReadAloud.getState().stop();

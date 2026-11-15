@@ -3,13 +3,20 @@
  * its children only while the vault is unlocked. Otherwise it renders Set a
  * PIN, the PIN pad, or the server's lockout.
  *
- * It also enforces the locking rules while any SafeZone screen is open:
- * - background → `lock()`; `inactive` (the app switcher) → a cover;
- * - back to `active` → an overdue clipboard clear, and the token's expiry
- *   checked;
- * - a tick every 5 s locks an expired token;
- * - a touch past the token's half-life asks the server to slide it;
- * - `lockOnLeave` (the vault's root screen): leaving SafeZone locks it.
+ * The unlock window is the WEB's (owner, TestFlight 1.2.0, 2026-11-15: "it is
+ * asking each time the password, not same as web"; SECURITY.md §10):
+ * - one PIN opens a server token valid 2 minutes; while any SafeZone screen is
+ *   open it is renewed at once and every 60 s, touch or not (the web's
+ *   SafezoneGate: REFRESH_EVERY_MS = 60_000);
+ * - leaving SafeZone or going to the background stops the renewals; the token
+ *   dies on its own within 2 minutes, so coming back inside the window does
+ *   not ask, after it does;
+ * - a cold start inside the window opens again (the web's sessionStorage
+ *   survives a reload): only the token and its expiry are in the secure store;
+ * - `inactive` (the app switcher) → a cover; back to `active` → an overdue
+ *   clipboard clear, the expiry checked, then a renewal;
+ * - a tick every 5 s locks an expired token; the padlock, a 403 from the
+ *   server and sign-out lock at once.
  * And it keeps screen capture blocked (`useSecureScreen`).
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
@@ -30,12 +37,27 @@ import { PinPad } from "./PinPad";
 import { useSecureScreen } from "./secureScreen";
 
 const TICK_MS = 5_000;
+/** The web's renewal period (SafezoneGate.tsx: REFRESH_EVERY_MS); the server's token lives 2 min. */
+export const RENEW_EVERY_MS = 60_000;
 const RATE_LIMIT_MS = 60_000;
 
-export function SafeZoneGate({ children, lockOnLeave = false }: { children: ReactNode; lockOnLeave?: boolean }) {
+export function SafeZoneGate({ children }: { children: ReactNode }) {
   const status = useSafezoneLock((s) => s.status);
   const queryClient = useQueryClient();
   const [covered, setCovered] = useState(false);
+  // A cold start inside the window opens again: look in the secure store first.
+  const [restored, setRestored] = useState(() => useSafezoneLock.getState().status.kind === "unlocked");
+  useEffect(() => {
+    if (restored) return;
+    let live = true;
+    void useSafezoneLock
+      .getState()
+      .restore()
+      .finally(() => live && setRestored(true));
+    return () => {
+      live = false;
+    };
+  }, [restored]);
 
   useSecureScreen("safezone");
 
@@ -46,7 +68,7 @@ export function SafeZoneGate({ children, lockOnLeave = false }: { children: Reac
   const pin = useQuery({
     queryKey: safezoneKeys.pin(),
     queryFn: safezoneApi.pinStatus,
-    enabled: status.kind !== "unlocked",
+    enabled: restored && status.kind !== "unlocked",
     retry: false,
     gcTime: 0,
   });
@@ -60,13 +82,34 @@ export function SafeZoneGate({ children, lockOnLeave = false }: { children: Reac
   // Locking drops even the stripped lists.
   useEffect(() => onSafezoneLock(() => queryClient.removeQueries({ queryKey: safezoneKeys.lists() })), [queryClient]);
 
+  // Renew the window: at once, then every 60 s while unlocked and on screen.
+  // A refused renewal has already locked the vault (safezone_pin_locked); a
+  // network failure leaves the token to expire on its own.
+  const renewing = useMutation({
+    mutationFn: safezoneApi.refresh,
+    onSuccess: (grant) => useSafezoneLock.getState().unlocked(grant),
+    onError: () => undefined,
+  });
+  const { mutate: renewMutate } = renewing;
+  const renew = useCallback(() => {
+    const token = useSafezoneLock.getState().liveToken();
+    if (token) renewMutate(token);
+  }, [renewMutate]);
+  const unlockedNow = status.kind === "unlocked";
+  useEffect(() => {
+    if (!unlockedNow) return;
+    renew();
+    const id = setInterval(renew, RENEW_EVERY_MS);
+    return () => clearInterval(id);
+  }, [unlockedNow, renew]);
+
   useEffect(() => {
     const sub = AppState.addEventListener("change", (next) => {
       setCovered(next === "inactive");
-      if (next === "background") useSafezoneLock.getState().lock();
       if (next === "active") {
         void clipboardGuard.clearIfDue();
         useSafezoneLock.getState().expireIfDue();
+        renew();
       }
     });
     const tick = setInterval(() => useSafezoneLock.getState().expireIfDue(), TICK_MS);
@@ -74,34 +117,7 @@ export function SafeZoneGate({ children, lockOnLeave = false }: { children: Reac
       sub.remove();
       clearInterval(tick);
     };
-  }, []);
-
-  // Leaving SafeZone locks it AND drops the lists here, not through the
-  // listener above: React runs cleanups in declaration order, so that
-  // listener is already unsubscribed when this one locks (found in review,
-  // 2026-11-13; `safezoneApp.test.tsx` "leaving SafeZone…").
-  useEffect(
-    () => () => {
-      if (!lockOnLeave) return;
-      useSafezoneLock.getState().lock();
-      queryClient.removeQueries({ queryKey: safezoneKeys.lists() });
-    },
-    [lockOnLeave, queryClient],
-  );
-
-  // A refused refresh has already locked the vault (safezone_pin_locked); a
-  // network failure leaves the token to expire on its own.
-  const refreshing = useMutation({
-    mutationFn: safezoneApi.refresh,
-    onSuccess: (grant) => useSafezoneLock.getState().unlocked(grant),
-    onError: () => undefined,
-  });
-  const touch = () => {
-    const lock = useSafezoneLock.getState();
-    const token = lock.liveToken();
-    if (!token || !lock.needsRefresh()) return;
-    if (!refreshing.isPending) refreshing.mutate(token);
-  };
+  }, [renew]);
 
   let body: ReactNode;
   if (status.kind === "unlocked") body = children;
@@ -111,7 +127,7 @@ export function SafeZoneGate({ children, lockOnLeave = false }: { children: Reac
   else body = <Checking error={statusError} onRetry={loadStatus} />;
 
   return (
-    <View style={{ flex: 1 }} onTouchStart={touch}>
+    <View style={{ flex: 1 }}>
       {body}
       {covered ? <Cover /> : null}
     </View>

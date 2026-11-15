@@ -179,7 +179,7 @@ stays NOT MEASURED: not a pass, and not a failure.
 | D8 | Copy, switch away at once, paste elsewhere within 30 s works; come back after 30 s and the clipboard is cleared on return | both | |
 | D9 | iOS: does the clear raise the "Allow paste" prompt? (it must not: we never read the pasteboard there) | iPhone | |
 | D10 | Android 13+: the clipboard preview chip shows the copied secret (`EXTRA_IS_SENSITIVE` is not set: SECURITY §9) | Android 13+ | confirm the known gap |
-| D11 | Background → back: the PIN is asked again | both | |
+| D11 | Background → back: inside 2 min the vault is still open (renewed at once); after, the PIN (the web's window, 2026-11-15) | both | |
 | D12 | Kill the app with a copied secret pending: the copy stays (known gap) | both | confirm the gap |
 | D13 | The pad, the vault and an item at 360 / 411 / 800 dp, light and dark, en and fr: shots into `ours/` | Android | the `DONE` bar |
 | D14 | The heap: a dropped secret is unreachable, not overwritten (SECURITY §9). Not measurable with our tools; listed so nobody counts it | | none |

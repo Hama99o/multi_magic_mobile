@@ -38,14 +38,16 @@ a rollback would send plaintext again. So:
 
 - `POST /pin/unlock {pin}` → `{unlock_token, expires_in: 120}`. It is sent as
   `X-Safezone-Unlock` on every SafeZone request (`SafezonePinGuard`).
-- **Memory only**: `src/stores/safezoneLock.store.ts` is a zustand store
-  **without** `persist`. A cold start always asks for the PIN. (The web keeps
-  it in `sessionStorage`; a phone has no "tab closed", so it gets no storage at
-  all.)
-- **The expiry is the server's**: `expiresAt = now + expires_in`. The phone
-  never extends it on its own; it calls `POST /pin/refresh` on activity once
-  the token is past half its life. With no activity it lets the token expire
-  and the vault locks.
+- **The web's window since 2026-11-15** (owner, TestFlight 1.2.0: "it is
+  asking each time the password, not same as web"). The lock store keeps the
+  token in memory, and `src/stores/safezoneUnlockVault.ts` keeps **only the
+  token and its expiry** in the secure store, so a cold start inside the
+  window opens again, as the web's `sessionStorage` does across a reload.
+  Never the PIN (`rules.test.ts` reads the vault's source).
+- **The expiry is the server's**: `expiresAt = now + expires_in` (120 s).
+  While a SafeZone screen is open the gate renews it at once and every 60 s,
+  touch or not (the web's `REFRESH_EVERY_MS`). Leaving SafeZone or going to
+  the background stops the renewals; the token dies within 2 minutes.
 - **Any `403 safezone_pin_locked` locks the vault at once**, wherever it comes
   from (`lockOnRejection` in the API layer). The server is the authority; the
   phone's clock is only for display.
@@ -72,13 +74,16 @@ the server's.
 `lock()` drops the token **and** tells every open item screen to wipe its
 secrets (`lockEpoch` increments; `useSecretFields` clears on change). It runs:
 
-1. **when the app goes to the background** (`AppState` → `background`). On
-   `inactive` (the iOS app switcher, Control Centre) a cover hides the screen,
-   so the switcher's snapshot shows no secret (`SafeZoneCover`);
-2. **when the token expires** with no activity (≤ 120 s, the server's TTL);
-3. **on any `safezone_pin_locked`** from the server;
-4. **on leaving SafeZone**, which covers sign-out: the vault's root screen locks when it unmounts (`lockOnLeave`), and a sign-out or an expired session replaces the route. The token exists only while SafeZone is on screen; the auth store does not call the lock store;
-5. **when the person taps the padlock** in the header.
+1. **when the token expires**: ≤ 120 s after its last renewal, i.e. after
+   leaving SafeZone or going to the background (a 5 s tick, and a check on
+   return to `active`). On `inactive` (the iOS app switcher, Control Centre) a
+   cover hides the screen, so the switcher's snapshot shows no secret;
+2. **on any `safezone_pin_locked`** from the server;
+3. **on sign-out**, forced or not: `forgetSession()` → `endSession()`
+   (`src/lib/sessionEnd.ts`) → the lock store locks and wipes the vault;
+4. **when the person taps the padlock** in the header.
+Until 2026-11-15 the background and leaving SafeZone locked at once; the owner
+asked for the web's behaviour.
 
 ## 5 · Reveal
 
@@ -182,12 +187,12 @@ secrets (`lockEpoch` increments; `useSecretFields` clears on change). It runs:
 
 | | Web (`app/javascript/pages/safezone/`) | Phone |
 |---|---|---|
-| Unlock token storage | `sessionStorage` (survives a reload, per tab) | memory only; a cold start asks again |
-| Token refresh | every 60 s while the gate is mounted | on activity, past half-life; idle lets it expire |
+| Unlock token storage | `sessionStorage` (survives a reload, per tab) | memory + the token and expiry in the secure store (survives a cold start inside the window) |
+| Token refresh | every 60 s while the gate is mounted | the same: at once and every 60 s while a SafeZone screen is open |
 | Lists | plaintext secrets in every row | `?masked=1` + stripped on the phone |
 | Reveal | the plaintext is already in the page | fetched per item, on demand, auto-hidden after 20 s |
 | Clipboard | never cleared | cleared after 30 s, on lock, and when overdue on return |
-| Lock on leaving | no (tab stays unlocked until the token expires) | on background, at once |
+| Lock on leaving | no (tab stays unlocked until the token expires) | the same: no; the token expires ≤ 2 min after leaving or the background |
 | Screenshots | n/a | `FLAG_SECURE` (Android), detection (iOS) |
 | No PIN set | vault open | vault refuses to open; "Set a PIN" |
 | Lockout | shown | shown, keypad disabled until `locked_until` |

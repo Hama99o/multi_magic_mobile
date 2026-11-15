@@ -42,6 +42,22 @@ describe("no storage, no logs, nowhere else", () => {
     expect(source.match(/\bSecureStore\b/g)).toHaveLength(2);
   });
 
+  // SECOND reasoned exception (owner, 2026-11-15: the web's unlock window): the
+  // unlock vault keeps the server's signed token and its expiry across a cold
+  // start, as the web's sessionStorage does across a reload. Exactly those two
+  // fields, under one key; never the PIN or a secret.
+  const UNLOCK_VAULT = join(ROOT, "src/stores/safezoneUnlockVault.ts");
+  it("the unlock vault writes only {token, expiresAt} under safezone.unlock", () => {
+    const source = readFileSync(UNLOCK_VAULT, "utf8");
+    expect(source).toMatch(/^const KEY = "safezone\.unlock";$/m);
+    expect(source).toMatch(/JSON\.stringify\(\{ token: u\.token, expiresAt: u\.expiresAt \}\)/);
+    expect(source.match(/setItemAsync/g)).toHaveLength(1);
+    expect(source).not.toMatch(/async-storage|zustand\/middleware|\bpersist\(|\bconsole\./);
+    // No code mentions the PIN (comments may say "never the PIN").
+    const code = source.replace(/\/\*[\s\S]*?\*\//g, "").replace(/\/\/.*$/gm, "");
+    expect(code).not.toMatch(/\bpin\b/i);
+  });
+
   it.each(SAFEZONE_FILES.map((f) => [f.replace(ROOT + "/", ""), f]))("%s", (_name, file) => {
     const source = readFileSync(file, "utf8");
     if (file === MAY_HOLD_THE_MARKER) expect(source).not.toMatch(/async-storage|zustand\/middleware|\bpersist\(/);

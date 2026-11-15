@@ -90,3 +90,56 @@ describe("the lock store", () => {
     expect((useSafezoneLock as unknown as { persist?: unknown }).persist).toBeUndefined();
   });
 });
+
+// The web's unlock window (owner, TestFlight 1.2.0, 2026-11-15: "it is asking
+// each time the password, not same as web"). The web keeps the token in
+// sessionStorage (it survives a reload); the phone keeps ONLY the token and
+// its expiry in the secure store, so a cold start inside the window does not
+// ask. Never the PIN.
+describe("the unlock window survives a cold start, like the web's reload", () => {
+  const SecureStore = jest.requireMock("expo-secure-store") as {
+    getItemAsync: jest.Mock; setItemAsync: jest.Mock; deleteItemAsync: jest.Mock;
+  };
+  const stored = async () => {
+    const raw = await SecureStore.getItemAsync("safezone.unlock");
+    return raw ? JSON.parse(raw) : null;
+  };
+  beforeEach(async () => {
+    await SecureStore.deleteItemAsync("safezone.unlock");
+  });
+
+  it("unlocking keeps only the token and its expiry; locking wipes them", async () => {
+    useSafezoneLock.getState().unlocked({ token: "tok", expiresIn: 120 }, T0);
+    await new Promise((r) => setImmediate(r));
+    expect(await stored()).toEqual({ token: "tok", expiresAt: T0 + 120_000 });
+    useSafezoneLock.getState().lock();
+    await new Promise((r) => setImmediate(r));
+    expect(await stored()).toBeNull();
+  });
+
+  it("restore: inside the window the vault opens again; past it, nothing and the copy is wiped", async () => {
+    await SecureStore.setItemAsync("safezone.unlock", JSON.stringify({ token: "tok", expiresAt: T0 + 60_000 }));
+    expect(await useSafezoneLock.getState().restore(T0)).toBe(true);
+    expect(useSafezoneLock.getState()).toMatchObject({ status: { kind: "unlocked" }, token: "tok", expiresAt: T0 + 60_000 });
+    useSafezoneLock.getState().reset();
+    await SecureStore.setItemAsync("safezone.unlock", JSON.stringify({ token: "tok", expiresAt: T0 - 1 }));
+    expect(await useSafezoneLock.getState().restore(T0)).toBe(false);
+    expect(useSafezoneLock.getState().token).toBeNull();
+    expect(await stored()).toBeNull();
+  });
+
+  it("a damaged copy is ignored and wiped", async () => {
+    await SecureStore.setItemAsync("safezone.unlock", "{not json");
+    expect(await useSafezoneLock.getState().restore(T0)).toBe(false);
+    expect(await stored()).toBeNull();
+  });
+
+  it("the end of the session (sign-out, forced or not) locks and wipes the copy", async () => {
+    const { endSession } = jest.requireActual("@/lib/sessionEnd");
+    useSafezoneLock.getState().unlocked({ token: "tok", expiresIn: 120 }, T0);
+    endSession();
+    await new Promise((r) => setImmediate(r));
+    expect(useSafezoneLock.getState().token).toBeNull();
+    expect(await stored()).toBeNull();
+  });
+});

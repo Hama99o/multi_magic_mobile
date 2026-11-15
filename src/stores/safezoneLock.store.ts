@@ -13,6 +13,8 @@
  */
 import { create } from "zustand";
 import { setSafezoneLockedHandler, type PinStatus, type UnlockGrant } from "@/api/safezone";
+import { onSessionEnd } from "@/lib/sessionEnd";
+import { unlockVault } from "./safezoneUnlockVault";
 
 export type LockStatus =
   | { kind: "unknown" }
@@ -35,6 +37,8 @@ interface LockState {
   liveToken: (now?: number) => string | null;
   needsRefresh: (now?: number) => boolean;
   expireIfDue: (now?: number) => void;
+  /** A cold start inside the window opens the vault again (the web's reload); true if it did. */
+  restore: (now?: number) => Promise<boolean>;
   reset: () => void;
 }
 
@@ -57,8 +61,11 @@ export const useSafezoneLock = create<LockState>((set, get) => ({
     else if (get().status.kind !== "unlocked") set({ status: { kind: "locked", attemptsLeft: pin.attemptsLeft } });
   },
 
-  unlocked: (grant, now = Date.now()) =>
-    set({ status: { kind: "unlocked" }, token: grant.token, ttlMs: grant.expiresIn * 1000, expiresAt: now + grant.expiresIn * 1000 }),
+  unlocked: (grant, now = Date.now()) => {
+    const expiresAt = now + grant.expiresIn * 1000;
+    set({ status: { kind: "unlocked" }, token: grant.token, ttlMs: grant.expiresIn * 1000, expiresAt });
+    void unlockVault.save({ token: grant.token, expiresAt });
+  },
 
   wrongPin: (attemptsLeft) => set({ status: { kind: "locked", attemptsLeft } }),
 
@@ -69,6 +76,7 @@ export const useSafezoneLock = create<LockState>((set, get) => ({
     const next: LockStatus =
       status.kind === "notEnabled" || status.kind === "lockedOut" ? status : { kind: "locked", attemptsLeft: null };
     set({ status: next, token: null, expiresAt: null, lockEpoch: lockEpoch + 1 });
+    void unlockVault.clear();
     for (const fn of [...listeners]) {
       try {
         fn();
@@ -93,7 +101,21 @@ export const useSafezoneLock = create<LockState>((set, get) => ({
     if (get().token && !get().liveToken(now)) get().lock();
   },
 
+  restore: async (now = Date.now()) => {
+    const saved = await unlockVault.load();
+    if (!saved || saved.expiresAt <= now) {
+      await unlockVault.clear();
+      return false;
+    }
+    if (get().status.kind === "unlocked") return true;
+    set({ status: { kind: "unlocked" }, token: saved.token, expiresAt: saved.expiresAt, ttlMs: Math.max(saved.expiresAt - now, 0) });
+    return true;
+  },
+
+  // Memory only (tests, a process restart); the secure copy is the cold start's.
   reset: () => set({ ...INITIAL, lockEpoch: 0 }),
 }));
 
 setSafezoneLockedHandler(() => useSafezoneLock.getState().lock());
+// Sign-out, forced or not: lock and wipe the window (leaving SafeZone no longer does).
+onSessionEnd(() => useSafezoneLock.getState().lock());

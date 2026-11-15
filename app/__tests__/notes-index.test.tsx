@@ -39,7 +39,7 @@ beforeEach(async () => {
   mockPush.mockClear();
   await AsyncStorage.clear();
   useNotesView.setState({ layout: "grid", userId: null });
-  useAuthStore.setState({ user: { id: 1, email: "qa@example.com", fullName: "QA" } as never });
+  useAuthStore.setState({ status: "signedIn", user: { id: 1, email: "qa@example.com", fullName: "QA" } as never });
   server = [
     note(1, { pinned: true, title: "Pinned seed", color: "orange" }),
     note(2, { tags: [{ id: 3, name: "dev-stuff", color: "teal" }] }),
@@ -350,5 +350,25 @@ describe("a search result opens on the first tap (device, 2026-11-13: the first 
     open();
     const list = await screen.findByTestId("notes-list");
     expect(list.props.keyboardShouldPersistTaps).toBe("handled");
+  });
+});
+
+// TestFlight 1.2.0 (owner, 2026-11-15): "profile photo did not show for note
+// on topbar side". The Notes bar read the sign-in identity from the auth store
+// (no photo there since the 2026-11-13 data audit); Home reads the profile
+// (useMe), which has it. The Notes bar now reads the same profile.
+describe("the profile photo in the Notes bar", () => {
+  it("shows the photo from the profile, even when the sign-in identity has none", async () => {
+    useAuthStore.setState({ status: "signedIn", user: { id: 1, email: "qa@example.com", fullName: "QA", avatar: null } as never });
+    mock.onGet("/api/v1/users/connected_user").reply(200, {
+      user: { id: 1, email: "qa@example.com", firstname: "Q", lastname: "A", full_name: "Q A", avatar: "/rails/active_storage/blobs/x/qa.jpg" },
+    });
+    open();
+    await screen.findByText("Pinned seed");
+    const { Image } = jest.requireActual("react-native");
+    await waitFor(() => {
+      const imgs = within(screen.getByTestId("notes-profile")).UNSAFE_queryAllByType(Image);
+      expect(imgs.map((i) => (i.props as { source?: { uri?: string } }).source?.uri)).toEqual([expect.stringMatching(/^https?:\/\/.+\/rails\/active_storage\/blobs\/x\/qa\.jpg$/)]);
+    });
   });
 });

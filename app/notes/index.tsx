@@ -34,7 +34,7 @@ import {
   useTrashNote, useUnarchiveNote,
 } from "@/screens/notes/api/queries";
 import { NOTES_EDITOR_ENABLED } from "@/config/features";
-import { useAuthStore } from "@/stores/auth.store";
+import { useMe } from "@/hooks/useMe";
 import { useNotesView } from "@/stores/notesView.store";
 import { Avatar } from "@/screens/people/Avatar";
 import { cardPreview } from "@/screens/notes/cardPreview";
@@ -63,7 +63,9 @@ export default function NotesScreen() {
   // whole width, as on a phone (seen at 800 dp: it was an inset box).
   const { width } = useWindowDimensions();
   const bleed = Math.max(0, (width - metrics.maxMeasure) / 2);
-  const user = useAuthStore((s) => s.user);
+  // The profile (photo included), as Home reads it: the auth store holds only
+  // the sign-in identity (TestFlight 1.2.0, 2026-11-15: no photo in this bar).
+  const user = useMe();
   const layout = useNotesView((s) => s.layout);
   const setLayout = useNotesView((s) => s.setLayout);
   useEffect(() => {

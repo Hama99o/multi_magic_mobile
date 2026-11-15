@@ -189,3 +189,7 @@ jest.mock("expo-share-intent", () => ({
   }),
   getShareExtensionKey: () => "multimagicShareKey",
 }));
+
+// Reanimated's own Jest mock: animations run to their end at once, so a test
+// sees the final state (SafeZone's pad and lists, 2026-11-15).
+jest.mock("react-native-reanimated", () => require("react-native-reanimated/mock"));

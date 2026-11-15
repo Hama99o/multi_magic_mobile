@@ -20,6 +20,7 @@
  * And it keeps screen capture blocked (`useSecureScreen`).
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
+import * as Haptics from "expo-haptics";
 import { ActivityIndicator, AppState, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -169,6 +170,7 @@ function Unlock({ attemptsLeft }: { attemptsLeft: number | null }) {
   const { t } = useTranslation();
   const [busy, setBusy] = useState(false);
   const [wrong, setWrong] = useState(false);
+  const [wrongKey, setWrongKey] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const [pausedUntil, setPausedUntil] = useState(0);
   const [showForgot, setShowForgot] = useState(false);
@@ -190,12 +192,17 @@ function Unlock({ attemptsLeft }: { attemptsLeft: number | null }) {
     setWrong(false);
     unlocking
       .mutateAsync(pin)
-      .then((grant) => useSafezoneLock.getState().unlocked(grant))
+      .then((grant) => {
+        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+        useSafezoneLock.getState().unlocked(grant);
+      })
       .catch((e: unknown) => {
         const lock = useSafezoneLock.getState();
         if (e instanceof SafeZoneError) {
           if (e.kind === "wrongPin") {
             setWrong(true);
+            setWrongKey((k) => k + 1);
+            void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => undefined);
             return lock.wrongPin(e.attemptsLeft);
           }
           if (e.kind === "lockedOut" && e.lockedUntil) return lock.lockedOut(e.lockedUntil);
@@ -230,6 +237,7 @@ function Unlock({ attemptsLeft }: { attemptsLeft: number | null }) {
       </Text>
       <PinPad
         onComplete={submit}
+        wrongKey={wrongKey}
         disabled={busy || pausedUntil > 0}
         underDots={
           <View style={{ alignItems: "center", gap: metrics.space.xs }}>

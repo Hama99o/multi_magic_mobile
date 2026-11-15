@@ -28,6 +28,14 @@ jest.mock("expo-router", () => ({
   useLocalSearchParams: () => mockParams.current,
 }));
 jest.mock("@/lib/cable", () => require("@/__tests__/screenMocks").cable);
+const mockHaptic: string[] = [];
+jest.mock("expo-haptics", () => ({
+  notificationAsync: jest.fn(async (kind: string) => void mockHaptic.push(`notify:${kind}`)),
+  selectionAsync: jest.fn(async () => void mockHaptic.push("select")),
+  impactAsync: jest.fn(async () => void mockHaptic.push("impact")),
+  NotificationFeedbackType: { Success: "success", Error: "error", Warning: "warning" },
+  ImpactFeedbackStyle: { Light: "light", Medium: "medium" },
+}));
 jest.mock("expo-clipboard", () => {
   const board = { text: "" };
   return {
@@ -524,4 +532,28 @@ it("French: the pad and the vault speak French", async () => {
   renderScreen(<SafeZone />);
   expect(await screen.findByText("Saisissez votre code SafeZone")).toBeTruthy();
   expect(screen.getByTestId("safezone-pin-dots").props.accessibilityLabel).toBe("0 chiffres saisis sur 6");
+});
+
+// Owner, TestFlight 1.2.0 (2026-11-15): "the design is uglier and not animated
+// and not well ui ux". The pad feels like a lock screen: a light tap per key,
+// a shake + error haptic + red dots on a wrong PIN, a success haptic on unlock.
+describe("the PIN pad feels like a lock screen", () => {
+  beforeEach(() => void mockHaptic.splice(0));
+
+  it("each key taps lightly; a wrong PIN shakes the dots red with an error haptic, then clears them", async () => {
+    mock.onGet(`${BASE}/pin`).reply(200, status());
+    mock.onPost(`${BASE}/pin/unlock`).reply(403, { error: "wrong_pin", attempts_left: 4 });
+    renderScreen(<SafeZone />);
+    await screen.findByTestId("safezone-unlock");
+    typePin("123456");
+    expect(mockHaptic.filter((h) => h === "select").length).toBe(6);
+    expect(await screen.findByTestId("safezone-pin-dots-wrong")).toBeTruthy();
+    expect(mockHaptic).toContain("notify:error");
+    expect(screen.getByTestId("safezone-pin-dots").props.accessibilityLabel).toMatch(/0 of 6/);
+  });
+
+  it("the right PIN opens with a success haptic", async () => {
+    await unlockVault();
+    expect(mockHaptic).toContain("notify:success");
+  });
 });

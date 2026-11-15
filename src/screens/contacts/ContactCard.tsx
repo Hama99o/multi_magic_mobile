@@ -29,11 +29,13 @@ import {
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
+import { RichText } from "@/components/RichText";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useDraft } from "@/hooks/useDraft";
 import { aiApi } from "@/api/ai";
 import { contactsApi, displayName, RELATION_KINDS, type Contact, type RelationKind } from "@/api/contacts";
 import { failureMessage } from "@/api/failure";
+import { htmlToPlainText } from "@/lib/richText";
 import { ContactAvatar } from "@/screens/contacts/ContactAvatar";
 import { ActionSheet } from "@/screens/contacts/ActionSheet";
 import { useContactActions, type Channel } from "@/screens/contacts/useContactActions";
@@ -361,7 +363,7 @@ export function ContactCard({
           <Card>
             <Pressable
               testID="contact-notes-box"
-              onLongPress={() => copy(contact.notes ?? "")}
+              onLongPress={() => copy(htmlToPlainText(contact.notes ?? ""))}
               accessibilityHint={t("contacts.detail.notesHint")}
               style={{ padding: metrics.space.md, gap: 4 }}
             >
@@ -371,7 +373,8 @@ export function ContactCard({
                   {t("contacts.detail.notes")}
                 </Text>
               </View>
-              <Text testID="contact-notes">{contact.notes}</Text>
+              {/* The web stores notes as Tiptap HTML: drawn like a note, never as tags. */}
+              <RichText testID="contact-notes" value={contact.notes} />
             </Pressable>
           </Card>
         ) : null}

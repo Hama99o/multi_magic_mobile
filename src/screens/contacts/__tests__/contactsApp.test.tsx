@@ -339,6 +339,37 @@ describe("one contact", () => {
     fireEvent.press(await screen.findByTestId("contact-family-who-8"));
     await waitFor(() => expect(mock.history.post.find((r) => r.url === `${BASE}/7/relations`)?.data).toBe(JSON.stringify({ relative_id: 8, kind: "sibling" })));
   });
+
+  // TestFlight: the web stores notes as Tiptap HTML and the card showed the
+  // tags as text. Invented fixture.
+  it("notes stored as HTML are drawn as text, not as tags", async () => {
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact({ notes: "<p>Door code is on the <strong>fridge</strong> &amp; spare key</p><p></p>" }) });
+    renderScreen(<ContactDetail />);
+    const box = await screen.findByTestId("contact-notes");
+    expect(box).toHaveTextContent("Door code is on the fridge & spare key");
+    expect(screen.queryAllByText(/<\/?[a-z][^>]*>/i)).toHaveLength(0);
+    expect(screen.queryAllByText(/&amp;/)).toHaveLength(0);
+    // The empty trailing paragraph is trimmed, not drawn as a blank line.
+    type Node = { type: unknown; children: (Node | string)[] };
+    const textOf = (n: Node): string => n.children.map((c) => (typeof c === "string" ? c : textOf(c))).join("");
+    const blank = box.findAll((n) => (n.type as unknown) === "Text").filter((n) => !textOf(n as unknown as Node).trim());
+    expect(blank.length).toBe(0);
+  });
+
+  it("a long press on HTML notes copies the words, not the markup", async () => {
+    const clipboard = jest.requireMock("expo-clipboard") as { setStringAsync: jest.Mock };
+    clipboard.setStringAsync.mockClear();
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact({ notes: "<p>Door code is on the fridge</p><p>Water the plants</p><p></p>" }) });
+    renderScreen(<ContactDetail />);
+    fireEvent(await screen.findByTestId("contact-notes-box"), "longPress");
+    expect(clipboard.setStringAsync).toHaveBeenCalledWith("Door code is on the fridge\nWater the plants");
+  });
+
+  it("plain-text notes (no tags) still show exactly as typed", async () => {
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact({ notes: "Gate code 4411\nAsk for Bilal at 5 < 6" }) });
+    renderScreen(<ContactDetail />);
+    expect(await screen.findByTestId("contact-notes")).toHaveTextContent("Gate code 4411 Ask for Bilal at 5 < 6");
+  });
 });
 
 // ── THE FORM ───────────────────────────────────────────────────────────────

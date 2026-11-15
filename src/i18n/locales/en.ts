@@ -1031,6 +1031,7 @@ export const en = {
     copy: "Copy {{field}}",
     copied: "Copied",
     copiedClears: "Copied. Cleared from the clipboard in {{seconds}} s.",
+    toast: { copied: "Copied to the clipboard", copiedSecret: "Copied · clears in {{seconds}} s" },
     hidesIn: "Hidden again in {{seconds}} seconds",
     openSite: "Open the website",
     itemFailed: "Could not open this item.",

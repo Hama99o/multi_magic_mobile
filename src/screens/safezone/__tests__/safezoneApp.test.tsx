@@ -416,10 +416,27 @@ describe("the item: reveal and copy", () => {
     await screen.findByTestId("safezone-item-title");
   }
 
+  // Mobbin (1Password): the item opens on its tile and name; a copy answers
+  // with a tinted row, a success haptic and a short toast that says the
+  // clipboard clears in 30 s (D12).
+  it("opens on the item's tile and name", async () => {
+    await openItem();
+    expect(screen.getByTestId("safezone-item-tile")).toHaveTextContent("M");
+    expect(screen.getByTestId("safezone-item-title")).toHaveTextContent("Mail");
+  });
+
+  it("a copy of a secret answers with a success haptic and a toast: clears in 30 s", async () => {
+    mockHaptic.splice(0);
+    await openItem();
+    fireEvent.press(screen.getByTestId("safezone-field-password-copy"));
+    expect(await screen.findByTestId("safezone-toast")).toHaveTextContent(/30/);
+    expect(mockHaptic).toContain("notify:success");
+  });
+
   it("shows the plain fields and masks the secret", async () => {
     await openItem();
     expect(screen.getByText("Mail")).toBeTruthy();
-    expect(screen.getByText("qa-user")).toBeTruthy();
+    expect(screen.getByTestId("safezone-field-username-value")).toHaveTextContent("qa-user");
     expect(screen.getByTestId("safezone-field-password-value").props.children).toBe("••••••••");
     assertNoSecretOnScreen();
   });

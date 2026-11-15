@@ -8,7 +8,7 @@ import { ActivityIndicator, FlatList, Pressable, TextInput, View } from "react-n
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, CreditCard, IdCard, KeyRound, Lock, Search, TriangleAlert, X } from "@/components/icons";
+import { ChevronLeft, ChevronRight, Lock, Search, TriangleAlert, X } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -16,12 +16,11 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { SAFEZONE_KINDS, safezoneApi, safezoneKeys, type SafeZoneKind, type SafeZoneRow } from "@/api/safezone";
 import { useSafezoneLock } from "@/stores/safezoneLock.store";
 import { SafeZoneGate } from "@/screens/safezone/SafeZoneGate";
-import { isExpired, rowSubtitle, siteInitial, stableHash } from "@/screens/safezone/display";
-import { categoryColorFor } from "@/theme/tokens";
+import { isExpired, rowSubtitle } from "@/screens/safezone/display";
+import { KIND_ICONS, Tile } from "@/screens/safezone/Tile";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { secureScreen } from "@/screens/safezone/secureScreen";
 
-const ICONS = { passwords: KeyRound, payment_cards: CreditCard, identities: IdCard } as const;
 const SEARCH_DELAY_MS = 300;
 
 export default function SafeZoneScreen() {
@@ -161,31 +160,11 @@ function rowTitle(row: SafeZoneRow, t: (key: string) => string): string {
   return row.type ? t(`safezone.identityTypes.${row.type}`) : t("safezone.noTitle");
 }
 
-/** The leading tile: a login's site initial on its own colour; a card or a document, its icon. */
-function Tile({ row, size = 44 }: { row: SafeZoneRow; size?: number }) {
-  const colors = useColors();
-  if (row.kind === "passwords") {
-    const site = row.link || row.title || "";
-    const tint = categoryColorFor(stableHash(site.toLowerCase()));
-    return (
-      <View testID={`safezone-tile-${row.kind}-${row.id}`} style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: tint, alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ color: colors.ground, fontSize: size * 0.42, fontWeight: "700" }}>{siteInitial(site)}</Text>
-      </View>
-    );
-  }
-  const Icon = ICONS[row.kind];
-  return (
-    <View testID={`safezone-tile-${row.kind}-${row.id}`} style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: `${colors.accent}22`, alignItems: "center", justifyContent: "center" }}>
-      <Icon size={size * 0.48} color={colors.accent} />
-    </View>
-  );
-}
-
 function EmptyState({ kind, searching }: { kind: SafeZoneKind; searching: boolean }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const Icon = searching ? Search : ICONS[kind];
+  const Icon = searching ? Search : KIND_ICONS[kind];
   return (
     <Animated.View entering={FadeInDown.duration(260)} style={{ alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.xl * 1.5, paddingHorizontal: metrics.space.lg }}>
       <View testID="safezone-empty-art" style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: `${colors.accent}1f`, alignItems: "center", justifyContent: "center", marginBottom: metrics.space.sm }}>
@@ -235,7 +214,7 @@ function Row({ row, index }: { row: SafeZoneRow; index: number }) {
         transform: [{ scale: pressed ? 0.98 : 1 }],
       }}
     >
-      <Tile row={row} />
+      <Tile kind={row.kind} site={row.kind === "passwords" ? row.link || row.title || "" : ""} testID={`safezone-tile-${row.kind}-${row.id}`} />
       <View style={{ flex: 1 }}>
         <Text numberOfLines={1} style={{ fontWeight: "600" }}>{title}</Text>
         <Text tone="muted" variant="caption" numberOfLines={1}>

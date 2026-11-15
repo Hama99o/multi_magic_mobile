@@ -54,6 +54,25 @@ Bitwarden, Apple Passwords, Proton Pass and Dashlane are **not on Mobbin**
 (searched 2026-11-13; the results were other apps). That is said here so
 nobody thinks they were left out.
 
+### B.2 · The redesign (owner, TestFlight 1.2.0, 2026-11-15)
+
+His words: "the design is uglier and not animated and not well ui ux". Checked on Mobbin, 2026-11-15:
+
+| Screen | Reference | What we take |
+|---|---|---|
+| Item | [1Password item](https://mobbin.com/screens/f93aeb4d-8801-43e2-8613-32e160d3fc6e?utm_source=claude-code&utm_medium=ai-assistant&utm_source_platform=mcp), [after a copy](https://mobbin.com/screens/f4cc1f13-a716-4056-840e-7b41aed4fd90?utm_source=claude-code&utm_medium=ai-assistant&utm_source_platform=mcp) | a big tile and the name on top; all fields in ONE rounded card with labels; a copy tints the row and says "Copied" |
+| List | [1Password Watchtower list](https://mobbin.com/screens/f0dc40a5-1e3c-4698-b108-7f55eed340aa?utm_source=claude-code&utm_medium=ai-assistant&utm_source_platform=mcp) | an icon per item. We draw the site's initial on its colour instead of fetching favicons (the web's `siteInitial`: a vault must not tell a third party which sites it holds) |
+| PIN | [Jomo](https://mobbin.com/screens/408e49a0-b167-47a1-af1a-f8b69b399a24?utm_source=claude-code&utm_medium=ai-assistant&utm_source_platform=mcp), [Klarna](https://mobbin.com/screens/fab85215-08e8-4e8c-bd30-bafee52b163a?utm_source=claude-code&utm_medium=ai-assistant&utm_source_platform=mcp) | round soft keys and small dots; we add a spring as each dot fills and a shake on a wrong PIN |
+
+**Not found on Mobbin:** Apple Passwords, Bitwarden and Proton Pass (no screens came back for them). They are not copied from memory.
+
+**Built** (`app/safezone/`, `src/screens/safezone/PinPad.tsx`, `Tile.tsx`, `Toast.tsx`):
+- **List:** card rows with the tile, a short staggered fade-in, an empty state with a picture, a title and a line, and the vault fading in after the unlock.
+- **Item:** the tile and name with a fade-up, then the field card. A copy gives a tinted row, a success haptic and a toast ("Copied · clears in 30 s"). A revealed value fades in.
+- **PIN:** a light haptic per key, dots that spring in, and on a wrong PIN a shake, red dots and an error haptic. The right PIN gives a success haptic.
+- **Animations:** Reanimated 4, light and dark from the tokens.
+- **Tests:** in Jest, Reanimated is mocked to its final values, so the tests check state and haptics. Smoothness is a device check (perf monitor).
+
 ## C · The screens
 
 ### C.1 The gate (`app/safezone/index.tsx` → `SafeZoneGate`)

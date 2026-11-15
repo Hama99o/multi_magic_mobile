@@ -1047,6 +1047,7 @@ export const fr: Translations = {
     copy: "Copier {{field}}",
     copied: "Copié",
     copiedClears: "Copié. Effacé du presse-papiers dans {{seconds}} s.",
+    toast: { copied: "Copié dans le presse-papiers", copiedSecret: "Copié · effacé dans {{seconds}} s" },
     hidesIn: "Masqué à nouveau dans {{seconds}} secondes",
     openSite: "Ouvrir le site",
     itemFailed: "Impossible d’ouvrir cet élément.",

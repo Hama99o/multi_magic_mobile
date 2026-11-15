@@ -25,6 +25,10 @@ import { SafeZoneGate } from "@/screens/safezone/SafeZoneGate";
 import { clipboardGuard } from "@/screens/safezone/clipboardGuard";
 import { MASK, siteUrl, withoutSecrets } from "@/screens/safezone/display";
 import { createRevealer, REVEAL_MS } from "@/screens/safezone/reveal";
+import { Tile } from "@/screens/safezone/Tile";
+import { Toast } from "@/screens/safezone/Toast";
+import * as Haptics from "expo-haptics";
+import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 
 const COPIED_MS = 2_000;
 
@@ -63,6 +67,7 @@ function token(): string {
 }
 
 function Item() {
+  const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const params = useParams();
@@ -72,6 +77,7 @@ function Item() {
   const [revealed, setRevealed] = useState<{ key: string; value: string } | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [copied, setCopied] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
   const revealer = useMemo(() => createRevealer({ onChange: (key) => key === null && setRevealed(null) }), []);
@@ -132,6 +138,9 @@ function Item() {
       else await Clipboard.setStringAsync(field.value);
       setCopied(field.key);
       setTimeout(() => setCopied((k) => (k === field.key ? null : k)), COPIED_MS);
+      // The answer to a copy (Mobbin: 1Password): a success haptic and a toast.
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      setToast(field.secret ? t("safezone.toast.copiedSecret", { seconds: 30 }) : t("safezone.toast.copied"));
     } catch (e) {
       setActionError(failureMessage(e, t("safezone.copyFailed")));
     } finally {
@@ -153,19 +162,34 @@ function Item() {
   if (!item) return <ActivityIndicator testID="safezone-item-loading" style={{ marginTop: metrics.space.xl }} />;
 
   const title = item.kind === "identities" ? t(`safezone.identityTypes.${item.title}`) : item.title || t("safezone.noTitle");
+  const site = item.fields.find((f) => f.key === "link")?.value || item.title || "";
+  const who = item.fields.find((f) => !f.secret && (f.key === "username" || f.key === "email"))?.value ?? "";
   return (
-    <ScrollView contentContainerStyle={{ gap: metrics.space.lg, paddingBottom: 48 }}>
-      <Text variant="title" accessibilityRole="header" testID="safezone-item-title">
-        {title}
-      </Text>
+    <View style={{ flex: 1 }}>
+    <ScrollView contentContainerStyle={{ gap: metrics.space.lg, paddingBottom: 96 }}>
+      <Animated.View entering={FadeInUp.duration(240)} style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.md, paddingTop: metrics.space.sm }}>
+        <Tile kind={item.kind} site={site} size={64} testID="safezone-item-tile" />
+        <View style={{ flex: 1, gap: 2 }}>
+          <Text variant="title" accessibilityRole="header" testID="safezone-item-title" numberOfLines={2}>
+            {title}
+          </Text>
+          {who ? (
+            <Text tone="muted" numberOfLines={1}>
+              {who}
+            </Text>
+          ) : null}
+        </View>
+      </Animated.View>
       {actionError ? (
         <Text testID="safezone-item-error" tone="danger" accessibilityLiveRegion="polite">
           {actionError}
         </Text>
       ) : null}
-      {item.fields.map((field) => (
+      <View style={{ borderRadius: metrics.radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>
+      {item.fields.map((field, i) => (
         <FieldRow
           key={field.key}
+          last={i === item.fields.length - 1}
           field={field}
           kind={item.kind}
           revealed={revealed?.key === field.key ? revealed.value : null}
@@ -176,7 +200,10 @@ function Item() {
           onCopy={() => void copy(field)}
         />
       ))}
+      </View>
     </ScrollView>
+    {toast ? <Toast message={toast} onDone={() => setToast(null)} /> : null}
+    </View>
   );
 }
 
@@ -191,8 +218,9 @@ function shown(field: SecretField, kind: SafeZoneKind, t: (key: string) => strin
 }
 
 function FieldRow({
-  field, kind, revealed, revealer, copied, busy, onReveal, onCopy,
+  field, kind, revealed, revealer, copied, busy, onReveal, onCopy, last = false,
 }: {
+  last?: boolean;
   field: SecretField;
   kind: SafeZoneKind;
   revealed: string | null;
@@ -219,11 +247,25 @@ function FieldRow({
   const icon = { width: metrics.touch, height: metrics.touch, alignItems: "center" as const, justifyContent: "center" as const };
 
   return (
-    <View testID={`safezone-field-${field.key}`} style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, borderBottomWidth: 1, borderBottomColor: colors.border, paddingBottom: metrics.space.sm }}>
+    <View
+      testID={`safezone-field-${field.key}`}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: metrics.space.sm,
+        paddingLeft: metrics.space.md,
+        paddingRight: metrics.space.xs,
+        paddingVertical: metrics.space.sm,
+        borderBottomWidth: last ? 0 : 1,
+        borderBottomColor: colors.border,
+        backgroundColor: copied ? `${colors.accent}1f` : "transparent",
+      }}
+    >
       <View style={{ flex: 1, gap: 2 }}>
         <Text variant="caption" tone="muted">
           {label}
         </Text>
+        <Animated.View key={revealed === null ? "masked" : "shown"} entering={FadeIn.duration(180)}>
         <Text
           testID={`safezone-field-${field.key}-value`}
           selectable={false}
@@ -232,6 +274,7 @@ function FieldRow({
         >
           {copied ? (field.secret ? t("safezone.copiedClears", { seconds: 30 }) : t("safezone.copied")) : value}
         </Text>
+        </Animated.View>
         {field.secret && revealed !== null ? (
           <View testID={`safezone-field-${field.key}-timer`} style={{ height: 3, backgroundColor: colors.border, borderRadius: 2, overflow: "hidden" }} accessibilityLabel={t("safezone.hidesIn", { seconds: left })}>
             <View style={{ height: 3, width: `${Math.min(100, (left * 1000 * 100) / REVEAL_MS)}%`, backgroundColor: colors.accent }} />

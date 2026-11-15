@@ -247,3 +247,34 @@ describe("delete", () => {
     await safezoneApi.remove("passwords", 11, "tok");
   });
 });
+
+// Add and edit (owner, 2026-11-15): the web's calls, POST to create and PUT to
+// update, under the server's root key, with the unlock token.
+describe("create and update", () => {
+  const BASE_URL = "/api/v1/safezone_app";
+  it("create POSTs {password: …} with the token and returns the item", async () => {
+    mock.onPost(`${BASE_URL}/passwords`).reply((config) => {
+      expect(config.headers?.["X-Safezone-Unlock"]).toBe("tok");
+      expect(JSON.parse(config.data)).toEqual({ password: { title: "Mail", username: "qa", email: "", password: "p", link: "", note: "" } });
+      return [201, { id: 31, title: "Mail", username: "qa", password: "p" }];
+    });
+    const item = await safezoneApi.create("passwords", { password: { title: "Mail", username: "qa", email: "", password: "p", link: "", note: "" } }, "tok");
+    expect(item).toMatchObject({ kind: "passwords", id: 31, title: "Mail" });
+  });
+
+  it("update PUTs {payment_card: …} to the item", async () => {
+    mock.onPut(`${BASE_URL}/payment_cards/21`).reply((config) => {
+      expect(JSON.parse(config.data).payment_card.name).toBe("Visa 2");
+      return [200, { id: 21, name: "Visa 2" }];
+    });
+    const item = await safezoneApi.update("payment_cards", 21, { payment_card: { name: "Visa 2" } }, "tok");
+    expect(item.title).toBe("Visa 2");
+  });
+
+  it("a 422 is SafeZoneError('invalid') carrying the server's messages per field", async () => {
+    mock.onPost(`${BASE_URL}/identities`).reply(422, { document_number: ["can't be blank"] });
+    const err = await safezoneApi.create("identities", { identity: { document_number: "" } }, "tok").catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(SafeZoneError);
+    expect(err).toMatchObject({ kind: "invalid", fields: { document_number: ["can't be blank"] } });
+  });
+});

@@ -136,19 +136,23 @@ export type SafeZoneErrorKind =
   | "invalidPassword"
   | "pinMismatch"
   | "invalidFormat"
-  | "invalidCode";
+  | "invalidCode"
+  /** A 422 on create/update: the server's messages per field (Rails errors). */
+  | "invalid";
 
 export class SafeZoneError extends Error {
   readonly kind: SafeZoneErrorKind;
   readonly attemptsLeft: number | null;
   readonly lockedUntil: string | null;
+  readonly fields: Record<string, string[]>;
 
-  constructor(kind: SafeZoneErrorKind, extra: { attemptsLeft?: number | null; lockedUntil?: string | null } = {}) {
+  constructor(kind: SafeZoneErrorKind, extra: { attemptsLeft?: number | null; lockedUntil?: string | null; fields?: Record<string, string[]> } = {}) {
     super(`safezone: ${kind}`);
     this.name = "SafeZoneError";
     this.kind = kind;
     this.attemptsLeft = extra.attemptsLeft ?? null;
     this.lockedUntil = extra.lockedUntil ?? null;
+    this.fields = extra.fields ?? {};
   }
 }
 
@@ -176,6 +180,13 @@ function refusal(error: unknown): unknown {
   const { status, data } = error.response;
   if (status === 429) return new SafeZoneError("rateLimited");
   const body = (typeof data === "object" && data !== null ? data : {}) as Record<string, unknown>;
+  if (status === 422 && typeof body.error !== "string") {
+    const fields: Record<string, string[]> = {};
+    for (const [key, value] of Object.entries(body)) {
+      if (Array.isArray(value)) fields[key] = value.filter((m): m is string => typeof m === "string");
+    }
+    return new SafeZoneError("invalid", { fields });
+  }
   const kind = typeof body.error === "string" ? CODES[body.error] : undefined;
   if (!kind) return error;
   if (kind === "locked") onLocked?.();
@@ -312,6 +323,14 @@ export const safezoneApi = {
   /** The full record, secrets included: for the item screen's memory only. */
   show: (kind: SafeZoneKind, itemId: number, token: string) =>
     call(async () => toItem(kind, (await http.get(`${BASE}/${kind}/${itemId}`, withToken(token))).data)),
+
+  /** Add an item, as the web's drawer does (POST, under the server's root key). */
+  create: (kind: SafeZoneKind, payload: Record<string, Record<string, string>>, token: string) =>
+    call(async () => toItem(kind, (await http.post(`${BASE}/${kind}`, payload, withToken(token))).data)),
+
+  /** Save an edited item (PUT, as the web). */
+  update: (kind: SafeZoneKind, itemId: number, payload: Record<string, Record<string, string>>, token: string) =>
+    call(async () => toItem(kind, (await http.put(`${BASE}/${kind}/${itemId}`, payload, withToken(token))).data)),
 
   /** A hard delete: the server keeps no trash. */
   remove: (kind: SafeZoneKind, itemId: number, token: string) =>

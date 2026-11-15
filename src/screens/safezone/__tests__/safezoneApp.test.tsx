@@ -21,11 +21,13 @@ import { useSafezoneLock } from "@/stores/safezoneLock.store";
 import { clipboardGuard } from "../clipboardGuard";
 import SafeZone from "../../../../app/safezone";
 import SafeZoneItem from "../../../../app/safezone/item";
+import SafeZoneEdit from "../../../../app/safezone/edit";
 
 const mockParams: { current: Record<string, string> } = { current: {} };
 jest.mock("expo-router", () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
   useLocalSearchParams: () => mockParams.current,
+  useFocusEffect: (cb: () => void) => jest.requireActual("react").useEffect(cb, [cb]),
 }));
 jest.mock("@/lib/cable", () => require("@/__tests__/screenMocks").cable);
 const mockHaptic: string[] = [];
@@ -588,5 +590,92 @@ describe("the vault list reads like a password manager (Mobbin: 1Password)", () 
     expect(await screen.findByTestId("safezone-empty-art")).toBeTruthy();
     expect(screen.getByTestId("safezone-empty-title")).toHaveTextContent("No documents yet");
     expect(screen.getByTestId("safezone-empty")).toBeTruthy();
+  });
+});
+
+// Add and edit (owner, 2026-11-15: "everything doable on mobile, finish 100%"),
+// with the web's fields, required ones and payload (forms.test.ts).
+describe("add and edit an item", () => {
+  const { router } = jest.requireMock("expo-router") as { router: { push: jest.Mock; back: jest.Mock; replace: jest.Mock } };
+  beforeEach(() => {
+    router.push.mockClear();
+    router.back.mockClear();
+    router.replace.mockClear();
+  });
+  const openForm = async (params: Record<string, string>) => {
+    useSafezoneLock.getState().unlocked({ token: "tok", expiresIn: 120 });
+    mockParams.current = params;
+    mock.onGet(`${BASE}/passwords/11`).reply(200, password);
+    mock.onGet(`${BASE}/payment_cards/21`).reply(200, card);
+    renderScreen(<SafeZoneEdit />);
+    await screen.findByTestId("safezone-form");
+  };
+
+  it("+ on the list opens a new form for the kind on screen", async () => {
+    await unlockVault();
+    fireEvent.press(screen.getByTestId("safezone-tab-payment_cards"));
+    fireEvent.press(screen.getByTestId("safezone-add"));
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/safezone/edit", params: { kind: "payment_cards" } });
+  });
+
+  it("a new login: the title is asked for, then the web's payload is POSTed and the item opens", async () => {
+    mock.onPost(`${BASE}/passwords`).reply(201, { id: 41, title: "Bank", username: "qa-2", password: "x" });
+    await openForm({ kind: "passwords" });
+    fireEvent.press(screen.getByTestId("safezone-form-save"));
+    expect(await screen.findByTestId("safezone-form-error-title")).toHaveTextContent("Required");
+    expect(mock.history.post.filter((r) => r.url === `${BASE}/passwords`)).toHaveLength(0);
+    fireEvent.changeText(screen.getByTestId("safezone-form-field-title"), "Bank");
+    fireEvent.changeText(screen.getByTestId("safezone-form-field-username"), "qa-2");
+    fireEvent.press(screen.getByTestId("safezone-form-generate"));
+    fireEvent.press(screen.getByTestId("safezone-form-save"));
+    await waitFor(() => expect(router.replace).toHaveBeenCalledWith({ pathname: "/safezone/item", params: { kind: "passwords", id: "41" } }));
+    const body = JSON.parse(mock.history.post.find((r) => r.url === `${BASE}/passwords`)!.data as string);
+    expect(body.password).toMatchObject({ title: "Bank", username: "qa-2" });
+    expect(body.password.password).toHaveLength(20);
+  });
+
+  it("the generated password stays hidden until the eye shows it", async () => {
+    await openForm({ kind: "passwords" });
+    fireEvent.press(screen.getByTestId("safezone-form-generate"));
+    expect(screen.getByTestId("safezone-form-field-password").props.secureTextEntry).toBe(true);
+    fireEvent.press(screen.getByTestId("safezone-form-reveal-password"));
+    expect(screen.getByTestId("safezone-form-field-password").props.secureTextEntry).toBe(false);
+  });
+
+  it("Edit opens the card prefilled; saving PUTs the change and goes back", async () => {
+    mock.onPut(`${BASE}/payment_cards/21`).reply(200, { ...card, name: "Visa work" });
+    await openForm({ kind: "payment_cards", id: "21" });
+    expect(screen.getByTestId("safezone-form-field-name").props.value).toBe("Visa");
+    expect(screen.getByTestId("safezone-form-field-card_number").props.secureTextEntry).toBe(true);
+    fireEvent.changeText(screen.getByTestId("safezone-form-field-name"), "Visa work");
+    fireEvent.press(screen.getByTestId("safezone-form-save"));
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    expect(JSON.parse(mock.history.put[0].data as string).payment_card).toMatchObject({ name: "Visa work", card_number: "4111 1111 1111 4242" });
+  });
+
+  it("an item page has an Edit key that opens its form", async () => {
+    useSafezoneLock.getState().unlocked({ token: "tok", expiresIn: 120 });
+    mockParams.current = { kind: "passwords", id: "11" };
+    mock.onGet(`${BASE}/passwords/11`).reply(200, password);
+    renderScreen(<SafeZoneItem />);
+    fireEvent.press(await screen.findByTestId("safezone-item-edit"));
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/safezone/edit", params: { kind: "passwords", id: "11" } });
+  });
+
+  it("a lock while editing wipes the form and asks for the PIN", async () => {
+    mock.onGet(`${BASE}/pin`).reply(200, status());
+    await openForm({ kind: "passwords", id: "11" });
+    expect(screen.getByTestId("safezone-form-field-password").props.value).toBe(SECRET);
+    act(() => useSafezoneLock.getState().lock());
+    await screen.findByTestId("safezone-unlock");
+    expect(screen.queryByDisplayValue(SECRET)).toBeNull();
+  });
+
+  it("a server refusal (422) shows its message on the field", async () => {
+    mock.onPost(`${BASE}/identities`).reply(422, { document_number: ["has already been taken"] });
+    await openForm({ kind: "identities" });
+    fireEvent.changeText(screen.getByTestId("safezone-form-field-document_number"), "X1");
+    fireEvent.press(screen.getByTestId("safezone-form-save"));
+    expect(await screen.findByTestId("safezone-form-error-document_number")).toHaveTextContent("has already been taken");
   });
 });

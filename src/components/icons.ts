@@ -41,6 +41,7 @@ import MoreVerticalIcon from "lucide-react-native/dist/esm/icons/ellipsis-vertic
 import NotebookPenIcon from "lucide-react-native/dist/esm/icons/notebook-pen";
 import PauseIcon from "lucide-react-native/dist/esm/icons/pause";
 import PencilIcon from "lucide-react-native/dist/esm/icons/pencil";
+import WandIcon from "lucide-react-native/dist/esm/icons/wand";
 import PlayIcon from "lucide-react-native/dist/esm/icons/play";
 import PlusIcon from "lucide-react-native/dist/esm/icons/plus";
 import RefreshCwIcon from "lucide-react-native/dist/esm/icons/refresh-cw";
@@ -130,6 +131,7 @@ export const MoreVertical: LucideIcon = MoreVerticalIcon;
 export const NotebookPen: LucideIcon = NotebookPenIcon;
 export const Pause: LucideIcon = PauseIcon;
 export const Pencil: LucideIcon = PencilIcon;
+export const Wand: LucideIcon = WandIcon;
 export const Play: LucideIcon = PlayIcon;
 export const Plus: LucideIcon = PlusIcon;
 export const RefreshCw: LucideIcon = RefreshCwIcon;

@@ -8,7 +8,7 @@ import { ActivityIndicator, FlatList, Pressable, TextInput, View } from "react-n
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Lock, Search, TriangleAlert, X } from "@/components/icons";
+import { ChevronLeft, ChevronRight, Lock, Plus, Search, TriangleAlert, X } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -148,8 +148,18 @@ function Vault() {
         ListEmptyComponent={list.data ? <EmptyState kind={kind} searching={Boolean(search)} /> : null}
         ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator /> : null}
         renderItem={({ item, index }) => <Row row={item} index={index} />}
-        contentContainerStyle={{ paddingBottom: 48, gap: metrics.space.sm }}
+        contentContainerStyle={{ paddingBottom: 96, gap: metrics.space.sm }}
       />
+      {/* Add (owner, 2026-11-15: "everything doable on mobile"): the kind on screen. */}
+      <Pressable
+        testID="safezone-add"
+        onPress={() => router.push({ pathname: "/safezone/edit", params: { kind } })}
+        accessibilityRole="button"
+        accessibilityLabel={t("safezone.add")}
+        style={{ position: "absolute", right: 0, bottom: metrics.space.lg, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center", elevation: 4, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } }}
+      >
+        <Plus size={26} color={colors.onAccent} />
+      </Pressable>
     </View>
   );
 }

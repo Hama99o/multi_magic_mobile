@@ -165,10 +165,18 @@ even the stripped titles go once the vault is locked.
 
 ## E · Phase 2 (after the first device pass)
 
-Create / edit / delete for the three kinds (the forms mirror the web
-drawers); the password health page; the password generator (1Password's
-sheet is the reference); PIN change via the email code; the tablet split
-(the list and the item side by side at ≥ 800 dp, as in the Contacts follow-up).
+**Built 2026-11-15** (owner: "everything doable on mobile, finish 100%"):
+- **Add and edit** for the three kinds: "+" on the list adds the kind on screen, and "Edit" on an item opens the same form, prefilled.
+- **The web's drawers, field for field** (`src/screens/safezone/forms.ts`):
+  - login: title*, username, email, password, link, note;
+  - card: name*, type, number (19), CVV (4), expiry "MM/YY", PIN/code, note;
+  - document: type (5), number*, issued, expires, note.
+  The web form has no image field, so neither does this one.
+- **Calls:** POST to add, PUT to save, under the server's root key. A 422 shows the server's message on its field.
+- **The web's password generator:** 20 characters, one from each class, no ambiguous glyph, crypto-random.
+- **Security:** secrets are typed hidden behind an eye, with no autofill or keyboard learning. Values stay in the screen's state only (`app/safezone/edit.tsx`, behind the gate); a lock wipes the form.
+
+Still to do: the password health page; PIN change via the email code; the tablet split (the list and the item side by side at ≥ 800 dp, as in the Contacts follow-up).
 
 ## F · Later, needs a native build or the owner
 

@@ -137,7 +137,12 @@ const COMPOSED = [
   // t(`safezone.field.${key}`) over `ITEM_FIELDS` (`api/safezone.ts`), and the
   // server's enums `SafezoneApp::Identity::TYPES`, `PaymentCard.card_types`.
   ...["passwords", "payment_cards", "identities"].flatMap((v) => [`safezone.tabs.${v}`, `safezone.empty.${v}`, `safezone.emptyTitle.${v}`]),
-  ...["username", "email", "password", "link", "note", "card_type", "card_number", "expiry_date", "cvv", "code", "type", "document_number", "issued_at", "expires_at"].map((v) => `safezone.field.${v}`),
+  // The form (app/safezone/edit.tsx): t(`safezone.form.add|edit.${kind}`) and
+  // t(`safezone.form.errors.${why}`) over `FormErrors` (forms.ts).
+  ...["passwords", "payment_cards", "identities"].flatMap((v) => [`safezone.form.add.${v}`, `safezone.form.edit.${v}`]),
+  ...["required", "email", "date"].map((v) => `safezone.form.errors.${v}`),
+  // …and over `FORM_FIELDS` (`screens/safezone/forms.ts`), which adds the title and the card's name.
+  ...["title", "name", "username", "email", "password", "link", "note", "card_type", "card_number", "expiry_date", "cvv", "code", "type", "document_number", "issued_at", "expires_at"].map((v) => `safezone.field.${v}`),
   ...["passport", "national_id", "drivers_license", "residence_permit", "other"].map((v) => `safezone.identityTypes.${v}`),
   ...["credit_card", "debit_card"].map((v) => `safezone.cardTypes.${v}`),
 ];

@@ -7,12 +7,12 @@
  * while it is visible (≤ 20 s) or for the instant of a copy. Locking, hiding
  * and leaving wipe it.
  */
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Linking, Pressable, ScrollView, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import * as Clipboard from "expo-clipboard";
-import { ChevronLeft, Copy, ExternalLink, Eye, EyeOff } from "@/components/icons";
+import { ChevronLeft, Copy, ExternalLink, Eye, EyeOff, Pencil } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
@@ -42,11 +42,35 @@ export default function SafeZoneItemScreen() {
         <Pressable testID="safezone-item-back" onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
           <ChevronLeft size={24} color={colors.ink} />
         </Pressable>
+        <View style={{ flex: 1 }} />
+        <EditKey />
       </View>
       <SafeZoneGate>
         <Item />
       </SafeZoneGate>
     </Screen>
+  );
+}
+
+/** Edit opens the same form as Add, prefilled (owner, 2026-11-15). */
+function EditKey() {
+  const colors = useColors();
+  const { t } = useTranslation();
+  const params = useParams();
+  const unlocked = useSafezoneLock((s) => s.status.kind === "unlocked");
+  if (!params || !unlocked) return null;
+  return (
+    <Pressable
+      testID="safezone-item-edit"
+      onPress={() => router.push({ pathname: "/safezone/edit", params: { kind: params.kind, id: String(params.id) } })}
+      accessibilityRole="button"
+      accessibilityLabel={t("safezone.editItem")}
+      hitSlop={8}
+      style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingHorizontal: 12, minHeight: 40, borderRadius: 999, backgroundColor: `${colors.accent}1f` }}
+    >
+      <Pencil size={16} color={colors.accent} />
+      <Text tone="accent" variant="label">{t("safezone.editItem")}</Text>
+    </Pressable>
   );
 }
 
@@ -103,7 +127,8 @@ function Item() {
       setError(e);
     }
   };
-  useEffect(load, [params?.kind, params?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  // On opening, and again on coming back from Edit (the saved values).
+  useFocusEffect(useCallback(() => load(), [params?.kind, params?.id])); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** One field's secret value, fetched for this moment only. */
   const fetchSecret = async (key: string): Promise<string> => {

@@ -30,7 +30,7 @@ import { useMe } from "@/hooks/useMe";
 
 const GAP = 12;
 /** The last app opened from Home (a per-person convenience: a thin ring, not a fill). */
-const LAST_APP_KEY = "home.lastApp";
+const LAST_APP_KEY = "home_last_app";
 /**
  * One app on Home (owner, 2026-11-15: "make each one good, why does Pages have
  * colour and the others not"). Mobbin (Lloyds, Brainly, Swiggy): a tinted card

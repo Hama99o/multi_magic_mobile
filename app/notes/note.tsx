@@ -10,7 +10,7 @@
  * list's copy.
  */
 import { useMemo } from "react";
-import { ActivityIndicator, Linking, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 
@@ -24,7 +24,7 @@ import { useNote } from "@/screens/notes/api/queries";
 import { NOTES_EDITOR_ENABLED } from "@/config/features";
 import { failureMessage } from "@/api/failure";
 import { NoteDocument } from "@/screens/notes/editor/NoteDocument";
-import type { EditorLabels } from "@/screens/notes/editor/types";
+import { openReadViewLink, useEditorLabels } from "@/screens/notes/readView";
 import { parseNoteHtml } from "@/screens/notes/document";
 
 export default function NoteScreen() {
@@ -38,21 +38,7 @@ export default function NoteScreen() {
 
   const parsed = useMemo(() => (note ? parseNoteHtml(note.html) : null), [note]);
 
-  const labels: EditorLabels = {
-    table: (rows, cols) => t("notes.block.table", { rows, cols }),
-    code: (language) => (language ? t("notes.block.codeIn", { language }) : t("notes.block.code")),
-    legacyImage: t("notes.block.legacyImage"),
-    embed: t("notes.block.embed"),
-    unknown: (type) => t("notes.block.unknown", { type }),
-    imageUnavailable: t("notes.block.imageUnavailable"),
-    checked: t("notes.task.checked"),
-    unchecked: t("notes.task.unchecked"),
-  };
-
-  // Links in the note: only what the phone can open (a relative web link has no host here).
-  const openLink = (href: string) => {
-    if (/^(https?:|mailto:|tel:)/i.test(href)) void Linking.openURL(href).catch(() => undefined);
-  };
+  const labels = useEditorLabels();
 
   const header = (
     <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: metrics.space.sm }}>
@@ -108,7 +94,7 @@ export default function NoteScreen() {
         <Text testID="note-title" style={{ fontSize: 26, lineHeight: 32, fontWeight: "700", color: note.title ? colors.ink : colors.inkMuted }} accessibilityRole="header">
           {note.title || t("notes.untitled")}
         </Text>
-        <NoteDocument doc={parsed.doc} colors={colors} labels={labels} onLinkPress={openLink} />
+        <NoteDocument doc={parsed.doc} colors={colors} labels={labels} onLinkPress={openReadViewLink} />
       </ScrollView>
     </Screen>
   );

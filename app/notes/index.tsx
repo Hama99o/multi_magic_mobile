@@ -35,6 +35,7 @@ import {
 } from "@/screens/notes/api/queries";
 import { NOTES_EDITOR_ENABLED } from "@/config/features";
 import { useMe } from "@/hooks/useMe";
+import { APP_COLORS } from "@/theme/appColors";
 import { useNotesView } from "@/stores/notesView.store";
 import { Avatar } from "@/screens/people/Avatar";
 import { cardPreview } from "@/screens/notes/cardPreview";
@@ -340,11 +341,11 @@ export default function NotesScreen() {
             accessibilityLabel={t("notes.grid.newNote")}
             style={{
               width: 64, height: 64, borderRadius: 20, alignItems: "center", justifyContent: "center",
-              backgroundColor: colors.accent, marginTop: -40, elevation: 4,
+              backgroundColor: APP_COLORS.notes, marginTop: -40, elevation: 4,
               shadowColor: "#000", shadowOpacity: 0.25, shadowRadius: 6, shadowOffset: { width: 0, height: 3 },
             }}
           >
-            <Plus size={30} color={colors.onAccent} />
+            <Plus size={30} color="#04161a" />
           </Pressable>
         </View>
       ) : null}

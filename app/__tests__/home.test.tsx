@@ -54,3 +54,25 @@ it("the Assistant tile opens the plain assistant, not the history", () => {
   fireEvent.press(screen.getByTestId("home-tile-ai"));
   expect(mockPush).toHaveBeenCalledWith("/chat");
 });
+
+// Owner, 2026-11-15: "make each one good, why does Pages have colour and the
+// others not". Each tile wears its app's colour (src/theme/appColors.ts):
+// a tinted card and a solid badge; none is filled louder than the others.
+describe("each app has its own colour", () => {
+  it("every tile has its app's badge colour and none is a filled accent card", () => {
+    renderHome();
+    const { APP_COLORS, HOME_APPS } = jest.requireActual("@/theme/appColors");
+    for (const app of HOME_APPS) {
+      const badge = screen.getByTestId(`home-tile-${app === "assistant" ? "ai" : app}-badge`);
+      const style = [badge.props.style].flat().reduce((a: object, b: object) => ({ ...a, ...b }), {}) as { backgroundColor?: string };
+      expect([app, style.backgroundColor]).toEqual([app, APP_COLORS[app]]);
+    }
+  });
+
+  it("in 2 columns the last tile is a normal tile, not a lonely full-width card", () => {
+    renderHome();
+    const style = (id: string) => [screen.getByTestId(id).props.style].flat().reduce((a: object, b: object) => ({ ...a, ...b }), {});
+    expect(style("home-tile-conversations").width).toBe(style("home-tile-pages").width);
+    expect(style("home-tile-conversations").flexGrow ?? 0).toBe(0);
+  });
+});

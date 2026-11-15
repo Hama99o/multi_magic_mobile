@@ -18,6 +18,7 @@ import { useSafezoneLock } from "@/stores/safezoneLock.store";
 import { SafeZoneGate } from "@/screens/safezone/SafeZoneGate";
 import { isExpired, rowSubtitle } from "@/screens/safezone/display";
 import { KIND_ICONS, Tile } from "@/screens/safezone/Tile";
+import { APP_COLORS } from "@/theme/appColors";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { secureScreen } from "@/screens/safezone/secureScreen";
 
@@ -156,9 +157,9 @@ function Vault() {
         onPress={() => router.push({ pathname: "/safezone/edit", params: { kind } })}
         accessibilityRole="button"
         accessibilityLabel={t("safezone.add")}
-        style={{ position: "absolute", right: 0, bottom: metrics.space.lg, width: 56, height: 56, borderRadius: 28, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center", elevation: 4, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } }}
+        style={{ position: "absolute", right: 0, bottom: metrics.space.lg, width: 56, height: 56, borderRadius: 28, backgroundColor: APP_COLORS.safezone, alignItems: "center", justifyContent: "center", elevation: 4, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } }}
       >
-        <Plus size={26} color={colors.onAccent} />
+        <Plus size={26} color="#04161a" />
       </Pressable>
     </View>
   );

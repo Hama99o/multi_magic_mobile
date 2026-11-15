@@ -557,3 +557,19 @@ describe("the PIN pad feels like a lock screen", () => {
     expect(mockHaptic).toContain("notify:success");
   });
 });
+
+describe("the vault list reads like a password manager (Mobbin: 1Password)", () => {
+  it("a login shows its site's initial on a coloured tile, asking no third party for an icon", async () => {
+    await unlockVault();
+    expect(screen.getByTestId("safezone-tile-passwords-11")).toHaveTextContent("M");
+    expect(mock.history.get.every((r) => !/favicon|s2\/favicons|icon\.horse|clearbit/i.test(String(r.url)))).toBe(true);
+  });
+
+  it("an empty kind shows a picture, a title and a line, not just a sentence", async () => {
+    await unlockVault();
+    fireEvent.press(screen.getByTestId("safezone-tab-identities"));
+    expect(await screen.findByTestId("safezone-empty-art")).toBeTruthy();
+    expect(screen.getByTestId("safezone-empty-title")).toHaveTextContent("No documents yet");
+    expect(screen.getByTestId("safezone-empty")).toBeTruthy();
+  });
+});

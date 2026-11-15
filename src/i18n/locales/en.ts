@@ -988,10 +988,15 @@ export const en = {
     clearSearch: "Clear the search",
     loadFailed: "Could not load SafeZone.",
     noMatch: "Nothing matches that search.",
+    emptyTitle: {
+      passwords: "No passwords yet",
+      payment_cards: "No cards yet",
+      identities: "No documents yet",
+    },
     empty: {
-      passwords: "No passwords yet. Add them on the web for now.",
-      payment_cards: "No cards yet. Add them on the web for now.",
-      identities: "No documents yet. Add them on the web for now.",
+      passwords: "Your logins will be here, behind your PIN.",
+      payment_cards: "Your cards will be here, behind your PIN.",
+      identities: "Your passports, licences and IDs will be here, behind your PIN.",
     },
     noTitle: "Untitled",
     open: "Open {{name}}",

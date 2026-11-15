@@ -190,6 +190,32 @@ jest.mock("expo-share-intent", () => ({
   getShareExtensionKey: () => "multimagicShareKey",
 }));
 
-// Reanimated's own Jest mock: animations run to their end at once, so a test
-// sees the final state (SafeZone's pad and lists, 2026-11-15).
-jest.mock("react-native-reanimated", () => require("react-native-reanimated/mock"));
+// Reanimated, as the app uses it (SafeZone's pad and lists, 2026-11-15): an
+// animation lands on its final value at once, so a test sees the end state.
+// Reanimated 4's own mock loads the native worklets runtime, which Jest has
+// not; this covers exactly the API the app calls.
+jest.mock("react-native-reanimated", () => {
+  const RN = jest.requireActual("react-native");
+  const preset = () => {
+    const p: Record<string, unknown> = {};
+    for (const k of ["delay", "duration", "springify", "damping", "stiffness", "withInitialValues", "easing"]) p[k] = () => p;
+    return p;
+  };
+  const Animated = { View: RN.View, Text: RN.Text, ScrollView: RN.ScrollView, FlatList: RN.FlatList, Image: RN.Image, createAnimatedComponent: (c: unknown) => c };
+  return {
+    __esModule: true,
+    default: Animated,
+    ...Animated,
+    useSharedValue: (v: unknown) => ({ value: v }),
+    useAnimatedStyle: (fn: () => unknown) => fn(),
+    withTiming: (v: unknown) => v,
+    withSpring: (v: unknown) => v,
+    withDelay: (_d: number, v: unknown) => v,
+    withSequence: (...vs: unknown[]) => vs[vs.length - 1],
+    withRepeat: (v: unknown) => v,
+    runOnJS: (fn: (...a: unknown[]) => unknown) => fn,
+    Easing: { out: () => undefined, in: () => undefined, inOut: () => undefined, quad: undefined, cubic: undefined },
+    FadeIn: preset(), FadeOut: preset(), FadeInDown: preset(), FadeInUp: preset(), FadeOutDown: preset(), FadeOutUp: preset(),
+    SlideInDown: preset(), SlideOutDown: preset(), ZoomIn: preset(), ZoomOut: preset(), LinearTransition: preset(), Layout: preset(),
+  };
+});

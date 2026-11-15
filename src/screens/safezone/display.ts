@@ -32,3 +32,23 @@ export function siteUrl(link: string): string {
 export function withoutSecrets(item: SafeZoneItem): SafeZoneItem {
   return { ...item, fields: item.fields.map((f) => (f.secret ? { ...f, value: "" } : f)) };
 }
+
+/** "https://www.bank.example/login" → "B". The web's `siteInitial`: a mark for
+ *  a saved site that costs no request (a vault must not ask a third party for
+ *  icons: that would tell it which sites the person has). */
+export function siteInitial(link: string): string {
+  const raw = link.trim();
+  try {
+    const host = new URL(/^[a-z][a-z0-9+.-]*:\/\//i.test(raw) ? raw : `https://${raw}`).hostname.replace(/^www\./, "");
+    return (host.charAt(0) || raw.charAt(0) || "?").toUpperCase();
+  } catch {
+    return (raw.charAt(0) || "?").toUpperCase();
+  }
+}
+
+/** A stable number for a text (a site's host), so its tile keeps one colour. */
+export function stableHash(text: string): number {
+  let h = 0;
+  for (let i = 0; i < text.length; i++) h = (h * 31 + text.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}

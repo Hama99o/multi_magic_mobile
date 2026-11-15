@@ -1004,10 +1004,15 @@ export const fr: Translations = {
     clearSearch: "Effacer la recherche",
     loadFailed: "Impossible de charger SafeZone.",
     noMatch: "Rien ne correspond à cette recherche.",
+    emptyTitle: {
+      passwords: "Aucun mot de passe",
+      payment_cards: "Aucune carte",
+      identities: "Aucun document",
+    },
     empty: {
-      passwords: "Aucun mot de passe pour l’instant. Ajoutez-les sur le web pour le moment.",
-      payment_cards: "Aucune carte pour l’instant. Ajoutez-les sur le web pour le moment.",
-      identities: "Aucun document pour l’instant. Ajoutez-les sur le web pour le moment.",
+      passwords: "Vos identifiants seront ici, protégés par votre code.",
+      payment_cards: "Vos cartes seront ici, protégées par votre code.",
+      identities: "Vos passeports, permis et pièces d’identité seront ici, protégés par votre code.",
     },
     noTitle: "Sans titre",
     open: "Ouvrir {{name}}",

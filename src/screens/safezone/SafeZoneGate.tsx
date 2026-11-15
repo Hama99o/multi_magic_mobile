@@ -21,6 +21,7 @@
  */
 import { useCallback, useEffect, useState, type ReactNode } from "react";
 import * as Haptics from "expo-haptics";
+import Animated, { FadeIn } from "react-native-reanimated";
 import { ActivityIndicator, AppState, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
@@ -121,7 +122,8 @@ export function SafeZoneGate({ children }: { children: ReactNode }) {
   }, [renew]);
 
   let body: ReactNode;
-  if (status.kind === "unlocked") body = children;
+  // The vault opens with a short fade, not a cut (owner: "not animated").
+  if (status.kind === "unlocked") body = <Animated.View entering={FadeIn.duration(250)} style={{ flex: 1 }}>{children}</Animated.View>;
   else if (status.kind === "notEnabled") body = <SetUpPin onDone={loadStatus} />;
   else if (status.kind === "lockedOut") body = <LockedOut until={status.until} onOver={loadStatus} />;
   else if (status.kind === "locked") body = <Unlock attemptsLeft={status.attemptsLeft} />;

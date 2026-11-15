@@ -16,7 +16,9 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { SAFEZONE_KINDS, safezoneApi, safezoneKeys, type SafeZoneKind, type SafeZoneRow } from "@/api/safezone";
 import { useSafezoneLock } from "@/stores/safezoneLock.store";
 import { SafeZoneGate } from "@/screens/safezone/SafeZoneGate";
-import { isExpired, rowSubtitle } from "@/screens/safezone/display";
+import { isExpired, rowSubtitle, siteInitial, stableHash } from "@/screens/safezone/display";
+import { categoryColorFor } from "@/theme/tokens";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { secureScreen } from "@/screens/safezone/secureScreen";
 
 const ICONS = { passwords: KeyRound, payment_cards: CreditCard, identities: IdCard } as const;
@@ -144,16 +146,10 @@ function Vault() {
         onEndReached={() => {
           if (list.hasNextPage && !list.isFetchingNextPage) void list.fetchNextPage();
         }}
-        ListEmptyComponent={
-          list.data ? (
-            <Text testID="safezone-empty" tone="muted" style={{ paddingVertical: metrics.space.xl, textAlign: "center" }}>
-              {search ? t("safezone.noMatch") : t(`safezone.empty.${kind}`)}
-            </Text>
-          ) : null
-        }
+        ListEmptyComponent={list.data ? <EmptyState kind={kind} searching={Boolean(search)} /> : null}
         ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator /> : null}
-        renderItem={({ item }) => <Row row={item} />}
-        contentContainerStyle={{ paddingBottom: 48 }}
+        renderItem={({ item, index }) => <Row row={item} index={index} />}
+        contentContainerStyle={{ paddingBottom: 48, gap: metrics.space.sm }}
       />
     </View>
   );
@@ -165,27 +161,83 @@ function rowTitle(row: SafeZoneRow, t: (key: string) => string): string {
   return row.type ? t(`safezone.identityTypes.${row.type}`) : t("safezone.noTitle");
 }
 
-function Row({ row }: { row: SafeZoneRow }) {
+/** The leading tile: a login's site initial on its own colour; a card or a document, its icon. */
+function Tile({ row, size = 44 }: { row: SafeZoneRow; size?: number }) {
+  const colors = useColors();
+  if (row.kind === "passwords") {
+    const site = row.link || row.title || "";
+    const tint = categoryColorFor(stableHash(site.toLowerCase()));
+    return (
+      <View testID={`safezone-tile-${row.kind}-${row.id}`} style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: tint, alignItems: "center", justifyContent: "center" }}>
+        <Text style={{ color: colors.ground, fontSize: size * 0.42, fontWeight: "700" }}>{siteInitial(site)}</Text>
+      </View>
+    );
+  }
+  const Icon = ICONS[row.kind];
+  return (
+    <View testID={`safezone-tile-${row.kind}-${row.id}`} style={{ width: size, height: size, borderRadius: size * 0.28, backgroundColor: `${colors.accent}22`, alignItems: "center", justifyContent: "center" }}>
+      <Icon size={size * 0.48} color={colors.accent} />
+    </View>
+  );
+}
+
+function EmptyState({ kind, searching }: { kind: SafeZoneKind; searching: boolean }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const Icon = ICONS[row.kind];
+  const Icon = searching ? Search : ICONS[kind];
+  return (
+    <Animated.View entering={FadeInDown.duration(260)} style={{ alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.xl * 1.5, paddingHorizontal: metrics.space.lg }}>
+      <View testID="safezone-empty-art" style={{ width: 88, height: 88, borderRadius: 44, backgroundColor: `${colors.accent}1f`, alignItems: "center", justifyContent: "center", marginBottom: metrics.space.sm }}>
+        <Icon size={40} color={colors.accent} />
+      </View>
+      <Text testID="safezone-empty-title" variant="title" style={{ textAlign: "center", fontSize: 20 }}>
+        {searching ? t("safezone.noMatch") : t(`safezone.emptyTitle.${kind}`)}
+      </Text>
+      {searching ? null : (
+        <Text testID="safezone-empty" tone="muted" style={{ textAlign: "center" }}>
+          {t(`safezone.empty.${kind}`)}
+        </Text>
+      )}
+      {searching ? <View testID="safezone-empty" /> : null}
+    </Animated.View>
+  );
+}
+
+function Row({ row, index }: { row: SafeZoneRow; index: number }) {
+  const colors = useColors();
+  const metrics = useMetrics();
+  const { t } = useTranslation();
+  const [pressed, setPressed] = useState(false);
   const title = rowTitle(row, t);
   const expired = row.kind === "identities" && isExpired(row.expiresAt);
   const weak = row.kind === "passwords" && row.weak === true;
   return (
+    <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
     <Pressable
       testID={`safezone-row-${row.kind}-${row.id}`}
       onPress={() => router.push({ pathname: "/safezone/item", params: { kind: row.kind, id: String(row.id) } })}
       accessibilityRole="button"
       accessibilityLabel={t("safezone.open", { name: title })}
-      style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.md, minHeight: 64 }}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      style={{
+        flexDirection: "row",
+        alignItems: "center",
+        gap: metrics.space.md,
+        minHeight: 68,
+        paddingHorizontal: metrics.space.md,
+        paddingVertical: metrics.space.sm,
+        borderRadius: metrics.radius.lg,
+        backgroundColor: colors.surface,
+        borderWidth: 1,
+        borderColor: colors.border,
+        transform: [{ scale: pressed ? 0.98 : 1 }],
+      }}
     >
-      <View style={{ width: 40, height: 40, borderRadius: 20, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-        <Icon size={20} color={colors.accent} />
-      </View>
+      <Tile row={row} />
       <View style={{ flex: 1 }}>
-        <Text numberOfLines={1}>{title}</Text>
+        <Text numberOfLines={1} style={{ fontWeight: "600" }}>{title}</Text>
         <Text tone="muted" variant="caption" numberOfLines={1}>
           {rowSubtitle(row)}
         </Text>
@@ -202,5 +254,6 @@ function Row({ row }: { row: SafeZoneRow }) {
       ) : null}
       <ChevronRight size={18} color={colors.inkMuted} />
     </Pressable>
+    </Animated.View>
   );
 }

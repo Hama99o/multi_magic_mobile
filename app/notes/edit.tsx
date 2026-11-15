@@ -161,14 +161,15 @@ export default function NoteEditScreen() {
       if (!held.ok) {
         console.warn("[notes] engine B did not keep the note:", held.reason);
         handle.destroy();
-        return { session, handle: null, failed: true as const };
+        return { session, handle: null, failed: true as const, why: `NE-HOLDS · ${held.reason}` };
       }
       return { session, handle, failed: false as const };
     } catch (e) {
       // Why the engine refused (it names the node or attribute): visible in
       // the dev log, which is how a refusal gets fixed (plan §11 cond. 1).
-      console.warn("[notes] engine B refused the note:", e instanceof Error ? e.message : String(e));
-      return { session, handle: null, failed: true as const };
+      const message = e instanceof Error ? e.message : String(e);
+      console.warn("[notes] engine B refused the note:", message);
+      return { session, handle: null, failed: true as const, why: `NE-CREATE · ${message}` };
     }
   }, [opened, generation]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => () => engine?.handle?.destroy(), [engine]);
@@ -640,7 +641,13 @@ export default function NoteEditScreen() {
           {"tooLong" in engine && engine.tooLong ? (
             <Text testID="note-edit-too-long" tone="muted">{t("notes.edit.tooLong")}</Text>
           ) : (
-            <Text testID="note-edit-cannot-open" tone="muted">{t("notes.edit.cannotOpen")}</Text>
+            <>
+              <Text testID="note-edit-cannot-open" tone="muted">{t("notes.edit.cannotOpen")}</Text>
+              {/* WHY, in release too: a code the owner can screenshot (engine B's first run on iOS, 2026-11-15). */}
+              <Text testID="note-edit-cannot-open-code" tone="muted" selectable style={{ fontSize: 12 }}>
+                {(engineError ? `NE-ENGINE · ${engineError}` : "why" in engine && engine.why ? engine.why : "NE-UNKNOWN").slice(0, 200)}
+              </Text>
+            </>
           )}
           {engine.session ? (
             <NoteDocument doc={engine.session.doc} colors={colors} labels={labels} onLinkPress={openLink} />

@@ -36,10 +36,13 @@ export const READ_ALOUD_ENABLED = true;
 /**
  * Edit a note on the phone — phase 3, `docs/design/notes/SPEC.md` §C, §H.
  *
- * ON IN DEV BUILDS ONLY (2026-11-13). The editor runs on engine B (plan §11,
- * "B with conditions"); it ships to a store build only after its own device
- * QA (keyboard never hides the caret, undo, drafts, conflicts, RTL, dark,
- * 360/800) and the owner's check of the Pashto keyboard, Samsung keyboard and
- * iOS dictation. Off, the note screen is the read view it was in phase 2.
+ * ON IN RELEASE BUILDS, both platforms (decision of 2026-11-15). Until then it
+ * was dev-only (2026-11-13), so TestFlight 1.2.0 opened the phase-2 read screen
+ * on the owner's iPhone. He asked for full editing, and TestFlight is internal:
+ * he is the iOS smoke test and the Pashto/Samsung keyboard and iOS dictation
+ * check. Android is device-measured (QA-2026-11-13.md); engine B on iOS is NOT
+ * measured yet. If B fails, the editor falls back to the read view with a code
+ * he can screenshot (edit.tsx), never a broken editor. Notes over 96 KB open
+ * read-only (EDIT_SIZE_LIMIT).
  */
-export const NOTES_EDITOR_ENABLED: boolean = __DEV__;
+export const NOTES_EDITOR_ENABLED: boolean = true;

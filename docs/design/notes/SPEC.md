@@ -460,7 +460,8 @@ screen wires those together.
     no web link).
 - **Known limitation: hardware keyboard.** With key events (a hardware keyboard, or `adb input`), Return in a list item desyncs the caret: the next characters land in another block, and one is lost. The on-screen keyboard (Gboard) is correct. A tablet with a keyboard must be checked before release. The upstream issue is ready and waits for the owner's "oui".
 - **Drawn while editing since 2026-11-13:** text colour, highlight, sub and sup, through a patch-package patch of B 2.2.3 (Android `RenderBridgeInlineAndAtoms.kt`, iOS `RenderBridge+Atoms.swift`). Colours come from the glue's `display` (#rrggbb). Guarded by `enginePatch.test.ts`. iOS is **NOT MEASURED** on a device.
-- **Long notes:** the 914 KB dev note types about 3× slower than a small one on the emulator. Measure on a real phone before choosing a size limit for read-only.
+- **Long notes:** measured 2026-11-14 on the emulator: 112 KB edits; 125 KB and up is an ANR. Notes over 96 KB open read-only (`EDIT_SIZE_LIMIT`, QA-2026-11-13.md). The real fix is proposed in `LONG_NOTES.md`.
+- **In release builds since 2026-11-15**, both platforms (`NOTES_EDITOR_ENABLED`, `src/config/features.ts`). Until then it was dev-only, so TestFlight 1.2.0 showed the phase-2 read screen. Android is device-measured; engine B on iOS is NOT measured, and the owner's TestFlight build is its first run. If B fails, the editor shows the read view with an error code (NE-…) he can screenshot.
 
 ## I · Data layer (React Query, 2026-11-13)
 

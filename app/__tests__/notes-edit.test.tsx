@@ -223,6 +223,30 @@ it("an error from engine B while editing (e.g. its view could not draw the note)
   expect(mock.history.put).toHaveLength(0);
 });
 
+// Release builds (2026-11-15): engine B's first run on iOS is the owner's
+// TestFlight. The read view says WHY with a code he can screenshot.
+describe("the read view says why the editor could not open (a code for a screenshot)", () => {
+  it("B refused to create the document: NE-CREATE and B's message", async () => {
+    mockEngine.refuse = true;
+    open();
+    expect(await screen.findByTestId("note-edit-cannot-open-code")).toHaveTextContent(/^NE-CREATE · invalid localJson initialization$/);
+  });
+
+  it("B did not keep the whole note: NE-HOLDS", async () => {
+    server = note({ description: "<p>hello</p><ul><li><p>one</p></li></ul><p>end</p>" });
+    mockEngine.holds = "part";
+    open();
+    expect(await screen.findByTestId("note-edit-cannot-open-code")).toHaveTextContent(/^NE-HOLDS · the engine holds \d+ top-level blocks of \d+$/);
+  });
+
+  it("B reported an error while editing: NE-ENGINE with its code", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    act(() => mockEngineErrors.listeners.forEach((l) => l({ code: "DOCUMENT_LIMIT_EXCEEDED", message: "render too large" })));
+    expect(await screen.findByTestId("note-edit-cannot-open-code")).toHaveTextContent(/^NE-ENGINE · DOCUMENT_LIMIT_EXCEEDED render too large$/);
+  });
+});
+
 it("a change that cannot become valid HTML is never sent, and the screen says so", async () => {
   open();
   await waitFor(() => expect(mockEngine.props).not.toBeNull());

@@ -1236,6 +1236,9 @@ export const en = {
       cannotOpen: "This note cannot be edited on the phone yet. You can still read it here.",
       tooLong: "This note is too long to edit on the phone yet. You can read it here, and edit it on the web.",
       cannotSave: "This change could not be saved. Your text is kept on this phone.",
+      copy: "Copy the note",
+      copied: "Copied",
+      lastUpdated: "Last updated {{when}}",
       restored: "Your unsent changes were restored.",
       conflict: {
         title: "This note changed on the web",

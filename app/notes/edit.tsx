@@ -44,6 +44,9 @@ import { EDIT_SIZE_LIMIT, openForEditing, saveFromEngine, type EditSession } fro
 import { parseNoteHtml } from "@/screens/notes/document";
 import { createExportScheduler, type ExportScheduler } from "@/screens/notes/editor/exportScheduler";
 import { createOpenTiming, timingLog } from "@/screens/notes/editor/openTiming";
+import { notePlainText } from "@/screens/notes/plainText";
+import * as Clipboard from "expo-clipboard";
+import * as Haptics from "expo-haptics";
 import { engineHolds } from "@/screens/notes/editor/engineHolds";
 import { notesEngineAtoms, notesEngineSchema } from "@/screens/notes/editor/engineSchema";
 import { engineTheme } from "@/screens/notes/editor/engineTheme";
@@ -55,7 +58,6 @@ import { runCommand, type EngineRef } from "@/screens/notes/editor/engineCommand
 import { toolbarLabels } from "@/screens/notes/toolbarLabels";
 import { NoteColorPicker } from "@/screens/notes/NoteColorPicker";
 import { noteColor, type NoteColorKey } from "@/screens/notes/editor/noteColors";
-import { cardPreview } from "@/screens/notes/cardPreview";
 import { relativeTime } from "@/lib/relativeTime";
 import { CODE_LANGUAGES, deleteBlockAt, setCodeLanguageAt, textblockAt, toCodeBlockAt, toParagraphAt } from "@/screens/notes/editor/blockEdits";
 
@@ -507,10 +509,18 @@ export default function NoteEditScreen() {
       router.replace({ pathname: "/notes/edit", params: { id: String(copy.id) } });
     });
   };
+  // The web's copy-content icon (owner, 2026-11-15): title + body as plain text.
+  const [copied, setCopied] = useState(false);
+  const copyText = () => {
+    void Clipboard.setStringAsync(notePlainText(title.current, html.current)).then(() => {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
   const sendNote = () => {
     setSheet(null);
-    const body = cardPreview(html.current, 100000).lines.join("\n");
-    const message = [title.current.trim(), body].filter(Boolean).join("\n\n");
+    const message = notePlainText(title.current, html.current);
     void Share.share({ message, title: title.current.trim() || undefined }).catch(() => undefined);
   };
   const colorLabels = {
@@ -558,19 +568,35 @@ export default function NoteEditScreen() {
       >
         <ChevronLeft size={24} color={colors.ink} />
       </Pressable>
-      <Text testID="note-edit-state" tone="muted" style={{ flex: 1, fontSize: 12 }} accessibilityLiveRegion="polite">
-        {opened ? stateLabel : ""}
-      </Text>
+      {copied ? (
+        <Text testID="note-edit-copied" tone="muted" style={{ flex: 1, fontSize: 12 }} accessibilityLiveRegion="polite">
+          {t("notes.edit.copied")}
+        </Text>
+      ) : (
+        <Text testID="note-edit-state" tone="muted" style={{ flex: 1, fontSize: 12 }} accessibilityLiveRegion="polite">
+          {opened ? stateLabel : ""}
+        </Text>
+      )}
       {note ? (
         <View style={{ flexDirection: "row", borderRadius: 999, backgroundColor: `${colors.ink}14`, paddingHorizontal: 4 }}>
+          <Pressable
+            testID="note-edit-copy"
+            onPress={copyText}
+            accessibilityRole="button"
+            accessibilityLabel={t("notes.edit.copy")}
+            hitSlop={6}
+            style={{ width: 40, height: 44, alignItems: "center", justifyContent: "center" }}
+          >
+            <Copy size={20} color={colors.ink} />
+          </Pressable>
           <Pressable
             testID="note-edit-pin"
             onPress={togglePin}
             accessibilityRole="button"
             accessibilityLabel={notePinned ? t("notes.grid.unpin") : t("notes.grid.pin")}
             accessibilityState={{ selected: notePinned }}
-            hitSlop={4}
-            style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+            hitSlop={6}
+            style={{ width: 40, height: 44, alignItems: "center", justifyContent: "center" }}
           >
             <Pin size={20} color={notePinned ? colors.accent : colors.ink} fill={notePinned ? colors.accent : "none"} />
           </Pressable>
@@ -581,8 +607,8 @@ export default function NoteEditScreen() {
               accessibilityRole="button"
               accessibilityLabel={locked ? t("notes.lock.unlock") : t("notes.lock.lock")}
               accessibilityState={{ selected: locked }}
-              hitSlop={4}
-              style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+              hitSlop={6}
+              style={{ width: 40, height: 44, alignItems: "center", justifyContent: "center" }}
             >
               {locked ? <LockIcon size={20} color={colors.accent} /> : <LockOpenIcon size={20} color={colors.ink} />}
             </Pressable>
@@ -593,8 +619,8 @@ export default function NoteEditScreen() {
             accessibilityRole="button"
             accessibilityLabel={t("notes.reminder.bell")}
             accessibilityState={{ selected: Boolean(noteReminder) }}
-            hitSlop={4}
-            style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+            hitSlop={6}
+            style={{ width: 40, height: 44, alignItems: "center", justifyContent: "center" }}
           >
             <BellIcon size={20} color={noteReminder ? colors.accent : colors.ink} />
           </Pressable>
@@ -604,8 +630,8 @@ export default function NoteEditScreen() {
               onPress={archiveNote}
               accessibilityRole="button"
               accessibilityLabel={t("notes.views.archiveAction")}
-              hitSlop={4}
-              style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}
+              hitSlop={6}
+              style={{ width: 40, height: 44, alignItems: "center", justifyContent: "center" }}
             >
               <ArchiveIcon size={20} color={colors.ink} />
             </Pressable>
@@ -687,6 +713,11 @@ export default function NoteEditScreen() {
         style={{ fontSize: 28, lineHeight: 36, fontWeight: "400", color: colors.ink, paddingVertical: metrics.space.sm }}
         accessibilityLabel={t("notes.edit.titlePlaceholder")}
       />
+      {note ? (
+        <Text testID="note-edit-updated" tone="muted" style={{ fontSize: 12, marginTop: -metrics.space.xs, marginBottom: metrics.space.xs }}>
+          {t("notes.edit.lastUpdated", { when: new Date(note.updatedAt).toLocaleString(i18n.language, { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) })}
+        </Text>
+      ) : null}
       {locked ? (
         <View testID="note-edit-locked-chip" style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 999, backgroundColor: `${colors.ink}14`, paddingHorizontal: 10, paddingVertical: 4, marginBottom: metrics.space.xs }}>
           <LockIcon size={14} color={colors.ink} />

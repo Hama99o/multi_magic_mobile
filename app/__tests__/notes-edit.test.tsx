@@ -84,6 +84,16 @@ jest.mock("@apollohg/react-native-rich-text-editor", () => {
   };
 });
 const mockLeave: { listeners: (() => void)[] } = { listeners: [] };
+const mockBoard = { text: "" };
+jest.mock("expo-clipboard", () => ({ setStringAsync: jest.fn(async (v: string) => { mockBoard.text = v; return true; }) }));
+const mockHaptics = { success: 0 };
+jest.mock("expo-haptics", () => ({
+  notificationAsync: jest.fn(async () => { mockHaptics.success += 1; }),
+  selectionAsync: jest.fn(async () => undefined),
+  impactAsync: jest.fn(async () => undefined),
+  NotificationFeedbackType: { Success: "success" },
+  ImpactFeedbackStyle: { Light: "light" },
+}));
 jest.mock("expo-router", () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
   useLocalSearchParams: () => ({ id: "7" }),
@@ -225,6 +235,27 @@ it("an error from engine B while editing (e.g. its view could not draw the note)
 
 // Release builds (2026-11-15): engine B's first run on iOS is the owner's
 // TestFlight. The read view says WHY with a code he can screenshot.
+// Owner, 2026-11-15: the web's note window has a copy-content icon and
+// "Last updated: <date time>"; the phone gets both.
+describe("copy the note and see when it was last updated (like the web)", () => {
+  it("the copy key copies the title and the body as plain text, with a haptic and a short \"Copied\"", async () => {
+    server = note({ title: "Groceries", description: "<p>bread</p><p>fruit</p>" });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    fireEvent.press(screen.getByTestId("note-edit-copy"));
+    await waitFor(() => expect(mockBoard.text).toBe("Groceries\n\nbread\nfruit"));
+    expect(mockHaptics.success).toBeGreaterThan(0);
+    expect(await screen.findByTestId("note-edit-copied")).toHaveTextContent("Copied");
+  });
+
+  it("shows \"Last updated\" with the note's date and time", async () => {
+    server = note({ updated_at: "2026-11-12T09:00:00Z" });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(screen.getByTestId("note-edit-updated")).toHaveTextContent(/^Last updated .*(12.*Nov|Nov.*12)/);
+  });
+});
+
 describe("the read view says why the editor could not open (a code for a screenshot)", () => {
   it("B refused to create the document: NE-CREATE and B's message", async () => {
     mockEngine.refuse = true;

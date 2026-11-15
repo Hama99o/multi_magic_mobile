@@ -1252,6 +1252,9 @@ export const fr: Translations = {
       cannotOpen: "Cette note ne peut pas encore être modifiée sur le téléphone. Vous pouvez toujours la lire ici.",
       tooLong: "Cette note est encore trop longue pour être modifiée sur le téléphone. Vous pouvez la lire ici et la modifier sur le web.",
       cannotSave: "Cette modification n’a pas pu être enregistrée. Votre texte reste sur ce téléphone.",
+      copy: "Copier la note",
+      copied: "Copiée",
+      lastUpdated: "Dernière modification {{when}}",
       restored: "Vos modifications non envoyées ont été restaurées.",
       conflict: {
         title: "Cette note a changé sur le web",

@@ -1132,6 +1132,7 @@ export const en = {
     },
     labels: {
       drawerTitle: "MultiMagic Notes",
+      allApps: "All apps",
       title: "Labels",
       edit: "Edit labels",
       create: "Create new label",

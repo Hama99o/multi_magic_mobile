@@ -1148,6 +1148,7 @@ export const fr: Translations = {
     },
     labels: {
       drawerTitle: "Notes MultiMagic",
+      allApps: "Toutes les apps",
       title: "Libellés",
       edit: "Modifier les libellés",
       create: "Créer un libellé",

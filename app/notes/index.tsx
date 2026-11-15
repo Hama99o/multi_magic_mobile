@@ -18,7 +18,7 @@
  * do not exist on the web (MISSING_FEATURES.md).
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, BackHandler, Modal, Pressable, RefreshControl, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 
@@ -174,6 +174,20 @@ export default function NotesScreen() {
     blue: t("notes.grid.colors.blue"), purple: t("notes.grid.colors.purple"), pink: t("notes.grid.colors.pink"),
     gray: t("notes.grid.colors.gray"),
   } satisfies Record<NoteColorKey, string>;
+
+  // Back to the app grid (TestFlight 1.2.0, 2026-11-15: "no option to go back
+  // to the menu where we select the app"): back if Home is behind, else Home.
+  const goHome = () => (router.canGoBack() ? router.back() : router.replace("/home"));
+  // Android back at a Notes root with nothing behind (a reminder, a link):
+  // Home, not out of the app. With history, the stack's own back runs.
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (router.canGoBack()) return false;
+      router.replace("/home");
+      return true;
+    });
+    return () => sub.remove();
+  }, []);
 
   const iconKey = (testID: string, label: string, onPress: () => void, icon: ReactNode) => (
     <Pressable
@@ -339,6 +353,10 @@ export default function NotesScreen() {
         visible={drawer}
         currentTagId={label?.id ?? null}
         onClose={() => setDrawer(false)}
+        onGoHome={() => {
+          setDrawer(false);
+          goHome();
+        }}
         view={view}
         onPick={(tag) => {
           setDrawer(false);

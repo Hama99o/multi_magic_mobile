@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 
 import { Text } from "@/components/reusables/text";
 import { KeyboardPadding } from "@/components/KeyboardPadding";
-import { Check, NotebookPen, Pencil, Plus, Square, Trash2, X } from "@/components/icons";
+import { Check, LayoutGrid, NotebookPen, Pencil, Plus, Square, Trash2, X } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useCreateTag, useCreateTagOnNote, useNoteTags, useRemoveTag, useRenameTag, useToggleNoteTag } from "./api/queries";
 import type { Note, NoteTag } from "@/api/notes";
@@ -24,7 +24,7 @@ export { useNoteTags };
 export type NotesView = "notes" | "reminders" | "archive" | "trash";
 
 export function NotesDrawer({
-  visible, currentTagId, view = "notes", onClose, onPick, onEditLabels, onPickView,
+  visible, currentTagId, view = "notes", onClose, onPick, onEditLabels, onPickView, onGoHome,
 }: {
   visible: boolean;
   currentTagId: number | null;
@@ -33,6 +33,8 @@ export function NotesDrawer({
   onPick(tag: NoteTag | null): void;
   onEditLabels(): void;
   onPickView?(view: NotesView): void;
+  /** Back to the app grid (TestFlight 1.2.0, 2026-11-15: no way back to Home). */
+  onGoHome?(): void;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -67,6 +69,7 @@ export function NotesDrawer({
             {t("notes.labels.drawerTitle")}
           </Text>
           <ScrollView>
+            {onGoHome ? row("drawer-home", t("notes.labels.allApps"), <LayoutGrid size={22} color={colors.ink} />, false, onGoHome) : null}
             {row("drawer-notes", t("notes.title"), <NotebookPen size={22} color={colors.ink} />, view === "notes" && currentTagId === null, () => onPick(null))}
             {onPickView ? row("drawer-reminders", t("notes.views.reminders"), <BellIcon size={22} color={colors.ink} />, view === "reminders", () => onPickView("reminders")) : null}
             <Text tone="muted" style={{ fontSize: 12, fontWeight: "600", letterSpacing: 0.6, paddingHorizontal: 20, marginTop: metrics.space.lg, marginBottom: metrics.space.xs }}>

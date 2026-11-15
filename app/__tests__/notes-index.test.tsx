@@ -11,7 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
-  router: { push: (...a: unknown[]) => mockPush(...a), back: jest.fn(), replace: jest.fn() },
+  router: { push: (...a: unknown[]) => mockPush(...a), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
   useLocalSearchParams: () => ({}),
 }));
 
@@ -370,5 +370,55 @@ describe("the profile photo in the Notes bar", () => {
       const imgs = within(screen.getByTestId("notes-profile")).UNSAFE_queryAllByType(Image);
       expect(imgs.map((i) => (i.props as { source?: { uri?: string } }).source?.uri)).toEqual([expect.stringMatching(/^https?:\/\/.+\/rails\/active_storage\/blobs\/x\/qa\.jpg$/)]);
     });
+  });
+});
+
+// TestFlight 1.2.0 (owner, 2026-11-15): "there is no option to go back to the
+// menu where we select the app". The drawer starts with All apps; Android
+// back at a Notes root with nothing behind goes Home, not out of the app.
+describe("back to the app grid (Home) from Notes", () => {
+  const { router } = jest.requireMock("expo-router") as { router: { back: jest.Mock; replace: jest.Mock; canGoBack: jest.Mock } };
+  beforeEach(() => {
+    router.back.mockClear();
+    router.replace.mockClear();
+    router.canGoBack.mockReturnValue(true);
+    mock.onGet("/api/v1/note_app/tags").reply(200, { tags: [], meta: { pagy: { page: 1, pages: 1 } } });
+  });
+
+  it("the drawer's first entry is All apps; with Home behind, it goes back to it", async () => {
+    open();
+    await screen.findByText("Pinned seed");
+    fireEvent.press(screen.getByTestId("notes-menu"));
+    const home = await screen.findByTestId("drawer-home");
+    expect(home).toHaveTextContent("All apps");
+    fireEvent.press(home);
+    expect(router.back).toHaveBeenCalledTimes(1);
+    expect(router.replace).not.toHaveBeenCalled();
+  });
+
+  it("opened without Home behind (a reminder, a link), All apps replaces with Home", async () => {
+    router.canGoBack.mockReturnValue(false);
+    open();
+    await screen.findByText("Pinned seed");
+    fireEvent.press(screen.getByTestId("notes-menu"));
+    fireEvent.press(await screen.findByTestId("drawer-home"));
+    expect(router.replace).toHaveBeenCalledWith("/home");
+  });
+
+  it("Android back at a Notes root with nothing behind goes Home instead of leaving the app", async () => {
+    const { BackHandler } = jest.requireActual("react-native");
+    const handlers: (() => boolean)[] = [];
+    jest.spyOn(BackHandler, "addEventListener").mockImplementation((...args: unknown[]) => {
+      handlers.push(args[1] as () => boolean);
+      return { remove: () => undefined };
+    });
+    router.canGoBack.mockReturnValue(false);
+    open();
+    await screen.findByText("Pinned seed");
+    expect(handlers.length).toBeGreaterThan(0);
+    let handled = false;
+    act(() => { handled = handlers.some((h) => h()); });
+    expect(handled).toBe(true);
+    expect(router.replace).toHaveBeenCalledWith("/home");
   });
 });

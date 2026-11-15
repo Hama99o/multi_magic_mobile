@@ -36,6 +36,7 @@ import { onSafezoneLock, useSafezoneLock } from "@/stores/safezoneLock.store";
 import { clipboardGuard } from "./clipboardGuard";
 import { formatCountdown, lockoutLeft, PIN_LENGTH } from "./pin";
 import { PinPad } from "./PinPad";
+import { ChangePinForm } from "./PinForms";
 import { useSecureScreen } from "./secureScreen";
 
 const TICK_MS = 5_000;
@@ -175,7 +176,10 @@ function Unlock({ attemptsLeft }: { attemptsLeft: number | null }) {
   const [wrongKey, setWrongKey] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
   const [pausedUntil, setPausedUntil] = useState(0);
-  const [showForgot, setShowForgot] = useState(false);
+  // "Forgot your PIN?" is the web's change flow (account password → emailed
+  // code → new PIN), which never asks for the old one (audit 2026-11-16, #7).
+  const [forgot, setForgot] = useState(false);
+  const [changed, setChanged] = useState(false);
 
   useEffect(() => {
     if (!pausedUntil) return;
@@ -219,6 +223,21 @@ function Unlock({ attemptsLeft }: { attemptsLeft: number | null }) {
       .finally(() => setBusy(false));
   };
 
+  if (forgot) {
+    return (
+      <ScrollView testID="safezone-forgot-flow" style={{ flex: 1 }} contentContainerStyle={{ paddingTop: metrics.space.lg, paddingBottom: insets.bottom + metrics.space.xl }} keyboardShouldPersistTaps="handled">
+        <ChangePinForm
+          intro={t("safezone.change.forgotIntro")}
+          onDone={() => {
+            setForgot(false);
+            setChanged(true);
+          }}
+          onCancel={() => setForgot(false)}
+        />
+      </ScrollView>
+    );
+  }
+
   return (
     // Scrolls, with room under its last line for the gesture bar: as a fixed
     // stack, "Forgot your PIN?" was off a 360 dp screen and under the gesture
@@ -243,14 +262,22 @@ function Unlock({ attemptsLeft }: { attemptsLeft: number | null }) {
         disabled={busy || pausedUntil > 0}
         underDots={
           <View style={{ alignItems: "center", gap: metrics.space.xs }}>
-            <Pressable testID="safezone-forgot" onPress={() => setShowForgot((v) => !v)} accessibilityRole="button" hitSlop={8}>
-              <Text tone="accent">{t("safezone.pin.forgot")}</Text>
-            </Pressable>
-            {showForgot ? (
-              <Text testID="safezone-forgot-body" tone="muted" style={{ textAlign: "center", paddingHorizontal: metrics.space.lg }}>
-                {t("safezone.pin.forgotBody")}
+            {changed ? (
+              <Text testID="safezone-pin-changed" tone="accent" style={{ textAlign: "center", paddingHorizontal: metrics.space.lg }} accessibilityLiveRegion="polite">
+                {t("safezone.change.done")}
               </Text>
             ) : null}
+            <Pressable
+              testID="safezone-forgot"
+              onPress={() => {
+                setChanged(false);
+                setForgot(true);
+              }}
+              accessibilityRole="button"
+              hitSlop={8}
+            >
+              <Text tone="accent">{t("safezone.pin.forgot")}</Text>
+            </Pressable>
           </View>
         }
       />

@@ -67,6 +67,14 @@ describe("no storage, no logs, nowhere else", () => {
   });
 });
 
+// The PIN, the emailed code and the account password of the change and
+// turn-off forms (audit 2026-11-16, #7/#27) live in the form's state only: a
+// React Query mutation would keep them as its variables for minutes.
+it.each(["src/screens/safezone/PinForms.tsx", "app/safezone/settings.tsx"])("%s keeps the PIN and the password out of React Query", (file) => {
+  const source = readFileSync(join(ROOT, file), "utf8");
+  expect(source).not.toMatch(/useQuery|useInfiniteQuery|useMutation|queryClient/);
+});
+
 it("an item's secrets never go through React Query (SECURITY.md §8)", () => {
   const item = readFileSync(join(ROOT, "app/safezone/item.tsx"), "utf8");
   expect(item).not.toMatch(/useQuery|useInfiniteQuery|useMutation|queryClient/);

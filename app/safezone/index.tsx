@@ -8,7 +8,7 @@ import { ActivityIndicator, FlatList, Pressable, TextInput, View } from "react-n
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Lock, Plus, Search, TriangleAlert, X } from "@/components/icons";
+import { ChevronLeft, ChevronRight, Lock, Plus, Search, ShieldCheck, TriangleAlert, X } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -37,12 +37,27 @@ export default function SafeZoneScreen() {
         <Text variant="title" accessibilityRole="header" style={{ flex: 1 }} testID="safezone-title">
           {t("safezone.title")}
         </Text>
+        <SettingsButton />
         <LockButton />
       </View>
       <SafeZoneGate>
         <Vault />
       </SafeZoneGate>
     </Screen>
+  );
+}
+
+/** The PIN's settings (change it, turn it off), as the web's profile card (audit #27). */
+function SettingsButton() {
+  const colors = useColors();
+  const metrics = useMetrics();
+  const { t } = useTranslation();
+  const unlocked = useSafezoneLock((s) => s.status.kind === "unlocked");
+  if (!unlocked) return null;
+  return (
+    <Pressable testID="safezone-settings" onPress={() => router.push("/safezone/settings")} accessibilityRole="button" accessibilityLabel={t("safezone.settings.title")} style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}>
+      <ShieldCheck size={22} color={colors.ink} />
+    </Pressable>
   );
 }
 

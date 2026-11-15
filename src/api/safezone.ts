@@ -308,6 +308,24 @@ export const safezoneApi = {
       ),
     ),
 
+  /** Turn the PIN off (the account password); the server sends the new status. */
+  disable: (currentPassword: string) =>
+    call(async () => pinStatusOf((await http.delete(`${BASE}/pin/disable`, { data: { current_password: currentPassword } })).data)),
+
+  /** Change step 1: the account password; the server emails a 6-digit code (5 asks / 15 min). */
+  requestChange: (currentPassword: string) =>
+    call(async () => {
+      await http.post(`${BASE}/pin/request_change`, { current_password: currentPassword });
+    }),
+
+  /** Change step 2: the emailed code and the new PIN twice. Every unlock token dies with the old PIN. */
+  confirmChange: (input: { code: string; pin: string; pinConfirmation: string }) =>
+    call(async () =>
+      pinStatusOf(
+        (await http.post(`${BASE}/pin/confirm_change`, { code: input.code, pin: input.pin, pin_confirmation: input.pinConfirmation })).data,
+      ),
+    ),
+
   list: (kind: SafeZoneKind, opts: { token: string; page?: number; search?: string }) =>
     call(async (): Promise<SafeZonePage> => {
       const page = opts.page ?? 1;

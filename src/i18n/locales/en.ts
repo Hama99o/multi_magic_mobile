@@ -872,6 +872,7 @@ export const en = {
       country: "Country",
       website: "Website",
       notes: "Notes",
+      editNotes: "Edit the notes",
       favourite: "Favourite",
       photoTitle: "Photo",
       addPhoto: "Add a photo",
@@ -1093,6 +1094,13 @@ export const en = {
     safezoneBody: "Passwords, cards and IDs, behind your PIN",
     calendarBody: "What's next",
     conversationsBody: "Your past questions",
+  },
+  richText: {
+    done: "Done",
+    placeholder: "Write something",
+    tooLong: "This text is too long to edit on the phone yet. You can read it here.",
+    cannotOpen: "This text cannot be edited on the phone yet. You can still read it here.",
+    cannotSave: "This change could not be kept. Nothing was changed.",
   },
   notes: {
     title: "Notes",

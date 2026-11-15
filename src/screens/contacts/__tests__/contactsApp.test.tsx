@@ -423,6 +423,50 @@ describe("the form", () => {
     expect(body.contact.phones).toHaveLength(2);
   });
 
+  // Owner, 2026-11-15: "no edit-on-web, everything editable on mobile". The
+  // web stores contact notes as Tiptap HTML; the form shows them as rich text
+  // and edits them in the Notes engine (app/rich-text.tsx), never as tags in
+  // a text box, and never saves a stripped version.
+  it("HTML notes read as rich text in the form and open the rich editor", async () => {
+    mockParams.current = { id: "7" };
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact({ notes: "<p>Door code is on the <strong>fridge</strong></p>" }) });
+    renderScreen(<EditContact />);
+    const notes = await screen.findByTestId("contact-form-notes");
+    expect(notes).toHaveTextContent(/Door code is on the fridge/);
+    expect(screen.queryByText(/<p>|<strong>/)).toBeNull();
+    fireEvent.press(notes);
+    expect(router.push).toHaveBeenCalledWith("/rich-text");
+    const { useRichTextSession } = jest.requireActual("@/stores/richTextSession.store");
+    expect(useRichTextSession.getState().session.html).toBe("<p>Door code is on the <strong>fridge</strong></p>");
+  });
+
+  it("what the rich editor hands back is saved as the web's HTML", async () => {
+    mockParams.current = { id: "7" };
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact({ notes: "<p>Door code is on the fridge</p>" }) });
+    mock.onPut(`${BASE}/7`).reply(200, { contact: contact() });
+    renderScreen(<EditContact />);
+    fireEvent.press(await screen.findByTestId("contact-form-notes"));
+    const { useRichTextSession } = jest.requireActual("@/stores/richTextSession.store");
+    act(() => useRichTextSession.getState().session.onDone("<p><strong>Water the plants</strong></p>"));
+    expect(await screen.findByTestId("contact-form-notes")).toHaveTextContent(/Water the plants/);
+    fireEvent.press(screen.getByTestId("contact-form-save"));
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    expect(JSON.parse(mock.history.put[0].data).contact.notes).toBe("<p><strong>Water the plants</strong></p>");
+  });
+
+  it("notes left alone go back exactly as they came (never stripped)", async () => {
+    mockParams.current = { id: "7" };
+    const html = "<p>Door code is on the <strong>fridge</strong> &amp; spare key</p><p></p>";
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact({ notes: html }) });
+    mock.onPut(`${BASE}/7`).reply(200, { contact: contact() });
+    renderScreen(<EditContact />);
+    await screen.findByTestId("contact-form-notes");
+    fireEvent.changeText(screen.getByTestId("contact-form-firstname"), "Jamil B.");
+    fireEvent.press(screen.getByTestId("contact-form-save"));
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    expect(JSON.parse(mock.history.put[0].data).contact.notes).toBe(html);
+  });
+
   it("a save that fails keeps the draft and says why under the header", async () => {
     mock.onPost(BASE).networkError();
     renderScreen(<EditContact />);

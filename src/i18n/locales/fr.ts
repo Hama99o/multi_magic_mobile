@@ -888,6 +888,7 @@ export const fr: Translations = {
       country: "Pays",
       website: "Site web",
       notes: "Notes",
+      editNotes: "Modifier les notes",
       favourite: "Favori",
       photoTitle: "Photo",
       addPhoto: "Ajouter une photo",
@@ -1109,6 +1110,13 @@ export const fr: Translations = {
     safezoneBody: "Mots de passe, cartes et papiers, derrière votre code",
     calendarBody: "Ce qui arrive",
     conversationsBody: "Vos questions passées",
+  },
+  richText: {
+    done: "OK",
+    placeholder: "Écrivez quelque chose",
+    tooLong: "Ce texte est encore trop long pour être modifié sur le téléphone. Vous pouvez le lire ici.",
+    cannotOpen: "Ce texte ne peut pas encore être modifié sur le téléphone. Vous pouvez toujours le lire ici.",
+    cannotSave: "Cette modification n’a pas pu être gardée. Rien n’a changé.",
   },
   notes: {
     title: "Notes",

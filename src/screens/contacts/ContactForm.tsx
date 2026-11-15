@@ -18,6 +18,9 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { EMAIL_LABELS, PHONE_LABELS } from "@/api/contacts";
 import { DateWheels } from "@/screens/calendar/pickers";
 import { ContactAvatar } from "./ContactAvatar";
+import { router } from "expo-router";
+import { RichText } from "@/components/RichText";
+import { useRichTextSession } from "@/stores/richTextSession.store";
 import { ActionSheet } from "./ActionSheet";
 import { addEntry, emptyAddress, problems, removeEntry, setAddress, setEntry, type Draft } from "./draft";
 
@@ -333,7 +336,25 @@ export function ContactForm({
         <Section>
           {input({ testID: "contact-form-website", value: draft.website, onChangeText: (website) => onChange({ ...draft, website }), label: t("contacts.form.website"), keyboardType: "url", autoCapitalize: "none", autoComplete: "url" })}
           <View style={divider} />
-          {input({ testID: "contact-form-notes", value: draft.notes, onChangeText: (notes) => onChange({ ...draft, notes }), label: t("contacts.form.notes"), multiline: true })}
+          {/* The web stores notes as Tiptap HTML: shown as rich text and edited
+              in the Notes engine (app/rich-text.tsx), never as tags in a text
+              box and never saved stripped (owner, 2026-11-15). */}
+          <Pressable
+            testID="contact-form-notes"
+            onPress={() => {
+              useRichTextSession.getState().start({
+                html: draft.notes,
+                title: t("contacts.form.notes"),
+                onDone: (notes) => onChange({ ...draft, notes }),
+              });
+              router.push("/rich-text");
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t("contacts.form.editNotes")}
+            style={{ minHeight: 88, borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, padding: metrics.space.md, backgroundColor: colors.surface }}
+          >
+            {draft.notes.trim() ? <RichText value={draft.notes} /> : <Text tone="muted">{t("contacts.form.notes")}</Text>}
+          </Pressable>
         </Section>
 
         <Section>

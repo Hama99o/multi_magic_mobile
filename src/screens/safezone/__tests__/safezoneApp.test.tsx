@@ -9,7 +9,7 @@
  * the device pass (SECURITY.md §9).
  */
 import MockAdapter from "axios-mock-adapter";
-import { AppState, type AppStateStatus } from "react-native";
+import { Alert, AppState, type AppStateStatus } from "react-native";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { QueryClientProvider, type QueryClient } from "@tanstack/react-query";
 import type { ReactElement } from "react";
@@ -542,6 +542,62 @@ describe("the item: reveal and copy", () => {
     await openItem();
     fireEvent.press(screen.getByTestId("safezone-field-link-open"));
     expect(open).toHaveBeenCalledWith("https://mail.example.test");
+  });
+});
+
+// Audit 2026-11-16 #26: safezoneApi.remove existed and nothing called it. A
+// hard delete (the server keeps no trash; SECURITY.md §10): a confirmation
+// that names the item, then back to the list, refreshed.
+describe("delete an item", () => {
+  const { router } = jest.requireMock("expo-router") as { router: { back: jest.Mock } };
+  type Button = { text?: string; style?: string; onPress?: () => void };
+  let alert: jest.SpyInstance;
+  beforeEach(() => {
+    router.back.mockClear();
+    alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+  });
+  const press = (style: string) => {
+    const buttons = alert.mock.calls[0][2] as Button[];
+    act(() => buttons.find((b) => b.style === style)!.onPress?.());
+  };
+  async function openItem() {
+    useSafezoneLock.getState().unlocked({ token: "tok", expiresIn: 120 });
+    mockParams.current = { kind: "passwords", id: "11" };
+    mock.onGet(`${BASE}/passwords/11`).reply(200, password);
+    renderScreen(<SafeZoneItem />);
+    await screen.findByTestId("safezone-item-title");
+    return jest.spyOn(client, "invalidateQueries");
+  }
+
+  it("asks first, naming the item and saying it cannot be undone; then deletes, refreshes the list and goes back", async () => {
+    mock.onDelete(`${BASE}/passwords/11`).reply(204);
+    const invalidate = await openItem();
+    fireEvent.press(screen.getByTestId("safezone-item-delete"));
+    expect(alert.mock.calls[0][0]).toBe("Delete “Mail”?");
+    expect(alert.mock.calls[0][1]).toMatch(/cannot be undone/);
+    expect(mock.history.delete).toHaveLength(0);
+    press("destructive");
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    expect(mock.history.delete[0].url).toBe(`${BASE}/passwords/11`);
+    expect(mock.history.delete[0].headers?.["X-Safezone-Unlock"]).toMatch(/^tok/); // the window may have been renewed
+    expect(invalidate).toHaveBeenCalledWith({ queryKey: ["safezone", "list"] });
+  });
+
+  it("Cancel deletes nothing", async () => {
+    await openItem();
+    fireEvent.press(screen.getByTestId("safezone-item-delete"));
+    press("cancel");
+    expect(mock.history.delete).toHaveLength(0);
+    expect(router.back).not.toHaveBeenCalled();
+  });
+
+  it("a failed delete says so and stays on the item", async () => {
+    mock.onDelete(`${BASE}/passwords/11`).networkError();
+    await openItem();
+    fireEvent.press(screen.getByTestId("safezone-item-delete"));
+    press("destructive");
+    expect(await screen.findByTestId("safezone-item-error")).toBeTruthy();
+    expect(router.back).not.toHaveBeenCalled();
   });
 });
 

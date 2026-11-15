@@ -1116,6 +1116,13 @@ export const en = {
       confirm: "Turn off the PIN",
       failed: "Could not turn off the PIN. Try again.",
     },
+    delete: {
+      action: "Delete",
+      title: "Delete “{{name}}”?",
+      body: "It is deleted for good. This cannot be undone: SafeZone has no trash.",
+      confirm: "Delete",
+      failed: "Could not delete it. Try again.",
+    },
     settings: {
       title: "SafeZone settings",
       pinOn: "Your SafeZone PIN is on.",

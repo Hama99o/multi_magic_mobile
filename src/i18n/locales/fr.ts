@@ -1132,6 +1132,13 @@ export const fr: Translations = {
       confirm: "Désactiver le code",
       failed: "Impossible de désactiver le code. Réessayez.",
     },
+    delete: {
+      action: "Supprimer",
+      title: "Supprimer « {{name}} » ?",
+      body: "Il est supprimé définitivement. C’est irréversible : SafeZone n’a pas de corbeille.",
+      confirm: "Supprimer",
+      failed: "Impossible de le supprimer. Réessayez.",
+    },
     settings: {
       title: "Réglages SafeZone",
       pinOn: "Votre code SafeZone est activé.",

@@ -8,11 +8,11 @@
  * and leaving wipe it.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Linking, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, View } from "react-native";
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import * as Clipboard from "expo-clipboard";
-import { ChevronLeft, Copy, ExternalLink, Eye, EyeOff, Pencil } from "@/components/icons";
+import { ChevronLeft, Copy, ExternalLink, Eye, EyeOff, Pencil, Trash2 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
@@ -27,6 +27,7 @@ import { MASK, siteUrl, withoutSecrets } from "@/screens/safezone/display";
 import { createRevealer, REVEAL_MS } from "@/screens/safezone/reveal";
 import { Tile } from "@/screens/safezone/Tile";
 import { Toast } from "@/screens/safezone/Toast";
+import { useRemoveItem } from "@/screens/safezone/useRemoveItem";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 
@@ -104,6 +105,9 @@ function Item() {
   const [toast, setToast] = useState<string | null>(null);
   const [busyKey, setBusyKey] = useState<string | null>(null);
 
+  const removeItem = useRemoveItem();
+  const [deleting, setDeleting] = useState(false);
+
   const revealer = useMemo(() => createRevealer({ onChange: (key) => key === null && setRevealed(null) }), []);
   useEffect(() => () => revealer.dispose(), [revealer]);
 
@@ -173,6 +177,33 @@ function Item() {
     }
   };
 
+  /** A hard delete: asked first, naming the item; there is no undo. */
+  const confirmDelete = (name: string) => {
+    if (!params) return;
+    Alert.alert(t("safezone.delete.title", { name }), t("safezone.delete.body"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("safezone.delete.confirm"),
+        style: "destructive",
+        onPress: () => {
+          setActionError(null);
+          setDeleting(true);
+          revealer.hide();
+          Promise.resolve()
+            .then(() => removeItem(params.kind, params.id, token()))
+            .then(() => {
+              void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
+              router.back();
+            })
+            .catch((e: unknown) => {
+              setDeleting(false);
+              setActionError(failureMessage(e, t("safezone.delete.failed")));
+            });
+        },
+      },
+    ]);
+  };
+
   if (!params) return <Text tone="danger">{t("safezone.itemFailed")}</Text>;
   if (error) {
     return (
@@ -226,9 +257,32 @@ function Item() {
         />
       ))}
       </View>
+      <DeleteButton busy={deleting} onPress={() => confirmDelete(title)} />
     </ScrollView>
     {toast ? <Toast message={toast} onDone={() => setToast(null)} /> : null}
     </View>
+  );
+}
+
+function DeleteButton({ busy, onPress }: { busy: boolean; onPress: () => void }) {
+  const colors = useColors();
+  const metrics = useMetrics();
+  const { t } = useTranslation();
+  const [pressed, setPressed] = useState(false);
+  return (
+    <Pressable
+      testID="safezone-item-delete"
+      onPress={onPress}
+      onPressIn={() => setPressed(true)}
+      onPressOut={() => setPressed(false)}
+      disabled={busy}
+      accessibilityRole="button"
+      accessibilityState={{ busy, disabled: busy }}
+      style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: metrics.space.sm, minHeight: 48, borderRadius: metrics.radius.lg, borderWidth: 1, borderColor: colors.border, opacity: pressed || busy ? 0.6 : 1 }}
+    >
+      {busy ? <ActivityIndicator /> : <Trash2 size={18} color={colors.danger} />}
+      <Text style={{ color: colors.danger, fontWeight: "600" }}>{t("safezone.delete.action")}</Text>
+    </Pressable>
   );
 }
 

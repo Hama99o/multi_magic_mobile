@@ -1359,7 +1359,6 @@ export const en = {
     },
     select: { clear: "Clear selection", count_one: "{{count}} selected", count_other: "{{count}} selected" },
     title: "Pages",
-    spaces: "Spaces",
     search: "Search in Pages",
     searchPill: "Search",
     loadFailed: "Could not load your Pages.",

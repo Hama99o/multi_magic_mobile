@@ -1375,7 +1375,6 @@ export const fr: Translations = {
     },
     select: { clear: "Effacer la sélection", count_one: "{{count}} sélectionné", count_other: "{{count}} sélectionnés" },
     title: "Pages",
-    spaces: "Espaces",
     search: "Rechercher dans Pages",
     searchPill: "Rechercher",
     loadFailed: "Impossible de charger vos Pages.",

@@ -41,6 +41,7 @@ import { failureMessage } from "@/api/failure";
 import { NameDialog, shareNode } from "@/screens/pages/ItemSheet";
 import { ActionsSheet, DetailsSheet, MoveSheet } from "@/screens/pages/drive/sheets";
 import { useSpaceRights } from "@/screens/pages/permissions";
+import { ShareSheet, type ShareSheetTarget } from "@/screens/pages/ShareSheet";
 import { useMoveNodes, useRenameNode, useStarNodes, useTrashNodes } from "@/screens/pages/usePageMutations";
 import { HeaderButton, NodeGlyph, PagesHeader, metaLine } from "@/screens/pages/parts";
 import { modeFor, pageDocument } from "@/screens/pages/viewerModes";
@@ -236,6 +237,7 @@ export default function Viewer() {
   const space = useQuery({ queryKey: pagesKeys.space(spaceId), queryFn: () => pagesApi.space(spaceId), enabled: Number.isFinite(spaceId) });
   const [actionsFor, setActionsFor] = useState<PageNode | null>(null);
   const [detailsFor, setDetailsFor] = useState<PageNode | null>(null);
+  const [sharingWith, setSharingWith] = useState<ShareSheetTarget | null>(null);
   const [moving, setMoving] = useState<PageNode[] | null>(null);
   const [renaming, setRenaming] = useState<PageNode | null>(null);
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -333,6 +335,7 @@ export default function Viewer() {
         node={actionsFor}
         onClose={() => setActionsFor(null)}
         onShare={() => void share()}
+        onShareWith={(n) => setSharingWith({ spaceId: n.spaceId, nodeId: n.id, title: n.title })}
         onStar={(n) => starring.mutate({ nodes: [n], starred: !n.starred })}
         onRename={(n) => {
           setRenameError(null);
@@ -344,6 +347,7 @@ export default function Viewer() {
         rights={rights}
       />
       <DetailsSheet node={detailsFor} location={location} onClose={() => setDetailsFor(null)} />
+      <ShareSheet target={sharingWith} onClose={() => setSharingWith(null)} />
       <MoveSheet
         nodes={moving}
         onClose={() => setMoving(null)}

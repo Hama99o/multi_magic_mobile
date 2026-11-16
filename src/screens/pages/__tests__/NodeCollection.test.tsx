@@ -7,7 +7,7 @@
  * with star-all and trash-all, and the toggle, kept across a restart.
  */
 import { Alert, Text } from "react-native";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { testQueryClient } from "@/__tests__/queryClient";
@@ -38,6 +38,11 @@ jest.mock("@/api/pages", () => ({
   downloadToCache: jest.fn(async () => "file:///cache/x"),
 }));
 jest.mock("expo-sharing", () => ({ shareAsync: jest.fn(async () => undefined) }));
+jest.mock("@/api/pageShares", () => ({
+  ...jest.requireActual("@/api/pageShares"),
+  sharesApi: { list: jest.fn(async () => []) },
+  shareLinksApi: { list: jest.fn(async () => []) },
+}));
 const mockDownloadMany = jest.fn();
 jest.mock("../downloadMany", () => ({ downloadMany: (...a: unknown[]) => mockDownloadMany(...a) }));
 jest.mock("expo-router", () => ({ router: { push: jest.fn(), back: jest.fn() } }));
@@ -405,5 +410,36 @@ describe("permissions: each item's own rights decide its actions", () => {
     await waitFor(() => expect(screen.queryByTestId("pages-select-trash")).toBeNull());
     expect(screen.queryByTestId("pages-select-star")).toBeNull();
     expect(screen.getByTestId("pages-select-download")).toBeTruthy();
+  });
+});
+
+// Audit #14: Share (people and links) is the space owner's alone
+// (`SharePolicy`); "Share or save" (a copy, through the phone) stays apart.
+describe("Share with people", () => {
+  beforeEach(() => {
+    act(() => useViewPrefs.setState({ mode: "list" }));
+  });
+  const layout = () => fireEvent(screen.getByTestId("list-root"), "layout", { nativeEvent: { layout: { width: 360, height: 800 } } });
+
+  it("the owner: ⋯ → Share with people opens the Share sheet for that item", async () => {
+    renderIt();
+    layout();
+    fireEvent.press(more("list"));
+    expect(screen.getByTestId("pages-action-share")).toBeTruthy();
+    fireEvent.press(await screen.findByTestId("pages-action-share-with"));
+    expect(within(await screen.findByTestId("pages-share-sheet")).getByText("vlog-a.mp4")).toBeTruthy();
+    const { sharesApi } = jest.requireMock("@/api/pageShares") as { sharesApi: { list: jest.Mock } };
+    await waitFor(() => expect(sharesApi.list).toHaveBeenCalledWith({ spaceId: 315, nodeId: 1 }));
+  });
+
+  it("an admin or an editor of a shared space is not offered it", async () => {
+    for (const p of ["admin", "editor", "viewer"] as const) {
+      const view = renderIt(() => rightsFor(p));
+      layout();
+      fireEvent.press(more("list"));
+      expect(await screen.findByTestId("pages-action-details")).toBeTruthy();
+      expect(screen.queryByTestId("pages-action-share-with")).toBeNull();
+      view.unmount();
+    }
   });
 });

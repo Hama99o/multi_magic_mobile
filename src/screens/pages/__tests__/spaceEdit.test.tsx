@@ -25,6 +25,11 @@ jest.mock("@/api/pages", () => ({
   ...jest.requireActual("@/api/pages"),
   pagesApi: new Proxy({}, { get: (_t, key: string) => (...a: unknown[]) => (mockApi as Record<string, (...x: unknown[]) => unknown>)[key](...a) }),
 }));
+jest.mock("@/api/pageShares", () => ({
+  ...jest.requireActual("@/api/pageShares"),
+  sharesApi: { list: jest.fn(async () => []) },
+  shareLinksApi: { list: jest.fn(async () => []) },
+}));
 jest.mock("expo-router", () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
   useLocalSearchParams: () => ({ tab: "files" }),
@@ -91,4 +96,15 @@ it("the form rises with the keyboard", async () => {
   fireEvent.press(screen.getByTestId("pages-space-more"));
   fireEvent.press(await screen.findByTestId("pages-space-edit"));
   expect(screen.UNSAFE_getByType(KeyboardPadding)).toBeTruthy();
+});
+
+// Audit #14: the web's "Share space" (`Drive.tsx` `spaceMenu`, owner only).
+it("Share space opens the Share sheet for the space", async () => {
+  wrap();
+  await screen.findByText("Trips");
+  fireEvent.press(screen.getByTestId("pages-space-more"));
+  fireEvent.press(await screen.findByTestId("pages-space-share"));
+  expect(await screen.findByTestId("pages-share-sheet")).toBeTruthy();
+  const { sharesApi } = jest.requireMock("@/api/pageShares") as { sharesApi: { list: jest.Mock } };
+  await waitFor(() => expect(sharesApi.list).toHaveBeenCalledWith({ spaceId: 315, nodeId: null }));
 });

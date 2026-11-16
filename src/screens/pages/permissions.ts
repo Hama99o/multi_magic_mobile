@@ -8,6 +8,12 @@
  *   editor           yes                          no
  *   viewer           no                           no
  *
+ * Share (people and links, audit #14) is the space OWNER's alone, for the
+ * space and every node in it: `PageApp::SharePolicy` and `ShareLinkPolicy`
+ * are `owner?` throughout, so an admin is refused (403). The web offers
+ * "Share" on a node to anyone who can write and lets the server refuse; the
+ * phone offers it only where it will work.
+ *
  * The permission is the API's own word (`current_user_permission`, sent by a
  * space's `show` only; the list of spaces is the caller's OWN spaces, so a
  * row there is always "owner").
@@ -31,18 +37,21 @@ export interface Rights {
   canWrite: boolean;
   /** Move and Move to trash: owner/admin only. */
   canMove: boolean;
+  /** People and links: the space's owner only (`SharePolicy`). */
+  canShare: boolean;
 }
 
-export const NO_RIGHTS: Rights = { canWrite: false, canMove: false };
-const ALL_RIGHTS: Rights = { canWrite: true, canMove: true };
+export const NO_RIGHTS: Rights = { canWrite: false, canMove: false, canShare: false };
+const ALL_RIGHTS: Rights = { canWrite: true, canMove: true, canShare: true };
 
 export function rightsFor(permission: SpacePermission | null | undefined): Rights {
   switch (permission) {
     case "owner":
-    case "admin":
       return ALL_RIGHTS;
+    case "admin":
+      return { canWrite: true, canMove: true, canShare: false };
     case "editor":
-      return { canWrite: true, canMove: false };
+      return { canWrite: true, canMove: false, canShare: false };
     default:
       return NO_RIGHTS;
   }

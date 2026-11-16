@@ -8,7 +8,10 @@
  * - "Make available offline": the app has no offline store of Pages yet;
  *   offering a switch that does nothing would be worse than its absence.
  * - "New page": creating a page needs the page editor (phase 3).
- * - "Copy link" / "Manage access": sharing with people is phase 4.
+ *
+ * "Share with people" (audit #14) opens the Share sheet (`ShareSheet.tsx`):
+ * the space owner's alone (`rights.canShare`). "Share or save" stays its own
+ * row: it sends a copy of the file through the phone's share sheet.
  */
 import { useCallback, useMemo, useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, FlatList, Modal, Pressable, ScrollView, View } from "react-native";
@@ -16,7 +19,7 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FILL } from "@/theme/fill";
-import { Camera, Plus, ChevronRight, Download, File, Folder, FolderInput, FolderPlus, Images, Info, Pencil, Star, StarOff, Trash2, type LucideIcon } from "@/components/icons";
+import { Camera, Plus, ChevronRight, Download, File, Folder, FolderInput, FolderPlus, Images, Info, Pencil, Star, StarOff, Trash2, Users, type LucideIcon } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -139,6 +142,7 @@ export function ActionsSheet({
   node,
   onClose,
   onShare,
+  onShareWith,
   onStar,
   onRename,
   onMove,
@@ -149,6 +153,8 @@ export function ActionsSheet({
   node: PageNode | null;
   onClose: () => void;
   onShare: (node: PageNode) => void;
+  /** People and links (`ShareSheet`); offered when `rights.canShare`. */
+  onShareWith?: (node: PageNode) => void;
   onStar: (node: PageNode) => void;
   onRename: (node: PageNode) => void;
   onMove: (node: PageNode) => void;
@@ -162,6 +168,7 @@ export function ActionsSheet({
   const canWrite = rights?.canWrite === true;
   // Move and Trash: owner/admin only (the web's `canMove` / `canDelete`).
   const canMove = rights?.canMove === true;
+  const canShare = rights?.canShare === true;
   const run = (fn: (n: PageNode) => void) => () => {
     onClose();
     fn(node);
@@ -173,6 +180,7 @@ export function ActionsSheet({
         {node.kind === "file" && node.attachmentUrl ? (
           <SheetRow icon={Download} label={t("pages.actions.share")} onPress={run(onShare)} testID="pages-action-share" />
         ) : null}
+        {canShare && onShareWith ? <SheetRow icon={Users} label={t("pages.actions.shareWith")} onPress={run(onShareWith)} testID="pages-action-share-with" /> : null}
         {canWrite ? (
           <SheetRow
             icon={node.starred ? StarOff : Star}

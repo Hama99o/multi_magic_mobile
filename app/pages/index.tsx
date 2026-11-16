@@ -19,7 +19,7 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
-import { Check, Folder, MoreVertical, Pencil, Trash2, Upload } from "@/components/icons";
+import { Check, Folder, MoreVertical, Pencil, Share2, Trash2, Upload } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { pagesApi, type SharedItem, type SortDir, type Space, type SpaceListOptions } from "@/api/pages";
 import { sortLabel } from "@/screens/pages/labels";
@@ -33,6 +33,7 @@ import { useUploads } from "@/stores/uploads.store";
 import { pagesKeys } from "@/api/keys";
 import { useDriveRights } from "@/screens/pages/permissions";
 import { SpaceForm } from "@/screens/pages/SpaceForm";
+import { ShareSheet } from "@/screens/pages/ShareSheet";
 import { useDeleteSpace } from "@/screens/pages/usePageMutations";
 import { failureMessage } from "@/api/failure";
 import { Button } from "@/components/reusables/button";
@@ -134,6 +135,8 @@ export default function PagesHome() {
   // A space's ⋯ (audit #15): Edit opens the form filled in; Delete asks first.
   const [spaceMenu, setSpaceMenu] = useState<Space | null>(null);
   const [editingSpace, setEditingSpace] = useState<Space | null>(null);
+  // Share space (audit #14): people and links, the owner's alone like the menu.
+  const [sharingSpace, setSharingSpace] = useState<Space | null>(null);
   const deleting = useDeleteSpace({ onError: (e) => Alert.alert(failureMessage(e, t("pages.spaceMenu.deleteFailed"))) });
   const deleteSpace = (target: Space) => {
     setSpaceMenu(null);
@@ -297,6 +300,7 @@ export default function PagesHome() {
       />
       <SpaceForm open={spaceForm} onClose={() => setSpaceForm(false)} />
       <SpaceForm open={editingSpace != null} space={editingSpace} onClose={() => setEditingSpace(null)} />
+      <ShareSheet target={sharingSpace ? { spaceId: sharingSpace.id, nodeId: null, title: sharingSpace.title } : null} onClose={() => setSharingSpace(null)} />
       <BottomSheet open={spaceMenu != null} onClose={() => setSpaceMenu(null)} testID="pages-space-menu">
         {spaceMenu ? (
           <>
@@ -304,6 +308,7 @@ export default function PagesHome() {
               {spaceMenu.title}
             </Text>
             <SheetRow icon={Pencil} label={t("pages.spaceMenu.edit")} onPress={() => (setEditingSpace(spaceMenu), setSpaceMenu(null))} testID="pages-space-edit" />
+            <SheetRow icon={Share2} label={t("pages.spaceMenu.share")} onPress={() => (setSharingSpace(spaceMenu), setSpaceMenu(null))} testID="pages-space-share" />
             <SheetRow icon={Trash2} label={t("pages.spaceMenu.delete")} danger onPress={() => deleteSpace(spaceMenu)} testID="pages-space-delete" />
           </>
         ) : null}

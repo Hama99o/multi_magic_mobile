@@ -23,6 +23,7 @@ import { failureMessage } from "@/api/failure";
 import { NameDialog, shareNode } from "../ItemSheet";
 import { downloadMany } from "../downloadMany";
 import { ActionsSheet, DetailsSheet, MoveSheet } from "./sheets";
+import { ShareSheet, type ShareSheetTarget } from "../ShareSheet";
 import { GridCard, IconButton, ListRow, SelectionBar, useViewPrefs } from "./ui";
 import type { Rights } from "../permissions";
 import { useMoveNodes, useRenameNode, useRestoreNodes, useStarNodes, useTrashNodes } from "@/screens/pages/usePageMutations";
@@ -92,6 +93,7 @@ export function NodeCollection({
   useEffect(() => () => onSelectingChange?.(false), [onSelectingChange]);
   const [actionsFor, setActionsFor] = useState<PageNode | null>(null);
   const [detailsFor, setDetailsFor] = useState<PageNode | null>(null);
+  const [sharingWith, setSharingWith] = useState<ShareSheetTarget | null>(null);
   const [renaming, setRenaming] = useState<PageNode | null>(null);
   const [renameBusy, setRenameBusy] = useState(false);
   const [renameError, setRenameError] = useState<string | null>(null);
@@ -343,6 +345,7 @@ export function NodeCollection({
         node={actionsFor}
         onClose={() => setActionsFor(null)}
         onShare={(n) => void share(n)}
+        onShareWith={(n) => setSharingWith({ spaceId: n.spaceId, nodeId: n.id, title: n.title })}
         onStar={(n) => void setStar([n], !n.starred)}
         onRename={(n) => {
           setRenameError(null);
@@ -354,6 +357,7 @@ export function NodeCollection({
         rights={actionsFor ? rightsOf(actionsFor) : null}
       />
       <DetailsSheet node={detailsFor} location={detailsFor ? locationOf(detailsFor) : ""} onClose={() => setDetailsFor(null)} />
+      <ShareSheet target={sharingWith} onClose={() => setSharingWith(null)} />
       {trashed ? (
         <View
           accessibilityLiveRegion="polite"

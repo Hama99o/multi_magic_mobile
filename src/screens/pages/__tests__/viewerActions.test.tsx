@@ -12,6 +12,11 @@ import { testQueryClient } from "@/__tests__/queryClient";
 jest.mock("react-native-webview", () => ({ WebView: () => null }));
 jest.mock("expo-video", () => ({ useVideoPlayer: () => ({}), VideoView: () => null }));
 jest.mock("expo-sharing", () => ({ shareAsync: jest.fn() }));
+jest.mock("@/api/pageShares", () => ({
+  ...jest.requireActual("@/api/pageShares"),
+  sharesApi: { list: jest.fn(async () => []) },
+  shareLinksApi: { list: jest.fn(async () => []) },
+}));
 jest.mock("expo-router", () => ({
   useLocalSearchParams: () => ({ spaceId: "400", nodeId: "5" }),
   router: { back: jest.fn(), push: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
@@ -118,4 +123,19 @@ it("trash sends it to the trash and leaves the viewer", async () => {
   fireEvent.press(await screen.findByTestId("pages-action-trash"));
   await waitFor(() => expect(mockApi.trash).toHaveBeenCalledWith(400, 5));
   await waitFor(() => expect(router.back).toHaveBeenCalled());
+});
+
+// Audit #14: Share with people, the space owner's alone (`SharePolicy`).
+it("the owner: ⋯ → Share with people opens the Share sheet for this file", async () => {
+  await open("owner");
+  fireEvent.press(await screen.findByTestId("pages-action-share-with"));
+  expect(await screen.findByTestId("pages-share-sheet")).toBeTruthy();
+  const { sharesApi } = jest.requireMock("@/api/pageShares") as { sharesApi: { list: jest.Mock } };
+  await waitFor(() => expect(sharesApi.list).toHaveBeenCalledWith({ spaceId: 400, nodeId: 5 }));
+});
+
+it("an admin is not offered Share with people (the server refuses him)", async () => {
+  await open("admin");
+  await waitFor(() => expect(screen.getByTestId("pages-action-trash")).toBeTruthy());
+  expect(screen.queryByTestId("pages-action-share-with")).toBeNull();
 });

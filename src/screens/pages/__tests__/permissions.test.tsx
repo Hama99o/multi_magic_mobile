@@ -33,16 +33,16 @@ function wrapper({ children }: { children: ReactNode }) {
 }
 
 describe("rightsFor: the web's rule", () => {
-  it("owner and admin may write and move/trash", () => {
-    expect(rightsFor("owner")).toEqual({ canWrite: true, canMove: true });
-    expect(rightsFor("admin")).toEqual({ canWrite: true, canMove: true });
+  it("owner and admin may write and move/trash; only the owner shares (SharePolicy)", () => {
+    expect(rightsFor("owner")).toEqual({ canWrite: true, canMove: true, canShare: true });
+    expect(rightsFor("admin")).toEqual({ canWrite: true, canMove: true, canShare: false });
   });
   it("an editor writes but may not move or trash", () => {
-    expect(rightsFor("editor")).toEqual({ canWrite: true, canMove: false });
+    expect(rightsFor("editor")).toEqual({ canWrite: true, canMove: false, canShare: false });
   });
   it("a viewer, or nothing known, may do neither", () => {
-    expect(rightsFor("viewer")).toEqual({ canWrite: false, canMove: false });
-    expect(rightsFor(null)).toEqual({ canWrite: false, canMove: false });
+    expect(rightsFor("viewer")).toEqual({ canWrite: false, canMove: false, canShare: false });
+    expect(rightsFor(null)).toEqual({ canWrite: false, canMove: false, canShare: false });
   });
 });
 
@@ -50,20 +50,20 @@ describe("useSpaceRights: a folder view reads the space's own permission", () =>
   it("a viewer of a shared space gets no writes", async () => {
     const { result } = renderHook(() => useSpaceRights(400), { wrapper });
     await waitFor(() => expect(mockApi.space).toHaveBeenCalledWith(400));
-    expect(result.current).toEqual({ canWrite: false, canMove: false });
+    expect(result.current).toEqual({ canWrite: false, canMove: false, canShare: false });
   });
   it("an editor gets writes, not move/trash", async () => {
     const { result } = renderHook(() => useSpaceRights(401), { wrapper });
-    await waitFor(() => expect(result.current).toEqual({ canWrite: true, canMove: false }));
+    await waitFor(() => expect(result.current).toEqual({ canWrite: true, canMove: false, canShare: false }));
   });
   it("an admin gets everything", async () => {
     const { result } = renderHook(() => useSpaceRights(402), { wrapper });
-    await waitFor(() => expect(result.current).toEqual({ canWrite: true, canMove: true }));
+    await waitFor(() => expect(result.current).toEqual({ canWrite: true, canMove: true, canShare: false }));
   });
   it("one of his own spaces is his before its detail has loaded", async () => {
     mockApi.space.mockImplementationOnce(() => new Promise(() => {}));
     const { result } = renderHook(() => useSpaceRights(315), { wrapper });
-    await waitFor(() => expect(result.current).toEqual({ canWrite: true, canMove: true }));
+    await waitFor(() => expect(result.current).toEqual({ canWrite: true, canMove: true, canShare: true }));
   });
 });
 
@@ -71,7 +71,7 @@ describe("useDriveRights: Recent, Starred, Search grant writes on OWN spaces onl
   const node = (spaceId: number) => ({ id: 1, spaceId }) as PageNode;
   it("his own space: everything; a shared one: nothing", async () => {
     const { result } = renderHook(() => useDriveRights(), { wrapper });
-    await waitFor(() => expect(result.current(node(315))).toEqual({ canWrite: true, canMove: true }));
-    expect(result.current(node(400))).toEqual({ canWrite: false, canMove: false });
+    await waitFor(() => expect(result.current(node(315))).toEqual({ canWrite: true, canMove: true, canShare: true }));
+    expect(result.current(node(400))).toEqual({ canWrite: false, canMove: false, canShare: false });
   });
 });

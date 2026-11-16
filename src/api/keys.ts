@@ -110,4 +110,9 @@ export const pagesKeys = {
   moveStart: <N extends number>(nodeId: N) => ["pages", "moveStart", nodeId] as const,
   gallery: <S extends number, P extends number | null>(spaceId: S, parentId: P) => ["pages", "gallery", spaceId, parentId] as const,
   text: <U extends string>(uri: U) => ["pages", "text", uri] as const,
+  /** Who a space (node null) or a node is shared with, and its links (audit #14);
+   *  `sharing` is the prefix of both, invalidated after every change. */
+  sharing: <S extends number, N extends number | null>(spaceId: S, nodeId: N) => ["pages", "sharing", spaceId, nodeId] as const,
+  shares: <S extends number, N extends number | null>(spaceId: S, nodeId: N) => ["pages", "sharing", spaceId, nodeId, "people"] as const,
+  shareLinks: <S extends number, N extends number | null>(spaceId: S, nodeId: N) => ["pages", "sharing", spaceId, nodeId, "links"] as const,
 };

@@ -375,32 +375,21 @@ export default function NoteEditScreen() {
     }
     onEngineChange(next);
     // B puts the caret at the start after a whole-document replace (seen on
-    // the device): put it back where it was, as B's own mention code does.
+    // the device): put it back where it was. Through B's ref (our patch):
+    // the engine's selection AND a push to the native view. A bare
+    // bridge.setSelection moved only the engine's, so in a release build the
+    // view kept its caret at the top and typing landed there (release QA,
+    // 2026-11-16). The "after"/"before" affinity fallback is in the patch.
     const at = caretScalar.current;
-    const bridge = (engine?.handle as unknown as { bridge?: { getState(): { documentRevision: string }; setSelection(r: unknown): unknown } } | null)?.bridge;
-    if (at && bridge) {
+    if (at) {
       // After B has applied the new document (setContentJson goes through a
       // render): restoring before it is undone by the replace (seen on device).
       setTimeout(() => {
-        // "after" first, as B's mention code; at the end of a block B (Yrs)
-        // cannot hold it and throws, so "before" (device, 2026-11-14: the
-        // caret went to the top of the note and typing landed there).
-        for (const affinity of ["after", "before"] as const) {
-          try {
-            bridge.setSelection({
-              baseDocumentRevision: bridge.getState().documentRevision,
-              selection: {
-                type: "text",
-                anchor: { offset: at.anchor, kind: "scalar", affinity },
-                head: { offset: at.head, kind: "scalar", affinity },
-              },
-            });
-            ref.focus();
-            return;
-          } catch {
-            // A position the new document cannot hold this way: the next
-            // affinity, then the caret stays where B put it.
-          }
+        try {
+          (ref as unknown as { setTextSelection(anchor: number, head: number): void }).setTextSelection(at.anchor, at.head);
+          ref.focus();
+        } catch {
+          // A position the new document cannot hold: the caret stays where B put it.
         }
       }, 150);
     }

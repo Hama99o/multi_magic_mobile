@@ -827,33 +827,31 @@ describe("a structural edit keeps the caret where it was (device finding, 2026-1
     });
     fireEvent.press(screen.getByTestId("tb-format"));
     fireEvent.press(screen.getByTestId("tb-block:codeBlock"));
-    expect(mockEngine.selections).toEqual([]); // not before B has applied the new document
-    await waitFor(() => expect(mockEngine.selections).toHaveLength(1));
+    const restored = () => mockEngine.calls.filter((c) => c[0] === "setTextSelection");
+    expect(restored()).toEqual([]); // not before B has applied the new document
+    await waitFor(() => expect(restored()).toEqual([["setTextSelection", 2, 2]]));
+    const names = mockEngine.calls.map((c) => c[0]);
+    expect(names.lastIndexOf("setContentJson")).toBeLessThan(names.indexOf("setTextSelection"));
     expect(mockEngine.calls).toContainEqual(["focus"]);
-    expect(mockEngine.selections).toEqual([
-      { baseDocumentRevision: "7", selection: { type: "text", anchor: { offset: 2, kind: "scalar", affinity: "after" }, head: { offset: 2, kind: "scalar", affinity: "after" } } },
-    ]);
   });
-});
 
-describe("the caret at the end of the converted block (device finding, 2026-11-14)", () => {
-  it("when B refuses affinity \"after\" there, the caret goes back with \"before\" (not to the top of the note)", async () => {
+  // Release QA, 2026-11-16: in a release build the caret still went to the
+  // top of the note. A bare bridge.setSelection moves only the engine's
+  // selection; nothing tells the native view, whose caret stays where the
+  // replace put it, so typing landed at the start. Debug builds hid it (an
+  // extra render pushed the selection). The restore goes through B's ref
+  // (patched in: engine selection AND a push to the view).
+  it("the restore is pushed to the view, never a bare engine selection", async () => {
     open();
     await waitFor(() => expect(mockEngine.props).not.toBeNull());
     act(() => {
       mockEngine.props!.onSelectionChange({ type: "text", anchor: 6, head: 6, anchorScalar: 5, headScalar: 5 }); // end of "hello"
       mockEngine.props!.onFocus();
     });
-    mockEngine.rejectAfter = true;
     fireEvent.press(screen.getByTestId("tb-format"));
     fireEvent.press(screen.getByTestId("tb-block:codeBlock"));
-    await waitFor(() => expect(mockEngine.selections).toHaveLength(2));
-    expect((mockEngine.selections[1] as any).selection).toEqual({
-      type: "text",
-      anchor: { offset: 5, kind: "scalar", affinity: "before" },
-      head: { offset: 5, kind: "scalar", affinity: "before" },
-    });
-    expect(mockEngine.calls).toContainEqual(["focus"]);
+    await waitFor(() => expect(mockEngine.calls).toContainEqual(["setTextSelection", 5, 5]));
+    expect(mockEngine.selections).toEqual([]);
   });
 });
 

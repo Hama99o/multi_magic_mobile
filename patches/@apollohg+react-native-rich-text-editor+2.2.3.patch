@@ -1,8 +1,7 @@
 diff --git a/node_modules/@apollohg/react-native-rich-text-editor/android/src/main/java/com/apollohg/editor/RenderBridgeInlineAndAtoms.kt b/node_modules/@apollohg/react-native-rich-text-editor/android/src/main/java/com/apollohg/editor/RenderBridgeInlineAndAtoms.kt
-index 1e322fd..d3c442c 100644
 --- a/node_modules/@apollohg/react-native-rich-text-editor/android/src/main/java/com/apollohg/editor/RenderBridgeInlineAndAtoms.kt
 +++ b/node_modules/@apollohg/react-native-rich-text-editor/android/src/main/java/com/apollohg/editor/RenderBridgeInlineAndAtoms.kt
-@@ -8,6 +8,9 @@ import android.text.Spanned
+@@ -8,6 +8,9 @@
  import android.text.style.AbsoluteSizeSpan
  import android.text.style.BackgroundColorSpan
  import android.text.style.ForegroundColorSpan
@@ -12,7 +11,7 @@ index 1e322fd..d3c442c 100644
  import android.text.style.StrikethroughSpan
  import android.text.style.StyleSpan
  import android.text.style.TypefaceSpan
-@@ -90,6 +93,7 @@ internal fun RenderBridge.appendStyledText(
+@@ -90,6 +93,7 @@
                  Spanned.SPAN_EXCLUSIVE_EXCLUSIVE
              )
          }
@@ -20,7 +19,7 @@ index 1e322fd..d3c442c 100644
          if (applyBlockSpans) {
              applyBlockStyle(
                  builder,
-@@ -244,11 +248,46 @@ internal fun RenderBridge.appendStyledText(
+@@ -244,11 +248,46 @@
          }
      }
  
@@ -68,10 +67,9 @@ index 1e322fd..d3c442c 100644
   * Append a void inline element (e.g. hardBreak) to the builder.
   *
 diff --git a/node_modules/@apollohg/react-native-rich-text-editor/ios/RenderBridge+Atoms.swift b/node_modules/@apollohg/react-native-rich-text-editor/ios/RenderBridge+Atoms.swift
-index 4ed1fde..703b4f3 100644
 --- a/node_modules/@apollohg/react-native-rich-text-editor/ios/RenderBridge+Atoms.swift
 +++ b/node_modules/@apollohg/react-native-rich-text-editor/ios/RenderBridge+Atoms.swift
-@@ -20,7 +20,10 @@ extension RenderBridge {
+@@ -20,7 +20,10 @@
          theme: EditorTheme? = nil
      ) -> [NSAttributedString.Key: Any] {
          if let sheet = theme?.styleSheet {
@@ -83,7 +81,7 @@ index 4ed1fde..703b4f3 100644
          }
          var attrs = defaultAttributes(baseFont: baseFont, textColor: textColor)
  
-@@ -86,9 +89,48 @@ extension RenderBridge {
+@@ -86,9 +89,48 @@
          }
          attrs[.font] = resolvedFont
          if let color = EditorStyleSheet.explicitTextColor(marks) { attrs[.foregroundColor] = color }
@@ -132,11 +130,88 @@ index 4ed1fde..703b4f3 100644
      /// Create an attributed string for a void inline element (e.g. hardBreak).
      ///
      /// A hardBreak is rendered as a newline character with custom attributes
+diff --git a/node_modules/@apollohg/react-native-rich-text-editor/src/RichTextEditorTypes.tsx b/node_modules/@apollohg/react-native-rich-text-editor/src/RichTextEditorTypes.tsx
+--- a/node_modules/@apollohg/react-native-rich-text-editor/src/RichTextEditorTypes.tsx
++++ b/node_modules/@apollohg/react-native-rich-text-editor/src/RichTextEditorTypes.tsx
+@@ -283,6 +283,8 @@
+     insertImage(src: string, attrs?: Omit<ImageNodeAttributes, 'src'>): void;
+     /** Insert text at the current cursor position. */
+     insertText(text: string): void;
++    /** mm-notes patch: set a text selection by scalar offsets and show it in the view. */
++    setTextSelection(anchor: number, head: number): void;
+     /** Insert HTML content at the current selection. */
+     insertContentHtml(html: string): void;
+     /** Insert JSON content at the current selection. */
+diff --git a/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorCommands.tsx b/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorCommands.tsx
+--- a/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorCommands.tsx
++++ b/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorCommands.tsx
+@@ -21,7 +21,7 @@
+ } from './ExternalTextComposition';
+ import { type useRichTextEditorState } from './useRichTextEditorState';
+ import { type useRichTextEditorUpdates } from './useRichTextEditorUpdates';
+-import { isRevisionMismatchError, parseCaretRectJson } from './RichTextEditorSerialization';
++import { isPositionInvalidError, isRevisionMismatchError, parseCaretRectJson } from './RichTextEditorSerialization';
+ import { type RichTextEditorRef, type RichTextEditorCaretRect } from './RichTextEditorTypes';
+ 
+ const MUTATION_REJECTED_MESSAGE = 'NativeRichTextEditor: mutation rejected while editable is false';
+@@ -477,6 +477,37 @@
+         [ applyEngineCommand, documentDescriptor ]
+     );
+ 
++    // mm-notes patch: put a text selection (scalar offsets) in the engine
++    // AND push it to the native view. A bare bridge.setSelection moves only
++    // the engine's selection; the view keeps its own caret until something
++    // else renders (release builds: typing landed at the start of the note).
++    const commandSetTextSelection = useCallback(
++        (anchor: number, head: number) => {
++            const collapsed = anchor === head;
++            const run = (affinity: 'after' | 'before') =>
++                runEngineMutation(() =>
++                    bridge.setSelection({
++                        baseDocumentRevision: bridge.getState().documentRevision,
++                        selection: {
++                            type: 'text',
++                            anchor: { offset: anchor, kind: 'scalar', affinity },
++                            head: { offset: head, kind: 'scalar', affinity },
++                        },
++                    }));
++
++            try {
++                run(collapsed ? 'after' : 'before');
++            } catch (error) {
++                if (!collapsed || !isPositionInvalidError(error)) {
++                    throw error;
++                }
++
++                run('before');
++            }
++        },
++        [ bridge, runEngineMutation ]
++    );
++
+     const commandInsertText = useCallback(
+         (text: string) => {
+             if (!text) {
+@@ -562,6 +593,7 @@
+             insertNode: commandInsertNode,
+             insertImage: commandInsertImage,
+             insertText: commandInsertText,
++            setTextSelection: commandSetTextSelection,
+             insertContentHtml: commandInsertContentHtml,
+             insertContentJson: commandInsertContentJson,
+             setContent: document.setContent,
+@@ -604,6 +636,7 @@
+             commandInsertNode,
+             commandInsertImage,
+             commandInsertText,
++            commandSetTextSelection,
+             commandInsertContentHtml,
+             commandInsertContentJson,
+             document.setContent,
 diff --git a/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorEvents.tsx b/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorEvents.tsx
-index 0721192..3b3ee2f 100644
 --- a/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorEvents.tsx
 +++ b/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorEvents.tsx
-@@ -248,7 +248,9 @@ export function useRichTextEditorEvents(
+@@ -248,7 +248,9 @@
  
              selectionRef.current = selection;
              updateAtomSelection(selection);
@@ -148,10 +223,9 @@ index 0721192..3b3ee2f 100644
          [ admitNativeBindingEvent,
              applySelectionEventState,
 diff --git a/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorUpdates.tsx b/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorUpdates.tsx
-index 8d81e37..a189e34 100644
 --- a/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorUpdates.tsx
 +++ b/node_modules/@apollohg/react-native-rich-text-editor/src/useRichTextEditorUpdates.tsx
-@@ -54,6 +54,7 @@ export function useRichTextEditorUpdates(
+@@ -54,6 +54,7 @@
          | 'lastNativeDrivenRevisionRef'
          | 'latestPresentedStateRevisionRef'
          | 'onLocalCommitRef'
@@ -159,7 +233,7 @@ index 8d81e37..a189e34 100644
      >
  ) {
      const {
-@@ -86,8 +87,18 @@ export function useRichTextEditorUpdates(
+@@ -86,8 +87,18 @@
          lastNativeDrivenRevisionRef,
          latestPresentedStateRevisionRef,
          onLocalCommitRef,
@@ -178,7 +252,7 @@ index 8d81e37..a189e34 100644
      const stateBindingGeneration = pushedUpdateBindingGenerationRef.current;
  
      const isCurrentStateBinding = useCallback(
-@@ -249,7 +260,9 @@ export function useRichTextEditorUpdates(
+@@ -249,7 +260,9 @@
              const admittedRevision = latestPresentedStateRevisionRef.current;
              const isCurrentState = () => isCurrent() && isCurrentStateRevision(admittedRevision);
  
@@ -188,7 +262,7 @@ index 8d81e37..a189e34 100644
              updateAtomSelection(update.selection);
  
              if (!isCurrentState()) {
-@@ -349,7 +362,9 @@ export function useRichTextEditorUpdates(
+@@ -349,7 +362,9 @@
                  }
              } else {
                  if (nextSelection) {

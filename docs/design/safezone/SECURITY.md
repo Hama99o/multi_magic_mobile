@@ -33,6 +33,7 @@ a rollback would send plaintext again. So:
 | Never logged: the http logger prints `method path status` only (`src/api/http.ts:453`); the PIN goes in a POST body, never in a URL | `safezoneApi.unlock` | `src/api/__tests__/safezone.test.ts`: the URL holds no PIN; `console.*` spies hear no PIN, token or secret |
 | The keypad is a custom pad, not a `TextInput`: no keyboard suggestions, no autofill or keyboard learning, no accessibility value that reads the digits aloud | `PinPad.tsx` | `safezoneApp.test.tsx`: the label is "5 of 6 digits entered", never a digit |
 | Setting a PIN (`SetUpPin`) uses two `secureTextEntry` fields with autofill, suggestions and the context menu off; they are emptied once the server accepts | `SafeZoneGate.tsx` | `safezoneApp.test.tsx`: the enable body, and a mismatch refused before sending |
+| Changing the PIN (also "Forgot your PIN?": account password → emailed code → new PIN twice) and turning it off (account password) keep the PIN, the code and the password in the form's state only, sent as arguments and never as React Query mutation variables; emptied once the server accepts. A change locks the vault (the server kills every token) (audit 2026-11-16) | `PinForms.tsx`, `app/safezone/settings.tsx` | `pinSettings.test.tsx`: the bodies, nothing typed left on screen; `rules.test.ts`: no React Query in either file |
 
 ## 2 · The unlock token (the server's real gate)
 

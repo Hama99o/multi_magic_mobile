@@ -196,3 +196,29 @@ export function useMergeIntoContact() {
     },
   });
 }
+
+/**
+ * A contact's documents: add, rename, delete (audit #8). Not optimistic:
+ * every answer is the whole contact (`AttachmentActions#render_full_contact`),
+ * so the card takes it as it is, then the card is refetched.
+ */
+export function useContactDocuments(contactId: number) {
+  const client = useQueryClient();
+  const done = (saved: Contact) => {
+    client.setQueryData<Contact>(contactsKeys.detail(contactId), saved);
+    return settle(client, [contactsKeys.detail(contactId)]);
+  };
+  const upload = useMutation({
+    mutationFn: (files: Parameters<typeof contactsApi.uploadDocuments>[1]) => contactsApi.uploadDocuments(contactId, files),
+    onSuccess: done,
+  });
+  const rename = useMutation({
+    mutationFn: ({ documentId, filename }: { documentId: number; filename: string }) => contactsApi.renameDocument(contactId, documentId, filename),
+    onSuccess: done,
+  });
+  const remove = useMutation({
+    mutationFn: (documentId: number) => contactsApi.removeDocument(contactId, documentId),
+    onSuccess: done,
+  });
+  return { upload, rename, remove };
+}

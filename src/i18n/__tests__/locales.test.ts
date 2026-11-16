@@ -67,6 +67,7 @@ const SAME_IN_BOTH = new Set([
   "contacts.detail.notes",
   "contacts.form.notes",
   "contacts.form.photoTitle",
+  "contacts.documents.title", // "Documents"
   "contacts.family.kinds.parent",
   "scope.pages",
   "scope.flow",

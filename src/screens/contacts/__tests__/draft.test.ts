@@ -11,7 +11,7 @@ const jamil: Contact = {
   phones: [{ label: "mobile", value: "+93 70 123 4567" }, { label: "work", value: "020" }],
   emails: [{ label: "home", value: "j@home.test" }],
   addresses: [{ label: "home", street: "12 Main St", city: "Kabul", state: "", postal: "", country: "Afghanistan" }],
-  website: null, notes: "n", relations: [], documentsCount: 0, isSelf: false,
+  website: null, notes: "n", relations: [], documents: null, isSelf: false,
 };
 
 describe("a new contact", () => {

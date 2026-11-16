@@ -177,7 +177,6 @@ const PLURAL = new Set([
   "contacts.birthdays.inDays",
   "contacts.birthdays.inDaysShort",
   "contacts.detail.age",
-  "contacts.detail.documents",
   "contacts.import.done",
   "contacts.import.go",
   "contacts.import.pickTitle",

@@ -12,7 +12,8 @@
  *
  * Then cards, label above value (Telegram): every phone (tap = call, its own
  * WhatsApp and message buttons, long press = copy), every email (tap = mail),
- * addresses (tap = maps), birthday, family, website, notes. Then rows: Share,
+ * addresses (tap = maps), birthday, family, website, notes, documents
+ * (`ContactDocuments.tsx`). Then rows: Share,
  * Save to phone contacts, Favourite, Ask the assistant, Delete — the
  * destructive one last, alone, in red (WhatsApp).
  */
@@ -37,6 +38,7 @@ import { contactsApi, displayName, RELATION_KINDS, type Contact, type RelationKi
 import { failureMessage } from "@/api/failure";
 import { htmlToPlainText } from "@/lib/richText";
 import { ContactAvatar } from "@/screens/contacts/ContactAvatar";
+import { ContactDocuments } from "@/screens/contacts/ContactDocuments";
 import { ActionSheet } from "@/screens/contacts/ActionSheet";
 import { useContactActions, type Channel } from "@/screens/contacts/useContactActions";
 import { addressText, mapsUrl, openOutside } from "@/screens/contacts/outside";
@@ -379,11 +381,7 @@ export function ContactCard({
           </Card>
         ) : null}
 
-        {contact.documentsCount ? (
-          <Text testID="contact-documents" variant="caption" tone="muted">
-            {t("contacts.detail.documents", { count: contact.documentsCount })}
-          </Text>
-        ) : null}
+        <ContactDocuments contactId={contact.id} documents={contact.documents} />
 
         <View style={{ gap: metrics.space.sm }}>
           <ActionRow testID="contact-share" icon={actions.sharing ? <ActivityIndicator /> : <Share2 size={20} color={colors.ink} />} label={t("contacts.actions.share")} disabled={actions.sharing} onPress={() => void actions.share()} />

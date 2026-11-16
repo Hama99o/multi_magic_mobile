@@ -16,6 +16,14 @@
  * `import_vcard` read ONE card before `485e2db1`. A server that answers
  * without a `summary` is that server, and bulk import there would silently
  * keep one contact of fifty — `ImportNotSupported` is thrown instead.
+ *
+ * ── DOCUMENTS (ID card, passport…) ────────────────────────────────────────
+ * Not an endpoint of their own: the FULL view carries them (serializer
+ * `documents`, no paging, no date), and every write (`upload_documents`,
+ * `PATCH/DELETE documents/:id`) answers with the full contact again. The
+ * server keeps images (png, jpeg, gif, webp) and PDF under 20 MB
+ * (`ContactApp::Contact` validations) and answers 422 `{errors}` otherwise;
+ * `documentRefusal` says so before the bytes leave the phone.
  */
 import { File, Paths } from "expo-file-system";
 import { http } from "./http";
@@ -61,6 +69,40 @@ export interface Relation {
   relative: { id: number; name: string };
 }
 
+/** One file on a contact (serializer `documents`, read at 6de97a32). */
+export interface ContactDocument {
+  /** The attachment's id: what rename and delete take. */
+  id: number;
+  filename: string;
+  byteSize: number;
+  contentType: string;
+  /** Absolute storage-proxy url. */
+  url: string;
+  /** A 300 px preview, for an image or a PDF; null when none can be made. */
+  thumbnailUrl: string | null;
+}
+
+/** `ContactApp::Contact::DOCUMENT_CONTENT_TYPES`. */
+export const DOCUMENT_TYPES: readonly string[] = ["image/png", "image/jpeg", "image/gif", "image/webp", "application/pdf"];
+/** `size: { less_than: 20.megabytes }`: 20 MiB itself is refused. */
+export const DOCUMENT_MAX_BYTES = 20 * 1024 * 1024;
+const DOCUMENT_EXT: Record<string, string> = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif", webp: "image/webp", pdf: "application/pdf" };
+
+/** The file's type, from the picker or else from its extension (Rails sniffs the bytes too). */
+export function documentType(file: { name: string; mimeType: string | null }): string | null {
+  if (file.mimeType) return file.mimeType.toLowerCase();
+  const ext = file.name.match(/\.([A-Za-z0-9]+)$/)?.[1]?.toLowerCase() ?? "";
+  return DOCUMENT_EXT[ext] ?? null;
+}
+
+/** Why the server would refuse this file, or null when it would keep it. */
+export function documentRefusal(file: { name: string; mimeType: string | null; size: number | null }): "type" | "size" | null {
+  const type = documentType(file);
+  if (!type || !DOCUMENT_TYPES.includes(type)) return "type";
+  if (file.size != null && file.size >= DOCUMENT_MAX_BYTES) return "size";
+  return null;
+}
+
 export interface Contact {
   id: number;
   firstname: string;
@@ -80,7 +122,8 @@ export interface Contact {
   website: string | null;
   notes: string | null;
   relations: Relation[];
-  documentsCount: number;
+  /** Full view only, newest first. null from a list row: not known, not none. */
+  documents: ContactDocument[] | null;
   isSelf: boolean;
 }
 
@@ -174,6 +217,25 @@ function parseRelation(raw: unknown): Relation {
   };
 }
 
+function parseDocument(raw: unknown): ContactDocument {
+  const d = obj(raw, "document");
+  return {
+    id: id(d.id, "document.id"),
+    filename: text(d.filename) || String(d.id),
+    byteSize: typeof d.byte_size === "number" ? d.byte_size : 0,
+    contentType: text(d.content_type),
+    url: absoluteUrl(str(d.url, "document.url")) ?? "",
+    thumbnailUrl: absoluteUrl(optStr(d.thumbnail_url)),
+  };
+}
+
+/** Newest first (owner rule, 2026-11-09). The server sends attachment order,
+ *  oldest first, and no date: the attachment id grows with each upload. */
+function parseDocuments(raw: unknown): ContactDocument[] | null {
+  if (!Array.isArray(raw)) return null;
+  return readableRows(raw, parseDocument).rows.sort((a, b) => b.id - a.id);
+}
+
 function parseContact(raw: unknown): Contact {
   const c = obj(raw, "contact");
   const age = typeof c.age === "number" ? c.age : null;
@@ -194,7 +256,7 @@ function parseContact(raw: unknown): Contact {
     website: optStr(c.website) || null,
     notes: optStr(c.notes) || null,
     relations: Array.isArray(c.relations) ? readableRows(c.relations, parseRelation).rows : [],
-    documentsCount: Array.isArray(c.documents) ? c.documents.length : 0,
+    documents: parseDocuments(c.documents),
     isSelf: c.is_self === true,
   };
 }
@@ -295,6 +357,29 @@ export const contactsApi = {
     return parseContact(obj(res.data, "photo").contact);
   },
 
+  /** Several at once, as the web sends them (`documents[]`). */
+  uploadDocuments: async (contactId: number, files: { uri: string; name: string; mimeType: string }[]): Promise<Contact> => {
+    const form = new FormData();
+    for (const file of files) {
+      form.append("documents[]", { uri: file.uri, name: file.name, type: file.mimeType } as unknown as Blob);
+    }
+    const res = await http.post(`${BASE}/${contactId}/upload_documents`, form, {
+      headers: { "Content-Type": "multipart/form-data" },
+      timeout: UPLOAD_TIMEOUT_MS,
+    });
+    return parseContact(obj(res.data, "documents").contact);
+  },
+
+  renameDocument: async (contactId: number, documentId: number, filename: string): Promise<Contact> => {
+    const res = await http.patch(`${BASE}/${contactId}/documents/${documentId}`, { filename });
+    return parseContact(obj(res.data, "document").contact);
+  },
+
+  removeDocument: async (contactId: number, documentId: number): Promise<Contact> => {
+    const res = await http.delete(`${BASE}/${contactId}/documents/${documentId}`);
+    return parseContact(obj(res.data, "document").contact);
+  },
+
   addRelation: async (contactId: number, relativeId: number, kind: RelationKind): Promise<Relation[]> => {
     const res = await http.post(`${BASE}/${contactId}/relations`, { relative_id: relativeId, kind });
     return readableRows(arr(obj(res.data, "relations").relations, "relations"), parseRelation).rows;
@@ -373,4 +458,4 @@ export function vcfFile(textBody: string, name: string): File {
   return file;
 }
 
-export const __parse = { parseContact, parseImport };
+export const __parse = { parseContact, parseImport, parseDocument };

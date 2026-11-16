@@ -28,6 +28,9 @@ import ImportContacts from "../../../../app/contacts/import";
 import SharedIntoContacts from "../../../../app/contacts/shared";
 import { useSharedIntoContacts } from "@/stores/sharedIntoContacts.store";
 import { parseCard } from "../shareIn";
+import { __parse } from "@/api/contacts";
+
+const __contact = __parse.parseContact;
 
 const mockParams: { current: Record<string, string> } = { current: {} };
 const mockBeforeRemove: { handler: ((e: { preventDefault: () => void; data: { action: unknown } }) => void) | null } = { handler: null };
@@ -369,6 +372,156 @@ describe("one contact", () => {
     mock.onGet(`${BASE}/7`).reply(200, { contact: contact({ notes: "Gate code 4411\nAsk for Bilal at 5 < 6" }) });
     renderScreen(<ContactDetail />);
     expect(await screen.findByTestId("contact-notes")).toHaveTextContent("Gate code 4411 Ask for Bilal at 5 < 6");
+  });
+});
+
+// ── DOCUMENTS (audit #8; web ContactDrawer.tsx documents, server AttachmentActions) ──
+describe("documents on a contact", () => {
+  const imagePicker = jest.requireMock("expo-image-picker") as { launchImageLibraryAsync: jest.Mock; requestMediaLibraryPermissionsAsync: jest.Mock };
+  const docPicker = DocumentPicker as unknown as { getDocumentAsync: jest.Mock };
+  const doc = (id: number, filename: string, over: Record<string, unknown> = {}) => ({
+    id, filename, byte_size: 2048 * id, content_type: "image/jpeg",
+    url: `/rails/active_storage/blobs/proxy/d${id}/${filename}`, thumbnail_url: null, ...over,
+  });
+  const withDocs = (docs: unknown[]) => ({ contact: contact({ documents: docs }) });
+  /** The card as the server holds it: a write answers with it AND changes it,
+   *  so the refetch after the write reads the new state, as in production. */
+  let held: unknown[] = [];
+  const serve = (docs: unknown[]) => {
+    held = docs;
+    mock.onGet(`${BASE}/7`).reply(() => [200, withDocs(held)]);
+  };
+  const answer = (docs: unknown[]) => () => {
+    held = docs;
+    return [200, withDocs(docs)] as [number, unknown];
+  };
+
+  beforeEach(() => {
+    mockParams.current = { id: "7" };
+    imagePicker.launchImageLibraryAsync.mockReset();
+    docPicker.getDocumentAsync.mockReset();
+  });
+
+  it("lists them newest first with name and size, and no longer sends him to the web", async () => {
+    mock.onGet(`${BASE}/7`).reply(200, withDocs([doc(2, "old-id.jpg"), doc(5, "passport.pdf", { content_type: "application/pdf" })]));
+    renderScreen(<ContactDetail />);
+    const rows = await screen.findAllByTestId(/^contact-document-\d+$/);
+    expect(rows.map((r) => r.props.testID)).toEqual(["contact-document-5", "contact-document-2"]);
+    expect(rows[0]).toHaveTextContent(/passport\.pdf/);
+    expect(rows[0]).toHaveTextContent(/10 KB/);
+    expect(screen.queryByText(/on the web/)).toBeNull();
+  });
+
+  it("says when there are none, and still offers Add", async () => {
+    serve([]);
+    renderScreen(<ContactDetail />);
+    expect(await screen.findByTestId("contact-documents-empty")).toHaveTextContent("No documents yet");
+    expect(screen.getByTestId("contact-documents-add")).toBeTruthy();
+  });
+
+  it("while only the list row is known, waits; if the full card fails, says so and retries", async () => {
+    const client = testQueryClient();
+    // A list row: the base view has no `documents` key.
+    const { documents: _none, ...row } = contact();
+    client.setQueryData(["contacts", "list"], [__contact(row)]);
+    let calls = 0;
+    mock.onGet(`${BASE}/7`).reply(() => (++calls === 1 ? [500, {}] : [200, withDocs([doc(3, "visa.jpg")])]));
+    render(<QueryClientProvider client={client}><ContactDetail /></QueryClientProvider>);
+    expect(screen.getByTestId("contact-documents-loading")).toBeTruthy();
+    // React Query drops a placeholder on an error: the card says so as a whole.
+    expect(await screen.findByTestId("contact-load-failed")).toBeTruthy();
+    fireEvent.press(screen.getByText("Try again"));
+    expect(await screen.findByTestId("contact-document-3")).toBeTruthy();
+  });
+
+  it("tapping a document opens it in the viewer", async () => {
+    mock.onGet(`${BASE}/7`).reply(200, withDocs([doc(4, "card.jpg")]));
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-document-4"));
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/contacts/document", params: { contactId: "7", documentId: "4" } });
+  });
+
+  it("adds from Files: sends them as documents[] and shows what the server kept", async () => {
+    serve([]);
+    docPicker.getDocumentAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: "file:///cache/lease.pdf", name: "lease.pdf", mimeType: "application/pdf", size: 4000 }],
+    });
+    mock.onPost(`${BASE}/7/upload_documents`).reply(answer([doc(8, "lease.pdf", { content_type: "application/pdf" })]));
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-documents-add"));
+    fireEvent.press(screen.getByTestId("contact-documents-source-files"));
+    expect(await screen.findByTestId("contact-document-8")).toHaveTextContent(/lease\.pdf/);
+    expect(mock.history.post.filter((r) => r.url === `${BASE}/7/upload_documents`)).toHaveLength(1);
+  });
+
+  it("adds from the photo library, images only", async () => {
+    serve([]);
+    imagePicker.launchImageLibraryAsync.mockResolvedValue({
+      canceled: false,
+      assets: [{ uri: "file:///cache/IMG_1.jpg", fileName: "IMG_1.jpg", mimeType: "image/jpeg", fileSize: 3000, type: "image" }],
+    });
+    mock.onPost(`${BASE}/7/upload_documents`).reply(answer([doc(9, "IMG_1.jpg")]));
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-documents-add"));
+    fireEvent.press(screen.getByTestId("contact-documents-source-library"));
+    expect(await screen.findByTestId("contact-document-9")).toBeTruthy();
+    expect(imagePicker.launchImageLibraryAsync.mock.calls[0][0]).toMatchObject({ mediaTypes: ["images"], allowsMultipleSelection: true });
+  });
+
+  it("refuses before sending what the server would refuse, naming the file and why", async () => {
+    serve([]);
+    docPicker.getDocumentAsync.mockResolvedValue({
+      canceled: false,
+      assets: [
+        { uri: "file:///cache/cv.docx", name: "cv.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", size: 10 },
+        { uri: "file:///cache/scan.pdf", name: "scan.pdf", mimeType: "application/pdf", size: 25 * 1024 * 1024 },
+      ],
+    });
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-documents-add"));
+    fireEvent.press(screen.getByTestId("contact-documents-source-files"));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith("Some files can’t be added", expect.any(String)));
+    const body = (Alert.alert as jest.Mock).mock.calls.at(-1)[1] as string;
+    expect(body).toMatch(/cv\.docx: only images \(PNG, JPEG, GIF, WebP\) and PDF/);
+    expect(body).toMatch(/scan\.pdf: bigger than 20 MB/);
+    expect(mock.history.post.filter((r) => r.url === `${BASE}/7/upload_documents`)).toHaveLength(0);
+  });
+
+  it("shows the server's own refusal", async () => {
+    serve([]);
+    docPicker.getDocumentAsync.mockResolvedValue({ canceled: false, assets: [{ uri: "file:///cache/a.pdf", name: "a.pdf", mimeType: "application/pdf", size: 10 }] });
+    mock.onPost(`${BASE}/7/upload_documents`).reply(422, { errors: ["Documents has an invalid content type"] });
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-documents-add"));
+    fireEvent.press(screen.getByTestId("contact-documents-source-files"));
+    await waitFor(() => expect(Alert.alert).toHaveBeenCalledWith("Could not add the document", "Documents has an invalid content type"));
+  });
+
+  it("renames from the row's menu, starting from the current name", async () => {
+    serve([doc(5, "scan.pdf", { content_type: "application/pdf" })]);
+    mock.onPatch(`${BASE}/7/documents/5`).reply(answer([doc(5, "passport.pdf", { content_type: "application/pdf" })]));
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-document-5-more"));
+    fireEvent.press(screen.getByTestId("contact-document-menu-rename"));
+    expect((await screen.findByTestId("pages-name-input")).props.value).toBe("scan.pdf");
+    fireEvent.changeText(screen.getByTestId("pages-name-input"), "passport.pdf");
+    fireEvent.press(screen.getByTestId("pages-name-confirm"));
+    expect(await screen.findByText("passport.pdf")).toBeTruthy();
+    expect(JSON.parse(mock.history.patch[0].data)).toEqual({ filename: "passport.pdf" });
+  });
+
+  it("deletes after a confirmation that names the file", async () => {
+    serve([doc(5, "scan.pdf")]);
+    mock.onDelete(`${BASE}/7/documents/5`).reply(answer([]));
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-document-5-more"));
+    fireEvent.press(screen.getByTestId("contact-document-menu-delete"));
+    expect((Alert.alert as jest.Mock).mock.calls.at(-1)[0]).toBe("Delete scan.pdf?");
+    expect(mock.history.delete).toHaveLength(0);
+    act(() => alertButtons().find((b) => b.text === "Delete")?.onPress?.());
+    expect(await screen.findByTestId("contact-documents-empty")).toBeTruthy();
+    expect(mock.history.delete[0].url).toBe(`${BASE}/7/documents/5`);
   });
 });
 

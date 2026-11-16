@@ -4,7 +4,7 @@
  * 2026-11-12 from multi_magic `contacts-api`.
  */
 import MockAdapter from "axios-mock-adapter";
-import { contactsApi, displayName, ImportNotSupported, __parse } from "../contacts";
+import { contactsApi, displayName, documentRefusal, DOCUMENT_MAX_BYTES, ImportNotSupported, __parse } from "../contacts";
 import { ApiShapeError } from "../parse";
 import { __resetTokenCache, http } from "../http";
 import { __resetFingerprintCache } from "@/lib/fingerprint";
@@ -52,7 +52,10 @@ const jamil = {
   ],
   addresses: [{ label: "home", street: "12 Main St", city: "Kabul", state: "", postal: "1001", country: "Afghanistan" }],
   social_links: [],
-  documents: [{ id: 1, filename: "id.pdf" }],
+  documents: [
+    { id: 11, filename: "id.pdf", byte_size: 52_000, content_type: "application/pdf",
+      url: "/rails/active_storage/blobs/proxy/d11/id.pdf", thumbnail_url: "/rails/active_storage/representations/proxy/t11/id.png" },
+  ],
 };
 
 function listPage(contacts: unknown[], pageNo: number, pages: number) {
@@ -85,8 +88,9 @@ describe("reading a contact", () => {
 
     expect(c).toMatchObject({
       firstname: "Jamil", lastname: "Safi", company: "Acme", jobTitle: "Driver", favorite: true,
-      birthDate: "1990-04-05", age: 36, website: "https://jamil.test", notes: "Met in Kabul", documentsCount: 1,
+      birthDate: "1990-04-05", age: 36, website: "https://jamil.test", notes: "Met in Kabul",
     });
+    expect(c.documents).toHaveLength(1);
     expect(c.relations).toEqual([{ id: 4, kind: "sibling", label: "brother", relative: { id: 8, name: "Anisa SAFI" } }]);
     expect(c.addresses[0]).toMatchObject({ city: "Kabul", country: "Afghanistan" });
     expect(c.photoUrl).toMatch(/^https?:\/\/.+\/rails\/active_storage\/blobs\/proxy\/abc\/p\.jpg$/);
@@ -284,5 +288,88 @@ describe("import and export", () => {
       '/api/v1/contact_app/contacts/export_multiple_contacts {"ids":[1,2]}',
       '/api/v1/contact_app/contacts/export_multiple_contacts {"all":true}',
     ]);
+  });
+});
+
+// ── DOCUMENTS (web contacts.api.ts uploadDocuments / renameDocument / removeDocument,
+// server AttachmentActions + ContactSerializer `documents`, read at 6de97a32) ──
+describe("documents", () => {
+  const doc = (id: number, filename: string, over: Record<string, unknown> = {}) => ({
+    id, filename, byte_size: 1000 * id, content_type: "image/jpeg",
+    url: `/rails/active_storage/blobs/proxy/d${id}/${filename}`, thumbnail_url: null, ...over,
+  });
+
+  it("reads them from the full view, newest first, with absolute urls", async () => {
+    mock.onGet("/api/v1/contact_app/contacts/7").reply(200, {
+      contact: { ...jamil, documents: [doc(3, "old.jpg"), doc(9, "new.pdf", { content_type: "application/pdf", thumbnail_url: "/rails/t9.png" })] },
+    });
+    const c = await contactsApi.show(7);
+    expect(c.documents?.map((d) => d.filename)).toEqual(["new.pdf", "old.jpg"]);
+    expect(c.documents?.[0]).toMatchObject({ id: 9, byteSize: 9000, contentType: "application/pdf" });
+    expect(c.documents?.[0].url).toMatch(/^https?:\/\/.+\/rails\/active_storage\/blobs\/proxy\/d9\/new\.pdf$/);
+    expect(c.documents?.[0].thumbnailUrl).toMatch(/^https?:\/\/.+\/rails\/t9\.png$/);
+    expect(c.documents?.[1].thumbnailUrl).toBeNull();
+  });
+
+  it("a list row (no `documents` key) says it does not know, not that there are none", () => {
+    const { documents: _d, ...row } = jamil;
+    expect(__parse.parseContact(row).documents).toBeNull();
+    expect(__parse.parseContact({ ...jamil, documents: [] }).documents).toEqual([]);
+  });
+
+  it("uploads every file as multipart `documents[]`, with a long timeout, and returns the contact", async () => {
+    let sent: FormData | null = null;
+    let headers: Record<string, unknown> = {};
+    let timeout = 0;
+    const appended: [string, { name?: string; type?: string; uri?: string }][] = [];
+    const original = FormData.prototype.append;
+    jest.spyOn(FormData.prototype, "append").mockImplementation(function (this: FormData, field: string, part: unknown) {
+      appended.push([field, part as { name?: string }]);
+      return original.call(this, field, String(part) as unknown as Blob);
+    });
+    mock.onPost("/api/v1/contact_app/contacts/7/upload_documents").reply((config) => {
+      sent = config.data as FormData;
+      headers = config.headers as Record<string, unknown>;
+      timeout = config.timeout ?? 0;
+      return [200, { contact: { ...jamil, documents: [doc(1, "a.jpg"), doc(2, "b.pdf")] } }];
+    });
+    const c = await contactsApi.uploadDocuments(7, [
+      { uri: "file:///a.jpg", name: "a.jpg", mimeType: "image/jpeg" },
+      { uri: "file:///b.pdf", name: "b.pdf", mimeType: "application/pdf" },
+    ]);
+    expect(sent).toBeInstanceOf(FormData);
+    // Jest's FormData is Node's, which stringifies React Native's {uri,name,type}
+    // parts: read what was appended instead.
+    expect(appended.map(([field, part]) => [field, part.name, part.type, part.uri])).toEqual([
+      ["documents[]", "a.jpg", "image/jpeg", "file:///a.jpg"],
+      ["documents[]", "b.pdf", "application/pdf", "file:///b.pdf"],
+    ]);
+    expect(String(headers["Content-Type"])).toMatch(/multipart\/form-data/);
+    expect(timeout).toBeGreaterThanOrEqual(60_000);
+    expect(c.documents?.map((d) => d.id)).toEqual([2, 1]);
+    jest.restoreAllMocks();
+  });
+
+  it("renames with PATCH {filename} and deletes with DELETE, each returning the contact", async () => {
+    let body: unknown;
+    mock.onPatch("/api/v1/contact_app/contacts/7/documents/11").reply((config) => {
+      body = JSON.parse(config.data);
+      return [200, { contact: { ...jamil, documents: [doc(11, "passport.pdf")] } }];
+    });
+    mock.onDelete("/api/v1/contact_app/contacts/7/documents/11").reply(200, { contact: { ...jamil, documents: [] } });
+    expect((await contactsApi.renameDocument(7, 11, "passport.pdf")).documents?.[0].filename).toBe("passport.pdf");
+    expect(body).toEqual({ filename: "passport.pdf" });
+    expect((await contactsApi.removeDocument(7, 11)).documents).toEqual([]);
+  });
+
+  it("knows the server's limits before sending: images or PDF, under 20 MB", () => {
+    expect(DOCUMENT_MAX_BYTES).toBe(20 * 1024 * 1024);
+    expect(documentRefusal({ name: "id.jpg", mimeType: "image/jpeg", size: 1000 })).toBeNull();
+    expect(documentRefusal({ name: "id.PDF", mimeType: null, size: 1000 })).toBeNull();
+    expect(documentRefusal({ name: "scan.webp", mimeType: "image/webp", size: null })).toBeNull();
+    expect(documentRefusal({ name: "big.pdf", mimeType: "application/pdf", size: DOCUMENT_MAX_BYTES })).toBe("size");
+    expect(documentRefusal({ name: "cv.docx", mimeType: "application/vnd.openxmlformats-officedocument.wordprocessingml.document", size: 10 })).toBe("type");
+    expect(documentRefusal({ name: "photo.heic", mimeType: "image/heic", size: 10 })).toBe("type");
+    expect(documentRefusal({ name: "clip.mov", mimeType: "video/quicktime", size: 10 })).toBe("type");
   });
 });

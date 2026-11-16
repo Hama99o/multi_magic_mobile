@@ -116,6 +116,7 @@ const SAME_IN_BOTH = new Set([
   // Finance: "Budgets" is the word in both; a row's spoken name is "{{name}}, {{amount}}".
   "finance.tabs.budgets",
   "finance.overview.budgets",
+  "finance.help.budgets.title",
   "finance.ledger.openEntry",
 ]);
 

@@ -49,12 +49,12 @@ const expense = (id: number, over: Record<string, unknown> = {}) => ({
 function serve() {
   const db = {
     expenses: [expense(1, { item: "Lunch" }), expense(2, { item: "Train", amount: "30.0", spent_at: "2026-11-10T00:00:00.000Z" }), expense(3, { item: "Book", amount: "9.0", currency: "usd" })],
-    incomes: [{ id: 21, source: "Salary", description: null, amount: "2400.0", currency: "eur", received_at: `${TODAY}T00:00:00.000Z`, tag_id: null, status: "published", recurring_income_id: null, category: null, tag: null, labels: [], label_ids: [] }],
+    incomes: [{ id: 21, source: "Salary", description: null, amount: "2400.0", currency: "eur", received_at: `${TODAY}T00:00:00.000Z`, tag_id: null, status: "published", recurring_income_id: null as number | null, category: null, tag: null, labels: [], label_ids: [] }],
     pending: [{ id: 22, source: "Rent from flat", description: null, amount: "900.0", currency: "eur", received_at: "2026-11-30T00:00:00.000Z", tag_id: null, status: "pending", recurring_income_id: 2, category: null, tag: null, labels: [], label_ids: [] }],
     trashed: [] as number[],
     next: 100,
   };
-  const page = (root: string, rows: { amount: string; currency: string }[]) => {
+  const page = (root: string, rows: { amount: string; currency: string }[]): [number, unknown] => {
     const totals: Record<string, string> = {};
     for (const r of rows) totals[r.currency] = String(Number(totals[r.currency] ?? 0) + Number(r.amount));
     return [200, { [root]: rows, meta: { totals, pagy: { page: 1, pages: 1 }, total_count: rows.length } }];

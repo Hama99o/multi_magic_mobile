@@ -18,7 +18,7 @@ import * as Sharing from "expo-sharing";
 import { router } from "expo-router";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, type InfiniteData } from "@tanstack/react-query";
+import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, type InfiniteData, type UseInfiniteQueryResult } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
 import { financeApi, formatTotals, type Currency, type Expense, type Income, type Page, type Tag, type Totals } from "@/api/finance";
 import { Download, Filter, Pencil, Plus, Receipt, Search, Trash2, Wallet, X } from "@/components/icons";
@@ -76,15 +76,28 @@ export function Ledger({ kind, header }: { kind: Kind; header?: ReactNode }) {
   }, [typed]);
 
   const filters = { search, tagId, year, month: month || undefined };
-  const list = useInfiniteQuery<Page<Entry>, Error, InfiniteData<Page<Entry>>, readonly unknown[], number>({
-    queryKey: kind === "expense" ? financeKeys.expenses(search, tagId, year, month, oneTime) : financeKeys.incomes(search, tagId, year, month),
+  // Two queries, one enabled: each key is written out as its factory call, so
+  // the key-shape gate (queryKeys.test.ts) can read it; a conditional key it cannot.
+  const paging = {
     initialPageParam: 1,
-    queryFn: ({ pageParam }) => (kind === "expense" ? financeApi.expenses.list({ ...filters, page: pageParam, oneTime }) : financeApi.incomes.list({ ...filters, page: pageParam })),
-    getNextPageParam: (last) => (last.page < last.pages ? last.page + 1 : undefined),
+    getNextPageParam: (last: Page<Entry>) => (last.page < last.pages ? last.page + 1 : undefined),
     // Keep what is on screen while the next search, filter or month loads
     // (the web's `keepRows`), instead of blanking the list to a skeleton.
     placeholderData: keepPreviousData,
+  };
+  const expenses = useInfiniteQuery({
+    ...paging,
+    queryKey: financeKeys.expenses(search, tagId, year, month, oneTime),
+    queryFn: ({ pageParam }) => financeApi.expenses.list({ ...filters, page: pageParam, oneTime }),
+    enabled: kind === "expense",
   });
+  const incomes = useInfiniteQuery({
+    ...paging,
+    queryKey: financeKeys.incomes(search, tagId, year, month),
+    queryFn: ({ pageParam }) => financeApi.incomes.list({ ...filters, page: pageParam }),
+    enabled: kind === "income",
+  });
+  const list = (kind === "expense" ? expenses : incomes) as UseInfiniteQueryResult<InfiniteData<Page<Entry>>>;
   const tags = useQuery({ queryKey: financeKeys.tags(), queryFn: financeApi.tags.all });
   const rows = useMemo(() => list.data?.pages.flatMap((p) => p.rows) ?? [], [list.data]);
   const first = list.data?.pages[0];

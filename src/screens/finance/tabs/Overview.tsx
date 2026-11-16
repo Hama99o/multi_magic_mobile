@@ -22,6 +22,8 @@ import { financeKeys } from "@/api/keys";
 import { dominantCurrency, financeApi, formatTotals, type Currency, type Slice, type Totals } from "@/api/finance";
 import { ArrowDownLeft, ArrowUpRight, ChevronRight, PiggyBank, Plus } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
+import { UndoToast } from "@/components/UndoToast";
+import { useFinanceUndo } from "@/stores/financeUndo.store";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { Bars, budgetColor, chartColor, Donut, FINANCE, HeroAmount, MONEY_IN, MONEY_OWED, PeriodSwitcher, ShareBar, shortMonth, useMoney } from "../parts";
 import type { FinanceTab } from "./names";
@@ -37,6 +39,9 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: FinanceTab) => void }) {
   const [year, setYear] = useState(now.getFullYear());
   const [month, setMonth] = useState(now.getMonth() + 1);
   const [refreshing, setRefreshing] = useState(false);
+  // "Expense saved" after an entry added from here lands on this tab.
+  const offer = useFinanceUndo((s) => s.offer);
+  const clearOffer = useFinanceUndo((s) => s.clear);
 
   const pie = useQuery({ queryKey: financeKeys.byCategory(year, month), queryFn: () => financeApi.expenses.byCategory(period(year, month)) });
   const summary = useQuery({ queryKey: financeKeys.summary(year, month), queryFn: () => financeApi.reports.summary(year, month || null) });
@@ -52,6 +57,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: FinanceTab) => void }) {
   const topBudgets = [...(budgets.data ?? [])].sort((a, b) => b.spent / b.amount - a.spent / a.amount).slice(0, 4);
 
   return (
+    <View style={{ flex: 1 }}>
     <ScrollView
       testID="finance-tab-overview"
       contentContainerStyle={{ gap: metrics.space.lg, paddingBottom: 96 }}
@@ -166,6 +172,8 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: FinanceTab) => void }) {
         <Retry failed={Boolean(glance.error)} onRetry={() => void glance.refetch()} />
       </Card>
     </ScrollView>
+    <UndoToast offer={offer} onDone={clearOffer} testID="finance-overview-toast" />
+    </View>
   );
 }
 

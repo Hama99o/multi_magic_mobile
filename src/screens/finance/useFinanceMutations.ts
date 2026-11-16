@@ -75,11 +75,21 @@ export function useDeleteEntry(kind: EntryKind, opts: Opts<{ id: number }> = {})
 /** Undo a delete, or restore from the trash: the server's `restore`. */
 export function useRestoreEntry(kind: EntryKind, opts: Opts = {}) {
   const client = useQueryClient();
+  const trash = financeKeys.trash(kind === "expense" ? "expenses" : kind === "income" ? "incomes" : "loans");
   return useMutation({
     mutationFn: (rowId: number) =>
       kind === "expense" ? financeApi.expenses.restore(rowId) : kind === "income" ? financeApi.incomes.restore(rowId) : financeApi.loans.restore(rowId),
+    // Out of the trash at once (an Undo has nothing in a trash list to move).
+    onMutate: async (rowId) => {
+      const saved = await snapshot(client, [trash]);
+      dropRow(client, trash, rowId);
+      return { saved };
+    },
     onSuccess: () => opts.onDone?.(undefined),
-    onError: (e) => opts.onError?.(e),
+    onError: (e, _id, ctx) => {
+      restore(client, ctx?.saved);
+      opts.onError?.(e);
+    },
     onSettled: () => settleAll(client),
   });
 }

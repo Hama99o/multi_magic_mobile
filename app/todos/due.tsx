@@ -7,7 +7,7 @@
  */
 import { useMemo, useState } from "react";
 import { Pressable, RefreshControl, SectionList, View } from "react-native";
-import Animated, { FadeInDown, FadeOut, LinearTransition } from "react-native-reanimated";
+import Animated, { FadeInDown } from "react-native-reanimated";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQueries, useQuery, type InfiniteData } from "@tanstack/react-query";
@@ -120,7 +120,7 @@ export default function DueScreen() {
           </Text>
         )}
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)} exiting={FadeOut.duration(180)} layout={LinearTransition}>
+          <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
             <DueRow todo={item} today={today} listName={listName(item.todoGroupId)} onOpen={() => setOpenId(item.id)} />
           </Animated.View>
         )}

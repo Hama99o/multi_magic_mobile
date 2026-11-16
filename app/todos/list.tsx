@@ -14,7 +14,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
-import Animated, { FadeIn, FadeInDown, FadeOut, LinearTransition } from "react-native-reanimated";
+import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -192,9 +192,7 @@ export default function TodoListScreen() {
           <Text variant="caption" tone="muted">
             {t("todos.progress", { done: done.length, total: todos.length })}
           </Text>
-          <View style={{ height: 6, borderRadius: 3, backgroundColor: colors.surface, overflow: "hidden" }}>
-            <Animated.View layout={LinearTransition} style={{ width: `${Math.round(pct * 100)}%`, height: 6, borderRadius: 3, backgroundColor: APP_COLORS.todos }} />
-          </View>
+          <ProgressBar pct={pct} />
         </View>
       ) : null}
 
@@ -216,6 +214,11 @@ export default function TodoListScreen() {
       ) : (
         <FlatList
           testID="todo-tasks"
+          // NO layout animation on the rows, on purpose. Per-row `layout` /
+          // `exiting` left a ghost gap and the Done header over a task, and
+          // `itemLayoutAnimation` left a row ON TOP of another after Done was
+          // folded, so a swipe on Bread ticked Coffee (Todo QA, 2026-11-16,
+          // both on the device, neither visible to jest). Rows still fade in.
           style={{ flex: 1 }}
           data={group ? items : []}
           keyExtractor={(item) => (item.kind === "task" ? `t${item.todo.id}` : item.kind)}
@@ -243,7 +246,7 @@ export default function TodoListScreen() {
               );
             }
             return (
-              <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)} exiting={FadeOut.duration(180)} layout={LinearTransition}>
+              <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
                 <TaskRow
                   todo={item.todo}
                   today={today}
@@ -306,6 +309,25 @@ export default function TodoListScreen() {
 
       <UndoToast offer={offer} onDone={clearOffer} testID="todo-undo" bottom={72} />
     </Screen>
+  );
+}
+
+/**
+ * The list's progress, eased to its new width. A `layout` transition on a
+ * percentage width stayed at the old width on the device ("2 of 2 done" at
+ * two thirds, Todo QA 2026-11-16), so the width itself is animated.
+ */
+function ProgressBar({ pct }: { pct: number }) {
+  const colors = useColors();
+  const width = useSharedValue(pct);
+  useEffect(() => {
+    width.value = withTiming(pct, { duration: 300 });
+  }, [pct, width]);
+  const style = useAnimatedStyle(() => ({ width: `${Math.round(width.value * 100)}%` }));
+  return (
+    <View testID="todo-progress-bar" style={{ height: 6, borderRadius: 3, backgroundColor: colors.surface, overflow: "hidden" }}>
+      <Animated.View style={[{ height: 6, borderRadius: 3, backgroundColor: APP_COLORS.todos }, style]} />
+    </View>
   );
 }
 

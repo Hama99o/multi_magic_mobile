@@ -47,43 +47,58 @@ export function DragList({ todos, onReorder, onDragging }: { todos: Todo[]; onRe
   const [drag, setDrag] = useState<{ from: number; to: number } | null>(null);
   const dy = useRef(new Animated.Value(0)).current;
 
-  const responder = (index: number) =>
-    PanResponder.create({
+  // ONE responder per task, kept across renders. Made fresh on each render
+  // (the first version), the drag's own re-render swapped in a responder that
+  // had never seen the grant: its gesture state stayed at 0, so letting go
+  // moved nothing. Found on the device (Todo QA T7), invisible to jest.
+  const latest = useRef({ todos, onReorder, onDragging });
+  latest.current = { todos, onReorder, onDragging };
+  const responders = useRef(new Map<number, ReturnType<typeof PanResponder.create>>());
+  const responder = (todoId: number) => {
+    const known = responders.current.get(todoId);
+    if (known) return known;
+    const indexNow = () => latest.current.todos.findIndex((x) => x.id === todoId);
+    const made = PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
       onPanResponderTerminationRequest: () => false,
       onPanResponderGrant: () => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => undefined);
-        onDragging(true);
+        latest.current.onDragging(true);
         dy.setValue(0);
-        setDrag({ from: index, to: index });
+        const from = indexNow();
+        setDrag({ from, to: from });
       },
       onPanResponderMove: (_e, g) => {
         dy.setValue(g.dy);
-        const to = dropIndex(heights.current, index, g.dy);
+        const to = dropIndex(heights.current, indexNow(), g.dy);
         setDrag((d) => {
           if (d && d.to !== to) void Haptics.selectionAsync().catch(() => undefined);
           return d && d.to !== to ? { ...d, to } : d;
         });
       },
       onPanResponderRelease: (_e, g) => {
-        const to = dropIndex(heights.current, index, g.dy);
+        const from = indexNow();
+        const to = dropIndex(heights.current, from, g.dy);
         setDrag(null);
         dy.setValue(0);
-        onDragging(false);
-        if (to !== index) {
-          const ids = todos.map((x) => x.id);
-          const [moved] = ids.splice(index, 1);
+        latest.current.onDragging(false);
+        if (from >= 0 && to !== from) {
+          const ids = latest.current.todos.map((x) => x.id);
+          const [moved] = ids.splice(from, 1);
           ids.splice(to, 0, moved);
-          onReorder(ids);
+          latest.current.onReorder(ids);
         }
       },
       onPanResponderTerminate: () => {
         setDrag(null);
         dy.setValue(0);
-        onDragging(false);
+        latest.current.onDragging(false);
       },
     });
+    responders.current.set(todoId, made);
+    return made;
+  };
 
   const shiftFor = (i: number) => {
     if (!drag || i === drag.from) return 0;
@@ -100,6 +115,7 @@ export function DragList({ todos, onReorder, onDragging }: { todos: Todo[]; onRe
         return (
           <Animated.View
             key={todo.id}
+            testID={`todo-row-drag-${todo.id}`}
             onLayout={(e) => {
               heights.current[i] = e.nativeEvent.layout.height;
             }}
@@ -123,7 +139,7 @@ export function DragList({ todos, onReorder, onDragging }: { todos: Todo[]; onRe
               }}
             >
               <View
-                {...responder(i).panHandlers}
+                {...responder(todo.id).panHandlers}
                 testID={`todo-grip-${todo.id}`}
                 accessibilityLabel={t("todos.dragHandle", { title: todo.title })}
                 style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}

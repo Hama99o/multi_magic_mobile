@@ -180,6 +180,7 @@ export function ReminderChooser({
             ))}
           </View>
           <TimeWheel value={time} onChange={setTime} testID={`${testID}-time`} label={t("todos.reminder.time")} />
+          <View style={{ alignSelf: "flex-start" }}>
           <Chip
             testID={`${testID}-save`}
             label={t("todos.reminder.save")}
@@ -189,6 +190,7 @@ export function ReminderChooser({
               setOpen(false);
             }}
           />
+          </View>
         </View>
       ) : null}
     </View>

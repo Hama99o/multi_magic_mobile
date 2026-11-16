@@ -251,8 +251,12 @@ describe("a list", () => {
     renderScreen(<TodoList />);
     fireEvent.press(await screen.findByTestId("todo-row-2"));
     fireEvent.press(screen.getByTestId("todo-sheet-delete"));
-    await waitFor(() => expect(screen.queryByText("Bread")).toBeNull(), EXIT);
-    expect(await screen.findByText("Task deleted")).toBeTruthy();
+    // Gone, and the five-second Undo offered: checked together, so a slow
+    // machine cannot spend the five seconds on the first check.
+    await waitFor(() => {
+      expect(screen.queryByText("Bread")).toBeNull();
+      expect(screen.getByText("Task deleted")).toBeTruthy();
+    }, EXIT);
     fireEvent.press(screen.getByTestId("todo-undo-button"));
     await waitFor(() => expect(bodies("post", `${B}/todos`)).toEqual([{ todo_group_id: 4, todo: { title: "Bread", priority: "high" } }]));
     await waitFor(() => expect(bodies("put", `${B}/todos/reorder`)).toEqual([{ todo_group_id: 4, todo_ids: [1, 100, 3] }]));
@@ -380,8 +384,10 @@ describe("Today / Upcoming / Overdue", () => {
     mockParams.current = { view: "overdue" };
     renderScreen(<Due />);
     fireEvent.press(await screen.findByTestId("todo-check-2"));
-    await waitFor(() => expect(screen.queryByText("Return book")).toBeNull(), EXIT);
-    expect(screen.getByText("Task done")).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.queryByText("Return book")).toBeNull();
+      expect(screen.getByText("Task done")).toBeTruthy();
+    }, EXIT);
   });
 
   it("says when nothing is due", async () => {

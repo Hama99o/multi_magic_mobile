@@ -162,10 +162,26 @@ const COMPOSED = [
   ...["credit_card", "debit_card"].map((v) => `safezone.cardTypes.${v}`),
   // A note's share roles (`NoteApp::Share` enum): t(`notes.share.roles.${role}`) (ShareSheet.tsx).
   ...["viewer", "contributor", "administrator"].map((v) => `notes.share.roles.${v}`),
+  // Todo (app/todos, src/screens/todos): the server's priority and frequency
+  // enums (`TodoApp::Todo`, `TodoApp::Template`) and the three due views.
+  ...["none", "low", "medium", "high"].map((v) => `todos.priority.${v}`),
+  ...["none", "daily", "weekly", "monthly"].map((v) => `todos.frequency.${v}`),
+  ...["daily", "weekly", "monthly"].map((v) => `todos.repeatEvery.${v}`),
+  ...["today", "upcoming", "overdue"].flatMap((v) => [`todos.views.${v}`, `todos.emptyView.${v}`]),
 ];
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
 const PLURAL = new Set([
+  "todos.overdueCount",
+  "todos.more",
+  "todos.doneCount",
+  "todos.clearBody",
+  "todos.deleteListBody",
+  "todos.taskCount",
+  "todos.templateItemsHint",
+  "todos.repeatEvery.daily",
+  "todos.repeatEvery.weekly",
+  "todos.repeatEvery.monthly",
   "pages.trash.deleteManyTitle",
   "safezone.health.reusedAcross",
   "shareDoor.unreadableTitle",

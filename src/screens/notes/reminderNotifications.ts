@@ -15,6 +15,8 @@ import * as Notifications from "expo-notifications";
 
 import { notesApi, type Note } from "@/api/notes";
 import { syncReminders, type ReminderScheduler } from "./reminders";
+import type { Todo } from "@/api/todos";
+import { syncTodoReminders, todoFromNotification } from "@/screens/todos/reminders";
 
 const CHANNEL = "reminders";
 
@@ -84,6 +86,27 @@ export function onReminderTap(open: (noteId: number) => void): () => void {
   const sub = Notifications.addNotificationResponseReceivedListener((r) => {
     const id = idOf(r);
     if (id) open(id);
+  });
+  return () => sub.remove();
+}
+
+/** Task reminders (`src/screens/todos/reminders.ts`): this phone's `todo-*` schedule made to match these tasks. */
+export async function resyncTodoReminders(tasks: Todo[]): Promise<void> {
+  configure();
+  await syncTodoReminders(tasks, expoScheduler);
+}
+
+/** Calls `open` when a task's reminder is tapped, including the one that launched the app. */
+export function onTodoReminderTap(open: (task: { todoId: number; groupId: number }) => void): () => void {
+  void Notifications.getLastNotificationResponseAsync()
+    .then((r) => {
+      const task = todoFromNotification(r?.notification.request.content.data);
+      if (task) open(task);
+    })
+    .catch(() => undefined);
+  const sub = Notifications.addNotificationResponseReceivedListener((r) => {
+    const task = todoFromNotification(r.notification.request.content.data);
+    if (task) open(task);
   });
   return () => sub.remove();
 }

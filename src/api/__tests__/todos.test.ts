@@ -203,3 +203,30 @@ describe("parsers", () => {
     expect(__parse.parseTodo({ ...milk, overdue: undefined }).overdue).toBe(false);
   });
 });
+
+describe("across lists, and the reminder", () => {
+  it("reads every pending task (the Today / Upcoming / Overdue views)", async () => {
+    mock.onGet("/api/v1/todo_app/todos", { params: { completed: false } }).reply(200, { todos: [milk, { ...milk, id: 33, todo_group_id: 5 }] });
+    const rows = await todosApi.pending();
+    expect(rows.map((t) => [t.id, t.todoGroupId])).toEqual([[31, 4], [33, 5]]);
+  });
+
+  it("searches tasks (titles, notes and list names), trimmed", async () => {
+    mock.onGet("/api/v1/todo_app/todos", { params: { search: "milk" } }).reply(200, { todos: [milk] });
+    expect((await todosApi.search(" milk ")).map((t) => t.id)).toEqual([31]);
+  });
+
+  it("knows whether the server keeps a reminder: the key is there, even null", () => {
+    expect(__parse.parseTodo({ ...milk, remind_at: null })).toMatchObject({ remindAt: null, remindSupported: true });
+    expect(__parse.parseTodo({ ...milk, remind_at: "2026-12-01T09:30:00.000Z" })).toMatchObject({ remindAt: "2026-12-01T09:30:00.000Z", remindSupported: true });
+    expect(__parse.parseTodo(milk)).toMatchObject({ remindAt: null, remindSupported: false });
+  });
+
+  it("sends remind_at only when given", async () => {
+    mock.onPut("/api/v1/todo_app/todos/31").reply((cfg) => {
+      expect(JSON.parse(cfg.data)).toEqual({ todo: { remind_at: "2026-12-01T09:30:00.000Z" } });
+      return [200, { todo: { ...milk, remind_at: "2026-12-01T09:30:00.000Z" } }];
+    });
+    await todosApi.update(31, { remindAt: "2026-12-01T09:30:00.000Z" });
+  });
+});

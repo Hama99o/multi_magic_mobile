@@ -37,8 +37,21 @@ describe("inAppRoute", () => {
 
   it("records the app has no screen for stay on the web", () => {
     expect(inAppRoute({ key: "loan", path: "/finance/loans?loan=4", label: null })).toBeNull();
-    expect(inAppRoute({ key: "todo_group", path: "/todos?group=2", label: null })).toBeNull();
     expect(inAppRoute({ key: null, path: null, label: null })).toBeNull();
+  });
+
+  // The Todo app (2026-11-16). Paths per `frontend_routes.rb` and
+  // `search/sources.rb` (`/todos?group=&task=`).
+  it("a todo list opens the list, and a task opens on that task", () => {
+    expect(inAppRoute({ key: "todo_group", path: "/todos?group=2", label: null })).toEqual({ pathname: "/todos/list", params: { id: "2" } });
+    expect(routeForWebPath("/todos?group=2&task=9")).toEqual({ pathname: "/todos/list", params: { id: "2", task: "9" } });
+    expect(inAppRoute({ key: "todos", path: "/todos", label: null })).toBe("/todos");
+    expect(routeForWebPath("/todos")).toBe("/todos");
+  });
+
+  it("a todo link whose list id cannot be read is not guessed", () => {
+    expect(routeForWebPath("/todos?group=abc")).toBeNull();
+    expect(inAppRoute({ key: "todo_group", path: "/todos?group=abc", label: null })).toBe("/todos");
   });
 
   // Audit P1 #13 (2026-11-16): the app has had Notes, Contacts, an event

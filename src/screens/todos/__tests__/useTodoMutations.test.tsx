@@ -21,6 +21,7 @@ import {
   useRenameList,
   useResetList,
   useToggleTask,
+  useUndoDeleteTask,
   useUpdateTask,
 } from "../useTodoMutations";
 
@@ -29,7 +30,7 @@ let mock: MockAdapter;
 let client: QueryClient;
 
 const task = (id: number, over: Partial<Todo> = {}): Todo => ({
-  id, todoGroupId: 4, title: `T${id}`, notes: null, completed: false, position: id, dueDate: null, priority: "none", overdue: false, createdAt: "", ...over,
+  id, todoGroupId: 4, title: `T${id}`, notes: null, completed: false, position: id, dueDate: null, priority: "none", overdue: false, remindAt: null, remindSupported: false, createdAt: "", ...over,
 });
 const list = (id: number, todos: Todo[]): TodoGroup => ({
   id, name: `L${id}`, todosCount: todos.length, completedCount: todos.filter((t) => t.completed).length,
@@ -90,12 +91,18 @@ describe("toggle a task", () => {
 
 describe("add a task", () => {
   it("shows at the end of the list at once, then takes the server's id", async () => {
-    const g = gated(201, { todo: serverTodo(9, { title: "Eggs", position: 4 }) });
-    mock.onPost(`${BASE}/todos`).reply(g.reply);
+    const g = gated(201, { todo: serverTodo(9, { title: "Eggs", position: 4, due_date: "2026-11-17", priority: "high" }) });
+    let sent: unknown;
+    mock.onPost(`${BASE}/todos`).reply((cfg) => {
+      sent = JSON.parse(cfg.data);
+      return g.reply();
+    });
     const { result } = renderHook(() => useAddTask(4), { wrapper });
-    act(() => result.current.mutate("Eggs"));
+    act(() => result.current.mutate({ title: "Eggs", dueDate: "2026-11-17", priority: "high" }));
     await waitFor(() => expect(open().todos.map((t) => t.title)).toEqual(["T1", "T2", "T3", "Eggs"]));
+    expect(open().todos[3]).toMatchObject({ dueDate: "2026-11-17", priority: "high" });
     expect(open().todos[3].id).toBeLessThan(0);
+    await waitFor(() => expect(sent).toEqual({ todo_group_id: 4, todo: { title: "Eggs", due_date: "2026-11-17", priority: "high" } }));
     expect(card()!.todosCount).toBe(4);
     g.open();
     await waitFor(() => expect(open().todos[3].id).toBe(9));
@@ -105,7 +112,7 @@ describe("add a task", () => {
     mock.onPost(`${BASE}/todos`).reply(422, { errors: ["Title can't be blank"] });
     const onError = jest.fn();
     const { result } = renderHook(() => useAddTask(4, { onError }), { wrapper });
-    act(() => result.current.mutate("Eggs"));
+    act(() => result.current.mutate({ title: "Eggs" }));
     await waitFor(() => expect(onError).toHaveBeenCalledWith(expect.anything(), "Eggs"));
     expect(open().todos).toHaveLength(3);
     expect(card()!.todosCount).toBe(3);
@@ -199,5 +206,54 @@ describe("the list's own actions", () => {
     expect(card(5)).toBeDefined();
     g.open();
     await waitFor(() => expect(card(4)).toBeDefined());
+  });
+});
+
+describe("the Today / Upcoming / Overdue view", () => {
+  it("a task ticked there leaves it at once, and comes back on refusal", async () => {
+    client.setQueryData<Todo[]>(todoKeys.pending(), [task(1, { dueDate: "2026-11-16" }), task(7, { todoGroupId: 5 })]);
+    const g = gated(500);
+    mock.onPut(`${BASE}/todos/1/toggle`).reply(g.reply);
+    const { result } = renderHook(() => useToggleTask(4), { wrapper });
+    act(() => result.current.mutate(task(1)));
+    await waitFor(() => expect(client.getQueryData<Todo[]>(todoKeys.pending())!.map((t) => t.id)).toEqual([7]));
+    g.open();
+    await waitFor(() => expect(client.getQueryData<Todo[]>(todoKeys.pending())!.map((t) => t.id)).toEqual([1, 7]));
+  });
+
+  it("a new date shows there at once", async () => {
+    client.setQueryData<Todo[]>(todoKeys.pending(), [task(2)]);
+    const g = gated(200, { todo: serverTodo(2, { due_date: "2026-12-01" }) });
+    mock.onPut(`${BASE}/todos/2`).reply(g.reply);
+    const { result } = renderHook(() => useUpdateTask(4), { wrapper });
+    act(() => result.current.mutate({ todo: task(2), input: { dueDate: "2026-12-01" } }));
+    await waitFor(() => expect(client.getQueryData<Todo[]>(todoKeys.pending())![0].dueDate).toBe("2026-12-01"));
+    g.open();
+  });
+});
+
+describe("undo a delete", () => {
+  it("puts the task back where it was at once, re-creates it with every field, then restores its place", async () => {
+    // The task is gone from the list (the delete already settled).
+    client.setQueryData<TodoGroup>(todoKeys.group(4), { ...open(), todos: [task(1), task(3, { completed: true })] });
+    const gone = task(2, { notes: "n", dueDate: "2026-11-20", priority: "high" });
+    const posted: unknown[] = [];
+    const g = gated(201, { todo: serverTodo(20, { title: "T2", notes: "n", due_date: "2026-11-20", priority: "high", position: 3 }) });
+    mock.onPost(`${BASE}/todos`).reply((cfg) => {
+      posted.push(JSON.parse(cfg.data));
+      return g.reply();
+    });
+    let order: unknown;
+    mock.onPut(`${BASE}/todos/reorder`).reply((cfg) => {
+      order = JSON.parse(cfg.data);
+      return [200, {}];
+    });
+    const { result } = renderHook(() => useUndoDeleteTask(4), { wrapper });
+    act(() => result.current.mutate({ todo: gone, index: 1 }));
+    await waitFor(() => expect(open().todos.map((t) => t.title)).toEqual(["T1", "T2", "T3"]));
+    g.open();
+    await waitFor(() => expect(order).toEqual({ todo_group_id: 4, todo_ids: [1, 20, 3] }));
+    expect(posted).toEqual([{ todo_group_id: 4, todo: { title: "T2", notes: "n", due_date: "2026-11-20", priority: "high" } }]);
+    expect(open().todos.map((t) => t.id)).toEqual([1, 20, 3]);
   });
 });

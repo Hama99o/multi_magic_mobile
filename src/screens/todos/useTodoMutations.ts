@@ -14,7 +14,8 @@
  */
 import { useMutation, useQueryClient, type InfiniteData, type QueryClient, type QueryKey } from "@tanstack/react-query";
 import { todoKeys } from "@/api/keys";
-import { todoGroupsApi, todosApi, type Todo, type TodoGroup, type TodoGroupsPage, type TodoInput } from "@/api/todos";
+import { todoGroupsApi, todosApi, todoTemplatesApi, type TemplateInput, type TodoTemplate, type Todo, type TodoGroup, type TodoGroupsPage, type TodoInput } from "@/api/todos";
+import { todayKey } from "@/screens/calendar/dates";
 
 type Snapshot = [QueryKey, unknown][];
 type Opts = { onError?: (e: unknown) => void };
@@ -57,6 +58,23 @@ function editCards(client: QueryClient, edit: (rows: TodoGroup[]) => TodoGroup[]
 function patchTasks(client: QueryClient, groupId: number, edit: (todos: Todo[]) => Todo[], cardFallback?: (card: TodoGroup) => TodoGroup) {
   const before = client.getQueryData<TodoGroup>(todoKeys.group(groupId));
   const after = before ? edit(before.todos) : null;
+  // The cross-list view holds this list's pending tasks among others': edit
+  // them in place, and drop the ones now done or gone.
+  client.setQueryData<Todo[]>(todoKeys.pending(), (rows) => {
+    if (!rows) return rows;
+    const edited = new Map(edit(rows.filter((t) => t.todoGroupId === groupId)).map((t) => [t.id, t]));
+    return rows.flatMap((t) => {
+      if (t.todoGroupId !== groupId) return [t];
+      const next = edited.get(t.id);
+      return next && !next.completed ? [next] : [];
+    });
+  });
+  // Search results keep done tasks, ticked, and lose deleted ones.
+  client.setQueriesData<Todo[]>({ queryKey: todoKeys.taskSearches() }, (rows) => {
+    if (!rows) return rows;
+    const edited = new Map(edit(rows.filter((t) => t.todoGroupId === groupId)).map((t) => [t.id, t]));
+    return rows.flatMap((t) => (t.todoGroupId !== groupId ? [t] : edited.has(t.id) ? [edited.get(t.id)!] : []));
+  });
   if (before && after) client.setQueryData<TodoGroup>(todoKeys.group(groupId), recount({ ...before, todos: after }, after));
   editCards(client, (rows) =>
     rows.map((card) => {
@@ -72,7 +90,7 @@ function patchName(client: QueryClient, groupId: number, name: string) {
   editCards(client, (rows) => rows.map((g) => (g.id === groupId ? { ...g, name } : g)));
 }
 
-const touched = (groupId: number): QueryKey[] => [todoKeys.group(groupId), todoKeys.lists()];
+const touched = (groupId: number): QueryKey[] => [todoKeys.group(groupId), todoKeys.lists(), todoKeys.pending(), todoKeys.taskSearches()];
 
 /** Tick or untick. Callable from the open list or straight from a card's preview. */
 export function useToggleTask(groupId: number, opts: Opts = {}) {
@@ -107,24 +125,24 @@ export function useToggleTask(groupId: number, opts: Opts = {}) {
 export function useAddTask(groupId: number, opts: { onError?: (e: unknown, title: string) => void } = {}) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: (title: string) => todosApi.create(groupId, { title }),
-    onMutate: async (title) => {
+    mutationFn: (input: TodoInput & { title: string }) => todosApi.create(groupId, input),
+    onMutate: async ({ title, dueDate = null, priority = "none" }) => {
       const saved = await snapshot(client, touched(groupId));
       const tempId = -Date.now();
       patchTasks(
         client,
         groupId,
-        (todos) => [...todos, { id: tempId, todoGroupId: groupId, title, notes: null, completed: false, position: todos.length + 1, dueDate: null, priority: "none", overdue: false, createdAt: "" }],
+        (todos) => [...todos, { id: tempId, todoGroupId: groupId, title, notes: null, completed: false, position: todos.length + 1, dueDate, priority, overdue: dueDate != null && dueDate < todayKey(), remindAt: null, remindSupported: todos[0]?.remindSupported ?? false, createdAt: "" }],
         (card) => ({ ...card, todosCount: card.todosCount + 1, pendingCount: card.pendingCount + 1 }),
       );
       return { saved, tempId };
     },
-    onSuccess: (todo, _title, ctx) => {
+    onSuccess: (todo, _input, ctx) => {
       patchTasks(client, groupId, (todos) => todos.map((t) => (t.id === ctx?.tempId ? todo : t)));
     },
-    onError: (e, title, ctx) => {
+    onError: (e, input, ctx) => {
       restore(client, ctx?.saved);
-      opts.onError?.(e, title);
+      opts.onError?.(e, input.title);
     },
     onSettled: () => settle(client, touched(groupId)),
   });
@@ -274,8 +292,131 @@ export function useDeleteList(groupId: number, opts: Opts & { onDone?: () => voi
   });
 }
 
-/** Today as `YYYY-MM-DD`, in the phone's own day (the server's `Date.current`). */
-export function todayKey(now: Date = new Date()): string {
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+/**
+ * Undo a delete. The server's delete is hard (`@todo.destroy`), so the task is
+ * made again with every field it had, ticked again if it was, and put back at
+ * its old place. It shows there at once.
+ */
+export function useUndoDeleteTask(groupId: number, opts: Opts = {}) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ todo }: { todo: Todo; index: number }) => {
+      const made = await todosApi.create(groupId, {
+        title: todo.title,
+        ...(todo.notes ? { notes: todo.notes } : {}),
+        ...(todo.dueDate ? { dueDate: todo.dueDate } : {}),
+        ...(todo.priority !== "none" ? { priority: todo.priority } : {}),
+        ...(todo.remindAt ? { remindAt: todo.remindAt } : {}),
+      });
+      return todo.completed ? todosApi.toggle(made.id) : made;
+    },
+    onMutate: async ({ todo, index }) => {
+      const saved = await snapshot(client, touched(groupId));
+      patchTasks(client, groupId, (todos) => [...todos.slice(0, index), { ...todo, id: -todo.id }, ...todos.slice(index)]);
+      return { saved };
+    },
+    onSuccess: async (made, { todo }) => {
+      patchTasks(client, groupId, (todos) => todos.map((t) => (t.id === -todo.id ? made : t)));
+      const ids = client.getQueryData<TodoGroup>(todoKeys.group(groupId))?.todos.map((t) => t.id).filter((id) => id > 0);
+      if (ids) await todosApi.reorder(groupId, ids);
+    },
+    onError: (e, _v, ctx) => {
+      restore(client, ctx?.saved);
+      opts.onError?.(e);
+    },
+    onSettled: () => settle(client, touched(groupId)),
+  });
+}
+
+/**
+ * Made by the server, so not optimistic: a new list, a copy ("… (Copy)"), a
+ * list from a template. Each answers with the new list, which the caller opens.
+ */
+export function useCreateList(opts: Opts & { onDone?: (group: TodoGroup) => void } = {}) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (name: string) => todoGroupsApi.create(name),
+    onSuccess: (group) => opts.onDone?.(group),
+    onError: (e) => opts.onError?.(e),
+    onSettled: () => settle(client, [todoKeys.lists()]),
+  });
+}
+
+export function useDuplicateList(groupId: number, opts: Opts & { onDone?: (group: TodoGroup) => void } = {}) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => todoGroupsApi.duplicate(groupId),
+    onSuccess: (group) => opts.onDone?.(group),
+    onError: (e) => opts.onError?.(e),
+    onSettled: () => settle(client, [todoKeys.lists()]),
+  });
+}
+
+export function useSaveAsTemplate(groupId: number, opts: Opts & { onDone?: () => void } = {}) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => todoGroupsApi.saveAsTemplate(groupId),
+    onSuccess: () => opts.onDone?.(),
+    onError: (e) => opts.onError?.(e),
+    onSettled: () => settle(client, [todoKeys.templates()]),
+  });
+}
+
+export function useApplyTemplate(opts: Opts & { onDone?: (group: TodoGroup) => void } = {}) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (templateId: number) => todoTemplatesApi.apply(templateId),
+    onSuccess: (group) => opts.onDone?.(group),
+    onError: (e) => opts.onError?.(e),
+    onSettled: () => settle(client, [todoKeys.lists()]),
+  });
+}
+
+export function useSaveTemplate(opts: Opts & { onDone?: () => void } = {}) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, input }: { id: number | null; input: TemplateInput }) => (id == null ? todoTemplatesApi.create(input) : todoTemplatesApi.update(id, input)),
+    onSuccess: () => opts.onDone?.(),
+    onError: (e) => opts.onError?.(e),
+    onSettled: () => settle(client, [todoKeys.templates()]),
+  });
+}
+
+/** Gone from the templates at once; back on refusal. */
+export function useDeleteTemplate(opts: Opts = {}) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (templateId: number) => todoTemplatesApi.remove(templateId),
+    onMutate: async (templateId) => {
+      const saved = await snapshot(client, [todoKeys.templates()]);
+      client.setQueryData<TodoTemplate[]>(todoKeys.templates(), (rows) => rows?.filter((r) => r.id !== templateId));
+      return { saved };
+    },
+    onError: (e, _id, ctx) => {
+      restore(client, ctx?.saved);
+      opts.onError?.(e);
+    },
+    onSettled: () => settle(client, [todoKeys.templates()]),
+  });
+}
+
+/** A whole new order, from a drag (the web's SortableJS `onEnd`). */
+export function useReorderTasks(groupId: number, opts: Opts = {}) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (order: number[]) => todosApi.reorder(groupId, order.filter((id) => id > 0)),
+    onMutate: async (order) => {
+      const saved = await snapshot(client, touched(groupId));
+      patchTasks(client, groupId, (todos) => {
+        const at = new Map(order.map((id, i) => [id, i]));
+        return [...todos].sort((a, b) => (at.get(a.id) ?? Infinity) - (at.get(b.id) ?? Infinity));
+      });
+      return { saved };
+    },
+    onError: (e, _v, ctx) => {
+      restore(client, ctx?.saved);
+      opts.onError?.(e);
+    },
+    onSettled: () => settle(client, touched(groupId)),
+  });
 }

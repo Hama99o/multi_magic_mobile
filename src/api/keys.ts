@@ -126,4 +126,10 @@ export const todoKeys = {
   /** One list with every task (show). */
   group: <G extends number>(groupId: G) => ["todos", "group", groupId] as const,
   templates: () => ["todos", "templates"] as const,
+  /** Every pending task across the lists (Today / Upcoming / Overdue). */
+  pending: () => ["todos", "pending"] as const,
+  /** Every task search's results, as one prefix. */
+  taskSearches: () => ["todos", "taskSearch"] as const,
+  /** Tasks matching a search term. */
+  taskSearch: <Q extends string>(term: Q) => ["todos", "taskSearch", term] as const,
 };

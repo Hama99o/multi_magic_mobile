@@ -20,7 +20,7 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { AiButton } from "@/components/AiButton";
 import { ProfileSheet } from "@/components/settings/ProfileSheet";
-import { Bell, BookUser, CalendarDays, FolderOpen, MessageSquareText, NotebookPen, ShieldCheck, Sparkles, Users, type LucideIcon } from "@/components/icons";
+import { Bell, BookUser, CalendarDays, FolderOpen, ListChecks, MessageSquareText, NotebookPen, ShieldCheck, Sparkles, Users, type LucideIcon } from "@/components/icons";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
 import { useAuthStore } from "@/stores/auth.store";
 import { Avatar } from "@/screens/people/Avatar";
@@ -154,6 +154,7 @@ export default function Home() {
     { app: "chats", icon: Users, title: t("chat.chats"), body: t("home.chatsBody"), onPress: () => router.push("/chats"), testID: "home-tile-chats" },
     { app: "notifications", icon: Bell, title: t("chat.notifications"), body: t("home.notificationsBody"), onPress: () => router.push("/notifications"), testID: "home-tile-notifications", badge: unread || undefined },
     { app: "calendar", icon: CalendarDays, title: t("chat.calendar"), body: t("home.calendarBody"), onPress: () => router.push("/calendar"), testID: "home-tile-calendar" },
+    { app: "todos", icon: ListChecks, title: t("todos.title"), body: t("home.todosBody"), onPress: () => router.push("/todos"), testID: "home-tile-todos" },
     { app: "contacts", icon: BookUser, title: t("contacts.title"), body: t("home.contactsBody"), onPress: () => router.push("/contacts"), testID: "home-tile-contacts" },
     { app: "safezone", icon: ShieldCheck, title: t("safezone.title"), body: t("home.safezoneBody"), onPress: () => router.push("/safezone"), testID: "home-tile-safezone" },
     { app: "conversations", icon: MessageSquareText, title: t("chat.conversations"), body: t("home.conversationsBody"), onPress: () => router.push({ pathname: "/chat", params: { sessions: "1" } }), testID: "home-tile-conversations" },

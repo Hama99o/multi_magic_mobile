@@ -39,6 +39,11 @@ export interface Todo {
   priority: TodoPriority;
   /** Pending and past its due date (the server's `overdue?`). */
   overdue: boolean;
+  /** ISO time the phone notifies at (`remind_at`, multi_magic PR #27); null = none. */
+  remindAt: string | null;
+  /** The server sends `remind_at` at all. Before PR #27 deploys it does not,
+   *  and the Reminder row hides rather than offer what cannot be kept. */
+  remindSupported: boolean;
   createdAt: string;
 }
 
@@ -83,6 +88,7 @@ export interface TodoInput {
   notes?: string | null;
   dueDate?: string | null;
   priority?: TodoPriority;
+  remindAt?: string | null;
 }
 
 export interface TemplateInput {
@@ -110,6 +116,8 @@ function parseTodo(raw: unknown): Todo {
     dueDate: optStr(t.due_date),
     priority: oneOf(t.priority, TODO_PRIORITIES, "none"),
     overdue: t.overdue === true,
+    remindAt: optStr(t.remind_at),
+    remindSupported: "remind_at" in t,
     createdAt: optStr(t.created_at) ?? "",
   };
 }
@@ -156,6 +164,7 @@ function todoBody(input: TodoInput): Record<string, unknown> {
   if (input.notes !== undefined) body.notes = input.notes;
   if (input.dueDate !== undefined) body.due_date = input.dueDate;
   if (input.priority !== undefined) body.priority = input.priority;
+  if (input.remindAt !== undefined) body.remind_at = input.remindAt;
   return body;
 }
 
@@ -205,7 +214,15 @@ export const todoGroupsApi = {
     parseTemplate(obj((await http.post(`${BASE}/todo_groups/${groupId}/save_as_template`, {})).data, "save_as_template").template),
 };
 
+const tasks = (data: unknown) => readableRows(arr(obj(data, "todos").todos, "todos"), parseTodo).rows;
+
 export const todosApi = {
+  /** Every pending task in every list (`created_at desc`): the Today / Upcoming / Overdue views. */
+  pending: async (): Promise<Todo[]> => tasks((await http.get(`${BASE}/todos`, { params: { completed: false } })).data),
+
+  /** Tasks whose title or notes match, or whose list's name does. */
+  search: async (term: string): Promise<Todo[]> => tasks((await http.get(`${BASE}/todos`, { params: { search: term.trim() } })).data),
+
   create: async (groupId: number, input: TodoInput): Promise<Todo> =>
     parseTodo(obj((await http.post(`${BASE}/todos`, { todo_group_id: groupId, todo: todoBody(input) })).data, "create").todo),
 

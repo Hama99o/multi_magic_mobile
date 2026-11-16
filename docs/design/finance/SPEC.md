@@ -1,6 +1,14 @@
 # Finance — SPEC
 
-**Status: SPECIFIED** (2026-11-16). Nothing is built yet; Todo goes first. The
+**Status: IN PROGRESS** (2026-11-16). Built (MUST F1-F24, B1-B12, and B13
+the trash) and device-QA'd: 14/14 on the release-mode bundle (guarded
+`mm_qa_fin` with PRs #27 + #28): two currencies in one month kept apart, To
+receive / To pay over all 7 unpaid loans (the web counts 5), light and dark,
+phone and 800 dp; the contact sheet is in Pages (MultiMagic › 2026-11-16 ›
+finance-contact-sheet). QA fixed: Save hidden below the keypad in the loan
+and recurring forms; one category in two currencies read as a duplicate in
+Reports. Outstanding: the owner's review, and PR #28 (`per_page`) deployed
+for fewer requests (the app works without it). The
 owner (via Hello, 2026-11-16): *"finance app also go on"*, *"check well what
 they want and we should add these apps also very well"*, *"make sure we work
 well on design"*.

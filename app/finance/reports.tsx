@@ -60,6 +60,9 @@ export default function ReportsScreen() {
   });
   const total = (x: Totals | undefined) => (x && formatTotals(x, i18n.language)) || formatMoney(0, "eur", i18n.language);
   const max = Math.max(0, ...(summary.data?.byCategory ?? []).map((s) => s.amount));
+  // Two currencies in one category are two rows: name the currency then, or
+  // they read as a duplicate (device QA, 2026-11-16; the Overview does the same).
+  const manyCurrencies = new Set((summary.data?.byCategory ?? []).map((s) => s.currency)).size > 1;
 
   return (
     <Screen measure>
@@ -94,7 +97,7 @@ export default function ReportsScreen() {
                 <Animated.View key={`${s.label}-${s.currency}`} entering={FadeInDown.delay(Math.min(i, 10) * 35).duration(220)} testID={`finance-reports-category-${i}`} style={{ gap: metrics.space.xs, minHeight: 44, justifyContent: "center" }}>
                   <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
                     <Text style={{ flex: 1 }} numberOfLines={1}>
-                      {s.label || t("finance.manage.reports.noCategory")}
+                      {`${s.label || t("finance.manage.reports.noCategory")}${manyCurrencies ? ` · ${s.currency.toUpperCase()}` : ""}`}
                     </Text>
                     <Text style={{ fontWeight: "600", fontVariant: ["tabular-nums"] }}>{formatMoney(s.amount, s.currency, i18n.language)}</Text>
                   </View>

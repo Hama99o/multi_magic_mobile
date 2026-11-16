@@ -1,8 +1,12 @@
 # Todo — SPEC
 
-**Status: SPECIFIED** (2026-11-16). The data layer is built and tested
-(`src/api/todos.ts`, `src/screens/todos/useTodoMutations.ts`); the screens are
-not built yet. The owner asked for the Todo app (via Hello, 2026-11-16): *"start
+**Status: IN PROGRESS** (2026-11-16). Built (MUST A1-A24, B1-B12) and
+device-QA'd: 12/12 on the release-mode bundle (emulator qa_phone3, guarded
+`mm_qa_todo` with multi_magic PR #27), light and dark, phone and 800 dp; the
+contact sheet is in Pages (MultiMagic › 2026-11-16 › todo-contact-sheet). QA
+found and fixed four bugs jest could not see (drag reorder, overlapping rows,
+the progress bar, a stretched chip). Outstanding: the owner's review, and PR
+#27 (`remind_at`) deployed before the Reminder row shows. The owner asked for the Todo app (via Hello, 2026-11-16): *"start
 todo app also put it there"*, then *"check well what they want and we should
 add these apps also very well"* and *"make sure we work well on design"*.
 

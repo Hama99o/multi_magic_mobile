@@ -19,9 +19,10 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
-import { Folder, Trash2, Upload } from "@/components/icons";
+import { Check, Folder, Trash2, Upload } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { pagesApi, type SharedItem, type Space } from "@/api/pages";
+import { pagesApi, type SharedItem, type SortDir, type Space, type SpaceListOptions } from "@/api/pages";
+import { sortLabel } from "@/screens/pages/labels";
 import { NodeCollection } from "@/screens/pages/drive/NodeCollection";
 import { BottomSheet, NewSheet, SheetRow } from "@/screens/pages/drive/sheets";
 import { NewFab, PagesTabBar, SearchPill, SortRow, UploadBar, useViewPrefs, type PagesTab } from "@/screens/pages/drive/ui";
@@ -33,6 +34,10 @@ import { pagesKeys } from "@/api/keys";
 import { useDriveRights } from "@/screens/pages/permissions";
 import { SpaceForm } from "@/screens/pages/SpaceForm";
 import { Button } from "@/components/reusables/button";
+
+type SpaceSortBy = NonNullable<SpaceListOptions["sortBy"]>;
+/** `VALID_SPACE_SORT_COLUMNS` (`spaces_controller.rb`). */
+const SPACE_SORTS: SpaceSortBy[] = ["created_at", "updated_at", "name"];
 
 function SpaceRow({ space, mode, width }: { space: Space; mode: "list" | "grid"; width: number }) {
   const colors = useColors();
@@ -139,7 +144,20 @@ export default function PagesHome() {
   });
   const nodes = useMemo(() => (drive.data?.pages ?? []).flatMap((p) => p.rows), [drive.data]);
   const rightsOf = useDriveRights();
-  const spaces = useQuery({ queryKey: pagesKeys.spaces(), queryFn: () => pagesApi.spaces(1), enabled: tab === "files" });
+  // Newest first by default (the owner's rule, 2026-11-09), every page of them.
+  const [spaceSort, setSpaceSort] = useState<{ sortBy: SpaceSortBy; sortDir: SortDir }>({ sortBy: "created_at", sortDir: "desc" });
+  const [sortingSpaces, setSortingSpaces] = useState(false);
+  const spaces = useInfiniteQuery({
+    queryKey: pagesKeys.spacesSorted(spaceSort.sortBy, spaceSort.sortDir),
+    queryFn: ({ pageParam }) => pagesApi.spaces(pageParam, spaceSort),
+    initialPageParam: 1,
+    getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
+    enabled: tab === "files",
+  });
+  const spaceRows = useMemo(() => {
+    const seen = new Set<number>();
+    return (spaces.data?.pages ?? []).flatMap((p) => p.rows).filter((s) => (seen.has(s.id) ? false : (seen.add(s.id), true)));
+  }, [spaces.data]);
   const shared = useQuery({ queryKey: pagesKeys.shared(), queryFn: pagesApi.sharedWithMe, enabled: tab === "shared" });
 
   const pick = async (fn: () => Promise<PickResult>) => {
@@ -185,13 +203,17 @@ export default function PagesHome() {
             <FlatList
               key={`spaces-${mode}`}
               testID="pages-spaces-list"
-              data={spaces.data?.rows ?? []}
+              data={spaceRows}
+              onEndReached={() => {
+                if (spaces.hasNextPage && !spaces.isFetchingNextPage) void spaces.fetchNextPage();
+              }}
+              onEndReachedThreshold={0.5}
               numColumns={mode === "grid" ? 2 : 1}
               columnWrapperStyle={mode === "grid" ? { gap: 12, marginBottom: 12 } : undefined}
               keyExtractor={(s) => String(s.id)}
               ListHeaderComponent={
                 <View>
-                  <SortRow label={t("pages.spaces")} ascending />
+                  <SortRow label={sortLabel(spaceSort.sortBy, t)} ascending={spaceSort.sortDir === "asc"} onSort={() => setSortingSpaces(true)} />
                   <LoadFailure error={spaces.error} loadFailed={t("pages.loadFailed")} hasData={Boolean(spaces.data)} updatedAt={spaces.dataUpdatedAt} onRetry={() => void spaces.refetch()} testID="pages-spaces-failed" padded={false} />
                 </View>
               }
@@ -239,6 +261,33 @@ export default function PagesHome() {
         onSpace={() => setSpaceForm(true)}
       />
       <SpaceForm open={spaceForm} onClose={() => setSpaceForm(false)} />
+      <BottomSheet open={sortingSpaces} onClose={() => setSortingSpaces(false)} testID="pages-sort-sheet">
+        <Text variant="label" tone="muted" style={{ paddingHorizontal: metrics.space.xl, paddingBottom: metrics.space.sm }}>
+          {t("pages.sort.title")}
+        </Text>
+        {SPACE_SORTS.map((option) => (
+          <Pressable
+            key={option}
+            onPress={() => {
+              setSpaceSort((current) =>
+                option === current.sortBy
+                  ? { sortBy: option, sortDir: current.sortDir === "asc" ? "desc" : "asc" }
+                  : // Dates newest first, names A to Z, as in a folder.
+                    { sortBy: option, sortDir: option === "name" ? "asc" : "desc" },
+              );
+              setSortingSpaces(false);
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={sortLabel(option, t)}
+            accessibilityState={{ selected: option === spaceSort.sortBy }}
+            style={{ flexDirection: "row", alignItems: "center", minHeight: 52, paddingHorizontal: metrics.space.xl }}
+            testID={`pages-sort-${option}`}
+          >
+            <Text style={{ flex: 1 }}>{sortLabel(option, t)}</Text>
+            {option === spaceSort.sortBy ? <Check size={18} color={colors.accent} /> : null}
+          </Pressable>
+        ))}
+      </BottomSheet>
       <BottomSheet open={menu} onClose={() => setMenu(false)} testID="pages-menu-sheet">
         <SheetRow icon={Upload} label={t("pages.uploads.title")} onPress={() => (setMenu(false), router.push("/pages/uploads"))} testID="pages-menu-uploads" />
         <SheetRow icon={Trash2} label={t("pages.places.trash")} onPress={() => (setMenu(false), router.push({ pathname: "/pages/drive", params: { view: "trash" } }))} testID="pages-menu-trash" />

@@ -306,7 +306,16 @@ export function MoveSheet({
   const moving = useMemo(() => new Set((nodes ?? []).map((n) => n.id)), [nodes]);
   const parentId = place && place.path.length ? place.path[place.path.length - 1].id : null;
 
-  const spaces = useQuery({ queryKey: pagesKeys.spacesFor("move"), queryFn: () => pagesApi.spaces(1), enabled: Boolean(nodes) && !place });
+  // Every page of both lists (audit #19: only the first page could be chosen).
+  // Spaces A to Z, as the web's move picker lists them.
+  const spaces = useInfiniteQuery({
+    queryKey: pagesKeys.spacesFor("move"),
+    queryFn: ({ pageParam }) => pagesApi.spaces(pageParam, { sortBy: "name", sortDir: "asc" }),
+    initialPageParam: 1,
+    getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
+    enabled: Boolean(nodes) && !place,
+  });
+  const spaceRows = (spaces.data?.pages ?? []).flatMap((p) => p.rows);
   const folders = useInfiniteQuery({
     queryKey: pagesKeys.moveFolders(place?.space.id, parentId),
     queryFn: ({ pageParam }) => pagesApi.children(place!.space.id, parentId, pageParam, { kind: "folder", sortBy: "name", sortDir: "asc" }),
@@ -363,9 +372,16 @@ export function MoveSheet({
         </ScrollView>
       </View>
       <FlatList
+        testID="pages-move-list"
         style={{ maxHeight: 320 }}
-        data={(place ? rows : (spaces.data?.rows ?? [])).map((x) => ({ id: x.id, title: x.title, icon: "icon" in x ? x.icon : null }))}
+        data={(place ? rows : spaceRows).map((x) => ({ id: x.id, title: x.title, icon: "icon" in x ? x.icon : null }))}
         keyExtractor={(item) => String(item.id)}
+        onEndReached={() => {
+          const list = place ? folders : spaces;
+          if (list.hasNextPage && !list.isFetchingNextPage) void list.fetchNextPage();
+        }}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={(place ? folders : spaces).isFetchingNextPage ? <ActivityIndicator color={colors.inkMuted} style={{ padding: metrics.space.md }} /> : null}
         ListEmptyComponent={
           (place ? folders.isLoading : spaces.isLoading) ? (
             <ActivityIndicator color={colors.inkMuted} style={{ padding: metrics.space.lg }} />

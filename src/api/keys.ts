@@ -85,6 +85,8 @@ export const contactsKeys = {
 export const pagesKeys = {
   all: ["pages"] as const,
   spaces: () => ["pages", "spaces"] as const,
+  /** The Files tab's list, in the order picked. */
+  spacesSorted: <B extends string, D extends string>(sortBy: B, sortDir: D) => ["pages", "spaces", "list", sortBy, sortDir] as const,
   spacesFor: <P extends "move" | "picker" | "owned">(purpose: P) => ["pages", "spaces", purpose] as const,
   /** One space's detail: the only answer that carries the caller's permission. */
   space: <S extends number>(spaceId: S) => ["pages", "space", spaceId] as const,

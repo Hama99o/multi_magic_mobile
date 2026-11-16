@@ -116,3 +116,14 @@ export const pagesKeys = {
   shares: <S extends number, N extends number | null>(spaceId: S, nodeId: N) => ["pages", "sharing", spaceId, nodeId, "people"] as const,
   shareLinks: <S extends number, N extends number | null>(spaceId: S, nodeId: N) => ["pages", "sharing", spaceId, nodeId, "links"] as const,
 };
+
+export const todoKeys = {
+  all: ["todos"] as const,
+  /** Every page of every search of the lists, as one prefix (a write can change any of them). */
+  lists: () => ["todos", "lists"] as const,
+  /** The lists for one search term ("" = all), paged (useInfiniteQuery). */
+  listSearch: <Q extends string>(term: Q) => ["todos", "lists", term] as const,
+  /** One list with every task (show). */
+  group: <G extends number>(groupId: G) => ["todos", "group", groupId] as const,
+  templates: () => ["todos", "templates"] as const,
+};

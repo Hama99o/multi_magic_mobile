@@ -26,12 +26,15 @@ import ArchiveRestoreIcon from "lucide-react-native/dist/esm/icons/archive-resto
 import BellIcon from "lucide-react-native/dist/esm/icons/bell";
 import LockIcon from "lucide-react-native/dist/esm/icons/lock";
 import LockOpenIcon from "lucide-react-native/dist/esm/icons/lock-open";
+import UserPlusIcon from "lucide-react-native/dist/esm/icons/user-plus";
 import { ReminderSheet, reminderLabel } from "@/screens/notes/ReminderSheet";
 import { ensureReminderPermission, resyncReminders } from "@/screens/notes/reminderNotifications";
 import type { NoteReminder } from "@/screens/notes/reminders";
 import { NoteLabelsSheet } from "@/screens/notes/labels";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
-import { canEdit, type Note } from "@/api/notes";
+import { canEdit, canShare, type Note } from "@/api/notes";
+import { NoteShareSheet } from "@/screens/notes/ShareSheet";
+import { Avatar } from "@/screens/people/Avatar";
 import {
   fetchFreshNote, notesKeys, useArchiveNote, useUnarchiveNote, useCreateNote, useDuplicateNote, useLockNote, useNote, usePinNote,
   useSaveNote, useSetNoteColor, useSetNoteReminder, useTrashNote,
@@ -336,10 +339,14 @@ export default function NoteEditScreen() {
   const caretScalar = useRef<{ anchor: number; head: number } | null>(null);
   const scheme = useScheme();
   const [focused, setFocused] = useState(false);
-  const [sheet, setSheet] = useState<"noteColor" | "more" | "confirmDelete" | "labels" | "reminder" | null>(null);
+  const [sheet, setSheet] = useState<"noteColor" | "more" | "confirmDelete" | "labels" | "reminder" | "share" | null>(null);
   // Pin, colour, lock, reminder and labels: read from the cache, which the
   // mutations change at once (optimistic) and put back on a refusal.
   const locked = note?.locked ?? false;
+  // A reader (a viewer share, audit #23) cannot edit, as on the web: same
+  // read-only view as a lock. The server would refuse the save anyway.
+  const viewOnly = note ? !canEdit(note) : false;
+  const readOnly = locked || viewOnly;
   const [reminderDenied, setReminderDenied] = useState(false);
   const notePinned = note?.pinned ?? false;
   const noteColorKey = note?.color ?? null;
@@ -352,12 +359,12 @@ export default function NoteEditScreen() {
   const caretBlock = caretPos !== null && engineDocRef.current ? textblockAt(engineDocRef.current, caretPos) : null;
   const headingLevel = caretBlock?.node.type === "heading" ? Number(caretBlock.node.attrs?.level ?? 1) : undefined;
   const codeLanguage = caretBlock?.node.type === "codeBlock" ? ((caretBlock.node.attrs?.language as string | null) ?? null) : undefined;
-  // Locked: every edit key is off; ⋮ (delete, copy, send, labels) stays.
+  // Locked or view only: every edit key is off; ⋮ (delete, copy, send, labels) stays.
   // Our document's block under the caret decides "in code" (B's active state
   // can lag behind a whole-document replace; seen on the device).
   const nodesForBar = caretBlock ? { ...active.nodes, codeBlock: caretBlock.node.type === "codeBlock" } : active.nodes;
-  const toolbarKeys = buildToolbar({ ...active, nodes: nodesForBar, ...history, hasSelection, panel: locked ? null : panel, headingLevel, codeLanguage, focused: focused && !locked })
-    .keys.map((k) => (locked && k.id !== "more" && k.id !== "spacer" ? { ...k, disabled: true } : k));
+  const toolbarKeys = buildToolbar({ ...active, nodes: nodesForBar, ...history, hasSelection, panel: readOnly ? null : panel, headingLevel, codeLanguage, focused: focused && !readOnly })
+    .keys.map((k) => (readOnly && k.id !== "more" && k.id !== "spacer" ? { ...k, disabled: true } : k));
 
   /** Replace the engine's document with a structural edit of it (B has no command for these). */
   const applyStructural = (edit: (doc: DocNode, path: number[]) => DocNode) => {
@@ -663,6 +670,18 @@ export default function NoteEditScreen() {
           >
             <BellIcon size={20} color={noteReminder ? colors.accent : colors.ink} />
           </Pressable>
+          {canShare(note) ? (
+            <Pressable
+              testID="note-edit-share"
+              onPress={() => setSheet("share")}
+              accessibilityRole="button"
+              accessibilityLabel={t("notes.share.title")}
+              hitSlop={6}
+              style={{ width: 40, height: 44, alignItems: "center", justifyContent: "center" }}
+            >
+              <UserPlusIcon size={20} color={note.sharedUsers.length ? colors.accent : colors.ink} />
+            </Pressable>
+          ) : null}
           {(note.role === "owner" || note.role === "administrator") && note.status === "archived" ? (
             <Pressable
               testID="note-edit-unarchive"
@@ -761,7 +780,7 @@ export default function NoteEditScreen() {
         testID="note-edit-title"
         key={`title-${generation}`}
         defaultValue={opened.title}
-        editable={!locked}
+        editable={!readOnly}
         placeholder={t("notes.edit.titlePlaceholder")}
         placeholderTextColor={colors.inkMuted}
         onChangeText={(v) => {
@@ -782,6 +801,32 @@ export default function NoteEditScreen() {
           <LockIcon size={14} color={colors.ink} />
           <Text style={{ fontSize: 13 }}>{t("notes.lock.locked")}</Text>
         </View>
+      ) : null}
+      {viewOnly ? (
+        <View testID="note-edit-viewer-chip" style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, borderRadius: 999, backgroundColor: `${colors.ink}14`, paddingHorizontal: 10, paddingVertical: 4, marginBottom: metrics.space.xs }}>
+          <Text style={{ fontSize: 13 }}>{t("notes.share.viewOnly")}</Text>
+        </View>
+      ) : null}
+      {note.sharedUsers.length ? (
+        // The web's "Shared with" and its avatars; the owner (or an administrator) opens the share sheet from it.
+        <Pressable
+          testID="note-edit-shared"
+          onPress={canShare(note) ? () => setSheet("share") : undefined}
+          disabled={!canShare(note)}
+          accessibilityRole={canShare(note) ? "button" : "text"}
+          accessibilityLabel={t("notes.share.sharedWithNames", { names: note.sharedUsers.map((u) => u.name).join(", ") })}
+          style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 6, marginBottom: metrics.space.xs }}
+        >
+          <Text tone="muted" style={{ fontSize: 12 }}>{t("notes.share.sharedWith")}</Text>
+          <View style={{ flexDirection: "row" }}>
+            {note.sharedUsers.slice(0, 5).map((u, i) => (
+              <View key={u.id} style={{ marginLeft: i ? -6 : 0, borderRadius: 13, borderWidth: 2, borderColor: pageFill }}>
+                <Avatar name={u.name} uri={u.avatar} userId={u.id} size={22} />
+              </View>
+            ))}
+          </View>
+          {note.sharedUsers.length > 5 ? <Text tone="muted" style={{ fontSize: 12 }}>+{note.sharedUsers.length - 5}</Text> : null}
+        </Pressable>
       ) : null}
       {noteReminder ? (
         <Pressable
@@ -806,12 +851,12 @@ export default function NoteEditScreen() {
             // A fresh view for each lock state: switching a live B view between
             // read-only and editable broke its input (letters reversed, never
             // saved: integration server, 2026-11-14), like autoCorrect did.
-            key={`body-${generation}-${locked ? "ro" : "rw"}`}
+            key={`body-${generation}-${readOnly ? "ro" : "rw"}`}
             documentHandle={engine.handle}
             atoms={notesEngineAtoms}
             theme={engineTheme(colors, pageFill) as never}
             focusPreservingRefs={barRef}
-            editable={!locked}
+            editable={!readOnly}
             onFocus={() => setFocused(true)}
             onBlur={() => {
               setFocused(false);
@@ -889,6 +934,7 @@ export default function NoteEditScreen() {
         onRemove={() => saveReminder(null)}
         onClose={() => setSheet(null)}
       />
+      {canShare(note) ? <NoteShareSheet visible={sheet === "share"} note={note} onClose={() => setSheet(null)} /> : null}
       <NoteLabelsSheet
         visible={sheet === "labels"}
         note={{ id: noteId, tags: note.tags }}

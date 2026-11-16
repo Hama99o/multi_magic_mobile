@@ -3,7 +3,7 @@
  * codec exactly as stored: this file moves it, never edits it.
  */
 import MockAdapter from "axios-mock-adapter";
-import { canEdit, notesApi, parseNote } from "../notes";
+import { canEdit, canShare, notesApi, parseNote } from "../notes";
 import { ApiShapeError } from "../parse";
 import { __resetTokenCache, http } from "../http";
 import { __resetFingerprintCache } from "@/lib/fingerprint";
@@ -248,5 +248,53 @@ describe("lock (data.locked, is_locked; multi_magic notes-lock branch)", () => {
     mock.onPut("/api/v1/note_app/notes/7").reply(200, { note: note({ is_locked: true }) });
     expect((await notesApi.setLocked(7, true)).locked).toBe(true);
     expect(JSON.parse(mock.history.put[0].data)).toEqual({ locked: true });
+  });
+});
+
+describe("sharing (audit #23: share_with_user_toggle, update_shared_user_rights)", () => {
+  const ana = { id: 21, fullname: "Ana Example", firstname: "Ana", email: "ana@example.test", avatar: null, note_role: "contributor" };
+  const bo = { id: 22, fullname: null, firstname: null, email: "bo@example.test", note_role: "viewer" };
+
+  it("reads the collaborators: name (or email), email, photo and role", async () => {
+    mock.onGet("/api/v1/note_app/notes/7").reply(200, { note: note({ shared_users: [ana, bo], shared_count: 2 }) });
+    const n = await notesApi.get(7);
+    expect(n.sharedUsers).toEqual([
+      { id: 21, name: "Ana Example", email: "ana@example.test", avatar: null, role: "contributor" },
+      { id: 22, name: "bo@example.test", email: "bo@example.test", avatar: null, role: "viewer" },
+    ]);
+    expect(n.sharedCount).toBe(2);
+  });
+
+  it("no shared_users is an empty list", async () => {
+    mock.onGet("/api/v1/note_app/notes/7").reply(200, { note: note({ shared_users: undefined }) });
+    expect((await notesApi.get(7)).sharedUsers).toEqual([]);
+  });
+
+  it("invites by email with a role, and the server's note comes back", async () => {
+    mock.onPut("/api/v1/note_app/notes/7/share_with_user_toggle").reply(200, { note: note({ shared_users: [ana], shared_count: 1 }) });
+    const n = await notesApi.share(7, "ana@example.test", "contributor");
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ user_action: "add", email: "ana@example.test", role: "contributor" });
+    expect(n.sharedUsers.map((u) => u.id)).toEqual([21]);
+  });
+
+  it("removes a collaborator", async () => {
+    mock.onPut("/api/v1/note_app/notes/7/share_with_user_toggle").reply(200, { note: note() });
+    await notesApi.unshare(7, 21);
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ user_action: "remove", user_id: 21 });
+  });
+
+  it("changes a collaborator's role", async () => {
+    mock.onPut("/api/v1/note_app/notes/7/update_shared_user_rights").reply(200, { note: note({ shared_users: [{ ...ana, note_role: "viewer" }] }) });
+    const n = await notesApi.setShareRole(7, 21, "viewer");
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ user_id: 21, role: "viewer" });
+    expect(n.sharedUsers[0].role).toBe("viewer");
+  });
+
+  it("only the owner or an administrator may share (note_policy#share_with_user_toggle?)", () => {
+    expect(canShare({ role: "owner" })).toBe(true);
+    expect(canShare({ role: "administrator" })).toBe(true);
+    expect(canShare({ role: "contributor" })).toBe(false);
+    expect(canShare({ role: "viewer" })).toBe(false);
+    expect(canShare({ role: null })).toBe(false);
   });
 });

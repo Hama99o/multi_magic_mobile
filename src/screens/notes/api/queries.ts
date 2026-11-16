@@ -20,7 +20,7 @@
  */
 import { useMutation, useQuery, useInfiniteQuery, useQueryClient, type InfiniteData, type QueryClient, type QueryKey } from "@tanstack/react-query";
 
-import { notesApi, type Note, type NoteList, type NoteStatus, type NoteTag } from "@/api/notes";
+import { notesApi, type Note, type NoteList, type NoteStatus, type NoteTag, type ShareRole } from "@/api/notes";
 import { noteTagsApi } from "@/api/noteTags";
 import type { NoteColorKey } from "@/screens/notes/editor/noteColors";
 import type { NoteReminder } from "@/screens/notes/reminders";
@@ -166,6 +166,31 @@ export const useUnarchiveNote = () => useNoteChange<{ id: number }>({ call: (v) 
 export const useTrashNote = () => useNoteChange<{ id: number }>({ call: (v) => notesApi.trash(v.id), patch: status("trashed"), leaves: true });
 export const useRestoreNote = () => useNoteChange<{ id: number }>({ call: (v) => notesApi.restore(v.id), patch: status("published"), leaves: true });
 export const useDestroyNoteForever = () => useNoteChange<{ id: number }>({ call: (v) => notesApi.destroyForever(v.id), gone: true });
+
+// ── sharing (audit #23) ────────────────────────────────────────────────────
+
+/**
+ * Invite by email. Not optimistic: who the email belongs to (an account, an
+ * invitation by mail, or a refusal) is the server's answer, which then goes
+ * into the open note and the cards.
+ */
+export const useShareNote = () =>
+  useNoteChange<{ id: number; email: string; role: ShareRole }>({ call: (v) => notesApi.share(v.id, v.email, v.role) });
+
+export const useUnshareNote = () =>
+  useNoteChange<{ id: number; userId: number }>({
+    call: (v) => notesApi.unshare(v.id, v.userId),
+    patch: (n, v) => {
+      const sharedUsers = n.sharedUsers.filter((u) => u.id !== v.userId);
+      return { ...n, sharedUsers, sharedCount: Math.max(0, n.sharedCount - (n.sharedUsers.length - sharedUsers.length)) };
+    },
+  });
+
+export const useSetShareRole = () =>
+  useNoteChange<{ id: number; userId: number; role: ShareRole }>({
+    call: (v) => notesApi.setShareRole(v.id, v.userId, v.role),
+    patch: (n, v) => ({ ...n, sharedUsers: n.sharedUsers.map((u) => (u.id === v.userId ? { ...u, role: v.role } : u)) }),
+  });
 
 /** Not optimistic: the new note's id comes from the server. */
 function useNewNote<V>(call: (v: V) => Promise<Note>) {

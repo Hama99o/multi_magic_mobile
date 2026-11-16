@@ -160,6 +160,8 @@ const COMPOSED = [
   ...["title", "name", "username", "email", "password", "link", "note", "card_type", "card_number", "expiry_date", "cvv", "code", "type", "document_number", "issued_at", "expires_at"].map((v) => `safezone.field.${v}`),
   ...["passport", "national_id", "drivers_license", "residence_permit", "other"].map((v) => `safezone.identityTypes.${v}`),
   ...["credit_card", "debit_card"].map((v) => `safezone.cardTypes.${v}`),
+  // A note's share roles (`NoteApp::Share` enum): t(`notes.share.roles.${role}`) (ShareSheet.tsx).
+  ...["viewer", "contributor", "administrator"].map((v) => `notes.share.roles.${v}`),
 ];
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */

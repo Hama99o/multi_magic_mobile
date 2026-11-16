@@ -23,6 +23,19 @@ import type { NoteReminder } from "@/screens/notes/reminders";
 /** `owner`, or a share role (`note_app/share.rb`: viewer, contributor, administrator). */
 export type NoteRole = "owner" | "administrator" | "contributor" | "viewer";
 
+/** A share's role (`note_app/share.rb` enum). The web invites as viewer or contributor. */
+export type ShareRole = "viewer" | "contributor" | "administrator";
+
+/** Someone the note is shared with (`user_serializer.rb` view :note_rights). */
+export interface NoteCollaborator {
+  id: number;
+  /** fullname, or the email when the account has no name. */
+  name: string;
+  email: string;
+  avatar: string | null;
+  role: ShareRole | null;
+}
+
 export interface NoteTag {
   /** The label's colour key (tag.rb enum), null for none. */
   color: NoteColorKey | null;
@@ -50,6 +63,8 @@ export interface Note {
   role: NoteRole | null;
   isShared: boolean;
   sharedCount: number;
+  /** Everyone the note is shared with (not the owner). */
+  sharedUsers: NoteCollaborator[];
   tags: NoteTag[];
 }
 
@@ -80,6 +95,22 @@ export function parseTag(value: unknown): NoteTag {
   return { id: id(tag.id, "note.tag.id"), name: str(tag.name, "note.tag.name"), color: colorKey(tag.color) };
 }
 
+const SHARE_ROLES: readonly ShareRole[] = ["viewer", "contributor", "administrator"];
+
+export function parseCollaborator(value: unknown): NoteCollaborator {
+  const u = obj(value, "note.shared_user");
+  const email = optStr(u.email) ?? "";
+  const role = optStr(u.note_role);
+  const name = optStr(u.fullname)?.trim() || [optStr(u.firstname), optStr(u.lastname)].filter(Boolean).join(" ").trim() || email;
+  return {
+    id: id(u.id, "note.shared_user.id"),
+    name,
+    email,
+    avatar: optStr(u.avatar) ?? null,
+    role: role && (SHARE_ROLES as readonly string[]).includes(role) ? (role as ShareRole) : null,
+  };
+}
+
 export function parseNote(value: unknown): Note {
   const note = obj(value, "note");
   const role = optStr(note.role);
@@ -97,6 +128,7 @@ export function parseNote(value: unknown): Note {
     role: role && (ROLES as readonly string[]).includes(role) ? (role as NoteRole) : null,
     isShared: note.is_shared === true,
     sharedCount: typeof note.shared_count === "number" ? note.shared_count : 0,
+    sharedUsers: Array.isArray(note.shared_users) ? note.shared_users.map(parseCollaborator) : [],
     tags: Array.isArray(note.tags) ? note.tags.map(parseTag) : [],
   };
 }
@@ -206,6 +238,29 @@ export const notesApi = {
     await http.delete(`/api/v1/note_app/notes/${noteId}`);
   },
 
+  /**
+   * Share with someone by email (`notes_controller#share_with_user_toggle`,
+   * user_action add). An email with no account is invited by mail and the
+   * note comes back unchanged; "already invited" / "already the owner" are
+   * refusals with the server's sentence in `error`.
+   */
+  share: async (noteId: number, email: string, role: ShareRole): Promise<Note> => {
+    const res = await http.put(`/api/v1/note_app/notes/${noteId}/share_with_user_toggle`, { user_action: "add", email, role });
+    return parseNote(obj(res.data, "note").note);
+  },
+
+  /** Stop sharing with one collaborator (user_action remove). */
+  unshare: async (noteId: number, userId: number): Promise<Note> => {
+    const res = await http.put(`/api/v1/note_app/notes/${noteId}/share_with_user_toggle`, { user_action: "remove", user_id: userId });
+    return parseNote(obj(res.data, "note").note);
+  },
+
+  /** Change a collaborator's role (`notes_controller#update_shared_user_rights`). */
+  setShareRole: async (noteId: number, userId: number, role: ShareRole): Promise<Note> => {
+    const res = await http.put(`/api/v1/note_app/notes/${noteId}/update_shared_user_rights`, { user_id: userId, role });
+    return parseNote(obj(res.data, "note").note);
+  },
+
   /** A new published note of the caller's (used by "Keep both" on a conflict, SPEC §G2). */
   create: async (body: { title: string; html: string; tagId?: number | null }): Promise<Note> => {
     // tag_id: the server tags the new note (a note made under a label filter stays in it).
@@ -217,3 +272,6 @@ export const notesApi = {
 /** Whether the reader may edit (phase 3): the owner, an administrator or a contributor. */
 export const canEdit = (note: Pick<Note, "role">): boolean =>
   note.role === "owner" || note.role === "administrator" || note.role === "contributor";
+
+/** Whether the reader may share the note: the owner or an administrator (`note_policy.rb#share_with_user_toggle?`). */
+export const canShare = (note: Pick<Note, "role">): boolean => note.role === "owner" || note.role === "administrator";

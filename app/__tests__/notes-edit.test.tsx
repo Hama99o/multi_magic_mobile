@@ -1045,3 +1045,110 @@ describe("Insert > Image (audit P0 #5: was a dead button)", () => {
     expect(mockEngine.calls.some((c) => c[0] === "insertContentJson")).toBe(false);
   });
 });
+
+describe("sharing (audit #23: the web's Invite user panel)", () => {
+  const ana = { id: 21, fullname: "Ana Example", email: "ana@example.test", avatar: null, note_role: "contributor" };
+  const bo = { id: 22, fullname: "Bo Example", email: "bo@example.test", avatar: null, note_role: "viewer" };
+  const SHARE = "/api/v1/note_app/notes/7/share_with_user_toggle";
+
+  it.each([["owner", true], ["administrator", true], ["contributor", false], ["viewer", false]])("the Share key shows for the %s: %s", async (role, shown) => {
+    server = note({ role, is_shared: role !== "owner" });
+    open();
+    await screen.findByTestId("note-edit-pin");
+    expect(Boolean(screen.queryByTestId("note-edit-share"))).toBe(shown);
+  });
+
+  it("lists the collaborators with their role, and invites someone by email with a role", async () => {
+    server = note({ shared_users: [ana], shared_count: 1 });
+    mock.onPut(SHARE).reply((cfg) => [200, { note: (server = note({ shared_users: [ana, { ...bo, email: JSON.parse(cfg.data).email }], shared_count: 2 })) }]);
+    open();
+    fireEvent.press(await screen.findByTestId("note-edit-share"));
+    expect(screen.getByTestId("note-share-user-21")).toHaveTextContent(/Ana Example/);
+    expect(screen.getByTestId("note-share-user-21")).toHaveTextContent(/ana@example.test/);
+    expect(screen.getByTestId("note-share-user-21-role")).toHaveTextContent("Editor");
+    expect(screen.getByTestId("note-share-invite").props.accessibilityState).toMatchObject({ disabled: true });
+    fireEvent.changeText(screen.getByTestId("note-share-email"), " bo@example.test ");
+    fireEvent.press(screen.getByTestId("note-share-role-contributor"));
+    fireEvent.press(screen.getByTestId("note-share-invite"));
+    await waitFor(() => expect(mock.history.put.some((r) => r.url === SHARE)).toBe(true));
+    expect(JSON.parse(mock.history.put.find((r) => r.url === SHARE)!.data)).toEqual({ user_action: "add", email: "bo@example.test", role: "contributor" });
+    expect(await screen.findByTestId("note-share-user-22")).toHaveTextContent(/Bo Example/);
+    expect(screen.getByTestId("note-share-sent")).toBeTruthy();
+    expect(screen.getByTestId("note-share-email").props.value).toBe("");
+  });
+
+  it("invites as a viewer by default (the web's default)", async () => {
+    mock.onPut(SHARE).reply(200, { note: note() });
+    open();
+    fireEvent.press(await screen.findByTestId("note-edit-share"));
+    fireEvent.changeText(screen.getByTestId("note-share-email"), "bo@example.test");
+    fireEvent.press(screen.getByTestId("note-share-invite"));
+    await waitFor(() => expect(mock.history.put.some((r) => r.url === SHARE)).toBe(true));
+    expect(JSON.parse(mock.history.put.find((r) => r.url === SHARE)!.data).role).toBe("viewer");
+  });
+
+  it("shows the server's refusal and keeps what was typed", async () => {
+    mock.onPut(SHARE).reply(404, { error: "User is already invited" });
+    open();
+    fireEvent.press(await screen.findByTestId("note-edit-share"));
+    fireEvent.changeText(screen.getByTestId("note-share-email"), "ana@example.test");
+    fireEvent.press(screen.getByTestId("note-share-invite"));
+    expect(await screen.findByTestId("note-share-failed")).toHaveTextContent("User is already invited");
+    expect(screen.getByTestId("note-share-email").props.value).toBe("ana@example.test");
+  });
+
+  it("changes a collaborator's role", async () => {
+    server = note({ shared_users: [ana], shared_count: 1 });
+    mock.onPut("/api/v1/note_app/notes/7/update_shared_user_rights").reply(() => [200, { note: (server = note({ shared_users: [{ ...ana, note_role: "viewer" }], shared_count: 1 })) }]);
+    open();
+    fireEvent.press(await screen.findByTestId("note-edit-share"));
+    fireEvent.press(screen.getByTestId("note-share-user-21-role"));
+    fireEvent.press(screen.getByTestId("note-share-user-21-role-viewer"));
+    await waitFor(() => expect(mock.history.put.some((r) => r.url?.endsWith("update_shared_user_rights"))).toBe(true));
+    expect(JSON.parse(mock.history.put.find((r) => r.url?.endsWith("update_shared_user_rights"))!.data)).toEqual({ user_id: 21, role: "viewer" });
+    await waitFor(() => expect(screen.getByTestId("note-share-user-21-role")).toHaveTextContent("Viewer"));
+  });
+
+  it("removes a collaborator after a confirmation", async () => {
+    const alert = jest.spyOn(Alert, "alert");
+    server = note({ shared_users: [ana], shared_count: 1 });
+    mock.onPut(SHARE).reply(() => [200, { note: (server = note()) }]);
+    open();
+    fireEvent.press(await screen.findByTestId("note-edit-share"));
+    fireEvent.press(screen.getByTestId("note-share-user-21-remove"));
+    expect(mock.history.put.some((r) => r.url === SHARE)).toBe(false);
+    const buttons = alert.mock.calls[0][2] as { text: string; style?: string; onPress?: () => void }[];
+    expect(alert.mock.calls[0][0]).toMatch(/Ana Example/);
+    act(() => buttons.find((b) => b.style === "destructive")!.onPress!());
+    await waitFor(() => expect(mock.history.put.some((r) => r.url === SHARE)).toBe(true));
+    expect(JSON.parse(mock.history.put.find((r) => r.url === SHARE)!.data)).toEqual({ user_action: "remove", user_id: 21 });
+    await waitFor(() => expect(screen.queryByTestId("note-share-user-21")).toBeNull());
+  });
+
+  it("a shared note shows who it is shared with in the editor (the web's Shared with)", async () => {
+    server = note({ role: "viewer", is_shared: true, shared_users: [ana, bo], shared_count: 2 });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(screen.getByTestId("note-edit-shared")).toBeTruthy();
+    expect(screen.getByTestId("note-edit-shared").props.accessibilityLabel).toMatch(/Ana Example.*Bo Example/);
+  });
+
+  it("a reader cannot edit: the body and title are read-only, the bar is off, a View only chip says why", async () => {
+    server = note({ role: "viewer", is_shared: true });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(mockEngine.props!.editable).toBe(false);
+    expect(mockEngine.mounts.every((m) => m.editable === false)).toBe(true);
+    expect(screen.getByTestId("note-edit-title").props.editable).toBe(false);
+    expect(screen.getByTestId("tb-format").props.accessibilityState).toMatchObject({ disabled: true });
+    expect(screen.getByTestId("note-edit-viewer-chip")).toHaveTextContent("View only");
+  });
+
+  it("a contributor can edit", async () => {
+    server = note({ role: "contributor", is_shared: true });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(mockEngine.props!.editable).toBe(true);
+    expect(screen.queryByTestId("note-edit-viewer-chip")).toBeNull();
+  });
+});

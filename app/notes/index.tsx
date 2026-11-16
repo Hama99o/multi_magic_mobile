@@ -440,7 +440,7 @@ export default function NotesScreen() {
 /** A card's height, roughly, for balancing the two columns. */
 function estimateHeight(note: Note): number {
   const { lines } = cardPreview(note.html, 10);
-  return 48 + (note.title ? 24 : 0) + lines.length * 20 + (note.tags.length ? 30 : 0);
+  return 48 + (note.title ? 24 : 0) + lines.length * 20 + (note.tags.length ? 30 : 0) + (note.sharedUsers.length ? 26 : 0);
 }
 
 function NoteCard({
@@ -505,6 +505,21 @@ function NoteCard({
               <Text style={{ fontSize: 12, color: colors.ink }}>{tag.name}</Text>
             </View>
           ))}
+        </View>
+      ) : null}
+      {note.sharedUsers.length ? (
+        // The web's card shows the first four people it is shared with.
+        <View
+          testID={`note-card-${note.id}-shared`}
+          accessibilityLabel={t("notes.share.sharedWithNames", { names: note.sharedUsers.map((u) => u.name).join(", ") })}
+          style={{ flexDirection: "row", alignItems: "center", marginTop: 2 }}
+        >
+          {note.sharedUsers.slice(0, 4).map((u, i) => (
+            <View key={u.id} style={{ marginLeft: i ? -6 : 0, borderRadius: 12, borderWidth: 2, borderColor: note.color ? tone.fill : colors.ground }}>
+              <Avatar name={u.name} uri={u.avatar} userId={u.id} size={20} />
+            </View>
+          ))}
+          {note.sharedUsers.length > 4 ? <Text style={{ fontSize: 12, color: colors.inkMuted, marginLeft: 4 }}>+{note.sharedUsers.length - 4}</Text> : null}
         </View>
       ) : null}
     </Pressable>

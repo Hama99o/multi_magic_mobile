@@ -355,6 +355,18 @@ describe("Reminders view and chips", () => {
   });
 });
 
+describe("shared notes (audit #23: the web's avatars on the card)", () => {
+  it("a shared note shows who it is shared with on its card; an unshared one shows nothing", async () => {
+    const ana = { id: 21, fullname: "Ana Example", email: "ana@example.test", avatar: null, note_role: "viewer" };
+    const bo = { id: 22, fullname: null, email: "bo@example.test", avatar: null, note_role: "contributor" };
+    server = [note(6, { shared_users: [ana, bo], shared_count: 2 }), note(7)];
+    open();
+    const row = await screen.findByTestId("note-card-6-shared");
+    expect(row.props.accessibilityLabel).toBe("Shared with Ana Example, bo@example.test");
+    expect(screen.queryByTestId("note-card-7-shared")).toBeNull();
+  });
+});
+
 describe("lock badge", () => {
   it("a locked note shows a lock on its card", async () => {
     server = [note(6, { is_locked: true }), note(7)];

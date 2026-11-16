@@ -26,18 +26,22 @@ import {
   useSaveNote,
   useSetNoteColor,
   useSetNoteReminder,
+  useSetShareRole,
+  useShareNote,
   useToggleNoteTag,
   useTrashNote,
   useUnarchiveNote,
+  useUnshareNote,
 } from "../api/queries";
 
 jest.mock("@/api/notes", () => ({ ...jest.requireActual("@/api/notes"), notesApi: {} }));
 jest.mock("@/api/noteTags", () => ({ noteTagsApi: {} }));
 
+const ANA = { id: 21, name: "Ana Example", email: "ana@example.test", avatar: null, role: "contributor" as const };
 const note = (id: number, over: Partial<Note> = {}): Note => ({
   id, status: "published", locked: false, reminder: null, color: null, title: `n${id}`, html: "<p>x</p>",
   pinned: false, createdAt: "2026-11-01T00:00:00Z", updatedAt: "2026-11-01T00:00:00Z", role: "owner",
-  isShared: false, sharedCount: 0, tags: [], ...over,
+  isShared: false, sharedCount: 1, sharedUsers: [ANA], tags: [], ...over,
 });
 const LIST = notesKeys.list({ view: "notes", search: "", tagId: null });
 const page = (notes: Note[]): InfiniteData<NoteList> => ({ pages: [{ notes, unreadable: 0, hasMore: false, total: notes.length }], pageParams: [1] });
@@ -131,6 +135,19 @@ const CASES: Case[] = [
     rolledBack: unchanged(1),
   },
   {
+    name: "stop sharing", api: [notesApi, "unshare"], hook: useUnshareNote, vars: { id: 1, userId: 21 },
+    optimistic: () => {
+      expect(listNote(1)).toMatchObject({ sharedUsers: [], sharedCount: 0 });
+      expect(detail(1)).toMatchObject({ sharedUsers: [], sharedCount: 0 });
+    },
+    rolledBack: unchanged(1),
+  },
+  {
+    name: "a collaborator's role", api: [notesApi, "setShareRole"], hook: useSetShareRole, vars: { id: 1, userId: 21, role: "viewer" },
+    optimistic: () => { expect(listNote(1)?.sharedUsers[0].role).toBe("viewer"); expect(detail(1)?.sharedUsers[0].role).toBe("viewer"); },
+    rolledBack: unchanged(1),
+  },
+  {
     name: "label on a note", api: [noteTagsApi, "toggleOnNote"], hook: useToggleNoteTag, vars: { id: 2, tag: { id: 7, name: "home", color: null } },
     optimistic: () => { expect(listNote(2)?.tags).toEqual([]); expect(detail(2)?.tags).toEqual([]); },
     rolledBack: unchanged(2),
@@ -182,6 +199,19 @@ describe("what a mutation invalidates", () => {
     const keys = spy.mock.calls.map((c) => JSON.stringify(c[0]?.queryKey));
     expect(keys.sort()).toEqual([JSON.stringify(notesKeys.detail(1)), JSON.stringify(notesKeys.lists())].sort());
     expect(detail(1)?.pinned).toBe(true);
+  });
+
+  it("share: the server's note (with the new collaborator) goes into the open note and the cards; the lists and that note refresh", async () => {
+    const bo = { id: 22, name: "bo@example.test", email: "bo@example.test", avatar: null, role: "viewer" as const };
+    (notesApi as Record<string, unknown>).share = jest.fn(async () => note(1, { sharedUsers: [ANA, bo], sharedCount: 2 }));
+    const spy = jest.spyOn(client, "invalidateQueries");
+    const { result } = renderHook(useShareNote, { wrapper });
+    await act(() => result.current.mutateAsync({ id: 1, email: "bo@example.test", role: "viewer" }));
+    expect(notesApi.share).toHaveBeenCalledWith(1, "bo@example.test", "viewer");
+    expect(detail(1)?.sharedUsers.map((u) => u.id)).toEqual([21, 22]);
+    expect(listNote(1)?.sharedCount).toBe(2);
+    const keys = spy.mock.calls.map((c) => JSON.stringify(c[0]?.queryKey));
+    expect(keys.sort()).toEqual([JSON.stringify(notesKeys.detail(1)), JSON.stringify(notesKeys.lists())].sort());
   });
 
   it("the save: writes the server's note into the open note and the cards, no stale card", async () => {

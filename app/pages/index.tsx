@@ -10,7 +10,7 @@
  * people come back to, and a folder or the viewer is pushed over it.
  */
 import { useEffect, useMemo, useState } from "react";
-import { FlatList, Pressable, RefreshControl, View } from "react-native";
+import { BackHandler, FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -134,6 +134,17 @@ export default function PagesHome() {
     void hydrateUploads();
   }, [hydrateView, hydrateUploads]);
 
+  // Android back at Pages with nothing behind (a share, a link): Home, not
+  // out of the app. With history, the stack's own back runs (as in Notes).
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (router.canGoBack()) return false;
+      router.replace("/home");
+      return true;
+    });
+    return () => sub.remove();
+  }, []);
+
   const view = tab === "starred" ? "starred" : "recent";
   const drive = useInfiniteQuery({
     queryKey: pagesKeys.drive(view, ""),
@@ -238,6 +249,9 @@ export default function PagesHome() {
             <FlatList
               testID="pages-shared-list"
               data={shared.data?.rows ?? []}
+              ListHeaderComponent={
+                <LoadFailure error={shared.error} loadFailed={t("pages.loadFailed")} hasData={Boolean(shared.data)} updatedAt={shared.dataUpdatedAt} onRetry={() => void shared.refetch()} testID="pages-shared-failed" padded={false} />
+              }
               keyExtractor={(s) => String(s.id)}
               renderItem={({ item }) => <SharedRow item={item} />}
               ListEmptyComponent={shared.isLoading ? <RowsSkeleton rows={4} /> : shared.error ? null : empty(t("pages.empty.shared"), "pages-shared-empty")}

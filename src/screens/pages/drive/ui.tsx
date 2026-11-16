@@ -144,6 +144,16 @@ export const useViewPrefs = create<ViewPrefs>((set) => ({
   },
 }));
 
+// ── Back to the app grid ────────────────────────────────────────────────────
+
+/**
+ * Pages' root goes back to Home (the app grid), as Notes does
+ * (`app/notes/index.tsx` `goHome`): back if Home is behind, otherwise Home.
+ * Opened from a share or a link there is nothing behind, and a bare
+ * `router.back()` did nothing (owner's known issue, 2026-11-16).
+ */
+export const goHome = () => (router.canGoBack() ? router.back() : router.replace("/home"));
+
 // ── The search pill (Drive's "Search in Drive" with the avatar) ─────────────
 
 export function SearchPill({ onMenu }: { onMenu?: () => void }) {
@@ -168,7 +178,7 @@ export function SearchPill({ onMenu }: { onMenu?: () => void }) {
       }}
     >
       <Pressable
-        onPress={() => router.back()}
+        onPress={goHome}
         accessibilityRole="button"
         accessibilityLabel={t("common.back")}
         hitSlop={6}

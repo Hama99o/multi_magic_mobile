@@ -27,7 +27,7 @@ import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { Check, ChevronLeft, Search } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { SORTS, pagesApi, type SortBy, type SortDir } from "@/api/pages";
+import { SORTS, pagesApi } from "@/api/pages";
 import { FILTERS, listFilter, type Filter } from "@/screens/pages/drive/filters";
 import { failureMessage } from "@/api/failure";
 import { NameDialog } from "@/screens/pages/ItemSheet";
@@ -37,7 +37,7 @@ import { sortLabel, typeLabel } from "@/screens/pages/labels";
 import { explainPick, pickDocuments, pickMedia, takePhotoOrVideo, type PickResult } from "@/screens/pages/addFiles";
 import { NodeCollection } from "@/screens/pages/drive/NodeCollection";
 import { BottomSheet, NewSheet } from "@/screens/pages/drive/sheets";
-import { IconButton, NewFab, PagesTabBar, SortRow, UploadBar, useViewPrefs } from "@/screens/pages/drive/ui";
+import { IconButton, NewFab, PagesTabBar, SortRow, UploadBar, useFolderSort, useViewPrefs } from "@/screens/pages/drive/ui";
 import { useUploads } from "@/stores/uploads.store";
 import { pagesKeys } from "@/api/keys";
 import { useCreateFolder } from "@/screens/pages/usePageMutations";
@@ -84,8 +84,11 @@ export default function Folder() {
   const title = params.title ?? "";
   const trail = params.trail ?? "";
 
-  const [sortBy, setSortBy] = useState<SortBy>("name");
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  // Kept across folders and restarts (audit P2, 2026-11-16), like the view.
+  const sortBy = useFolderSort((s) => s.sortBy);
+  const sortDir = useFolderSort((s) => s.sortDir);
+  const setSort = useFolderSort((s) => s.setSort);
+  const hydrateSort = useFolderSort((s) => s.hydrate);
   const [type, setType] = useState<Filter | null>(null);
   const [sorting, setSorting] = useState(false);
   const [selecting, setSelecting] = useState(false);
@@ -100,7 +103,8 @@ export default function Folder() {
   useEffect(() => {
     void hydrateUploads();
     void hydrateView();
-  }, [hydrateUploads, hydrateView]);
+    void hydrateSort();
+  }, [hydrateUploads, hydrateView, hydrateSort]);
 
   const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage } = useInfiniteQuery({
     queryKey: pagesKeys.children(spaceId, parentId, sortBy, sortDir, type),
@@ -248,12 +252,9 @@ export default function Folder() {
           <Pressable
             key={option}
             onPress={() => {
-              if (option === sortBy) setSortDir(sortDir === "asc" ? "desc" : "asc");
-              else {
-                setSortBy(option);
-                // Dates newest first, names A→Z: what anybody means by each.
-                setSortDir(option === "name" || option === "type" ? "asc" : "desc");
-              }
+              if (option === sortBy) setSort(option, sortDir === "asc" ? "desc" : "asc");
+              // Dates newest first, names A→Z: what anybody means by each.
+              else setSort(option, option === "name" || option === "type" ? "asc" : "desc");
               setSorting(false);
             }}
             accessibilityRole="button"

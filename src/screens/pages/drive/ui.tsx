@@ -54,7 +54,7 @@ import { AiButton } from "@/components/AiButton";
 import { ProfileSheet } from "@/components/settings/ProfileSheet";
 import { useAuthStore } from "@/stores/auth.store";
 import { useUploads } from "@/stores/uploads.store";
-import type { PageNode } from "@/api/pages";
+import { SORTS, type PageNode, type SortBy, type SortDir } from "@/api/pages";
 import { PlayBadge, formatBytes } from "../parts";
 import { useMe } from "@/hooks/useMe";
 
@@ -164,6 +164,36 @@ export const useViewPrefs = create<ViewPrefs>((set) => ({
  * `router.back()` did nothing (owner's known issue, 2026-11-16).
  */
 export const goHome = () => (router.canGoBack() ? router.back() : router.replace("/home"));
+
+// ── The folder sort, kept across folders and restarts (Drive keeps it) ─────
+
+const SORT_KEY = "mm-pages-folder-sort";
+
+interface FolderSort {
+  sortBy: SortBy;
+  sortDir: SortDir;
+  setSort: (sortBy: SortBy, sortDir: SortDir) => void;
+  hydrate: () => Promise<void>;
+}
+
+export const useFolderSort = create<FolderSort>((set) => ({
+  sortBy: "name",
+  sortDir: "asc",
+  setSort: (sortBy, sortDir) => {
+    set({ sortBy, sortDir });
+    void AsyncStorage.setItem(SORT_KEY, JSON.stringify({ sortBy, sortDir })).catch(() => {});
+  },
+  hydrate: async () => {
+    try {
+      const stored = JSON.parse((await AsyncStorage.getItem(SORT_KEY)) ?? "null") as { sortBy?: unknown; sortDir?: unknown } | null;
+      if (stored && (SORTS as unknown[]).includes(stored.sortBy) && (stored.sortDir === "asc" || stored.sortDir === "desc")) {
+        set({ sortBy: stored.sortBy as SortBy, sortDir: stored.sortDir });
+      }
+    } catch {
+      // The default is fine.
+    }
+  },
+}));
 
 // ── The search pill (Drive's "Search in Drive" with the avatar) ─────────────
 

@@ -51,6 +51,8 @@ import Folder from "../../../../app/pages/folder";
 import Drive from "../../../../app/pages/drive";
 import PagesHome from "../../../../app/pages/index";
 import { SearchView } from "../drive/SearchView";
+import { useFolderSort } from "../drive/ui";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 function wrap(node: React.ReactElement) {
   return render(<QueryClientProvider client={testQueryClient()}>{node}</QueryClientProvider>);
@@ -124,4 +126,28 @@ it("Search: writes on his own spaces only", async () => {
   await act(async () => fireEvent.changeText(screen.getByTestId("pages-search-input"), "pdf"));
   layout("pages-drive-list-root");
   await onlyHisItemIsWritable();
+});
+
+// Audit P2 (2026-11-16): the folder sort was lost on leaving the folder.
+// Drive keeps it; so does the list/grid toggle here (`useViewPrefs`).
+describe("the folder sort is kept", () => {
+  beforeEach(async () => {
+    mockParams.current = { spaceId: "315", title: "QA Pages" };
+    await AsyncStorage.clear();
+    act(() => useFolderSort.setState({ sortBy: "name", sortDir: "asc" }));
+  });
+
+  it("a sort picked in one folder is the sort of the next one, and across a restart", async () => {
+    const first = wrap(<Folder />);
+    await screen.findByText("theirs.pdf");
+    fireEvent.press(screen.getByTestId("pages-sort"));
+    fireEvent.press(await screen.findByTestId("pages-sort-size"));
+    await waitFor(() => expect(mockApi.children).toHaveBeenLastCalledWith(315, null, 1, expect.objectContaining({ sortBy: "size", sortDir: "desc" })));
+    first.unmount();
+    // A restart: the store forgets, the phone does not.
+    act(() => useFolderSort.setState({ sortBy: "name", sortDir: "asc" }));
+    mockParams.current = { spaceId: "315", parentId: "900", title: "Vlogs" };
+    wrap(<Folder />);
+    await waitFor(() => expect(mockApi.children).toHaveBeenLastCalledWith(315, 900, 1, expect.objectContaining({ sortBy: "size", sortDir: "desc" })));
+  });
 });

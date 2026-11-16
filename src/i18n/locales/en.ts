@@ -91,7 +91,7 @@ export const en = {
     backToSignIn: "Back to sign in",
     sentTitle: "Check your email",
     sentBody:
-      "If that address has a MultiMagic account, we have sent it a link to reset the password. The link opens MultiMagic on the web.",
+      "If that address has a MultiMagic account, we have sent it a link to set a new password. Then sign in here with the new one.",
     missing: "Enter the email you signed up with.",
     failed: "Could not send the link.",
   },
@@ -358,11 +358,10 @@ export const en = {
     about: "About",
     aboutPlaceholder: "A line about you",
     email: "Email",
-    emailLocked:
-      "Changing your email signs you out of live updates until you sign in again, so it is done on the website for now.",
+    emailLocked: "This is the email you sign in with. It cannot be changed in the app yet.",
     changePassword: "Change password",
     yourAiKey: "Your AI provider key",
-    openWeb: "Notes, money, contacts and the rest — open MultiMagic on the web",
+    safezonePin: "SafeZone PIN",
     loadFailed: "Could not load your profile.",
     saveFailed: "Could not save that.",
     chooseFromLibrary: "Choose from library",

@@ -26,8 +26,7 @@ import { useEffect, useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, ChevronRight, ExternalLink, Pencil } from "@/components/icons";
-import * as Linking from "expo-linking";
+import { ChevronLeft, ChevronRight, Pencil } from "@/components/icons";
 import { useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -35,7 +34,6 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { profileApi } from "@/api/profile";
 import { failureMessage } from "@/api/failure";
 import { LoadFailure } from "@/components/LoadFailure";
-import { API_URL } from "@/config/env";
 import { Avatar } from "@/screens/people/Avatar";
 import { PhotoSheet } from "@/screens/account/PhotoSheet";
 import { profileKeys } from "@/api/keys";
@@ -304,6 +302,8 @@ export default function ProfileScreen() {
             {[
               { key: "password", label: t("profile.changePassword"), to: "/change-password" as const },
               { key: "keys", label: t("profile.yourAiKey"), to: "/ai-keys" as const },
+              // The PIN's settings live on the web's profile too (SafezonePinSettings.tsx).
+              { key: "safezone", label: t("profile.safezonePin"), to: "/safezone/settings" as const },
             ].map((row, index) => (
               <Pressable
                 key={row.key}
@@ -325,29 +325,6 @@ export default function ProfileScreen() {
               </Pressable>
             ))}
           </View>
-
-          {/* His own instruction: everything else is on the web. The row says
-              WHAT is there — a link that does not say where it goes is a link
-              people do not press. */}
-          <Pressable
-            testID="profile-web"
-            onPress={() => void Linking.openURL(API_URL)}
-            accessibilityRole="link"
-            android_ripple={{ color: colors.border }}
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: metrics.space.sm,
-              marginTop: metrics.space.lg,
-              minHeight: metrics.touch,
-              paddingHorizontal: metrics.space.sm,
-            }}
-          >
-            <ExternalLink size={16} color={colors.inkMuted} />
-            <Text tone="muted" style={{ flex: 1 }}>
-              {t("profile.openWeb")}
-            </Text>
-          </Pressable>
 
           <PhotoSheet
             visible={sheetOpen}

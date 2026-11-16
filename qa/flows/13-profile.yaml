@@ -134,6 +134,10 @@ tags:
 - assertVisible: "Your AI provider key"
 # SCROLL FIRST, AND WITH `scroll` RATHER THAN `scrollUntilVisible`.
 #
+# 2026-11-16 (audit #6): the "open MultiMagic on the web" row is gone; the
+# last row is now `profile-safezone` (the SafeZone PIN's settings). The
+# reasoning below was measured on the old last row and still holds.
+#
 # `profile-web` is the LAST row on the screen. On this 1080x2400 phone the
 # hierarchy ends at `profile-keys` [42,2081][1038,2207] and the row below it is
 # not in the tree at all — Android exposes only what is drawn — so a bare
@@ -153,7 +157,7 @@ tags:
     start: 50%, 75%
     end: 50%, 37%
 - assertVisible:
-    id: "profile-web"
+    id: "profile-safezone"
 - takeScreenshot: reports/74-profile-rows
 
 # SWIPE BACK UP before leaving. The header — and its "Back" — scrolls WITH the

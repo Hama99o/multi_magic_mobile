@@ -442,7 +442,7 @@ const SCREENS: {
   { name: "thread", element: () => <Thread />, handles: ["thread-list", "thread-title", "msg-mine-2311", "people-composer-input", "people-composer-send"], french: "En ligne" },
   { name: "notifications", element: () => <Notifications />, handles: ["notifications-list", "notification-row-9", "notification-unread-9", "notifications-refresh", "notifications-updated", "ai-button"], french: "Aujourd’hui" },
   { name: "calendar", element: () => <Calendar />, handles: ["calendar-list", "calendar-day-today", "calendar-event-5:2026-09-19", "calendar-refresh", "calendar-updated", "ai-button"], french: "À venir" },
-  { name: "profile", element: () => <Profile />, handles: ["profile-photo", "profile-firstname", "profile-lastname", "profile-email-locked", "profile-save", "profile-password", "profile-keys", "profile-web"], french: "Profil" },
+  { name: "profile", element: () => <Profile />, handles: ["profile-photo", "profile-firstname", "profile-lastname", "profile-email-locked", "profile-save", "profile-password", "profile-keys", "profile-safezone"], french: "Profil" },
   { name: "change-password", element: () => <ChangePassword />, handles: ["password-current", "password-new", "password-confirm", "password-save", "password-current-reveal"], french: "Au moins 6 caractères." },
   { name: "ai-keys", element: () => <AiKeys />, handles: ["ai-keys-list", "ai-key-gemini", "ai-key-active-gemini", "ai-key-replace-gemini", "ai-key-remove-gemini"], french: "Votre clé IA" },
   { name: "account", element: () => <AccountScreen />, handles: ["account-privacy", "account-delete"], french: "Confidentialité" },

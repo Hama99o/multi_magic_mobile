@@ -164,3 +164,25 @@ describe("a profile save the server accepts", () => {
     expect(update).toHaveBeenCalledTimes(2);
   });
 });
+
+// Audit 2026-11-16 #6 and #11: nothing on the profile sends the person to the
+// web. The "open MultiMagic on the web" row is gone; the email line says the
+// truth without pointing at the website; and the SafeZone PIN's settings sit
+// on the profile, where the web keeps them (SafezonePinSettings.tsx).
+describe("no way out to the web", () => {
+  it("has no web row, and no line that says the website", async () => {
+    jest.spyOn(profileApi, "me").mockResolvedValue(profile());
+    renderScreen();
+    await waitFor(() => expect(screen.getByTestId("profile-email-locked")).toBeTruthy());
+    expect(screen.queryByTestId("profile-web")).toBeNull();
+    expect(screen.queryByText(/on the web|website/i)).toBeNull();
+  });
+
+  it("the SafeZone PIN row opens SafeZone's settings", async () => {
+    jest.spyOn(profileApi, "me").mockResolvedValue(profile());
+    const { router } = jest.requireMock("expo-router") as { router: { push: jest.Mock } };
+    renderScreen();
+    fireEvent.press(await screen.findByTestId("profile-safezone"));
+    expect(router.push).toHaveBeenCalledWith("/safezone/settings");
+  });
+});

@@ -109,7 +109,7 @@ export const fr: Translations = {
     backToSignIn: "Retour à la connexion",
     sentTitle: "Consultez vos e-mails",
     sentBody:
-      "Si cette adresse a un compte MultiMagic, nous lui avons envoyé un lien pour réinitialiser le mot de passe. Le lien ouvre MultiMagic sur le web.",
+      "Si cette adresse a un compte MultiMagic, nous lui avons envoyé un lien pour choisir un nouveau mot de passe. Connectez-vous ensuite ici avec le nouveau.",
     missing: "Saisissez l’e-mail utilisé à l’inscription.",
     failed: "Impossible d’envoyer le lien.",
   },
@@ -374,11 +374,10 @@ export const fr: Translations = {
     about: "À propos",
     aboutPlaceholder: "Une ligne à votre sujet",
     email: "E-mail",
-    emailLocked:
-      "Changer votre e-mail vous déconnecte des mises à jour en direct jusqu’à la prochaine connexion ; cela se fait donc sur le site pour l’instant.",
+    emailLocked: "C’est l’e-mail avec lequel vous vous connectez. Il ne peut pas encore être changé dans l’app.",
     changePassword: "Changer le mot de passe",
     yourAiKey: "Votre clé de fournisseur IA",
-    openWeb: "Notes, argent, contacts et le reste — ouvrir MultiMagic sur le web",
+    safezonePin: "Code SafeZone",
     loadFailed: "Impossible de charger votre profil.",
     saveFailed: "Impossible d’enregistrer cela.",
     chooseFromLibrary: "Choisir dans la galerie",

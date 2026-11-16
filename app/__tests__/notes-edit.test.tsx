@@ -109,6 +109,14 @@ jest.mock("expo-image", () => {
   const ReactActual = jest.requireActual("react");
   return { Image: (props: Record<string, unknown>) => ReactActual.createElement(View, props) };
 });
+const mockPicker: { result: any; granted: boolean; launched: number } = { result: null, granted: true, launched: 0 };
+jest.mock("expo-image-picker", () => ({
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: mockPicker.granted })),
+  launchImageLibraryAsync: jest.fn(async () => {
+    mockPicker.launched += 1;
+    return mockPicker.result;
+  }),
+}));
 jest.mock("@/stores/noteDrafts.files", () => {
   const { createNoteDrafts, memoryDraftStorage } = jest.requireActual("@/stores/noteDrafts.store");
   return { noteDrafts: createNoteDrafts(memoryDraftStorage()) };
@@ -300,7 +308,7 @@ it("a web edit meanwhile asks; Keep both saves a dated copy and leaves the web's
   await waitFor(() => expect(alert).toHaveBeenCalled(), { timeout: 2000 });
   expect(mock.history.put).toHaveLength(0);
   const buttons = alert.mock.calls[0][2] as { text: string; onPress: () => Promise<void> }[];
-  expect(buttons.map((b) => b.text)).toEqual(["Keep both", "Keep mine", "Keep the web's"]);
+  expect(buttons.map((b) => b.text)).toEqual(["Keep both", "Keep mine", "Keep the other"]);
   await act(async () => {
     await buttons[0].onPress();
   });
@@ -724,7 +732,7 @@ describe("a reminder or lock write is not a web edit (integration server, 2026-1
     await waitFor(() => expect(mockEngine.props!.editable).not.toBe(false));
     act(() => engineChanged({ type: "doc", content: [{ type: "paragraph", content: [{ type: "text", text: "after the lock" }] }] }));
     await waitFor(() => expect(mock.history.put.some((r) => String(JSON.parse(r.data).description ?? "").includes("after the lock"))).toBe(true), { timeout: 4000 });
-    expect(screen.queryByText("This note changed on the web")).toBeNull();
+    expect(screen.queryByText("This note changed somewhere else")).toBeNull();
   });
 
   it("the screen hands the saver the note each write returned (saver.rebase)", async () => {
@@ -758,7 +766,7 @@ describe("a note too long to edit on the phone (device, 2026-11-14: ANR at 200 K
   it("above the limit: read view with a clear message, no engine, nothing saved", async () => {
     server = note({ description: longHtml(EDIT_SIZE_LIMIT + 1024) });
     open();
-    expect(await screen.findByTestId("note-edit-too-long")).toHaveTextContent(/This note is too long to edit on the phone yet/);
+    expect(await screen.findByTestId("note-edit-too-long")).toHaveTextContent(/This note is too long to edit on the phone\. You can read all of it here\./);
     expect(screen.queryByTestId("engine-b")).toBeNull();
     expect(mockEngine.init).toBeNull();
     expect(screen.getAllByText(/river lantern copper/).length).toBeGreaterThan(0);
@@ -962,5 +970,63 @@ describe("the editor opens the server's copy, not a cached one (device, 2026-11-
     );
     await waitFor(() => expect(mockEngine.init).not.toBeNull());
     expect(JSON.stringify(mockEngine.init)).toContain("web edit");
+  });
+});
+
+describe("Insert > Image (audit P0 #5: was a dead button)", () => {
+  const picked = (over: Record<string, unknown> = {}) => ({ canceled: false, assets: [{ uri: "file:///tmp/kitten.jpg", fileName: "kitten.jpg", mimeType: "image/jpeg", fileSize: 4096, ...over }] });
+  const pressImage = async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    act(() => {
+      mockEngine.props!.onSelectionChange({ type: "text", anchor: 3, head: 3, anchorScalar: 2, headScalar: 2 });
+      mockEngine.props!.onFocus();
+    });
+    fireEvent.press(screen.getByTestId("tb-insert"));
+    fireEvent.press(screen.getByTestId("tb-insert:image"));
+  };
+  beforeEach(() => {
+    mockPicker.result = null;
+    mockPicker.granted = true;
+    mockPicker.launched = 0;
+  });
+
+  it("picks a picture, uploads it on the web's route, and inserts the web's image node at the caret", async () => {
+    mockPicker.result = picked();
+    mock.onPost("/api/v1/images").reply(201, { url: "https://files.example.test/blobs/k/kitten.jpg" });
+    await pressImage();
+    await waitFor(() => expect(mockEngine.calls.some((c) => c[0] === "insertContentJson")).toBe(true));
+    const json = mockEngine.calls.find((c) => c[0] === "insertContentJson")![1] as DocNode;
+    const atom = json.content![0];
+    expect(atom.type).toBe(READ_ONLY_ATOM);
+    expect(atom.attrs!.kind).toBe("imageUploader");
+    const node = JSON.parse(String(atom.attrs!.node));
+    expect(node.attrs).toMatchObject({ src: "https://files.example.test/blobs/k/kitten.jpg", uploading: false, failed: false, progress: 100, name: "kitten.jpg", size: 4096 });
+    expect(mock.history.post.filter((r) => r.url === "/api/v1/images")).toHaveLength(1);
+    expect(screen.queryByTestId("note-edit-image-busy")).toBeNull();
+  });
+
+  it("a picture the server refuses (HEIC) is said at once, nothing is uploaded or inserted", async () => {
+    mockPicker.result = picked({ mimeType: "image/heic", fileName: "p.heic" });
+    await pressImage();
+    expect(await screen.findByTestId("note-edit-image-failed")).toBeTruthy();
+    expect(mock.history.post.filter((r) => r.url === "/api/v1/images")).toHaveLength(0);
+    expect(mockEngine.calls.some((c) => c[0] === "insertContentJson")).toBe(false);
+  });
+
+  it("a failed upload is said and inserts nothing", async () => {
+    mockPicker.result = picked();
+    mock.onPost("/api/v1/images").reply(500);
+    await pressImage();
+    expect(await screen.findByTestId("note-edit-image-failed")).toBeTruthy();
+    expect(mockEngine.calls.some((c) => c[0] === "insertContentJson")).toBe(false);
+  });
+
+  it("cancelling the picker changes nothing", async () => {
+    mockPicker.result = { canceled: true, assets: [] };
+    await pressImage();
+    await waitFor(() => expect(mockPicker.launched).toBe(1));
+    expect(screen.queryByTestId("note-edit-image-failed")).toBeNull();
+    expect(mockEngine.calls.some((c) => c[0] === "insertContentJson")).toBe(false);
   });
 });

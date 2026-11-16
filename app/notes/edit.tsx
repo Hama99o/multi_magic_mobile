@@ -47,6 +47,10 @@ import { createOpenTiming, timingLog } from "@/screens/notes/editor/openTiming";
 import { notePlainText } from "@/screens/notes/plainText";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
+import * as ImagePicker from "expo-image-picker";
+import { imageProblem, imagesApi } from "@/api/images";
+import { imageNode } from "@/screens/notes/editor/imageNode";
+import { toEngine } from "@/screens/notes/editor/engineGlue";
 import { engineHolds } from "@/screens/notes/editor/engineHolds";
 import { notesEngineAtoms, notesEngineSchema } from "@/screens/notes/editor/engineSchema";
 import { engineTheme } from "@/screens/notes/editor/engineTheme";
@@ -428,10 +432,48 @@ export default function NoteEditScreen() {
       setSheet(command.sheet);
       return;
     }
+    if (command.kind === "insert" && command.value === "image") {
+      void insertImage();
+      return;
+    }
     if (command.kind === "none") return;
     if (!ref) return;
     runCommand(ref, command, { nodes: nodesForBar, headingLevel });
     if (command.kind === "color") setPanel(null);
+  };
+  // Insert > Image (audit P0 #5): the web's upload route, then the web's
+  // finished image node at the caret, through B (it keeps the caret after it).
+  const [imageBusy, setImageBusy] = useState(false);
+  const [imageFailed, setImageFailed] = useState<string | null>(null);
+  const insertImage = async () => {
+    setImageFailed(null);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        setImageFailed(t("notes.edit.image.denied"));
+        return;
+      }
+      // quality < 1 also turns an iPhone's HEIC into JPEG, which the server takes.
+      const result = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], quality: 0.8 });
+      const asset = result.canceled ? null : result.assets?.[0];
+      if (!asset) return;
+      const problem = imageProblem({ mimeType: asset.mimeType, fileSize: asset.fileSize });
+      if (problem) {
+        setImageFailed(t(problem === "size" ? "notes.edit.image.tooBig" : "notes.edit.image.wrongType"));
+        return;
+      }
+      const name = asset.fileName || `image.${asset.mimeType!.split("/")[1]}`;
+      setImageBusy(true);
+      const url = await imagesApi.upload({ uri: asset.uri, name, mimeType: asset.mimeType! });
+      const ref = editorRef.current;
+      if (!ref) return;
+      ref.insertContentJson(toEngine({ type: "doc", content: [imageNode({ url, name, size: asset.fileSize ?? undefined })] }) as never);
+      exporterRef.current?.urgent();
+    } catch (e) {
+      setImageFailed(failureMessage(e, t("notes.edit.image.failed")));
+    } finally {
+      setImageBusy(false);
+    }
   };
   const [actionFailed, setActionFailed] = useState(false);
   const act = async (fn: () => Promise<unknown>) => {
@@ -676,6 +718,15 @@ export default function NoteEditScreen() {
     <Screen avoidKeyboard background={pageFill}>
       <View testID="note-edit-page" style={{ flex: 1, marginHorizontal: -metrics.space.lg, paddingHorizontal: metrics.space.lg, backgroundColor: pageFill }}>
       {header}
+      {imageBusy ? (
+        <View testID="note-edit-image-busy" style={{ flexDirection: "row", alignItems: "center", gap: 8 }} accessibilityLiveRegion="polite">
+          <ActivityIndicator size="small" />
+          <Text tone="muted" style={{ fontSize: 13 }}>{t("notes.edit.image.uploading")}</Text>
+        </View>
+      ) : null}
+      {imageFailed ? (
+        <Text testID="note-edit-image-failed" style={{ color: colors.danger, fontSize: 13 }} accessibilityLiveRegion="polite">{imageFailed}</Text>
+      ) : null}
       {actionFailed ? (
         <Text testID="note-edit-action-failed" style={{ color: colors.danger, fontSize: 13 }}>{t("notes.grid.actionFailed")}</Text>
       ) : null}

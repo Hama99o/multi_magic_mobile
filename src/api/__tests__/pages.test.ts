@@ -141,6 +141,21 @@ describe("spaces: newest first, paged, and made on the phone", () => {
     expect(JSON.parse(mock.history.post[0].data)).toEqual({ space: { title: "Trips", description: "", icon: "🚀", color: "teal" } });
     expect(space).toMatchObject({ id: 999, title: "Trips", icon: "🚀", color: "teal" });
   });
+
+  // Audit #15: edit and delete a space, as the web's spacesApi (PATCH, DELETE).
+  it("updateSpace PATCHes the web's space_params and reads the answer", async () => {
+    const edited = { ...(load("pages_spaces").body as { spaces: Record<string, unknown>[] }).spaces[0], id: 315, title: "Holidays", icon: "🏠", color: "", description: "Summer" };
+    mock.onPatch("/api/v1/page_app/spaces/315").reply(200, { space: edited });
+    const space = await pagesApi.updateSpace(315, { title: "Holidays", description: "Summer", icon: "🏠", color: "" });
+    expect(JSON.parse(mock.history.patch[0].data)).toEqual({ space: { title: "Holidays", description: "Summer", icon: "🏠", color: "" } });
+    expect(space).toMatchObject({ id: 315, title: "Holidays", icon: "🏠" });
+  });
+
+  it("deleteSpace DELETEs it", async () => {
+    mock.onDelete("/api/v1/page_app/spaces/315").reply(200, { message: "Space deleted" });
+    await pagesApi.deleteSpace(315);
+    expect(mock.history.delete[0].url).toBe("/api/v1/page_app/spaces/315");
+  });
 });
 
 describe("a row the parser cannot read", () => {

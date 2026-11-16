@@ -10,7 +10,7 @@
  * people come back to, and a folder or the viewer is pushed over it.
  */
 import { useEffect, useMemo, useState } from "react";
-import { BackHandler, FlatList, Pressable, RefreshControl, View } from "react-native";
+import { Alert, BackHandler, FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -19,13 +19,13 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
-import { Check, Folder, Trash2, Upload } from "@/components/icons";
+import { Check, Folder, MoreVertical, Pencil, Trash2, Upload } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { pagesApi, type SharedItem, type SortDir, type Space, type SpaceListOptions } from "@/api/pages";
 import { sortLabel } from "@/screens/pages/labels";
 import { NodeCollection } from "@/screens/pages/drive/NodeCollection";
 import { BottomSheet, NewSheet, SheetRow } from "@/screens/pages/drive/sheets";
-import { NewFab, PagesTabBar, SearchPill, SharedNodeGlyph, SortRow, UploadBar, useViewPrefs, type PagesTab } from "@/screens/pages/drive/ui";
+import { IconButton, NewFab, PagesTabBar, SearchPill, SharedNodeGlyph, SortRow, UploadBar, useViewPrefs, type PagesTab } from "@/screens/pages/drive/ui";
 import { EmptyLine } from "@/screens/pages/parts";
 import { openNode } from "@/screens/pages/navigation";
 import { explainPick, pickDocuments, pickMedia, takePhotoOrVideo, usePendingImport, type PickResult } from "@/screens/pages/addFiles";
@@ -33,18 +33,27 @@ import { useUploads } from "@/stores/uploads.store";
 import { pagesKeys } from "@/api/keys";
 import { useDriveRights } from "@/screens/pages/permissions";
 import { SpaceForm } from "@/screens/pages/SpaceForm";
+import { useDeleteSpace } from "@/screens/pages/usePageMutations";
+import { failureMessage } from "@/api/failure";
 import { Button } from "@/components/reusables/button";
 
 type SpaceSortBy = NonNullable<SpaceListOptions["sortBy"]>;
 /** `VALID_SPACE_SORT_COLUMNS` (`spaces_controller.rb`). */
 const SPACE_SORTS: SpaceSortBy[] = ["created_at", "updated_at", "name"];
 
-function SpaceRow({ space, mode, width }: { space: Space; mode: "list" | "grid"; width: number }) {
+/** The web's `owned`: edit and delete are the owner's alone (`SpacePolicy`). This
+ *  list is the caller's own spaces, so a row says null or "owner". */
+const ownsSpace = (space: Space) => space.permission == null || space.permission === "owner";
+
+function SpaceRow({ space, mode, width, onMore }: { space: Space; mode: "list" | "grid"; width: number; onMore: (space: Space) => void }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const open = () => router.push({ pathname: "/pages/folder", params: { spaceId: String(space.id), title: space.title } });
   const meta = t("pages.itemCount", { count: space.nodesCount });
+  const more = ownsSpace(space) ? (
+    <IconButton icon={MoreVertical} label={t("pages.item.more", { title: space.title })} onPress={() => onMore(space)} testID="pages-space-more" />
+  ) : null;
   if (mode === "grid") {
     return (
       <Pressable
@@ -58,6 +67,7 @@ function SpaceRow({ space, mode, width }: { space: Space; mode: "list" | "grid";
         <Text variant="label" numberOfLines={1} style={{ flex: 1 }}>
           {space.title}
         </Text>
+        {more}
       </Pressable>
     );
   }
@@ -78,7 +88,7 @@ function SpaceRow({ space, mode, width }: { space: Space; mode: "list" | "grid";
           {space.permission && space.permission !== "owner" && space.ownerName ? `${meta} · ${space.ownerName}` : meta}
         </Text>
       </View>
-      <Folder size={20} color={colors.inkMuted} />
+      {more ?? <Folder size={20} color={colors.inkMuted} />}
     </Pressable>
   );
 }
@@ -121,6 +131,17 @@ export default function PagesHome() {
   }, [params.tab]);
   const [adding, setAdding] = useState(false);
   const [spaceForm, setSpaceForm] = useState(false);
+  // A space's ⋯ (audit #15): Edit opens the form filled in; Delete asks first.
+  const [spaceMenu, setSpaceMenu] = useState<Space | null>(null);
+  const [editingSpace, setEditingSpace] = useState<Space | null>(null);
+  const deleting = useDeleteSpace({ onError: (e) => Alert.alert(failureMessage(e, t("pages.spaceMenu.deleteFailed"))) });
+  const deleteSpace = (target: Space) => {
+    setSpaceMenu(null);
+    Alert.alert(t("pages.spaceMenu.deleteTitle", { title: target.title }), t("pages.spaceMenu.deleteBody"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("pages.spaceMenu.delete"), style: "destructive", onPress: () => deleting.mutate(target.id) },
+    ]);
+  };
   const [menu, setMenu] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [width, setWidth] = useState(0);
@@ -228,7 +249,7 @@ export default function PagesHome() {
                   <LoadFailure error={spaces.error} loadFailed={t("pages.loadFailed")} hasData={Boolean(spaces.data)} updatedAt={spaces.dataUpdatedAt} onRetry={() => void spaces.refetch()} testID="pages-spaces-failed" padded={false} />
                 </View>
               }
-              renderItem={({ item }) => <SpaceRow space={item} mode={mode} width={Math.floor((width - 12) / 2)} />}
+              renderItem={({ item }) => <SpaceRow space={item} mode={mode} width={Math.floor((width - 12) / 2)} onMore={setSpaceMenu} />}
               ListEmptyComponent={
                 spaces.isLoading ? (
                   <RowsSkeleton rows={4} />
@@ -275,6 +296,18 @@ export default function PagesHome() {
         onSpace={() => setSpaceForm(true)}
       />
       <SpaceForm open={spaceForm} onClose={() => setSpaceForm(false)} />
+      <SpaceForm open={editingSpace != null} space={editingSpace} onClose={() => setEditingSpace(null)} />
+      <BottomSheet open={spaceMenu != null} onClose={() => setSpaceMenu(null)} testID="pages-space-menu">
+        {spaceMenu ? (
+          <>
+            <Text variant="label" numberOfLines={2} style={{ paddingHorizontal: metrics.space.xl, paddingBottom: metrics.space.sm }}>
+              {spaceMenu.title}
+            </Text>
+            <SheetRow icon={Pencil} label={t("pages.spaceMenu.edit")} onPress={() => (setEditingSpace(spaceMenu), setSpaceMenu(null))} testID="pages-space-edit" />
+            <SheetRow icon={Trash2} label={t("pages.spaceMenu.delete")} danger onPress={() => deleteSpace(spaceMenu)} testID="pages-space-delete" />
+          </>
+        ) : null}
+      </BottomSheet>
       <BottomSheet open={sortingSpaces} onClose={() => setSortingSpaces(false)} testID="pages-sort-sheet">
         <Text variant="label" tone="muted" style={{ paddingHorizontal: metrics.space.xl, paddingBottom: metrics.space.sm }}>
           {t("pages.sort.title")}

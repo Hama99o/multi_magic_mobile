@@ -1496,7 +1496,8 @@ export const fr: Translations = {
     menu: { title: "Plus" },
     tabs: { home: "Accueil", starred: "Favoris", shared: "Partagés", files: "Fichiers", recentFiles: "Fichiers récents" },
     new: { title: "Nouveau", folder: "Dossier", media: "Importer des photos ou vidéos", files: "Importer des fichiers", camera: "Prendre une photo ou une vidéo", space: "Nouvel espace" },
-    spaceForm: { name: "Nom", description: "Description (facultative)", icon: "Icône", iconLabel: "Icône {{icon}}", color: "Couleur", noColor: "Aucune couleur", failed: "Impossible de créer l’espace." },
+    spaceForm: { name: "Nom", description: "Description (facultative)", icon: "Icône", iconLabel: "Icône {{icon}}", color: "Couleur", noColor: "Aucune couleur", failed: "Impossible de créer l’espace.", editTitle: "Modifier l’espace", saveFailed: "Impossible d’enregistrer l’espace." },
+    spaceMenu: { edit: "Modifier l’espace", delete: "Supprimer l’espace", deleteTitle: "Supprimer « {{title}} » ?", deleteBody: "Il est supprimé avec tout son contenu. Impossible d’annuler.", deleteFailed: "Impossible de supprimer l’espace." },
     actions: {
       trashedOne: "« {{title}} » placé dans la corbeille",
       trashedMany_one: "{{count}} élément placé dans la corbeille",

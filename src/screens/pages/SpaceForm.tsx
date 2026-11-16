@@ -8,6 +8,9 @@
  *
  * The form opens empty every time. On success it hands the new space back
  * (the save picker enters it) and the Pages lists refetch.
+ *
+ * EDIT (audit #15, the web's "Edit space"): given a `space`, the same form
+ * opens filled in with its four fields and saves them (`PATCH spaces/:id`).
  */
 import { useState } from "react";
 import { Modal, Pressable, ScrollView, TextInput, View } from "react-native";
@@ -17,11 +20,12 @@ import { FILL } from "@/theme/fill";
 import { Check } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
+import { KeyboardPadding } from "@/components/KeyboardPadding";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
 import type { Space } from "@/api/pages";
 import { failureMessage } from "@/api/failure";
 import { NOTE_COLOR_KEYS, noteColor, type NoteColorKey } from "@/screens/notes/editor/noteColors";
-import { useCreateSpace } from "./usePageMutations";
+import { useCreateSpace, useUpdateSpace } from "./usePageMutations";
 
 /** `SPACE_ICONS` in the web's `SpaceFormPanel.tsx`, in its order. */
 export const SPACE_ICONS = ["📁", "📝", "🗂️", "📚", "💡", "⭐", "🚀", "🎯", "📊", "🔖", "🏠", "🌐", "🔒", "🛠️", "🎨", "📌"];
@@ -30,24 +34,26 @@ const SPACE_COLORS = NOTE_COLOR_KEYS.filter((k): k is Exclude<NoteColorKey, "no_
 
 const SWATCH = 36;
 
-export function SpaceForm({ open, onClose, onCreated }: { open: boolean; onClose: () => void; onCreated?: (space: Space) => void }) {
+export function SpaceForm({ open, onClose, onCreated, space }: { open: boolean; onClose: () => void; onCreated?: (space: Space) => void; space?: Space | null }) {
   if (!open) return null;
-  // Mounted only while open, so every opening starts empty.
-  return <SpaceFormBody onClose={onClose} onCreated={onCreated} />;
+  // Mounted only while open, so every opening starts empty (or from the space).
+  return <SpaceFormBody onClose={onClose} onCreated={onCreated} space={space ?? null} />;
 }
 
-function SpaceFormBody({ onClose, onCreated }: { onClose: () => void; onCreated?: (space: Space) => void }) {
+function SpaceFormBody({ onClose, onCreated, space }: { onClose: () => void; onCreated?: (space: Space) => void; space: Space | null }) {
   const colors = useColors();
   const metrics = useMetrics();
   const scheme = useScheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const [title, setTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [icon, setIcon] = useState(SPACE_ICONS[0]);
-  const [color, setColor] = useState("");
+  const [title, setTitle] = useState(space?.title ?? "");
+  const [description, setDescription] = useState(space?.description ?? "");
+  const [icon, setIcon] = useState(space?.icon || SPACE_ICONS[0]);
+  const [color, setColor] = useState(space?.color ?? "");
   const [error, setError] = useState<string | null>(null);
-  const creating = useCreateSpace();
+  const creating_ = useCreateSpace();
+  const updating = useUpdateSpace();
+  const creating = space ? updating : creating_;
 
   const colorLabels = {
     red: t("notes.grid.colors.red"), orange: t("notes.grid.colors.orange"), yellow: t("notes.grid.colors.yellow"),
@@ -60,11 +66,17 @@ function SpaceFormBody({ onClose, onCreated }: { onClose: () => void; onCreated?
     if (!name || creating.isPending) return;
     setError(null);
     try {
-      const space = await creating.mutateAsync({ title: name, description: description.trim(), icon, color });
-      onCreated?.(space);
+      const fields = { title: name, description: description.trim(), icon, color };
+      if (space) {
+        await updating.mutateAsync({ spaceId: space.id, fields });
+      } else {
+        // Not `onCreated?.(await …)`: with no callback that skips the call itself.
+        const created = await creating_.mutateAsync(fields);
+        onCreated?.(created);
+      }
       onClose();
     } catch (e) {
-      setError(failureMessage(e, t("pages.spaceForm.failed")));
+      setError(failureMessage(e, space ? t("pages.spaceForm.saveFailed") : t("pages.spaceForm.failed")));
     }
   };
 
@@ -81,6 +93,7 @@ function SpaceFormBody({ onClose, onCreated }: { onClose: () => void; onCreated?
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardPadding>
       <View style={{ flex: 1, justifyContent: "flex-end" }}>
         <Pressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={onClose} style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.45)" }} />
         <View
@@ -99,7 +112,7 @@ function SpaceFormBody({ onClose, onCreated }: { onClose: () => void; onCreated?
         >
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingHorizontal: metrics.space.xl, gap: metrics.space.md }}>
             <Text variant="label" accessibilityRole="header">
-              {t("pages.new.space")}
+              {space ? t("pages.spaceForm.editTitle") : t("pages.new.space")}
             </Text>
 
             <TextInput
@@ -214,7 +227,7 @@ function SpaceFormBody({ onClose, onCreated }: { onClose: () => void; onCreated?
             <View style={{ flexDirection: "row", justifyContent: "flex-end", gap: metrics.space.sm, paddingTop: metrics.space.sm }}>
               <Button label={t("common.cancel")} tone="neutral" block={false} onPress={onClose} testID="pages-space-cancel" />
               <Button
-                label={t("pages.save.create")}
+                label={space ? t("common.save") : t("pages.save.create")}
                 block={false}
                 busy={creating.isPending}
                 disabled={!title.trim()}
@@ -225,6 +238,7 @@ function SpaceFormBody({ onClose, onCreated }: { onClose: () => void; onCreated?
           </ScrollView>
         </View>
       </View>
+      </KeyboardPadding>
     </Modal>
   );
 }

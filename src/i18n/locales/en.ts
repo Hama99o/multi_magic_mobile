@@ -1480,7 +1480,8 @@ export const en = {
     menu: { title: "More" },
     tabs: { home: "Home", starred: "Starred", shared: "Shared", files: "Files", recentFiles: "Recent files" },
     new: { title: "New", folder: "Folder", media: "Upload photos or videos", files: "Upload files", camera: "Take a photo or video", space: "New space" },
-    spaceForm: { name: "Name", description: "Description (optional)", icon: "Icon", iconLabel: "Icon {{icon}}", color: "Colour", noColor: "No colour", failed: "Could not create the space." },
+    spaceForm: { name: "Name", description: "Description (optional)", icon: "Icon", iconLabel: "Icon {{icon}}", color: "Colour", noColor: "No colour", failed: "Could not create the space.", editTitle: "Edit space", saveFailed: "Could not save the space." },
+    spaceMenu: { edit: "Edit space", delete: "Delete space", deleteTitle: "Delete “{{title}}”?", deleteBody: "It is deleted with everything in it. This cannot be undone.", deleteFailed: "Could not delete the space." },
     actions: {
       trashedOne: "“{{title}}” moved to the trash",
       trashedMany_one: "{{count}} item moved to the trash",

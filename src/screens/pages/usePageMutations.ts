@@ -183,3 +183,38 @@ export function useCreateSpace() {
     onSettled: () => refetch(client),
   });
 }
+
+/** Edit a space: not optimistic; the lists and its folder refetch. */
+export function useUpdateSpace() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ spaceId, fields }: { spaceId: number; fields: SpaceFields }) => pagesApi.updateSpace(spaceId, fields),
+    onSettled: () => refetch(client),
+  });
+}
+
+/** A row of a spaces list (a node has `spaceId`, a space has `nodesCount`). */
+const isSpaceRow = (r: unknown, spaceId: number) =>
+  typeof r === "object" && r !== null && "nodesCount" in r && !("spaceId" in r) && (r as { id?: unknown }).id === spaceId;
+
+/** Delete a space: it leaves every spaces list at once, back on a refusal. */
+export function useDeleteSpace(opts: { onError?: (e: unknown) => void } = {}) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (spaceId: number) => pagesApi.deleteSpace(spaceId),
+    onMutate: async (spaceId: number) => {
+      await client.cancelQueries({ queryKey: pagesKeys.all });
+      const saved = client.getQueriesData({ queryKey: pagesKeys.all });
+      for (const [queryKey, data] of saved) {
+        if (!isInfinite(data)) continue;
+        const pages = data.pages.map((p) =>
+          isPage(p) ? { ...p, rows: p.rows.filter((r) => !isSpaceRow(r, spaceId)) } : p,
+        );
+        client.setQueriesData({ queryKey, exact: true }, { ...data, pages });
+      }
+      return { saved };
+    },
+    onError: (e, _v, ctx) => (restore(client, ctx?.saved), opts.onError?.(e)),
+    onSettled: () => refetch(client),
+  });
+}

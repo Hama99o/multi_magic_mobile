@@ -284,6 +284,17 @@ export const pagesApi = {
     return parseSpace(obj(res.data, "space").space);
   },
 
+  /** Edit a space (owner only, `SpacePolicy#update?`), as the web: PATCH. */
+  updateSpace: async (spaceId: number, fields: SpaceFields): Promise<Space> => {
+    const res = await http.patch(`/api/v1/page_app/spaces/${spaceId}`, { space: fields });
+    return parseSpace(obj(res.data, "space").space);
+  },
+
+  /** Delete a space (owner only). The server soft-deletes it; only the web lists deleted spaces. */
+  deleteSpace: async (spaceId: number): Promise<void> => {
+    await http.delete(`/api/v1/page_app/spaces/${spaceId}`);
+  },
+
   space: async (spaceId: number): Promise<Space> => {
     const res = await http.get(`/api/v1/page_app/spaces/${spaceId}`);
     return parseSpace(obj(res.data, "space").space);

@@ -8,7 +8,7 @@
  * of mocks copied from the last one.
  */
 export const expoRouter = {
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
   useLocalSearchParams: () => ({ id: "266", name: "Qa MOBILE", isGroup: "0", unread: "0" }),
   Link: ({ children }: { children: unknown }) => children,
 };

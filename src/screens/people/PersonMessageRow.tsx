@@ -67,6 +67,7 @@ export function PersonMessageRow({
   /** The tick goes under the LAST sent message only — never under every one. */
   isLastSent,
   onLongPress,
+  onToggleReaction,
   onRetry,
   /** Posted locally and not yet accepted by the server. */
   pending = false,
@@ -77,6 +78,8 @@ export function PersonMessageRow({
   senderName?: string | null;
   isLastSent?: boolean;
   onLongPress?: () => void;
+  /** A chip pressed: the same emoji again, which the endpoint toggles. */
+  onToggleReaction?: (emoji: string) => void;
   onRetry?: () => void;
   pending?: boolean;
   failed?: boolean;
@@ -217,8 +220,19 @@ export function PersonMessageRow({
           }}
         >
           {message.reactions.map((reaction) => (
-            <View
+            // A BUTTON, as the comment above always said it was (audit P2:
+            // it was a plain View, so pressing a chip did nothing).
+            <Pressable
               key={reaction.emoji}
+              onPress={onToggleReaction ? () => onToggleReaction(reaction.emoji) : undefined}
+              disabled={!onToggleReaction}
+              accessibilityRole="button"
+              accessibilityLabel={
+                reaction.mine
+                  ? t("thread.removeReaction", { emoji: reaction.emoji })
+                  : t("thread.react", { emoji: reaction.emoji })
+              }
+              hitSlop={4}
               style={{
                 flexDirection: "row",
                 alignItems: "center",
@@ -235,7 +249,7 @@ export function PersonMessageRow({
               <Text variant="caption" tone={reaction.mine ? "onAccent" : "muted"}>
                 {reaction.count}
               </Text>
-            </View>
+            </Pressable>
           ))}
         </View>
       ) : null}

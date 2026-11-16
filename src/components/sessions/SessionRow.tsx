@@ -21,6 +21,14 @@ import { relativeTime } from "@/lib/relativeTime";
 import type { AiSession } from "@/api/ai";
 import { useTranslation } from "react-i18next";
 
+/**
+ * Titles that mean "nobody has named this" — `ai/sessions.rb` `untitled?`:
+ * the default in each language the server writes it in, and the legacy
+ * single conversation's name. Shown as the app's own words, so a French
+ * reader does not see the English default (audit P2, 2026-11-16).
+ */
+export const UNTITLED = new Set(["New chat", "Nouvelle discussion", "AI Assistant"]);
+
 export function SessionRow({
   session,
   active,
@@ -35,6 +43,7 @@ export function SessionRow({
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
+  const title = UNTITLED.has(session.title) || !session.title.trim() ? t("sessions.newChat") : session.title;
 
   const counts = [
     t("sessions.messages", { count: session.messageCount }),
@@ -54,7 +63,7 @@ export function SessionRow({
         // the list" — which for a screen reader was invisible full stop, because
         // this label named neither. An icon is not a name.
         accessibilityLabel={[
-          session.title,
+          title,
           counts,
           session.apps.length > 0 ? t("sessions.scopedBadge") : null,
           session.instructions ? t("sessions.instructedBadge") : null,
@@ -88,7 +97,7 @@ export function SessionRow({
           </Text>
           <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.xs }}>
             <Text numberOfLines={1} style={{ flexShrink: 1 }}>
-              {session.title}
+              {title}
             </Text>
             {/* A funnel when the chat is narrowed to some apps, and a pen when
                 it carries standing instructions — both are settings that change
@@ -108,7 +117,7 @@ export function SessionRow({
 
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel={t("sessions.options", { title: session.title })}
+        accessibilityLabel={t("sessions.options", { title })}
         hitSlop={8}
         onPress={onMenu}
         style={{

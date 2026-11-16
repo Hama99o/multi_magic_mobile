@@ -191,9 +191,36 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
     });
   }, [upload]);
 
-  const remove = useCallback((key: string) => {
-    setPending((current) => current.filter((p) => p.key !== key));
-  }, []);
+  const deleting = useMutation({
+    mutationFn: ({ conversationId: id, documentId }: { conversationId: number; documentId: number }) => documentsApi.remove(id, documentId),
+  });
+
+  /**
+   * The ✕ on a chip. An UPLOADED file is deleted from the session on the
+   * server, as the web's chips do (audit P1 #32): hiding the chip alone left
+   * the assistant reading a file the person had taken away. The chip goes
+   * once the server agrees; a refusal keeps it and says why. A file that never
+   * reached the server (uploading, failed) is only taken off the screen.
+   */
+  const remove = useCallback(
+    async (key: string) => {
+      const file = pending.find((p) => p.key === key);
+      const documentId = file?.document?.id;
+      if (file?.status !== "done" || documentId == null || conversationId == null) {
+        setPending((current) => current.filter((p) => p.key !== key));
+        return;
+      }
+      setError(null);
+      try {
+        await deleting.mutateAsync({ conversationId, documentId });
+        setPending((current) => current.filter((p) => p.key !== key));
+        void queryClient.invalidateQueries({ queryKey: aiKeys.documents(conversationId) });
+      } catch (e) {
+        setError(failureMessage(e, t("files.removeFailed")));
+      }
+    },
+    [pending, conversationId, deleting, queryClient],
+  );
 
   return { pending, error, setError, pickDocument, pickImage, takePhoto, remove };
 }

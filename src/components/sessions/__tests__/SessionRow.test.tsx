@@ -73,3 +73,32 @@ describe("what the row tells somebody who cannot see its badges", () => {
     expect(screen.queryAllByTestId("session-instructed-77")).toHaveLength(0);
   });
 });
+
+// Audit P2 (2026-11-16): a conversation nobody has named is titled "New chat"
+// by the server (`ai/sessions.rb` DEFAULT_TITLE), and the row printed that
+// English word for a French reader. An unnamed title is the app's own words.
+describe("a conversation nobody has named", () => {
+  const i18n = jest.requireActual("@/i18n").default as { changeLanguage: (l: string) => Promise<unknown> };
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it("is called New chat in French too", async () => {
+    await i18n.changeLanguage("fr");
+    row({ title: "New chat" });
+    expect(screen.getByText("Nouvelle discussion")).toBeTruthy();
+    expect(screen.queryByText("New chat")).toBeNull();
+  });
+
+  it("the legacy default reads the same way", async () => {
+    await i18n.changeLanguage("fr");
+    row({ title: "AI Assistant" });
+    expect(screen.getByText("Nouvelle discussion")).toBeTruthy();
+  });
+
+  it("a name somebody chose is left alone", async () => {
+    await i18n.changeLanguage("fr");
+    row({ title: "Flat renovation" });
+    expect(screen.getByText("Flat renovation")).toBeTruthy();
+  });
+});

@@ -28,7 +28,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { LIMITS, sessionsApi, type AiSession } from "@/api/ai";
 import { apiErrorMessage } from "@/api/http";
 import { isToday } from "@/lib/relativeTime";
-import { SessionRow } from "./SessionRow";
+import { SessionRow, UNTITLED } from "./SessionRow";
 import { RenameDialog } from "./RenameDialog";
 import { DeleteConfirm } from "./DeleteConfirm";
 import { InstructionsDialog, ScopeDialog } from "./SessionOptionsDialogs";
@@ -37,12 +37,6 @@ import { aiKeys } from "@/api/keys";
 type Pending =
   | { kind: "rename" | "delete" | "menu" | "instructions" | "scope"; session: AiSession }
   | null;
-
-/**
- * Titles that mean "nobody has named this" — `ai/sessions.rb:15`'s own list.
- * A conversation carrying one of these has a default, not a name.
- */
-const UNTITLED = new Set(["New chat", "AI Assistant"]);
 
 export function SessionsSheet({
   visible,
@@ -403,7 +397,7 @@ export function SessionsSheet({
               testID="session-menu"
             >
               <Text variant="label" tone="muted" numberOfLines={1}>
-                {pending.session.title}
+                {UNTITLED.has(pending.session.title) ? t("sessions.newChat") : pending.session.title}
               </Text>
 
               <Pressable

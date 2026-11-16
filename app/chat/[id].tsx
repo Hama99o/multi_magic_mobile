@@ -34,10 +34,10 @@
  * have." `typing` and `mark_read` may ride the socket; a message may not.
  */
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, View, type ViewStyle } from "react-native";
+import { Alert, FlatList, Pressable, View, type ViewStyle } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft } from "@/components/icons";
+import { ChevronLeft, Trash2 } from "@/components/icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient } from "@tanstack/react-query";
@@ -124,12 +124,14 @@ const ThreadRow = memo(
     conversationId,
     nameFor,
     onOpenSheet,
+    onReact,
     onRetry,
   }: {
     row: Row;
     conversationId: number;
     nameFor: (message: ChatMessage) => string | null;
     onOpenSheet: (message: ChatMessage) => void;
+    onReact: (message: ChatMessage, emoji: string) => void;
     onRetry: (outgoing: Outgoing) => void;
   }) {
     if (row.kind === "day") return <DayDivider label={row.label} />;
@@ -171,6 +173,7 @@ const ThreadRow = memo(
         senderName={nameFor(message)}
         isLastSent={row.isLastSent}
         onLongPress={() => onOpenSheet(message)}
+        onToggleReaction={(emoji) => onReact(message, emoji)}
       />
     );
   },
@@ -179,6 +182,7 @@ const ThreadRow = memo(
     a.conversationId === b.conversationId &&
     a.nameFor === b.nameFor &&
     a.onOpenSheet === b.onOpenSheet &&
+    a.onReact === b.onReact &&
     a.onRetry === b.onRetry,
 );
 
@@ -416,22 +420,33 @@ export default function PersonThread() {
     [mergeMessage, sendBody],
   );
 
+  /**
+   * One endpoint both adds and removes — the same emoji twice takes it back
+   * (`routes.rb:295`). The response is the whole updated message, so the
+   * counts come back rather than being guessed at. From the sheet, and from a
+   * chip under the message (which toggles that emoji).
+   */
+  const reactWith = useCallback(
+    async (target: ChatMessage, emoji: string) => {
+      setThreadError(null);
+      try {
+        mergeMessage(await reactTo({ id: target.id, emoji }));
+      } catch (e) {
+        // The chip stays as it was, which is the truth, and now it says why:
+        // a press that changed nothing read as a missed tap (audit P2).
+        setThreadError(failureMessage(e, t("thread.reactionFailed")));
+      }
+    },
+    [mergeMessage, reactTo, t],
+  );
+
   const react = useCallback(
     async (emoji: string) => {
       const target = sheetFor;
       setSheetFor(null);
-      if (!target) return;
-      try {
-        // One endpoint both adds and removes — the same emoji twice takes it
-        // back (`routes.rb:295`). The response is the whole updated message,
-        // so the counts come back rather than being guessed at.
-        mergeMessage(await reactTo({ id: target.id, emoji }));
-      } catch {
-        // The chip simply does not change. A failed reaction is not worth an
-        // error banner over somebody's conversation.
-      }
+      if (target) await reactWith(target, emoji);
     },
-    [sheetFor, mergeMessage, reactTo],
+    [sheetFor, reactWith],
   );
 
   const removeMessage = useCallback(async () => {
@@ -536,6 +551,40 @@ export default function PersonThread() {
     enabled: Number.isFinite(conversationId),
   });
 
+  /**
+   * DELETE THE CONVERSATION — for this reader only (audit P1 #31). The server
+   * soft-deletes it for them and the others keep their history
+   * (`conversations_controller.rb#destroy`, "Conversation deleted for you"),
+   * so the confirm says exactly that. Offered where the web offers it: when
+   * `can_delete` (always for a direct chat; a group's admins only).
+   *
+   * The row leaves the cached list first and the thread closes; its cache is
+   * NOT removed while it is still mounted, which would refetch a conversation
+   * that is going (the web's qa found that 403). A refusal keeps the thread
+   * and says why.
+   */
+  const { mutate: clearForMe } = useMutation({
+    mutationFn: () => conversationsApi.clearForMe(conversationId),
+    onMutate: () => setThreadError(null),
+    onSuccess: () => {
+      queryClient.setQueryData<InfiniteData<ConversationList>>(conversationKeys.list(), (old) =>
+        old
+          ? { ...old, pages: old.pages.map((page) => ({ ...page, conversations: page.conversations.filter((c) => c.id !== conversationId) })) }
+          : old,
+      );
+      void queryClient.invalidateQueries({ queryKey: conversationKeys.list() });
+      if (router.canGoBack()) router.back();
+      else router.replace("/chats");
+    },
+    onError: (e) => setThreadError(failureMessage(e, t("thread.deleteConversationFailed"))),
+  });
+  const confirmClear = useCallback(() => {
+    Alert.alert(t("thread.deleteConversationQuestion"), t("thread.deleteConversationBody"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("common.delete"), style: "destructive", onPress: () => clearForMe() },
+    ]);
+  }, [clearForMe, t]);
+
   const nameFor = useCallback(
     (message: ChatMessage): string | null => {
       if (!isGroup || message.sentByMe || message.userId == null) return null;
@@ -550,6 +599,7 @@ export default function PersonThread() {
     setSheetFor(message);
   }, []);
   const onRetryOutgoing = useCallback((outgoing: Outgoing) => void retry(outgoing), [retry]);
+  const onReactChip = useCallback((message: ChatMessage, emoji: string) => void reactWith(message, emoji), [reactWith]);
   const renderItem = useCallback(
     ({ item }: { item: Row }) => (
       <ThreadRow
@@ -557,10 +607,11 @@ export default function PersonThread() {
         conversationId={conversationId}
         nameFor={nameFor}
         onOpenSheet={openSheet}
+        onReact={onReactChip}
         onRetry={onRetryOutgoing}
       />
     ),
-    [conversationId, nameFor, openSheet, onRetryOutgoing],
+    [conversationId, nameFor, openSheet, onReactChip, onRetryOutgoing],
   );
   const onEndReached = useMemo(() => (hasOlder ? () => void loadOlder() : undefined), [hasOlder, loadOlder]);
   const listContentStyle = useMemo<ViewStyle>(
@@ -646,6 +697,18 @@ export default function PersonThread() {
             </Text>
           ) : null}
         </View>
+        {detail?.canDelete ? (
+          <Pressable
+            testID="thread-delete"
+            onPress={confirmClear}
+            accessibilityRole="button"
+            accessibilityLabel={t("thread.deleteConversation")}
+            hitSlop={8}
+            style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+          >
+            <Trash2 size={20} color={colors.inkMuted} />
+          </Pressable>
+        ) : null}
       </View>
 
       {/* Messages that could not be read, said rather than skipped in silence. */}

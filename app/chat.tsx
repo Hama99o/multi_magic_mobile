@@ -789,7 +789,7 @@ export default function Chat() {
         >
           <PendingFiles
             files={attachments.pending}
-            onRemove={attachments.remove}
+            onRemove={(key) => void attachments.remove(key)}
             serverStatus={serverStatus}
             slow={readingSlow}
           />

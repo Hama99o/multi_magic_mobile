@@ -249,6 +249,7 @@ export const en = {
     uploading: "Uploading…",
     didNotUpload: "Did not upload",
     uploadFailed: "That file did not upload.",
+    removeFailed: "That file could not be removed. It is still in this chat.",
     remove: "Remove {{name}}",
     showMore: "Show {{count}} more files",
     more: "+{{count}} more",
@@ -271,6 +272,7 @@ export const en = {
     today: "Today",
     earlier: "Earlier",
     newConversation: "New conversation",
+    newChat: "New chat",
     atLimit:
       "You have {{max}} conversations, which is the most MultiMagic keeps. Delete one to start another.",
     options: "Options for {{title}}",
@@ -528,6 +530,11 @@ export const en = {
     notSent: "Not sent. Tap to retry.",
     editFailed: "That edit was not saved. Your text is back in the box.",
     deleteFailed: "That message could not be deleted.",
+    reactionFailed: "That reaction did not go through.",
+    deleteConversation: "Delete this conversation",
+    deleteConversationQuestion: "Delete this conversation?",
+    deleteConversationBody: "It goes from your chats. The others keep their copy.",
+    deleteConversationFailed: "That conversation could not be deleted.",
     edited: "edited",
     // The tick is a SHAPE and nothing else. Spoken, it needs words.
     sent: "Sent",

@@ -36,7 +36,7 @@ it("a finished upload refreshes this conversation's documents, so their poll can
   const invalidate = jest.spyOn(client, "invalidateQueries");
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
 
-  const { result } = renderHook(() => useAttachments(878, 0), { wrapper });
+  const { result } = renderHook(() => useAttachments(878, []), { wrapper });
   await act(async () => {
     await result.current.pickImage();
   });

@@ -33,7 +33,7 @@ async function uploadedOne() {
     .mockResolvedValue({ id: 41, filename: "p.jpg", status: "ready" } as Awaited<ReturnType<typeof documentsApi.upload>>);
   const client = testQueryClient();
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  const hook = renderHook(() => useAttachments(878, 0), { wrapper });
+  const hook = renderHook(() => useAttachments(878, []), { wrapper });
   await act(async () => {
     await hook.result.current.pickImage();
   });
@@ -71,7 +71,7 @@ it("a failed upload is only taken off the screen: there is nothing on the server
   const remove = jest.spyOn(documentsApi, "remove");
   const client = testQueryClient();
   const wrapper = ({ children }: { children: ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
-  const { result } = renderHook(() => useAttachments(878, 0), { wrapper });
+  const { result } = renderHook(() => useAttachments(878, []), { wrapper });
   await act(async () => {
     await result.current.pickImage();
   });

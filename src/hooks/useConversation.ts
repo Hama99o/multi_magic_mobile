@@ -40,7 +40,7 @@
  * are the same code, differing only in which channel carries the live events.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { type QueryClient, useQuery, useQueryClient } from "@tanstack/react-query";
 import { AppState, type AppStateStatus } from "react-native";
 import { subscribeToChannel, type ChannelParams } from "@/lib/cable";
 import { messagesApi, type ChatMessage } from "@/api/ai";
@@ -210,6 +210,20 @@ interface Transcript {
   unreadableOlder: number;
 }
 const EMPTY: Transcript = { messages: [], hasOlder: false, unreadableLatest: 0, unreadableOlder: 0 };
+
+/**
+ * FORGET A TRANSCRIPT THE SERVER EMPTIED ("Clear messages", audit #33).
+ *
+ * Invalidating is not enough: the read MERGES the server's page into what the
+ * cache holds (so a reply landing mid-read is never dropped), and an empty
+ * page merged into the old messages is the old messages. So the cached copy
+ * is emptied first, with its older pages, and then read again.
+ */
+export function clearTranscript(client: QueryClient, conversationId: number): Promise<void> {
+  client.removeQueries({ queryKey: conversationKeys.transcript(conversationId), exact: false, predicate: (q) => q.queryKey.length > 2 });
+  client.setQueryData<Transcript>(conversationKeys.transcript(conversationId), EMPTY);
+  return client.invalidateQueries({ queryKey: conversationKeys.transcript(conversationId), exact: true });
+}
 
 /**
  * ── WHERE THE TRANSCRIPT LIVES (React Query audit, 2026-11-13) ─────────────

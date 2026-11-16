@@ -15,7 +15,7 @@
  * and is not is the worst state available — the user asks a question about a
  * document the model cannot see.
  */
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import * as DocumentPicker from "expo-document-picker";
 import * as ImagePicker from "expo-image-picker";
@@ -87,10 +87,58 @@ export function rejectionFor(
   return null;
 }
 
-export function useAttachments(conversationId: number | null, uploadedCount: number) {
+/** A key for a file the SESSION holds, by its server id. */
+const sessionKey = (documentId: number) => `doc-${documentId}`;
+
+/**
+ * `uploaded` is what the session holds on the server
+ * (`GET /ai/sessions/:id/documents`, the documents query in `app/chat.tsx`).
+ */
+export function useAttachments(conversationId: number | null, uploaded: readonly AiDocument[] = []) {
   const [pending, setPending] = useState<PendingFile[]>([]);
   const [error, setError] = useState<string | null>(null);
+  // Removed on the server, until the documents query reads the list again.
+  const [removedIds, setRemovedIds] = useState<number[]>([]);
   const queryClient = useQueryClient();
+  const uploadedCount = uploaded.length;
+
+  // What was picked in one session is that session's: another one opens
+  // with its own files, not the last one's chips (React's "adjust state when
+  // a prop changes", no effect).
+  const [pendingFor, setPendingFor] = useState(conversationId);
+  if (pendingFor !== conversationId) {
+    setPendingFor(conversationId);
+    setPending([]);
+    setRemovedIds([]);
+    setError(null);
+  }
+
+  /**
+   * EVERY CHIP: the files the session already holds, then this sitting's
+   * uploads the list has not caught up with (audit #32, second half; the
+   * web's `AiDocumentChips`). A session reopened later used to show no files
+   * while the assistant kept reading them. One file is one chip: once the
+   * list has an upload, the list's copy is drawn.
+   */
+  const files = useMemo(() => {
+    const removed = new Set(removedIds);
+    const held = uploaded.filter((d) => !removed.has(d.id));
+    const heldIds = new Set(held.map((d) => d.id));
+    const fromSession: PendingFile[] = held.map((document) => {
+      const local = pending.find((p) => p.document?.id === document.id);
+      return {
+        key: local?.key ?? sessionKey(document.id),
+        name: document.filename,
+        uri: local?.uri ?? "",
+        mimeType: document.contentType ?? local?.mimeType ?? "application/octet-stream",
+        size: document.byteSize ?? local?.size ?? 0,
+        status: "done",
+        document,
+      };
+    });
+    const notListed = pending.filter((p) => !(p.document && (heldIds.has(p.document.id) || removed.has(p.document.id))));
+    return [...fromSession, ...notListed];
+  }, [uploaded, pending, removedIds]);
   // The upload is a mutation (docs/DATA_LAYER.md); the chip's own state
   // (uploading / done / failed) stays local, because a file that vanishes
   // looks like one that uploaded.
@@ -102,7 +150,9 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
     async (file: { name: string; uri: string; mimeType: string; size: number }) => {
       if (conversationId == null) return;
 
-      const refusal = rejectionFor(file, uploadedCount + pending.filter((p) => p.status !== "failed").length);
+      // Uploads the list does not hold yet, on top of what it does.
+      const inFlight = pending.filter((p) => p.status !== "failed" && !(p.document && uploaded.some((d) => d.id === p.document?.id))).length;
+      const refusal = rejectionFor(file, uploadedCount + inFlight);
       if (refusal) {
         setError(refusal);
         return;
@@ -138,7 +188,7 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
         );
       }
     },
-    [conversationId, uploadedCount, pending, queryClient, uploading],
+    [conversationId, uploadedCount, uploaded, pending, queryClient, uploading],
   );
 
   const pickDocument = useCallback(async () => {
@@ -204,7 +254,7 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
    */
   const remove = useCallback(
     async (key: string) => {
-      const file = pending.find((p) => p.key === key);
+      const file = files.find((p) => p.key === key);
       const documentId = file?.document?.id;
       if (file?.status !== "done" || documentId == null || conversationId == null) {
         setPending((current) => current.filter((p) => p.key !== key));
@@ -214,13 +264,14 @@ export function useAttachments(conversationId: number | null, uploadedCount: num
       try {
         await deleting.mutateAsync({ conversationId, documentId });
         setPending((current) => current.filter((p) => p.key !== key));
+        setRemovedIds((current) => [...current, documentId]);
         void queryClient.invalidateQueries({ queryKey: aiKeys.documents(conversationId) });
       } catch (e) {
         setError(failureMessage(e, t("files.removeFailed")));
       }
     },
-    [pending, conversationId, deleting, queryClient],
+    [files, conversationId, deleting, queryClient],
   );
 
-  return { pending, error, setError, pickDocument, pickImage, takePhoto, remove };
+  return { files, pending, error, setError, pickDocument, pickImage, takePhoto, remove };
 }

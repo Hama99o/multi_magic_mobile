@@ -172,6 +172,17 @@ export interface AiSession {
   remember: boolean;
 }
 
+/**
+ * Where a question was asked from: the web's `AiPageContext`
+ * (`lib/ai/usePageContext.ts`), the same keys in the same case. The server
+ * sanitizes all of it (`Ai::PageContext`: unknown apps dropped, path capped).
+ */
+export interface AiPageContext {
+  app: string | null;
+  path: string;
+  record_id?: string;
+}
+
 export interface AiDocument {
   id: number;
   filename: string;
@@ -353,13 +364,16 @@ export const aiApi = {
    * without it. So the app can never post before it has a session id, which is
    * why the boot sequence resolves one first.
    */
-  ask: async (params: { conversationId: number; body: string }): Promise<{
+  ask: async (params: { conversationId: number; body: string; context?: AiPageContext }): Promise<{
     conversationId: number;
     userMessageId: number;
   }> => {
     const res = await http.post("/api/v1/ai/show", {
       conversation_id: params.conversationId,
       body: params.body,
+      // The screen it was asked from (`src/lib/pageContext.ts`), as the web
+      // sends it (`AiChat.tsx` handleSend). Omitted, not null, when absent.
+      ...(params.context ? { context: params.context } : {}),
     });
     const record = obj(res.data, "ask");
     return {

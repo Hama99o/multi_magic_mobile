@@ -233,6 +233,24 @@ describe("asking a question", () => {
     // Nothing about the REPLY is in this response — it arrives over the socket.
     expect(result).toEqual({ conversationId: 4, userMessageId: 11 });
   });
+
+  // Audit #35: the web sends the screen the question was asked from
+  // (`usePageContext.ts`), in this shape, so "this note" means something.
+  it("sends the screen it was asked from as `context`, in the web's shape", async () => {
+    mock.onPost("/api/v1/ai/show").reply(202, { conversation_id: 4, user_message_id: 11 });
+
+    await aiApi.ask({
+      conversationId: 4,
+      body: "Summarise this",
+      context: { app: "notes", path: "/notes/42", record_id: "42" },
+    });
+
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({
+      conversation_id: 4,
+      body: "Summarise this",
+      context: { app: "notes", path: "/notes/42", record_id: "42" },
+    });
+  });
 });
 
 describe("sessions", () => {

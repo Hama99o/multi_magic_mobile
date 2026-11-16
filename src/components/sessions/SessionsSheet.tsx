@@ -33,6 +33,7 @@ import { RenameDialog } from "./RenameDialog";
 import { DeleteConfirm } from "./DeleteConfirm";
 import { InstructionsDialog, ScopeDialog } from "./SessionOptionsDialogs";
 import { aiKeys } from "@/api/keys";
+import { clearTranscript } from "@/hooks/useConversation";
 
 type Pending =
   | { kind: "rename" | "delete" | "menu" | "instructions" | "scope"; session: AiSession }
@@ -180,8 +181,11 @@ export function SessionsSheet({
 
   const clear = useMutation({
     mutationFn: (id: number) => sessionsApi.clear(id),
-    onSuccess: () => {
+    onSuccess: (_cleared, id) => {
       void refresh();
+      // The phone's copy of that transcript too, or the cleared messages
+      // come back on reopen (audit #33).
+      void clearTranscript(queryClient, id);
       // The open conversation's transcript just emptied server-side.
       void queryClient.invalidateQueries({ queryKey: aiKeys.currentSession() });
       setPending(null);

@@ -103,7 +103,9 @@ export function PendingFiles({
                       ? slow
                         ? t("files.slow")
                         : t("files.reading")
-                      : describeSize(file.size)}
+                      : file.size > 0
+                        ? describeSize(file.size)
+                        : null}
             </Text>
           </View>
           {/* 16 dp icon in a Pressable with no box of its own: 32 x 32 with

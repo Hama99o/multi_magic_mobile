@@ -37,6 +37,7 @@ jest.mock("expo-router", () => ({
   router: { replace: (...a: unknown[]) => mockReplace(...a) },
   // `?sessions=1` opens the history (Home's Conversations tile).
   useLocalSearchParams: () => mockParams,
+  useNavigation: () => ({ getState: () => ({ index: 0, routes: [{ name: "chat" }] }) }),
 }));
 
 const mockUseConversation = jest.fn();
@@ -200,5 +201,28 @@ describe("a permission the person never granted", () => {
       expect(screen.getByTestId("attach-error")).toHaveTextContent(/permission to use the camera/),
     );
     expect(images.launchCameraAsync).not.toHaveBeenCalled();
+  });
+});
+
+// ── THE FILES A SESSION ALREADY HOLDS (audit #32, second half) ─────────────
+// The web's `AiDocumentChips`: opened or reopened, the session's files are
+// chips above the composer, read from the server, each with its ✕.
+describe("a session that already holds files", () => {
+  it("shows them as chips when it opens, and the ✕ deletes one", async () => {
+    (documentsApi.list as jest.Mock).mockResolvedValue([
+      { id: 5, filename: "lease.pdf", contentType: "application/pdf", byteSize: 2048, status: "ready" },
+    ]);
+    const remove = jest.spyOn(documentsApi, "remove").mockResolvedValue(undefined);
+    renderChat();
+    await waitForSession();
+
+    await waitFor(() => expect(screen.getByText("lease.pdf")).toBeTruthy());
+    expect(screen.getByTestId("pending-file-ready")).toBeTruthy();
+
+    (documentsApi.list as jest.Mock).mockResolvedValue([]);
+    fireEvent.press(screen.getByLabelText("Remove lease.pdf"));
+
+    await waitFor(() => expect(remove).toHaveBeenCalledWith(4, 5));
+    await waitFor(() => expect(screen.queryByText("lease.pdf")).toBeNull());
   });
 });

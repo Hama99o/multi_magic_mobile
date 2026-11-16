@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, FlatList, Pressable, View, type ViewStyle } from "react-native";
 import { Bell, CalendarDays, MessageSquareText, Users, X } from "@/components/icons";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
@@ -50,6 +50,7 @@ import { Avatar } from "@/screens/people/Avatar";
 import { AttachSheet } from "@/components/chat/AttachSheet";
 import { PendingFiles } from "@/components/chat/PendingFiles";
 import { useAttachments } from "@/hooks/useAttachments";
+import { pageContextFor, screenUnder } from "@/lib/pageContext";
 import { documentsApi, sessionsApi } from "@/api/ai";
 import { notificationsApi } from "@/api/notifications";
 import { conversationsApi } from "@/api/conversations";
@@ -304,7 +305,7 @@ export default function Chat() {
   // Derived from what this user actually has — never a written list.
   const { prompts } = useStarterPrompts(conversationId);
 
-  const attachments = useAttachments(conversationId, uploaded.length);
+  const attachments = useAttachments(conversationId, uploaded);
   const [attachOpen, setAttachOpen] = useState(false);
 
   /**
@@ -411,6 +412,13 @@ export default function Chat() {
     [openLink, newestUndoableId, mergeMessage],
   );
 
+  /**
+   * The screen it was asked from travels with the question, as on the web
+   * (audit #35): the route under this modal (`src/lib/pageContext.ts`). Read
+   * at SEND time, so it is the screen underneath now, not at first render.
+   */
+  const navigation = useNavigation();
+
   const send = useCallback(
     async (body: string) => {
       if (conversationId == null || posting) return;
@@ -441,7 +449,8 @@ export default function Chat() {
       clear();
 
       try {
-        const { userMessageId } = await askServer({ conversationId, body: question });
+        const context = pageContextFor(screenUnder(navigation.getState()));
+        const { userMessageId } = await askServer({ conversationId, body: question, context });
         // The server's OWN id replaces the local one, so when the socket echoes
         // the same message it merges rather than appearing twice.
         confirmPending(localId, userMessageId);
@@ -465,7 +474,7 @@ export default function Chat() {
         setPosting(false);
       }
     },
-    [conversationId, posting, clear, addOptimistic, confirmPending, dropPending, setDraft, user, t, askServer],
+    [conversationId, posting, clear, addOptimistic, confirmPending, dropPending, setDraft, user, t, askServer, navigation],
   );
 
   // A question of theirs is a request to be at the newest, whatever they were
@@ -788,7 +797,7 @@ export default function Chat() {
           }}
         >
           <PendingFiles
-            files={attachments.pending}
+            files={attachments.files}
             onRemove={(key) => void attachments.remove(key)}
             serverStatus={serverStatus}
             slow={readingSlow}

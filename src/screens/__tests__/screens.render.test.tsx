@@ -59,6 +59,7 @@ jest.mock("expo-router", () => ({
   }),
   usePathname: () => "/pages",
   Link: ({ children }: { children: unknown }) => children,
+  useNavigation: () => ({ getState: () => ({ index: 0, routes: [{ name: "home" }] }) }),
 }));
 
 // ── Native modules a screen reaches for ────────────────────────────────────

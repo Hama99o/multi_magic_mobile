@@ -15,7 +15,15 @@ jest.mock("expo-router", () => ({
   // `?sessions=1` opens the history (Home's Conversations tile).
   useLocalSearchParams: () => mockParams,
   Link: ({ children }: { children: unknown }) => children,
+  // The root stack, so the screen UNDER the assistant can be read (#35).
+  // One object, as the real navigation is: a new one each render would
+  // rebuild `send` and every prop that hangs off it.
+  useNavigation: () => mockNavigation,
 }));
+const mockNavigation = { getState: () => mockNavState };
+let mockNavState: { index: number; routes: { name: string; params?: Record<string, string> }[] } = {
+  index: 1, routes: [{ name: "home" }, { name: "chat" }],
+};
 
 const mockUseConversation = jest.fn();
 jest.mock("@/hooks/useConversation", () => ({
@@ -156,6 +164,7 @@ describe("the empty state", () => {
       expect(aiApi.ask).toHaveBeenCalledWith({
         conversationId: 4,
         body: "What does payslip.pdf say?",
+        context: { app: null, path: "/" },
       }),
     );
   });
@@ -242,7 +251,33 @@ describe("a notice the next question could fix", () => {
     await act(async () => {
       fireEvent.press(screen.getByTestId("chat-ask-again"));
     });
-    expect(aiApi.ask).toHaveBeenCalledWith({ conversationId: 4, body: "Do I owe anyone?" });
+    expect(aiApi.ask).toHaveBeenCalledWith({ conversationId: 4, body: "Do I owe anyone?", context: { app: null, path: "/" } });
+  });
+});
+
+// ── THE SCREEN IT WAS ASKED FROM TRAVELS WITH IT (audit #35) ──────────────
+// The web sends `context` with every question (`AiChat.tsx` handleSend). The
+// assistant opens as a modal over a screen, so that screen is the context.
+describe("the screen it was asked from", () => {
+  it("a note open under the assistant goes with the question", async () => {
+    mockNavState = {
+      index: 2,
+      routes: [{ name: "home" }, { name: "notes/edit", params: { id: "42" } }, { name: "chat" }],
+    };
+    renderChat();
+    await waitForSession();
+    fireEvent.changeText(screen.getByTestId("composer-input"), "Summarise this");
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("composer-send"));
+    });
+    await waitFor(() =>
+      expect(aiApi.ask).toHaveBeenCalledWith({
+        conversationId: 4,
+        body: "Summarise this",
+        context: { app: "notes", path: "/notes/42", record_id: "42" },
+      }),
+    );
+    mockNavState = { index: 1, routes: [{ name: "home" }, { name: "chat" }] };
   });
 });
 

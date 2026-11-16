@@ -180,7 +180,7 @@ function useNewNote<V>(call: (v: V) => Promise<Note>) {
   });
 }
 export const useDuplicateNote = () => useNewNote<{ id: number }>((v) => notesApi.duplicate(v.id));
-export const useCreateNote = () => useNewNote<{ title: string; html: string }>((v) => notesApi.create(v));
+export const useCreateNote = () => useNewNote<{ title: string; html: string; tagId?: number | null }>((v) => notesApi.create(v));
 
 /**
  * The editor's save (drafts, debounce and the 409 stay in noteSaver.ts; this

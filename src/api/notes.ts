@@ -207,8 +207,9 @@ export const notesApi = {
   },
 
   /** A new published note of the caller's (used by "Keep both" on a conflict, SPEC §G2). */
-  create: async (body: { title: string; html: string }): Promise<Note> => {
-    const res = await http.post("/api/v1/note_app/notes", { title: body.title, description: body.html });
+  create: async (body: { title: string; html: string; tagId?: number | null }): Promise<Note> => {
+    // tag_id: the server tags the new note (a note made under a label filter stays in it).
+    const res = await http.post("/api/v1/note_app/notes", { title: body.title, description: body.html, ...(body.tagId ? { tag_id: body.tagId } : {}) });
     return parseNote(obj(res.data, "note").note);
   },
 };

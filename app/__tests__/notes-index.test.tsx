@@ -217,6 +217,36 @@ describe("the drawer and labels (the web's note tags)", () => {
     expect(screen.queryByTestId("notes-label-filter")).toBeNull();
   });
 
+  // Audit P2: a note made while a label filters the grid goes in that label
+  // (the server's create takes tag_id), or it would vanish from the view.
+  it("with a label filter on, + makes the note in that label", async () => {
+    mock.onPost("/api/v1/note_app/notes").reply((cfg) => [200, { note: note(99, JSON.parse(cfg.data)) }]);
+    open();
+    await screen.findByText("Pinned seed");
+    fireEvent.press(screen.getByTestId("notes-menu"));
+    fireEvent.press(await screen.findByTestId("drawer-label-3"));
+    await screen.findByTestId("notes-label-filter");
+    await act(async () => fireEvent.press(screen.getByTestId("notes-new")));
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ title: "", description: "", tag_id: 3 });
+  });
+
+  // Audit P2 (2026-11-16): a rename typed without pressing Return was lost.
+  it("a label rename is kept when the field loses focus, and when the sheet closes", async () => {
+    mock.onPut("/api/v1/note_app/tags/4").reply((cfg) => [200, { tag: tag(4, JSON.parse(cfg.data).tag.name) }]);
+    mock.onPut("/api/v1/note_app/tags/3").reply((cfg) => [200, { tag: tag(3, JSON.parse(cfg.data).tag.name) }]);
+    open();
+    await screen.findByText("Pinned seed");
+    fireEvent.press(screen.getByTestId("notes-menu"));
+    fireEvent.press(await screen.findByTestId("drawer-edit-labels"));
+    fireEvent.changeText(await screen.findByTestId("labels-name-4"), "house");
+    fireEvent(screen.getByTestId("labels-name-4"), "blur");
+    await waitFor(() => expect(mock.history.put.map((r) => [r.url, JSON.parse(r.data)])).toContainEqual(["/api/v1/note_app/tags/4", { tag: { name: "house" } }]));
+    fireEvent.changeText(screen.getByTestId("labels-name-3"), "work");
+    fireEvent.press(screen.getByTestId("labels-close"));
+    await waitFor(() => expect(mock.history.put.map((r) => [r.url, JSON.parse(r.data)])).toContainEqual(["/api/v1/note_app/tags/3", { tag: { name: "work" } }]));
+    expect(mock.history.put.filter((r) => r.url === "/api/v1/note_app/tags/4")).toHaveLength(1); // not sent twice
+  });
+
   it("Edit labels creates, renames and deletes labels in the web's store", async () => {
     mock.onPost("/api/v1/note_app/tags").reply((cfg) => {
       const made = tag(9, JSON.parse(cfg.data).tag.name);

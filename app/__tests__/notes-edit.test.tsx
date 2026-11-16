@@ -584,6 +584,21 @@ describe("archive from the note (the header pill)", () => {
   });
 });
 
+describe("unarchive from the note (audit P2: an archived note had only Archive)", () => {
+  it("an archived note offers Unarchive, which puts it back in Notes and stays open", async () => {
+    server = note({ status: "archived" });
+    const router = (jest.requireMock("expo-router") as { router: Record<string, jest.Mock> }).router;
+    router.back.mockClear();
+    mock.onPut("/api/v1/note_app/notes/7/unarchive").reply(200, { note: note({ status: "published" }) });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(screen.queryByTestId("note-edit-archive")).toBeNull();
+    fireEvent.press(screen.getByTestId("note-edit-unarchive"));
+    await waitFor(() => expect(mock.history.put.some((r) => r.url === "/api/v1/note_app/notes/7/unarchive")).toBe(true));
+    expect(router.back).not.toHaveBeenCalled();
+  });
+});
+
 describe("reminders (Keep's bell; local notifications, Hello 2026-11-13)", () => {
   const resync = jest.fn(async () => undefined);
   // In beforeEach: the file's afterEach restores every spy.

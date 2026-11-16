@@ -3,7 +3,7 @@
  * The drawer (☰), the Edit labels sheet, and a note's Labels sheet (⋮). All
  * read and write the web's store (api/noteTags.ts); nothing local.
  */
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Modal, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
 
@@ -115,14 +115,25 @@ export function EditLabelsSheet({ visible, onClose }: { visible: boolean; onClos
     setDraft("");
     void run(() => createTag.mutateAsync({ name }));
   };
+  const sent = useRef<Record<number, string>>({});
+  const commitRename = (tag: NoteTag) => {
+    const name = (names[tag.id] ?? tag.name).trim();
+    if (!name || name === tag.name || sent.current[tag.id] === name) return;
+    sent.current[tag.id] = name;
+    void run(() => renameTag.mutateAsync({ id: tag.id, name }));
+  };
+  const close = () => {
+    for (const tag of tags) commitRename(tag);
+    onClose();
+  };
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={close}>
       <KeyboardPadding>
         <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" }}>
           <View testID="labels-edit" style={{ backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: metrics.space.lg, gap: metrics.space.sm, maxHeight: "85%" }}>
             <View style={{ flexDirection: "row", alignItems: "center" }}>
               <Text style={{ flex: 1, fontSize: 17, fontWeight: "700" }}>{t("notes.labels.edit")}</Text>
-              <Pressable testID="labels-close" onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("common.close")} style={{ padding: 8 }}>
+              <Pressable testID="labels-close" onPress={close} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("common.close")} style={{ padding: 8 }}>
                 <X size={22} color={colors.ink} />
               </Pressable>
             </View>
@@ -149,10 +160,10 @@ export function EditLabelsSheet({ visible, onClose }: { visible: boolean; onClos
                     testID={`labels-name-${tag.id}`}
                     value={names[tag.id] ?? tag.name}
                     onChangeText={(v) => setNames((n) => ({ ...n, [tag.id]: v }))}
-                    onSubmitEditing={() => {
-                      const name = (names[tag.id] ?? tag.name).trim();
-                      if (name && name !== tag.name) void run(() => renameTag.mutateAsync({ id: tag.id, name }));
-                    }}
+                    // Return, leaving the field or closing the sheet all keep
+                    // the rename (audit P2: without Return it was lost).
+                    onSubmitEditing={() => commitRename(tag)}
+                    onBlur={() => commitRename(tag)}
                     accessibilityLabel={tag.name}
                     style={{ flex: 1, color: colors.ink, fontSize: 16, paddingVertical: 8 }}
                   />

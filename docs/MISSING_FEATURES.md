@@ -36,3 +36,35 @@ Rule: the phone does what the web does, with no invented fields. These Keep feat
   - **Cancel or skip** when the note is archived, trashed or deleted, or the reminder is removed.
   - **Specs first** (request + job, red→green): due → 1 email + 1 notification; repeat re-arms; no duplicate on a second sweep; trashed → nothing.
   - **Mobile:** keep the local notification as the offline fallback, without double notifications. Once the server has delivered, the next sync cancels the local one for that occurrence (or dedupes by occurrence id). The notification row deep-links to the note.
+
+## Next train after rc16 (parity audit 2026-11-16, supervisor's cut)
+rc16 closed every P0, every "on the web" escape hatch and the cheap P2s. What follows is NOT in rc16; numbers are those of the audit (`mm-audit/PARITY_AUDIT_2026-11-16.md`, file:line evidence there).
+
+| Audit # | Where | Missing | Notes for the build |
+|---|---|---|---|
+| 14 | Pages | Sharing with people: invite by email and role, pending invites, public link with expiry, revoke, copy link | Web `ShareDialog.tsx`; server `shares` and `share_links` routes exist. Today only the OS share sheet |
+| 15 | Pages | Edit a space (title, icon, colour, description), share it, zip export, delete | SpaceRow has no menu. The create form from rc16 (`SpaceForm.tsx`) can be reused for edit |
+| 16 | Pages | Rich-text pages are read-only; no "New page" | Same engine and codec as Notes (engine B) |
+| 17 | Pages | File viewer header: star, rename, move, trash, details, share | Web `Lightbox.tsx:126-145` |
+| 18 | Pages | Make a copy / copy to, replace + version history, show location, storage quota, import/export ZIP, link notes | |
+| 21 | Pages | Trash: multi-select bulk restore and delete forever | `TrashView.tsx:110` |
+| 23 | Notes | Sharing and collaborators: invite, role, remove | Web `notes.api.ts:124-166` |
+| 24 | Contacts | Fields: social links, tags, gender, closeness | `src/api/contacts.ts:87-100`, `draft.ts` |
+| 25 | Contacts | Family tree, is_self, gendered roles, step/half/in-law, updateRelation; gendered labels overwritten by neutral ones | `ContactCard.tsx:344` |
+| 28 | SafeZone | Password health tab | `/passwords/health` |
+| 29 | Chats | Search across conversations and inside a thread | Web `Index.tsx:197`, `ThreadSearch.tsx` |
+| 30 | Chats | Group members panel: add, remove, admin | Web `MembersPanel.tsx` |
+| — | Contacts → Chats | "Message" on a contact | Needs a contact ↔ MultiMagic account link server-side: a contact's `user_id` is its owner, nothing links it to an account, and the web has no such action (supervisor, 2026-11-16) |
+| 33 | Assistant | "Clear messages" leaves the transcript cache | `SessionsSheet.tsx:187-195`, device |
+| 34 | Assistant | Memory review card | Web `MemoryReviewCard.tsx` |
+| 35 | Assistant | No `context` is sent | `src/api/ai.ts:356-363` vs web `AiChat.tsx:359` |
+| 38 | Profile | 2FA, devices and sessions, login history, username, birth date, cover photo, AI usage, key lending, MCP/Connect Claude, follow/followers | |
+| 40 | Auth | Google sign-in | If added, Sign in with Apple is mandatory (App Store rule 4.8) |
+| 41 | Home | Todos, Finance, Flow, Tables, Doc have no mobile tile | Owner's scope call |
+| 42 | Everywhere | Remote push, on both sides | |
+| 12 | Auth | In-app password reset (the email link opens the web's reset page) | Needs deep-link handling of the reset token plus a reset form |
+| 39 | Auth | A Terms document to link from the sign-up checkbox | The web has none; the box links the privacy policy only. Owner asked (supervisor, 2026-11-16) |
+| P2 | Pages | Type filter, Select all, tappable folder path, swipe between every file type in the viewer, storage note in the trash, remove the unused ItemSheet | Each over ~30 min |
+| P2 | Notes | Label colour and order, "Linked in Pages", word count, note.tsx copy/restore/delete forever | |
+| P2 | Home | Unread badge on Chats, "Conversations" vs "Chats" naming, closing history leaves you in the assistant, pull-to-refresh | |
+| F1 | Pages, Contacts | The rename dialog needs two taps on Rename right after typing with the keyboard open (rc16 QA, seen with adb typing) | Check on a real phone first |

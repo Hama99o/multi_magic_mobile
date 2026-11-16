@@ -22,6 +22,7 @@ import { KeyboardPadding } from "@/components/KeyboardPadding";
 import { ChevronLeft, Copy, Pin, Share2, Trash2 } from "@/components/icons";
 import TagIcon from "lucide-react-native/dist/esm/icons/tag";
 import ArchiveIcon from "lucide-react-native/dist/esm/icons/archive";
+import ArchiveRestoreIcon from "lucide-react-native/dist/esm/icons/archive-restore";
 import BellIcon from "lucide-react-native/dist/esm/icons/bell";
 import LockIcon from "lucide-react-native/dist/esm/icons/lock";
 import LockOpenIcon from "lucide-react-native/dist/esm/icons/lock-open";
@@ -32,7 +33,7 @@ import { NoteLabelsSheet } from "@/screens/notes/labels";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
 import { canEdit, type Note } from "@/api/notes";
 import {
-  fetchFreshNote, notesKeys, useArchiveNote, useCreateNote, useDuplicateNote, useLockNote, useNote, usePinNote,
+  fetchFreshNote, notesKeys, useArchiveNote, useUnarchiveNote, useCreateNote, useDuplicateNote, useLockNote, useNote, usePinNote,
   useSaveNote, useSetNoteColor, useSetNoteReminder, useTrashNote,
 } from "@/screens/notes/api/queries";
 import { failureMessage } from "@/api/failure";
@@ -97,6 +98,7 @@ export default function NoteEditScreen() {
   const lock = useLockNote();
   const setNoteReminder = useSetNoteReminder();
   const archive = useArchiveNote();
+  const unarchive = useUnarchiveNote();
   const trash = useTrashNote();
   const duplicate = useDuplicateNote();
 
@@ -516,6 +518,12 @@ export default function NoteEditScreen() {
     }).then((ok) => {
       if (ok) router.back();
     });
+  // An archived note goes back to Notes and stays open (audit P2).
+  const unarchiveNote = () =>
+    void act(async () => {
+      await unarchive.mutateAsync({ id: noteId });
+      resync();
+    });
   const pickColor = (key: NoteColorKey | null) => {
     setSheet(null);
     void act(async () => {
@@ -655,7 +663,18 @@ export default function NoteEditScreen() {
           >
             <BellIcon size={20} color={noteReminder ? colors.accent : colors.ink} />
           </Pressable>
-          {note.role === "owner" || note.role === "administrator" ? (
+          {(note.role === "owner" || note.role === "administrator") && note.status === "archived" ? (
+            <Pressable
+              testID="note-edit-unarchive"
+              onPress={unarchiveNote}
+              accessibilityRole="button"
+              accessibilityLabel={t("notes.views.unarchiveAction")}
+              hitSlop={6}
+              style={{ width: 40, height: 44, alignItems: "center", justifyContent: "center" }}
+            >
+              <ArchiveRestoreIcon size={20} color={colors.ink} />
+            </Pressable>
+          ) : note.role === "owner" || note.role === "administrator" ? (
             <Pressable
               testID="note-edit-archive"
               onPress={archiveNote}

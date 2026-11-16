@@ -134,7 +134,7 @@ export default function NotesScreen() {
   const create = async (html: string) => {
     setFailed(false);
     try {
-      const made = await createNote.mutateAsync({ title: "", html });
+      const made = await createNote.mutateAsync({ title: "", html, tagId: view === "notes" ? (label?.id ?? null) : null });
       router.push({ pathname: "/notes/edit", params: { id: String(made.id) } });
     } catch {
       setFailed(true);

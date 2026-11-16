@@ -14,7 +14,8 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
-import { ChevronLeft, Eye, EyeOff, Wand } from "@/components/icons";
+import { ChevronLeft, Eye, EyeOff, Wand, X } from "@/components/icons";
+import { DateWheels } from "@/screens/calendar/pickers";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
@@ -224,6 +225,8 @@ function FieldInput({
     );
   }
 
+  if (field.date) return <DateField field={field} value={value} label={label} error={error} onChange={onChange} />;
+
   const hidden = Boolean(field.secret) && !shown;
   return (
     <View style={{ gap: metrics.space.xs }}>
@@ -236,13 +239,14 @@ function FieldInput({
           testID={`safezone-form-field-${field.key}`}
           value={value}
           onChangeText={onChange}
-          placeholder={field.placeholder}
+          // The card's expiry, as the web's drawer asks for it, in the reader's language.
+          placeholder={field.key === "expiry_date" ? t("safezone.form.expiryPlaceholder") : undefined}
           placeholderTextColor={colors.inkMuted}
           secureTextEntry={field.secret ? hidden : undefined}
           maxLength={field.maxLength}
           multiline={field.multiline}
           keyboardType={field.keyboard ?? "default"}
-          autoCapitalize={field.keyboard || field.secret || field.date ? "none" : "sentences"}
+          autoCapitalize={field.keyboard || field.secret ? "none" : "sentences"}
           autoCorrect={!field.secret && !field.keyboard}
           // No keyboard learning, no autofill suggestions for a secret.
           autoComplete={field.secret ? "off" : undefined}
@@ -261,6 +265,70 @@ function FieldInput({
           </Pressable>
         ) : null}
       </View>
+      {error ? (
+        <Text testID={`safezone-form-error-${field.key}`} tone="danger" variant="caption" accessibilityLiveRegion="polite">
+          {error}
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+const today = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
+
+/**
+ * An identity's date on the Calendar's date wheels (`DateWheels`, as the
+ * contact's birthday), not typed as YYYY-MM-DD (audit 2026-11-16, P2). Empty
+ * until tapped; a tap opens the wheels on today; × clears it.
+ */
+function DateField({ field, value, label, error, onChange }: { field: FormField; value: string; label: string; error?: string; onChange: (v: string) => void }) {
+  const colors = useColors();
+  const metrics = useMetrics();
+  const { t, i18n } = useTranslation();
+  const [open, setOpen] = useState(false);
+  const valid = /^\d{4}-\d{2}-\d{2}$/.test(value);
+  const shownDate = valid ? new Date(`${value}T12:00:00`).toLocaleDateString(i18n.language, { day: "numeric", month: "long", year: "numeric" }) : value;
+  const maxYear = new Date().getFullYear() + (field.futureYears ?? 0);
+  return (
+    <View style={{ gap: metrics.space.xs }}>
+      <Text variant="label">{label}</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", borderWidth: 1, borderColor: error ? colors.danger : colors.border, borderRadius: metrics.radius.md, backgroundColor: colors.surface, paddingLeft: metrics.space.md }}>
+        <Pressable
+          testID={`safezone-form-date-${field.key}`}
+          onPress={() => {
+            if (!valid) onChange(today());
+            setOpen((o) => !o || !valid);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={value ? `${label}: ${shownDate}` : t("safezone.form.pickDate", { field: label })}
+          accessibilityState={{ expanded: open }}
+          style={{ flex: 1, minHeight: 48, justifyContent: "center" }}
+        >
+          <Text tone={value ? "default" : "accent"}>{value ? shownDate : t("safezone.form.pickDate", { field: label })}</Text>
+        </Pressable>
+        {value ? (
+          <Pressable
+            testID={`safezone-form-date-${field.key}-clear`}
+            onPress={() => {
+              setOpen(false);
+              onChange("");
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t("safezone.form.clearDate", { field: label })}
+            style={{ width: 44, height: 48, alignItems: "center", justifyContent: "center" }}
+          >
+            <X size={18} color={colors.inkMuted} />
+          </Pressable>
+        ) : null}
+      </View>
+      {open && valid ? (
+        <View style={{ paddingVertical: metrics.space.sm }}>
+          <DateWheels testID={`safezone-form-wheels-${field.key}`} value={value} onChange={onChange} label={label} maxYear={maxYear} />
+        </View>
+      ) : null}
       {error ? (
         <Text testID={`safezone-form-error-${field.key}`} tone="danger" variant="caption" accessibilityLiveRegion="polite">
           {error}

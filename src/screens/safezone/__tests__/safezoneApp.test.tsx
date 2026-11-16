@@ -601,6 +601,86 @@ describe("delete an item", () => {
   });
 });
 
+// Audit 2026-11-16, SafeZone P2 polish.
+describe("polish (audit P2)", () => {
+  const HIDDEN_ROWS = { includeHiddenElements: true };
+  const identity = { id: 31, type: "passport", document_number: "P1234567", issued_at: "2020-03-04", expires_at: "2030-03-03", updated_at: "2026-11-08T10:00:00Z" };
+  const openItem = async (kind: string, id: string) => {
+    useSafezoneLock.getState().unlocked({ token: "tok", expiresIn: 120 });
+    mockParams.current = { kind, id };
+    mock.onGet(`${BASE}/passwords/11`).reply(200, password);
+    mock.onGet(`${BASE}/payment_cards/21`).reply(200, card);
+    mock.onGet(`${BASE}/identities/31`).reply(200, identity);
+    mock.onGet(`${BASE}/identities/32`).reply(200, { ...identity, id: 32, type: null });
+    renderScreen(<SafeZoneItem />);
+    await screen.findByTestId("safezone-item-title");
+  };
+
+  it("the vault list refreshes on a pull", async () => {
+    await unlockVault();
+    const before = mock.history.get.filter((r) => r.url === `${BASE}/passwords`).length;
+    const list = screen.getByTestId("safezone-list");
+    expect(list.props.refreshControl).toBeTruthy();
+    await act(async () => list.props.refreshControl.props.onRefresh());
+    await waitFor(() => expect(mock.history.get.filter((r) => r.url === `${BASE}/passwords`).length).toBe(before + 1));
+  });
+
+  it("copying a choice copies the words on screen, not the server's value", async () => {
+    await openItem("payment_cards", "21");
+    fireEvent.press(screen.getByTestId("safezone-field-card_type-copy"));
+    await waitFor(() => expect(clip.__board.text).toBe("Credit card"));
+  });
+
+  it("an identity without a type is Untitled, never a raw key", async () => {
+    await openItem("identities", "32");
+    expect(screen.getByTestId("safezone-item-title")).toHaveTextContent("Untitled");
+    expect(screen.queryByText(/safezone\./)).toBeNull();
+  });
+
+  it("the item says when it was last updated", async () => {
+    await openItem("passwords", "11");
+    expect(screen.getByTestId("safezone-item-updated")).toHaveTextContent(/Updated .*2026/);
+  });
+
+  it("the card's expiry placeholder is translated", async () => {
+    await i18n.changeLanguage("fr");
+    useSafezoneLock.getState().unlocked({ token: "tok", expiresIn: 120 });
+    mockParams.current = { kind: "payment_cards" };
+    renderScreen(<SafeZoneEdit />);
+    await screen.findByTestId("safezone-form");
+    expect(screen.getByTestId("safezone-form-field-expiry_date").props.placeholder).toBe("MM/AA");
+  });
+
+  it("an identity's dates are picked on the Calendar's wheels, not typed", async () => {
+    mock.onPost(`${BASE}/identities`).reply(201, { ...identity, id: 41 });
+    useSafezoneLock.getState().unlocked({ token: "tok", expiresIn: 120 });
+    mockParams.current = { kind: "identities" };
+    renderScreen(<SafeZoneEdit />);
+    await screen.findByTestId("safezone-form");
+    expect(screen.queryByTestId("safezone-form-field-issued_at")).toBeNull();
+    fireEvent.press(screen.getByTestId("safezone-form-date-issued_at"));
+    expect(screen.getByTestId("safezone-form-wheels-issued_at")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("safezone-form-wheels-issued_at-year-2020", HIDDEN_ROWS));
+    fireEvent.changeText(screen.getByTestId("safezone-form-field-document_number"), "X1");
+    fireEvent.press(screen.getByTestId("safezone-form-save"));
+    await waitFor(() => expect(mock.history.post.some((r) => r.url === `${BASE}/identities`)).toBe(true));
+    const body = JSON.parse(mock.history.post.find((r) => r.url === `${BASE}/identities`)!.data as string);
+    expect(body.identity.issued_at).toMatch(/^2020-\d{2}-\d{2}$/);
+    expect(body.identity.expires_at).toBe("");
+  });
+
+  it("a picked date can be cleared", async () => {
+    useSafezoneLock.getState().unlocked({ token: "tok", expiresIn: 120 });
+    mockParams.current = { kind: "identities", id: "31" };
+    mock.onGet(`${BASE}/identities/31`).reply(200, identity);
+    renderScreen(<SafeZoneEdit />);
+    await screen.findByTestId("safezone-form");
+    expect(screen.getByTestId("safezone-form-date-expires_at")).toHaveTextContent(/2030/);
+    fireEvent.press(screen.getByTestId("safezone-form-date-expires_at-clear"));
+    expect(screen.queryByTestId("safezone-form-date-expires_at-clear")).toBeNull();
+  });
+});
+
 it("French: the pad and the vault speak French", async () => {
   await i18n.changeLanguage("fr");
   mock.onGet(`${BASE}/pin`).reply(200, status());

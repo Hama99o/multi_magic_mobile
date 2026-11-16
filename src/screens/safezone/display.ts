@@ -3,6 +3,7 @@
  * tested without a renderer.
  */
 import type { SafeZoneItem, SafeZoneRow } from "@/api/safezone";
+import { CARD_TYPES, IDENTITY_TYPES } from "./forms";
 
 export const MASK = "••••••••";
 
@@ -21,6 +22,17 @@ export function isExpired(expiresAt: string | null, now: Date = new Date()): boo
 export function rowSubtitle(row: SafeZoneRow): string {
   if (row.kind === "passwords") return row.username || row.email || row.link || "";
   return maskedTail(row.last4);
+}
+
+/**
+ * A choice's words: the server's enum, translated; a value this phone does not
+ * know (a newer server) as it is, and nothing as "" — never a raw i18n key
+ * (audit 2026-11-16: an identity with no type showed `safezone.identityTypes.`).
+ */
+export function choiceLabel(key: "card_type" | "type", value: string | null, t: (key: string) => string): string {
+  if (!value) return "";
+  if (key === "card_type") return (CARD_TYPES as readonly string[]).includes(value) ? t(`safezone.cardTypes.${value}`) : value;
+  return (IDENTITY_TYPES as readonly string[]).includes(value) ? t(`safezone.identityTypes.${value}`) : value;
 }
 
 /** A site address the browser can open. */

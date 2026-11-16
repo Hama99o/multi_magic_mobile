@@ -22,11 +22,12 @@ export interface FormField {
   multiline?: boolean;
   maxLength?: number;
   keyboard?: "default" | "email-address" | "number-pad" | "url";
-  placeholder?: string;
   /** A choice among the server's values (rendered as chips). */
   options?: readonly string[];
-  /** YYYY-MM-DD (the web's <input type="date">). */
+  /** YYYY-MM-DD (the web's <input type="date">), picked on the Calendar's date wheels. */
   date?: boolean;
+  /** How far ahead the wheels' years go: an expiry is in the future, an issue date is not. */
+  futureYears?: number;
   mono?: boolean;
 }
 
@@ -47,15 +48,15 @@ export const FORM_FIELDS: Record<SafeZoneKind, readonly FormField[]> = {
     { key: "card_type", options: CARD_TYPES },
     { key: "card_number", maxLength: 19, keyboard: "number-pad", secret: true, mono: true },
     { key: "cvv", maxLength: 4, keyboard: "number-pad", secret: true, mono: true },
-    { key: "expiry_date", placeholder: "MM/YY" },
+    { key: "expiry_date" },
     { key: "code", secret: true },
     { key: "note", multiline: true },
   ],
   identities: [
     { key: "type", options: IDENTITY_TYPES },
     { key: "document_number", required: true, secret: true, mono: true },
-    { key: "issued_at", date: true, placeholder: "YYYY-MM-DD" },
-    { key: "expires_at", date: true, placeholder: "YYYY-MM-DD" },
+    { key: "issued_at", date: true },
+    { key: "expires_at", date: true, futureYears: 30 },
     { key: "note", multiline: true },
   ],
 };

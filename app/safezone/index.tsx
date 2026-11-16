@@ -4,7 +4,7 @@
  * holds no secret (`SECURITY.md` §0). Leaving this screen locks the vault.
  */
 import { useEffect, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery } from "@tanstack/react-query";
@@ -16,7 +16,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { SAFEZONE_KINDS, safezoneApi, safezoneKeys, type SafeZoneKind, type SafeZoneRow } from "@/api/safezone";
 import { useSafezoneLock } from "@/stores/safezoneLock.store";
 import { SafeZoneGate } from "@/screens/safezone/SafeZoneGate";
-import { isExpired, rowSubtitle } from "@/screens/safezone/display";
+import { choiceLabel, isExpired, rowSubtitle } from "@/screens/safezone/display";
 import { KIND_ICONS, Tile } from "@/screens/safezone/Tile";
 import { APP_COLORS } from "@/theme/appColors";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -166,6 +166,8 @@ function Vault() {
         ListEmptyComponent={list.data ? <EmptyState kind={kind} searching={Boolean(search)} /> : null}
         ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator /> : null}
         renderItem={({ item, index }) => <Row row={item} index={index} />}
+        // Pull to refresh, as every other list in the app (audit P2).
+        refreshControl={<RefreshControl refreshing={list.isRefetching && !list.isFetchingNextPage} onRefresh={() => void list.refetch()} tintColor={colors.inkMuted} />}
         contentContainerStyle={{ paddingBottom: 96, gap: metrics.space.sm }}
       />
       {/* Add (owner, 2026-11-15: "everything doable on mobile"): the kind on screen. */}
@@ -185,7 +187,7 @@ function Vault() {
 function rowTitle(row: SafeZoneRow, t: (key: string) => string): string {
   if (row.kind === "passwords") return row.title || row.link || t("safezone.noTitle");
   if (row.kind === "payment_cards") return row.name || t("safezone.noTitle");
-  return row.type ? t(`safezone.identityTypes.${row.type}`) : t("safezone.noTitle");
+  return choiceLabel("type", row.type, t) || t("safezone.noTitle");
 }
 
 function EmptyState({ kind, searching }: { kind: SafeZoneKind; searching: boolean }) {

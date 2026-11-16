@@ -23,7 +23,7 @@ import { failureMessage } from "@/api/failure";
 import { useSafezoneLock } from "@/stores/safezoneLock.store";
 import { SafeZoneGate } from "@/screens/safezone/SafeZoneGate";
 import { clipboardGuard } from "@/screens/safezone/clipboardGuard";
-import { MASK, siteUrl, withoutSecrets } from "@/screens/safezone/display";
+import { MASK, choiceLabel, siteUrl, withoutSecrets } from "@/screens/safezone/display";
 import { createRevealer, REVEAL_MS } from "@/screens/safezone/reveal";
 import { Tile } from "@/screens/safezone/Tile";
 import { Toast } from "@/screens/safezone/Toast";
@@ -94,7 +94,7 @@ function token(): string {
 function Item() {
   const colors = useColors();
   const metrics = useMetrics();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const params = useParams();
   const lockEpoch = useSafezoneLock((s) => s.lockEpoch);
   const [item, setItem] = useState<SafeZoneItem | null>(null);
@@ -164,7 +164,8 @@ function Item() {
     setBusyKey(field.key);
     try {
       if (field.secret) await clipboardGuard.copy(revealed?.key === field.key ? revealed.value : await fetchSecret(field.key));
-      else await Clipboard.setStringAsync(field.value);
+      // The words on screen: "Credit card", not the server's `credit_card`.
+      else await Clipboard.setStringAsync(shown(field, params?.kind ?? "passwords", t, i18n.language));
       setCopied(field.key);
       setTimeout(() => setCopied((k) => (k === field.key ? null : k)), COPIED_MS);
       // The answer to a copy (Mobbin: 1Password): a success haptic and a toast.
@@ -217,7 +218,8 @@ function Item() {
   }
   if (!item) return <ActivityIndicator testID="safezone-item-loading" style={{ marginTop: metrics.space.xl }} />;
 
-  const title = item.kind === "identities" ? t(`safezone.identityTypes.${item.title}`) : item.title || t("safezone.noTitle");
+  const title = (item.kind === "identities" ? choiceLabel("type", item.title, t) : item.title) || t("safezone.noTitle");
+  const updated = item.updatedAt ? new Date(item.updatedAt) : null;
   const site = item.fields.find((f) => f.key === "link")?.value || item.title || "";
   const who = item.fields.find((f) => !f.secret && (f.key === "username" || f.key === "email"))?.value ?? "";
   return (
@@ -232,6 +234,11 @@ function Item() {
           {who ? (
             <Text tone="muted" numberOfLines={1}>
               {who}
+            </Text>
+          ) : null}
+          {updated && !Number.isNaN(updated.getTime()) ? (
+            <Text testID="safezone-item-updated" tone="muted" variant="caption" numberOfLines={1}>
+              {t("safezone.updated", { date: updated.toLocaleDateString(i18n.language, { day: "numeric", month: "short", year: "numeric" }) })}
             </Text>
           ) : null}
         </View>
@@ -287,8 +294,8 @@ function DeleteButton({ busy, onPress }: { busy: boolean; onPress: () => void })
 }
 
 function shown(field: SecretField, kind: SafeZoneKind, t: (key: string) => string, lang: string): string {
-  if (field.key === "card_type") return t(`safezone.cardTypes.${field.value}`);
-  if (field.key === "type" && kind === "identities") return t(`safezone.identityTypes.${field.value}`);
+  if (field.key === "card_type") return choiceLabel("card_type", field.value, t);
+  if (field.key === "type" && kind === "identities") return choiceLabel("type", field.value, t);
   if (/^\d{4}-\d{2}-\d{2}/.test(field.value) && (field.key === "issued_at" || field.key === "expires_at")) {
     const d = new Date(`${field.value.slice(0, 10)}T12:00:00`);
     return Number.isNaN(d.getTime()) ? field.value : d.toLocaleDateString(lang);

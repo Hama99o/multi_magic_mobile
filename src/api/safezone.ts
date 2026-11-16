@@ -94,6 +94,8 @@ export interface SafeZoneItem {
   id: number;
   title: string;
   fields: SecretField[];
+  /** The server's `updated_at`, for "Updated …" on the item. */
+  updatedAt?: string | null;
 }
 
 export interface PinStatus {
@@ -265,7 +267,7 @@ function toItem(kind: SafeZoneKind, raw: unknown): SafeZoneItem {
     if (key === "link") field.link = true;
     fields.push(field);
   }
-  return { kind, id: id(r.id, `${kind}.id`), title: optStr(r[TITLE[kind]]) ?? "", fields };
+  return { kind, id: id(r.id, `${kind}.id`), title: optStr(r[TITLE[kind]]) ?? "", fields, updatedAt: optStr(r.updated_at) };
 }
 
 // ── the calls ────────────────────────────────────────────────────────────

@@ -155,6 +155,23 @@ describe("starting a conversation", () => {
     expect(router.push).not.toHaveBeenCalled();
   });
 
+  // QA rc16 on the device (2026-11-16): after picking a person, Start sat
+  // under the keyboard (the search field keeps it up), so the tap landed on
+  // the keyboard. The sheet rises with the keyboard, as the labels sheet does.
+  it("Start rises above the keyboard: the sheet is inside KeyboardPadding", async () => {
+    const { KeyboardPadding } = jest.requireActual("@/components/KeyboardPadding");
+    jest.spyOn(conversationsApi, "list").mockResolvedValue(empty);
+    renderScreen();
+    fireEvent.press(await screen.findByTestId("chats-empty-start"));
+    const sheet = await screen.findByTestId("new-conversation-sheet");
+    type Node = { type: unknown; parent: Node | null };
+    let inside = false;
+    for (let node = sheet as unknown as Node | null; node; node = node.parent) {
+      if (node.type === KeyboardPadding) inside = true;
+    }
+    expect(inside).toBe(true);
+  });
+
   it("searches as you type", async () => {
     jest.spyOn(conversationsApi, "list").mockResolvedValue(empty);
     renderScreen();

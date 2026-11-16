@@ -14,6 +14,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Modal, Pressable, TextInput, View } from "react-native";
+import { KeyboardPadding } from "@/components/KeyboardPadding";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -134,6 +135,9 @@ export function NewConversationSheet({
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      {/* The search field keeps the keyboard up: the sheet rises with it so
+          Start stays reachable (QA rc16 on the device, 2026-11-16). */}
+      <KeyboardPadding>
       <View style={{ flex: 1, justifyContent: "flex-end" }}>
         {/* The scrim is a sibling, not a parent (docs/ACCESSIBILITY.md N1). */}
         <Pressable
@@ -313,6 +317,7 @@ export function NewConversationSheet({
           />
         </View>
       </View>
+      </KeyboardPadding>
     </Modal>
   );
 }

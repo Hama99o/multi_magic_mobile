@@ -1,3 +1,6 @@
+import { financeEn } from "./finance/en";
+import { loansEn } from "./finance/loans.en";
+import { manageEn } from "./finance/manage.en";
 /**
  * The English strings. The source language: `fallbackLng` is `en`, so a key
  * missing from `fr.ts` renders these words rather than the key itself.
@@ -1383,6 +1386,7 @@ export const en = {
     intervalLess: "Less often",
     intervalMore: "More apart",
   },
+  finance: { ...financeEn, loans: loansEn, manage: manageEn },
   richText: {
     done: "Done",
     placeholder: "Write something",

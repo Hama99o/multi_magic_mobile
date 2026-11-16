@@ -119,6 +119,14 @@ import CalendarRangeIcon from "lucide-react-native/dist/esm/icons/calendar-range
 
 import CalendarIcon from "lucide-react-native/dist/esm/icons/calendar";
 import MinusIcon from "lucide-react-native/dist/esm/icons/minus";
+import TagIcon from "lucide-react-native/dist/esm/icons/tag";
+import HandCoinsIcon from "lucide-react-native/dist/esm/icons/hand-coins";
+import ArrowUpRightIcon from "lucide-react-native/dist/esm/icons/arrow-up-right";
+import ArrowDownLeftIcon from "lucide-react-native/dist/esm/icons/arrow-down-left";
+import PiggyBankIcon from "lucide-react-native/dist/esm/icons/piggy-bank";
+import ReceiptIcon from "lucide-react-native/dist/esm/icons/receipt";
+import BanknoteIcon from "lucide-react-native/dist/esm/icons/banknote";
+import CircleHelpIcon from "lucide-react-native/dist/esm/icons/circle-help";
 export type { LucideIcon };
 export const ArrowUp: LucideIcon = ArrowUpIcon;
 export const Bell: LucideIcon = BellIcon;
@@ -223,3 +231,11 @@ export const CircleAlert: LucideIcon = CircleAlertIcon;
 export const CalendarRange: LucideIcon = CalendarRangeIcon;
 export const Calendar: LucideIcon = CalendarIcon;
 export const Minus: LucideIcon = MinusIcon;
+export const Tag: LucideIcon = TagIcon;
+export const HandCoins: LucideIcon = HandCoinsIcon;
+export const ArrowUpRight: LucideIcon = ArrowUpRightIcon;
+export const ArrowDownLeft: LucideIcon = ArrowDownLeftIcon;
+export const PiggyBank: LucideIcon = PiggyBankIcon;
+export const Receipt: LucideIcon = ReceiptIcon;
+export const Banknote: LucideIcon = BanknoteIcon;
+export const CircleHelp: LucideIcon = CircleHelpIcon;

@@ -133,3 +133,32 @@ export const todoKeys = {
   /** Tasks matching a search term. */
   taskSearch: <Q extends string>(term: Q) => ["todos", "taskSearch", term] as const,
 };
+
+/**
+ * Finance. Nearly every write moves several numbers at once (a new expense
+ * changes its list, the month's totals, the charts and the budgets), so a
+ * write settles by invalidating `all`; the optimistic part names the lists
+ * it edits by their prefixes.
+ */
+export const financeKeys = {
+  all: ["finance"] as const,
+  expenseLists: () => ["finance", "expenses"] as const,
+  expenses: <Q extends string, T extends number | null, Y extends number, M extends number, O extends boolean>(search: Q, tagId: T, year: Y, month: M, oneTime: O) =>
+    ["finance", "expenses", search, tagId, year, month, oneTime] as const,
+  incomeLists: () => ["finance", "incomes"] as const,
+  incomes: <Q extends string, T extends number | null, Y extends number, M extends number>(search: Q, tagId: T, year: Y, month: M) => ["finance", "incomes", search, tagId, year, month] as const,
+  pendingIncomes: () => ["finance", "pendingIncomes"] as const,
+  loanLists: () => ["finance", "loans"] as const,
+  loans: <P extends boolean, L extends string, Q extends string, T extends number | null>(paid: P, type: L, search: Q, tagId: T) => ["finance", "loans", paid, type, search, tagId] as const,
+  loan: <I extends number>(loanId: I) => ["finance", "loan", loanId] as const,
+  outstanding: () => ["finance", "outstanding"] as const,
+  budgets: () => ["finance", "budgets"] as const,
+  recurring: <K extends "expense" | "income">(kind: K) => ["finance", "recurring", kind] as const,
+  tags: () => ["finance", "tags"] as const,
+  byCategory: <Y extends number, M extends number>(year: Y, month: M) => ["finance", "byCategory", year, month] as const,
+  bySubcategory: <T extends number, Y extends number, M extends number>(tagId: T, year: Y, month: M) => ["finance", "bySubcategory", tagId, year, month] as const,
+  overTime: <K extends string, C extends string>(kind: K, currency: C) => ["finance", "overTime", kind, currency] as const,
+  summary: <Y extends number, M extends number>(year: Y, month: M) => ["finance", "summary", year, month] as const,
+  cashFlow: <C extends string>(currency: C) => ["finance", "cashFlow", currency] as const,
+  trash: <K extends "expenses" | "incomes" | "loans">(kind: K) => ["finance", "trash", kind] as const,
+};

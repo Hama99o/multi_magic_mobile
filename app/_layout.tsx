@@ -198,6 +198,9 @@ export default function RootLayout() {
           <Stack.Screen name="calendar/edit" options={{ presentation: "modal" }} />
           <Stack.Screen name="contacts/edit" options={{ presentation: "modal" }} />
           <Stack.Screen name="todos/template" options={{ presentation: "modal" }} />
+          <Stack.Screen name="finance/entry" options={{ presentation: "modal" }} />
+          <Stack.Screen name="finance/loan-edit" options={{ presentation: "modal" }} />
+          <Stack.Screen name="finance/recurring-edit" options={{ presentation: "modal" }} />
         </Stack>
         </OfflineBanner>
         {opening ? <OpeningAnimation ground={TOKENS[scheme].ground} onDone={endOpening} /> : null}

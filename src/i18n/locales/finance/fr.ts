@@ -1,0 +1,32 @@
+/** Finance, en français. Mirrors `en.ts` key for key. */
+export const financeFr = {
+  title: "Finances",
+  done: "OK",
+  clearSearch: "Effacer la recherche",
+  more: "Plus",
+  menu: { recurring: "Récurrents", categories: "Catégories", reports: "Rapports et export", trash: "Corbeille", help: "Aide" },
+  help: {
+    title: "Comment marchent les Finances",
+    overview: { title: "Aperçu", body: "Le mois ou l’année d’un coup d’œil : dépensé, reçu, ce qui reste, ce qu’on vous doit et ce que vous devez." },
+    expenses: { title: "Dépenses", body: "Tout ce que vous dépensez, jour par jour. Cherchez, filtrez par catégorie, et glissez une ligne pour la supprimer (Annuler la fait revenir)." },
+    recurring: { title: "Récurrents", body: "Loyer, abonnements, salaire : réglez-les une fois et ils s’ajoutent le bon jour, à chaque fois." },
+    income: { title: "Revenus", body: "Ce qui rentre. Un revenu attendu reste dans À confirmer jusqu’à ce que vous le confirmiez ou l’écartiez." },
+    loans: { title: "Prêts", body: "L’argent prêté et l’argent emprunté, avec chaque remboursement, jusqu’au bout." },
+    budgets: { title: "Budgets", body: "Une limite par mois ou par an, globale ou pour une catégorie. La barre devient orange à 80 % et rouge au-delà." },
+    reports: { title: "Rapports", body: "Les totaux de n’importe quel mois ou année, les dépenses par catégorie, et l’export en CSV, Excel ou PDF." },
+    categories: { title: "Catégories", body: "Les catégories et leurs sous-catégories. En supprimer une retire ses sous-catégories et ses budgets." },
+    currencies: { title: "Plusieurs devises", body: "Chaque entrée garde sa devise. Les totaux sont montrés par devise et jamais additionnés." },
+  },
+  tabs: { overview: "Aperçu", expenses: "Dépenses", income: "Revenus", loans: "Prêts", budgets: "Budgets" },
+  period: { previous: "Précédent", next: "Suivant", showYear: "Voir l’année entière", showMonth: "Voir un mois", year: "Année", month: "Mois" },
+  day: { today: "Aujourd’hui", yesterday: "Hier", pick: "Choisir un jour" },
+  entry: { deleteDigit: "Effacer un chiffre", decimal: "Virgule", currency: "Devise : {{code}}. Touchez pour changer" },
+  tags: {
+    pick: "Catégories et étiquettes",
+    pickOne: "Catégorie",
+    search: "Chercher ou créer une catégorie",
+    none: "Sans catégorie",
+    create: "Créer « {{name}} »",
+    empty: "Pas encore de catégorie. Tapez un nom pour en créer une.",
+  },
+};

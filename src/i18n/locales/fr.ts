@@ -1,3 +1,6 @@
+import { financeFr } from "./finance/fr";
+import { loansFr } from "./finance/loans.fr";
+import { manageFr } from "./finance/manage.fr";
 /**
  * The French strings.
  *
@@ -1399,6 +1402,7 @@ export const fr: Translations = {
     intervalLess: "Plus souvent",
     intervalMore: "Plus espacé",
   },
+  finance: { ...financeFr, loans: loansFr, manage: manageFr },
   richText: {
     done: "OK",
     placeholder: "Écrivez quelque chose",

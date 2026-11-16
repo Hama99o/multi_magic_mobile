@@ -131,8 +131,23 @@ const COMPOSED = [
   // and t(`contacts.labels.${label}`) over a phone/email label — ours, plus
   // the vCard TYPEs the server's reader keeps (`VcardReader::TYPE_LABELS`).
   ...["call", "whatsapp", "sms", "email"].map((v) => `contacts.choose.${v}`),
-  ...["parent", "child", "spouse", "sibling", "friend", "colleague", "neighbour", "other"].map((v) => `contacts.family.kinds.${v}`),
-  ...["mobile", "home", "work", "other", "main", "fax"].map((v) => `contacts.labels.${v}`),
+  // The social kinds only: family ties are worded by `family.ts`, as
+  // t(`contacts.family.words.${kind}.${qualifier}.${gender}`) over the table
+  // it allows, and t(`contacts.family.qualifiers.${q}`).
+  ...["friend", "colleague", "neighbour", "other"].map((v) => `contacts.family.kinds.${v}`),
+  ...[
+    ...["biological", "step", "adoptive"].flatMap((q) => [`parent.${q}`, `child.${q}`]),
+    ...["biological", "step", "half", "adoptive"].map((q) => `sibling.${q}`),
+    "spouse.biological",
+  ].flatMap((w) => ["male", "female", "neutral"].map((g) => `contacts.family.words.${w}.${g}`)),
+  ...["biological", "step", "half", "adoptive"].map((v) => `contacts.family.qualifiers.${v}`),
+  // The web drawer's enums (`ContactApp::Family`): t(`contacts.genders.${g}`),
+  // t(`contacts.closenessLevels.${c}`).
+  ...["unknown", "male", "female", "other"].map((v) => `contacts.genders.${v}`),
+  ...["unset", "close", "regular", "distant", "estranged"].map((v) => `contacts.closenessLevels.${v}`),
+  // The tree's rows by generation (`app/contacts/family.tsx`).
+  ...["greatGrandparents", "grandparents", "parents", "same", "children", "grandchildren", "greatGrandchildren"].map((v) => `contacts.tree.rows.${v}`),
+  ...["mobile", "home", "work", "other", "main", "fax", "linkedin", "twitter", "instagram", "facebook", "github", "website"].map((v) => `contacts.labels.${v}`),
   // SafeZone: t(`safezone.tabs|empty|emptyTitle.${kind}`) over `SAFEZONE_KINDS`,
   // t(`safezone.field.${key}`) over `ITEM_FIELDS` (`api/safezone.ts`), and the
   // server's enums `SafezoneApp::Identity::TYPES`, `PaymentCard.card_types`.

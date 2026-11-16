@@ -5,7 +5,7 @@
  * save (`contact_params`), so the payload always carries every list — an
  * empty one clears it — and never a partial one.
  */
-import type { Address, Contact, ContactPayload, LabelledValue } from "@/api/contacts";
+import { SOCIAL_LABELS, type Address, type Closeness, type Contact, type ContactPayload, type Gender, type LabelledValue } from "@/api/contacts";
 
 export interface Draft {
   firstname: string;
@@ -20,9 +20,15 @@ export interface Draft {
   phones: LabelledValue[];
   emails: LabelledValue[];
   addresses: Address[];
+  /** The web drawer's "Social links": `[{label, value}]`, replaced whole. */
+  socialLinks: LabelledValue[];
+  /** Free words, no shared list on the server (`tags: []`, jsonb). */
+  tags: string[];
+  gender: Gender;
+  closeness: Closeness;
 }
 
-type ListKey = "phones" | "emails";
+type ListKey = "phones" | "emails" | "socialLinks";
 
 export function emptyAddress(): Address {
   return { label: "home", street: "", city: "", state: "", postal: "", country: "" };
@@ -35,6 +41,10 @@ export function emptyDraft(): Draft {
     phones: [{ label: "mobile", value: "" }],
     emails: [{ label: "home", value: "" }],
     addresses: [],
+    socialLinks: [],
+    tags: [],
+    gender: "unknown",
+    closeness: "unset",
   };
 }
 
@@ -46,11 +56,19 @@ export function draftFrom(c: Contact): Draft {
     phones: c.phones.length ? c.phones.map((p) => ({ ...p })) : [{ label: "mobile", value: "" }],
     emails: c.emails.length ? c.emails.map((e) => ({ ...e })) : [{ label: "home", value: "" }],
     addresses: c.addresses.map((a) => ({ ...a })),
+    socialLinks: c.socialLinks.map((l) => ({ ...l })),
+    tags: [...c.tags],
+    gender: c.gender,
+    closeness: c.closeness,
   };
 }
 
 /** The next label people usually want: a second phone is home, a second email work. */
-const NEXT_LABEL: Record<ListKey, string[]> = { phones: ["mobile", "home", "work", "other"], emails: ["home", "work", "other"] };
+const NEXT_LABEL: Record<ListKey, readonly string[]> = {
+  phones: ["mobile", "home", "work", "other"],
+  emails: ["home", "work", "other"],
+  socialLinks: SOCIAL_LABELS,
+};
 
 export function addEntry(d: Draft, key: ListKey): Draft {
   const used = new Set(d[key].map((e) => e.label));
@@ -64,6 +82,16 @@ export function setEntry(d: Draft, key: ListKey, index: number, patch: Partial<L
 
 export function removeEntry(d: Draft, key: ListKey, index: number): Draft {
   return { ...d, [key]: d[key].filter((_, i) => i !== index) };
+}
+
+/** The web's `addTag`: trimmed, once. */
+export function addTag(d: Draft, tag: string): Draft {
+  const v = tag.trim();
+  return v && !d.tags.includes(v) ? { ...d, tags: [...d.tags, v] } : d;
+}
+
+export function removeTag(d: Draft, tag: string): Draft {
+  return { ...d, tags: d.tags.filter((x) => x !== tag) };
 }
 
 export function setAddress(d: Draft, index: number, patch: Partial<Address>): Draft {
@@ -105,6 +133,10 @@ export function toPayload(d: Draft): ContactPayload {
     addresses: d.addresses
       .filter(addressFilled)
       .map((a) => ({ label: a.label, street: a.street.trim(), city: a.city.trim(), state: a.state.trim(), postal: a.postal.trim(), country: a.country.trim() })),
+    social_links: filled(d.socialLinks),
+    tags: d.tags,
+    gender: d.gender,
+    closeness: d.closeness,
   };
 }
 

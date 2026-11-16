@@ -330,17 +330,166 @@ describe("one contact", () => {
     expect(useContactsUndo.getState().trashed).toMatchObject({ id: 7, name: "Jamil Safi" });
   });
 
-  it("links a family member: a role, then a person from the book", async () => {
+  // Audit #25, web AddFamilyMemberModal: a gendered role, a kind of tie, then
+  // someone from the book. A role says a gender the card did not know.
+  it("links a family member: a role, a kind of tie, then a person from the book", async () => {
     mock.onGet(`${BASE}/7`).reply(200, { contact: contact() });
-    mock.onGet(BASE).reply(200, page([contact(), contact({ id: 8, firstname: "Anisa", lastname: "Safi" })]));
+    mock.onGet(BASE).reply(200, page([contact(), contact({ id: 8, firstname: "Anisa", lastname: "Safi", gender: "unknown" })]));
     mock.onPost(`${BASE}/7/relations`).reply(201, { relations: [] });
+    mock.onPut(`${BASE}/8`).reply(200, { contact: contact({ id: 8, gender: "female" }) });
     // Opened straight from a link (no list screen below it): the book is
     // read when "Add" is tapped, not borrowed from a cache that may be empty.
     renderScreen(<ContactDetail />);
     fireEvent.press(await screen.findByTestId("contact-family-add"));
-    fireEvent.press(screen.getByTestId("contact-family-kind-sibling"));
+    fireEvent.press(screen.getByTestId("contact-family-role-sister"));
+    fireEvent.press(await screen.findByTestId("contact-family-qualifier-half"));
     fireEvent.press(await screen.findByTestId("contact-family-who-8"));
-    await waitFor(() => expect(mock.history.post.find((r) => r.url === `${BASE}/7/relations`)?.data).toBe(JSON.stringify({ relative_id: 8, kind: "sibling" })));
+    await waitFor(() => expect(mock.history.post.find((r) => r.url === `${BASE}/7/relations`)?.data).toBe(JSON.stringify({ relative_id: 8, kind: "sibling", qualifier: "half" })));
+    await waitFor(() => expect(mock.history.put.find((r) => r.url === `${BASE}/8`)?.data).toBe(JSON.stringify({ contact: { gender: "female" } })));
+  });
+
+  it("a friend skips the kind of tie", async () => {
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact() });
+    mock.onGet(BASE).reply(200, page([contact(), contact({ id: 8, firstname: "Anisa", lastname: "Safi" })]));
+    mock.onPost(`${BASE}/7/relations`).reply(201, { relations: [] });
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-family-add"));
+    fireEvent.press(screen.getByTestId("contact-family-role-friend"));
+    expect(screen.queryByTestId("contact-family-qualifier")).toBeNull();
+    fireEvent.press(await screen.findByTestId("contact-family-who-8"));
+    await waitFor(() => expect(mock.history.post[0]?.data).toBe(JSON.stringify({ relative_id: 8, kind: "friend", qualifier: "biological" })));
+  });
+
+  // Web "createNew": a grandfather not yet in the book is one call, not two.
+  it("adds a new person as the father, created and linked in one call", async () => {
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact() });
+    mock.onGet(BASE).reply(200, page([contact()]));
+    mock.onPost(`${BASE}/7/relations`).reply(201, { relations: [] });
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-family-add"));
+    fireEvent.press(screen.getByTestId("contact-family-role-father"));
+    fireEvent.press(await screen.findByTestId("contact-family-qualifier-biological"));
+    fireEvent.press(await screen.findByTestId("contact-family-who-new"));
+    fireEvent.changeText(await screen.findByTestId("pages-name-input"), "  Wali Ahmad Safi ");
+    fireEvent.press(screen.getByTestId("pages-name-confirm"));
+    await waitFor(() => expect(JSON.parse(mock.history.post[0]?.data ?? "{}")).toEqual({
+      relative: { firstname: "Wali", lastname: "Ahmad Safi", gender: "male" }, kind: "parent", qualifier: "biological",
+    }));
+  });
+
+  // Web "viaFamily": "my wife's brother" is a tie on the wife.
+  it("adds an in-law through a current spouse: the tie is recorded on the spouse", async () => {
+    const wife = { id: 20, kind: "spouse", qualifier: "biological", status: "current", label: "wife", relative: { id: 21, name: "Sara Noor", gender: "female" } };
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact({ relations: [wife] }) });
+    mock.onGet(BASE).reply(200, page([contact(), contact({ id: 8, firstname: "Omar", lastname: "Noor", gender: "male" })]));
+    mock.onPost(`${BASE}/21/relations`).reply(201, { relations: [] });
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-family-add"));
+    fireEvent.press(screen.getByTestId("contact-family-role-21-brother"));
+    fireEvent.press(await screen.findByTestId("contact-family-qualifier-biological"));
+    fireEvent.press(await screen.findByTestId("contact-family-who-8"));
+    await waitFor(() => expect(mock.history.post[0]?.url).toBe(`${BASE}/21/relations`));
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ relative_id: 8, kind: "sibling", qualifier: "biological" });
+  });
+
+  // ContactCard.tsx:344 overwrote "father" with the neutral "parent".
+  it("each tie reads as the web says it: gendered, qualified, (you), deceased; parents first", async () => {
+    mock.onGet(`${BASE}/7`).reply(200, {
+      contact: contact({
+        relations: [
+          { id: 3, kind: "sibling", qualifier: "half", status: "current", label: "half-sister", relative: { id: 8, name: "Anisa Safi", gender: "female", age: 30, is_self: true } },
+          { id: 4, kind: "parent", qualifier: "biological", status: "current", label: "father", relative: { id: 9, name: "Wali Safi", gender: "male", deceased_on: "2020-02-02" } },
+        ],
+      }),
+    });
+    renderScreen(<ContactDetail />);
+    const rows = await screen.findAllByTestId(/^contact-relation-\d+$/);
+    expect(rows.map((r) => r.props.testID)).toEqual(["contact-relation-4", "contact-relation-3"]);
+    expect(rows[0]).toHaveTextContent(/^father · deceased/);
+    expect(rows[1]).toHaveTextContent(/half-sister/);
+    expect(rows[1]).toHaveTextContent(/Anisa Safi \(you\)/);
+  });
+
+  // Web FamilySection changeRole: "I put my sister down as my father".
+  it("changes what a relative is: the new kind and the relative's gender go together", async () => {
+    const dad = { id: 4, kind: "parent", qualifier: "biological", status: "current", label: "father", relative: { id: 9, name: "Wali Safi", gender: "male" } };
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact({ relations: [dad] }) });
+    mock.onPatch(`${BASE}/7/relations/4`).reply(200, { relations: [{ ...dad, kind: "sibling", label: "sister", relative: { ...dad.relative, gender: "female" } }] });
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-relation-4-edit"));
+    fireEvent.press(await screen.findByTestId("contact-relation-menu-role"));
+    fireEvent.press(await screen.findByTestId("contact-relation-role-sister"));
+    await waitFor(() => expect(mock.history.patch[0]?.data).toBe(JSON.stringify({ kind: "sibling", relative_gender: "female" })));
+  });
+
+  it("changes a tie's kind to step", async () => {
+    const dad = { id: 4, kind: "parent", qualifier: "biological", status: "current", label: "father", relative: { id: 9, name: "Wali Safi", gender: "male" } };
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact({ relations: [dad] }) });
+    mock.onPatch(`${BASE}/7/relations/4`).reply(200, { relations: [{ ...dad, qualifier: "step" }] });
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-relation-4-edit"));
+    fireEvent.press(await screen.findByTestId("contact-relation-menu-qualifier"));
+    fireEvent.press(await screen.findByTestId("contact-relation-qualifier-step"));
+    await waitFor(() => expect(mock.history.patch[0]?.data).toBe(JSON.stringify({ qualifier: "step" })));
+  });
+
+  it("'Family tree' opens the tree, and is offered only when there is a tie", async () => {
+    const dad = { id: 4, kind: "parent", qualifier: "biological", status: "current", label: "father", relative: { id: 9, name: "Wali Safi", gender: "male" } };
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact({ relations: [dad] }) });
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-family-tree"));
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/contacts/family", params: { id: "7" } });
+  });
+
+  it("no 'Family tree' without a tie", async () => {
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact() });
+    renderScreen(<ContactDetail />);
+    await screen.findByTestId("contact-family-none");
+    expect(screen.queryByTestId("contact-family-tree")).toBeNull();
+  });
+
+  // Audit #24: shown as the web drawer shows them.
+  it("shows closeness, every social link (tap opens it) and the tags", async () => {
+    mock.onGet(`${BASE}/7`).reply(200, {
+      contact: contact({ closeness: "close", tags: ["school", "chess club"], social_links: [{ label: "linkedin", value: "linkedin.test/in/jamil" }] }),
+    });
+    const open = jest.spyOn(Linking, "openURL").mockResolvedValue(true);
+    renderScreen(<ContactDetail />);
+    expect(await screen.findByTestId("contact-closeness")).toHaveTextContent("Close");
+    expect(screen.getByTestId("contact-social-0")).toHaveTextContent(/LinkedIn.*linkedin\.test\/in\/jamil/);
+    expect(screen.getByTestId("contact-tags")).toHaveTextContent(/school.*chess club/);
+    fireEvent.press(screen.getByTestId("contact-social-0"));
+    await waitFor(() => expect(open).toHaveBeenCalledWith("https://linkedin.test/in/jamil"));
+  });
+
+  it("no closeness chip, links or tags when there are none", async () => {
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact({ closeness: "unset", tags: [], social_links: [] }) });
+    renderScreen(<ContactDetail />);
+    await screen.findByTestId("contact-name");
+    expect(screen.queryByTestId("contact-closeness")).toBeNull();
+    expect(screen.queryByTestId("contact-social-0")).toBeNull();
+    expect(screen.queryByTestId("contact-tags")).toBeNull();
+  });
+
+  // Web FamilyTab SelfPicker / WhoYouAre: asks before, undoes without asking.
+  it("'This is me' asks first, then marks the contact as the user; 'This is not me' takes it back", async () => {
+    let self = false;
+    mock.onGet(`${BASE}/7`).reply(() => [200, { contact: contact({ is_self: self }) }]);
+    mock.onPut(`${BASE}/7`).reply((config) => {
+      self = JSON.parse(config.data).contact.is_self;
+      return [200, { contact: contact({ is_self: self }) }];
+    });
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-self-toggle"));
+    expect((Alert.alert as jest.Mock).mock.calls.at(-1)?.[0]).toBe("Set Jamil Safi as you?");
+    expect(mock.history.put).toHaveLength(0);
+    act(() => alertButtons().find((b) => b.text === "Yes, that is me")?.onPress?.());
+    expect(await screen.findByTestId("contact-self")).toHaveTextContent("This is you");
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ contact: { is_self: true } });
+    fireEvent.press(screen.getByTestId("contact-self-toggle"));
+    await waitFor(() => expect(mock.history.put).toHaveLength(2));
+    expect(JSON.parse(mock.history.put[1].data)).toEqual({ contact: { is_self: false } });
+    await waitFor(() => expect(screen.queryByTestId("contact-self")).toBeNull());
   });
 
   // TestFlight: the web stores notes as Tiptap HTML and the card showed the
@@ -561,6 +710,36 @@ describe("the form", () => {
     expect(screen.getByTestId("contact-form-name-error")).toBeTruthy();
     expect(screen.getByTestId("contact-form-emails-0-error")).toBeTruthy();
     expect(mock.history.post).toHaveLength(0);
+  });
+
+  // Audit #24: the web drawer's gender, closeness, social links and tags.
+  it("sets gender, closeness, a social link and tags, and sends exactly those params", async () => {
+    mockParams.current = { id: "7" };
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact({ tags: ["school"] }) });
+    mock.onPut(`${BASE}/7`).reply(200, { contact: contact() });
+    renderScreen(<EditContact />);
+    fireEvent.press(await screen.findByTestId("contact-form-gender"));
+    fireEvent.press(screen.getByTestId("contact-form-gender-sheet-female"));
+    fireEvent.press(screen.getByTestId("contact-form-closeness"));
+    fireEvent.press(screen.getByTestId("contact-form-closeness-sheet-distant"));
+    fireEvent.press(screen.getByTestId("contact-form-add-socialLinks"));
+    fireEvent.press(screen.getByTestId("contact-form-socialLinks-0-label"));
+    fireEvent.press(screen.getByTestId("contact-form-label-sheet-github"));
+    fireEvent.changeText(screen.getByTestId("contact-form-socialLinks-0"), "https://github.test/jamil");
+    fireEvent.changeText(screen.getByTestId("contact-form-tag-input"), " chess ");
+    fireEvent(screen.getByTestId("contact-form-tag-input"), "submitEditing");
+    fireEvent.press(screen.getByTestId("contact-form-tag-school-remove"));
+    fireEvent.press(screen.getByTestId("contact-form-save"));
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    const body = JSON.parse(mock.history.put[0].data).contact;
+    expect(body).toMatchObject({
+      gender: "female", closeness: "distant", tags: ["chess"],
+      social_links: [{ label: "github", value: "https://github.test/jamil" }],
+    });
+    expect(Object.keys(body).sort()).toEqual([
+      "addresses", "birth_date", "closeness", "company", "emails", "favorite", "firstname", "gender", "job_title",
+      "lastname", "nickname", "notes", "phones", "social_links", "tags", "website",
+    ]);
   });
 
   it("editing removes one email and sends the remaining list whole", async () => {

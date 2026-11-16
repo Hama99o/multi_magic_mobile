@@ -27,7 +27,7 @@ function contact(id: number, over: Partial<Contact> = {}): Contact {
   return {
     id, firstname: `C${id}`, lastname: "Test", nickname: null, company: null, jobTitle: null, favorite: false,
     birthDate: null, age: null, photoUrl: null, phones: [], emails: [], addresses: [], relations: [], documents: [],
-    website: null, notes: null, isSelf: false,
+    website: null, notes: null, isSelf: false, socialLinks: [], tags: [], gender: "unknown", closeness: "unset",
     ...over,
   } as unknown as Contact;
 }

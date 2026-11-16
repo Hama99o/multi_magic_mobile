@@ -2,7 +2,7 @@
  * The contact form's state (SPEC §C.6): what is sent, what blocks Save, and
  * what counts as a change worth asking about on Cancel.
  */
-import { addEntry, draftFrom, emptyDraft, isDirty, problems, removeEntry, setEntry, toPayload } from "../draft";
+import { addEntry, addTag, draftFrom, emptyDraft, isDirty, problems, removeEntry, removeTag, setEntry, toPayload } from "../draft";
 import type { Contact } from "@/api/contacts";
 
 const jamil: Contact = {
@@ -12,6 +12,7 @@ const jamil: Contact = {
   emails: [{ label: "home", value: "j@home.test" }],
   addresses: [{ label: "home", street: "12 Main St", city: "Kabul", state: "", postal: "", country: "Afghanistan" }],
   website: null, notes: "n", relations: [], documents: null, isSelf: false,
+  socialLinks: [{ label: "linkedin", value: "https://linkedin.test/in/jamil" }], tags: ["school"], gender: "male", closeness: "close",
 };
 
 describe("a new contact", () => {
@@ -86,11 +87,48 @@ describe("toPayload", () => {
       phones: [{ label: "mobile", value: "+93 70" }],
       emails: [{ label: "home", value: "J@Home.test" }],
       addresses: [],
+      social_links: [{ label: "linkedin", value: "https://linkedin.test/in/jamil" }],
+      tags: ["school"],
+      gender: "male",
+      closeness: "close",
     });
   });
 
   it("sends an empty list when every phone was removed, which clears them on the server", () => {
     const d = { ...draftFrom(jamil), phones: [] };
     expect(toPayload(d).phones).toEqual([]);
+  });
+});
+
+// Audit #24: the web drawer's social links, tags, gender and closeness.
+describe("the family and social fields", () => {
+  it("a new contact starts with no links, no tags, gender unknown and closeness unset", () => {
+    const d = emptyDraft();
+    expect([d.socialLinks, d.tags, d.gender, d.closeness]).toEqual([[], [], "unknown", "unset"]);
+  });
+
+  it("adds a social link as LinkedIn first, then the next unused label, and drops blank ones on save", () => {
+    let d = addEntry(emptyDraft(), "socialLinks");
+    expect(d.socialLinks).toEqual([{ label: "linkedin", value: "" }]);
+    d = addEntry(d, "socialLinks");
+    expect(d.socialLinks[1].label).toBe("twitter");
+    d = setEntry(d, "socialLinks", 0, { value: " https://linkedin.test/in/sara " });
+    expect(toPayload(d).social_links).toEqual([{ label: "linkedin", value: "https://linkedin.test/in/sara" }]);
+  });
+
+  it("adds a tag once, trimmed, as the web's addTag does, and removes it", () => {
+    let d = addTag(emptyDraft(), "  family ");
+    d = addTag(d, "family");
+    d = addTag(d, "   ");
+    d = addTag(d, "work");
+    expect(d.tags).toEqual(["family", "work"]);
+    expect(removeTag(d, "family").tags).toEqual(["work"]);
+  });
+
+  it("a changed gender or closeness is a change worth asking about", () => {
+    const d = draftFrom(jamil);
+    expect(isDirty({ ...d, closeness: "distant" }, d)).toBe(true);
+    expect(isDirty({ ...d, gender: "unknown" }, d)).toBe(true);
+    expect(isDirty(addTag(d, "chess"), d)).toBe(true);
   });
 });

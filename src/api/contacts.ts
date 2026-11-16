@@ -46,6 +46,19 @@ export const RELATION_KINDS: readonly RelationKind[] = [
   "parent", "child", "spouse", "sibling", "friend", "colleague", "neighbour", "other",
 ];
 
+/** `ContactApp::Family` enums, read at 6de97a32. Gender turns "parent" into
+ *  father or mother; closeness is how close the user is to this person. */
+export type Gender = "unknown" | "male" | "female" | "other";
+export const GENDERS: readonly Gender[] = ["unknown", "male", "female", "other"];
+export type Closeness = "unset" | "close" | "regular" | "distant" | "estranged";
+export const CLOSENESS: readonly Closeness[] = ["unset", "close", "regular", "distant", "estranged"];
+/** The web drawer's `SOCIAL_LABELS`; the server keeps any label. */
+export const SOCIAL_LABELS: readonly string[] = ["linkedin", "twitter", "instagram", "facebook", "github", "website", "other"];
+/** `ContactApp::Relation` qualifier and status. A step-father, a former wife. */
+export type Qualifier = "biological" | "step" | "adoptive" | "half" | "in_law";
+const QUALIFIERS: readonly Qualifier[] = ["biological", "step", "adoptive", "half", "in_law"];
+export type RelationStatus = "current" | "former";
+
 export interface LabelledValue {
   /** Free text on the server: an imported card can carry "fax" or a custom label. */
   label: string;
@@ -64,9 +77,12 @@ export interface Address {
 export interface Relation {
   id: number;
   kind: RelationKind;
-  /** The word for the tie, already gendered by the server ("father", "wife"). */
+  qualifier: Qualifier;
+  status: RelationStatus;
+  /** The server's English word for the tie ("half-sister"): the fallback when
+   *  `relationWord` has no translation for it. */
   label: string;
-  relative: { id: number; name: string };
+  relative: { id: number; name: string; gender: Gender; age: number | null; deceased: boolean; isSelf: boolean };
 }
 
 /** One file on a contact (serializer `documents`, read at 6de97a32). */
@@ -125,6 +141,11 @@ export interface Contact {
   /** Full view only, newest first. null from a list row: not known, not none. */
   documents: ContactDocument[] | null;
   isSelf: boolean;
+  /** Full view only; [] from a list row. */
+  socialLinks: LabelledValue[];
+  tags: string[];
+  gender: Gender;
+  closeness: Closeness;
 }
 
 export interface ContactPayload {
@@ -140,6 +161,33 @@ export interface ContactPayload {
   phones: LabelledValue[];
   emails: LabelledValue[];
   addresses: Address[];
+  social_links: LabelledValue[];
+  tags: string[];
+  gender: Gender;
+  closeness: Closeness;
+}
+
+/** Who a new tie points at: someone in the book, or a person made in the same call. */
+export type RelationTarget =
+  | { relativeId: number }
+  | { relative: { firstname: string; lastname: string; gender?: Gender } };
+
+/** The family around one contact (`ContactApp::FamilyTree`): generation 0 is
+ *  that contact, -1 their parents, +1 their children. */
+export interface FamilyNode {
+  id: number;
+  name: string;
+  generation: number;
+  gender: Gender;
+  /** What they are to the root, in the server's English ("sister"); null for the root. */
+  relation: string | null;
+  isSelf: boolean;
+  deceased: boolean;
+  age: number | null;
+}
+export interface FamilyTree {
+  rootId: number;
+  nodes: FamilyNode[];
 }
 
 export interface Birthday {
@@ -206,15 +254,51 @@ function addresses(raw: unknown): Address[] {
   });
 }
 
+/** One of `allowed`, or the first (the server's default) for anything else. */
+function oneOf<T extends string>(value: unknown, allowed: readonly T[]): T {
+  return allowed.includes(value as T) ? (value as T) : allowed[0];
+}
+
 function parseRelation(raw: unknown): Relation {
   const r = obj(raw, "relation");
   const relative = obj(r.relative, "relation.relative");
   return {
     id: id(r.id, "relation.id"),
     kind: str(r.kind, "relation.kind") as RelationKind,
+    qualifier: oneOf(r.qualifier, QUALIFIERS),
+    status: r.status === "former" ? "former" : "current",
     label: optStr(r.label) ?? str(r.kind, "relation.kind"),
-    relative: { id: id(relative.id, "relation.relative.id"), name: text(relative.name) },
+    relative: {
+      id: id(relative.id, "relation.relative.id"),
+      name: text(relative.name),
+      gender: oneOf(relative.gender, GENDERS),
+      age: typeof relative.age === "number" ? relative.age : null,
+      deceased: Boolean(optStr(relative.deceased_on)),
+      isSelf: relative.is_self === true,
+    },
   };
+}
+
+function parseTags(raw: unknown): string[] {
+  return Array.isArray(raw) ? raw.filter((tag): tag is string => typeof tag === "string" && tag.trim() !== "") : [];
+}
+
+function parseTree(raw: unknown): FamilyTree {
+  const body = obj(raw, "family");
+  const nodes = readableRows(arr(body.nodes, "family.nodes"), (n) => {
+    const node = obj(n, "family.node");
+    return {
+      id: id(node.id, "family.node.id"),
+      name: text(node.name),
+      generation: typeof node.generation === "number" ? node.generation : 0,
+      gender: oneOf(node.gender, GENDERS),
+      relation: optStr(node.relation) || null,
+      isSelf: node.is_self === true,
+      deceased: Boolean(optStr(node.deceased_on)),
+      age: typeof node.age === "number" ? node.age : null,
+    };
+  }).rows;
+  return { rootId: id(body.root_id, "family.root_id"), nodes };
 }
 
 function parseDocument(raw: unknown): ContactDocument {
@@ -258,6 +342,10 @@ function parseContact(raw: unknown): Contact {
     relations: Array.isArray(c.relations) ? readableRows(c.relations, parseRelation).rows : [],
     documents: parseDocuments(c.documents),
     isSelf: c.is_self === true,
+    socialLinks: labelled(c.social_links, null, "other"),
+    tags: parseTags(c.tags),
+    gender: oneOf(c.gender, GENDERS),
+    closeness: oneOf(c.closeness, CLOSENESS),
   };
 }
 
@@ -322,7 +410,7 @@ export const contactsApi = {
     return parseContact(obj(res.data, "create").contact);
   },
 
-  update: async (contactId: number, payload: Partial<ContactPayload>): Promise<Contact> => {
+  update: async (contactId: number, payload: Partial<ContactPayload> & { is_self?: boolean }): Promise<Contact> => {
     const res = await http.put(`${BASE}/${contactId}`, { contact: payload });
     return parseContact(obj(res.data, "update").contact);
   },
@@ -380,10 +468,34 @@ export const contactsApi = {
     return parseContact(obj(res.data, "document").contact);
   },
 
-  addRelation: async (contactId: number, relativeId: number, kind: RelationKind): Promise<Relation[]> => {
-    const res = await http.post(`${BASE}/${contactId}/relations`, { relative_id: relativeId, kind });
+  /** Link someone in the book, or make the person and link them in one call
+   *  (`RelationsController#create`). The web always sends the qualifier. */
+  addRelation: async (contactId: number, tie: RelationTarget & { kind: RelationKind; qualifier: Qualifier }): Promise<Relation[]> => {
+    const target = "relativeId" in tie ? { relative_id: tie.relativeId } : { relative: tie.relative };
+    const res = await http.post(`${BASE}/${contactId}/relations`, { ...target, kind: tie.kind, qualifier: tie.qualifier });
     return readableRows(arr(obj(res.data, "relations").relations, "relations"), parseRelation).rows;
   },
+
+  /** "I put my sister down as my father": a new role (and the relative's
+   *  gender, which the wrong role set wrong too), or a new qualifier. */
+  updateRelation: async (
+    contactId: number,
+    relationId: number,
+    change: { kind?: RelationKind; relativeGender?: Gender; qualifier?: Qualifier },
+  ): Promise<Relation[]> => {
+    const body = { kind: change.kind, relative_gender: change.relativeGender, qualifier: change.qualifier };
+    const res = await http.patch(`${BASE}/${contactId}/relations/${relationId}`, body);
+    return readableRows(arr(obj(res.data, "relations").relations, "relations"), parseRelation).rows;
+  },
+
+  /** Which contact is the user: the root the family is measured from. Only
+   *  one can be; marking another moves the mark (`clear_other_self`). */
+  setSelf: (contactId: number, isSelf: boolean) => contactsApi.update(contactId, { is_self: isSelf }),
+
+  /** A gendered role ("father") tells the card a gender it did not have. */
+  setGender: (contactId: number, gender: Gender) => contactsApi.update(contactId, { gender }),
+
+  family: async (contactId: number): Promise<FamilyTree> => parseTree((await http.get(`${BASE}/${contactId}/family`)).data),
 
   removeRelation: async (contactId: number, relationId: number): Promise<void> => {
     await http.delete(`${BASE}/${contactId}/relations/${relationId}`);
@@ -458,4 +570,4 @@ export function vcfFile(textBody: string, name: string): File {
   return file;
 }
 
-export const __parse = { parseContact, parseImport, parseDocument };
+export const __parse = { parseContact, parseImport, parseDocument, parseTree };

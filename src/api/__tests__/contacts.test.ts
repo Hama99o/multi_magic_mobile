@@ -25,7 +25,7 @@ const jamil = {
   email: "jamil@home.test",
   phone: "+93 70 123 4567",
   address: "12 Main St, Kabul",
-  tags: [],
+  tags: ["school", "chess club"],
   gender: "male",
   closeness: "close",
   is_self: false,
@@ -47,11 +47,11 @@ const jamil = {
   created_at: "2026-11-01T10:00:00Z",
   updated_at: "2026-11-01T10:00:00Z",
   relations: [
-    { id: 4, kind: "sibling", qualifier: "biological", status: "current", label: "brother",
-      relative: { id: 8, name: "Anisa SAFI", gender: "female" } },
+    { id: 4, kind: "sibling", qualifier: "half", status: "current", label: "half-sister",
+      relative: { id: 8, name: "Anisa SAFI", gender: "female", age: 30, deceased_on: null, closeness: "close", is_self: true } },
   ],
   addresses: [{ label: "home", street: "12 Main St", city: "Kabul", state: "", postal: "1001", country: "Afghanistan" }],
-  social_links: [],
+  social_links: [{ label: "linkedin", value: "https://linkedin.test/in/jamil" }, { label: "github", value: " " }],
   documents: [
     { id: 11, filename: "id.pdf", byte_size: 52_000, content_type: "application/pdf",
       url: "/rails/active_storage/blobs/proxy/d11/id.pdf", thumbnail_url: "/rails/active_storage/representations/proxy/t11/id.png" },
@@ -91,9 +91,36 @@ describe("reading a contact", () => {
       birthDate: "1990-04-05", age: 36, website: "https://jamil.test", notes: "Met in Kabul",
     });
     expect(c.documents).toHaveLength(1);
-    expect(c.relations).toEqual([{ id: 4, kind: "sibling", label: "brother", relative: { id: 8, name: "Anisa SAFI" } }]);
+    expect(c.relations).toEqual([{
+      id: 4, kind: "sibling", qualifier: "half", status: "current", label: "half-sister",
+      relative: { id: 8, name: "Anisa SAFI", gender: "female", age: 30, deceased: false, isSelf: true },
+    }]);
     expect(c.addresses[0]).toMatchObject({ city: "Kabul", country: "Afghanistan" });
     expect(c.photoUrl).toMatch(/^https?:\/\/.+\/rails\/active_storage\/blobs\/proxy\/abc\/p\.jpg$/);
+  });
+
+  // Audit #24: the four fields the web has and the phone did not.
+  it("reads social links, tags, gender and closeness", async () => {
+    mock.onGet("/api/v1/contact_app/contacts/7").reply(200, { contact: jamil });
+    const c = await contactsApi.show(7);
+    expect(c.socialLinks).toEqual([{ label: "linkedin", value: "https://linkedin.test/in/jamil" }]);
+    expect(c.tags).toEqual(["school", "chess club"]);
+    expect(c.gender).toBe("male");
+    expect(c.closeness).toBe("close");
+  });
+
+  it("keeps a gender or closeness it does not know as unknown / unset, and a list row's missing lists as empty", () => {
+    const { social_links: _s, tags: _t, ...row } = jamil;
+    const c = __parse.parseContact({ ...row, gender: "robot", closeness: 9 });
+    expect([c.gender, c.closeness, c.socialLinks, c.tags]).toEqual(["unknown", "unset", [], []]);
+  });
+
+  it("reads an old relation without qualifier, status or relative details as a plain, current tie", () => {
+    const c = __parse.parseContact({ ...jamil, relations: [{ id: 5, kind: "parent", label: "parent", relative: { id: 9, name: "Wali" } }] });
+    expect(c.relations[0]).toEqual({
+      id: 5, kind: "parent", qualifier: "biological", status: "current", label: "parent",
+      relative: { id: 9, name: "Wali", gender: "unknown", age: null, deceased: false, isSelf: false },
+    });
   });
 
   it("falls back to the legacy first value when a list row has no lists (a server before a0222268)", () => {
@@ -156,6 +183,10 @@ describe("writing", () => {
     phones: [{ label: "mobile", value: "0612345678" }, { label: "work", value: "0123" }],
     emails: [{ label: "home", value: "s@x.test" }],
     addresses: [],
+    social_links: [{ label: "instagram", value: "https://instagram.test/sara" }],
+    tags: ["neighbours"],
+    gender: "female" as const,
+    closeness: "regular" as const,
   };
 
   it("creates with the server's field names under `contact`", async () => {
@@ -200,17 +231,73 @@ describe("writing", () => {
     expect(sent).toBeInstanceOf(FormData);
   });
 
-  it("links a relative by id and kind, and unlinks", async () => {
+  it("links a relative by id, kind and qualifier, and unlinks", async () => {
     let body: unknown;
     mock.onPost("/api/v1/contact_app/contacts/7/relations").reply((config) => {
       body = JSON.parse(config.data);
       return [201, { relations: jamil.relations }];
     });
     mock.onDelete("/api/v1/contact_app/contacts/7/relations/4").reply(204);
-    const ties = await contactsApi.addRelation(7, 8, "sibling");
+    const ties = await contactsApi.addRelation(7, { relativeId: 8, kind: "sibling", qualifier: "half" });
     await contactsApi.removeRelation(7, 4);
-    expect(body).toEqual({ relative_id: 8, kind: "sibling" });
-    expect(ties[0].label).toBe("brother");
+    expect(body).toEqual({ relative_id: 8, kind: "sibling", qualifier: "half" });
+    expect(ties[0].label).toBe("half-sister");
+  });
+
+  // Web AddFamilyMemberModal "createNew": the person is made and linked in one call.
+  it("creates a new relative and links them in one call", async () => {
+    let body: unknown;
+    mock.onPost("/api/v1/contact_app/contacts/7/relations").reply((config) => {
+      body = JSON.parse(config.data);
+      return [201, { relations: [] }];
+    });
+    await contactsApi.addRelation(7, { relative: { firstname: "Wali", lastname: "Safi", gender: "male" }, kind: "parent", qualifier: "biological" });
+    expect(body).toEqual({ relative: { firstname: "Wali", lastname: "Safi", gender: "male" }, kind: "parent", qualifier: "biological" });
+  });
+
+  // Web FamilySection changeRole / changeQualifier → PATCH relations/:id.
+  it("changes a tie's role (with the relative's gender) or its qualifier", async () => {
+    const bodies: unknown[] = [];
+    mock.onPatch("/api/v1/contact_app/contacts/7/relations/4").reply((config) => {
+      bodies.push(JSON.parse(config.data));
+      return [200, { relations: jamil.relations }];
+    });
+    const ties = await contactsApi.updateRelation(7, 4, { kind: "parent", relativeGender: "female" });
+    await contactsApi.updateRelation(7, 4, { qualifier: "step" });
+    expect(bodies).toEqual([{ kind: "parent", relative_gender: "female" }, { qualifier: "step" }]);
+    expect(ties[0].id).toBe(4);
+  });
+
+  it("marks or unmarks the contact who is the user, and sets a gender", async () => {
+    const sent: unknown[] = [];
+    mock.onPut("/api/v1/contact_app/contacts/7").reply((config) => {
+      sent.push(JSON.parse(config.data));
+      return [200, { contact: jamil }];
+    });
+    await contactsApi.setSelf(7, true);
+    await contactsApi.setSelf(7, false);
+    await contactsApi.setGender(7, "female");
+    expect(sent).toEqual([{ contact: { is_self: true } }, { contact: { is_self: false } }, { contact: { gender: "female" } }]);
+  });
+});
+
+describe("the family tree", () => {
+  // `ContactApp::FamilyTree`: nodes with a generation, the root at 0.
+  it("reads the nodes with their generation and what they are to the root", async () => {
+    mock.onGet("/api/v1/contact_app/contacts/7/family").reply(200, {
+      root_id: 7,
+      nodes: [
+        { id: 9, name: "Wali Safi", generation: -1, gender: "male", relation: "father", is_self: false, deceased_on: "2020-01-01", age: 70 },
+        { id: 7, name: "Jamil Safi", generation: 0, gender: "male", relation: null, is_self: true, deceased_on: null, age: 36 },
+      ],
+      edges: [{ from: 7, to: 9, kind: "parent", label: "father" }],
+    });
+    const tree = await contactsApi.family(7);
+    expect(tree.rootId).toBe(7);
+    expect(tree.nodes).toEqual([
+      { id: 9, name: "Wali Safi", generation: -1, gender: "male", relation: "father", isSelf: false, deceased: true, age: 70 },
+      { id: 7, name: "Jamil Safi", generation: 0, gender: "male", relation: null, isSelf: true, deceased: false, age: 36 },
+    ]);
   });
 });
 

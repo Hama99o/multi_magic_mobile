@@ -10,7 +10,7 @@ function c(id: number, firstname: string, lastname = "", favorite = false): Cont
   return {
     id, firstname, lastname, favorite, nickname: null, company: null, jobTitle: null, birthDate: null, age: null,
     photoUrl: null, phones: [], emails: [], addresses: [], website: null, notes: null, relations: [],
-    documents: null, isSelf: false,
+    documents: null, isSelf: false, socialLinks: [], tags: [], gender: "unknown", closeness: "unset",
   };
 }
 

@@ -12,7 +12,7 @@
  * so a guess would flash the wrong word; the card refetches instead.
  */
 import { useMutation, useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
-import { contactsApi, displayName, type Contact } from "@/api/contacts";
+import { contactsApi, displayName, type Contact, type Gender, type Qualifier, type Relation, type RelationKind, type RelationTarget } from "@/api/contacts";
 import { contactsKeys } from "@/api/keys";
 import { useContactsUndo } from "@/stores/contactsUndo.store";
 
@@ -138,14 +138,53 @@ export function useUnlinkRelative(contactId: number, opts: { onError?: (e: unkno
   });
 }
 
-/** Add a family tie: not optimistic (header). */
+/** Add a family tie: not optimistic (header). The tie can sit on someone
+ *  else than the card (`anchorId`: a spouse, for an in-law), and a gendered
+ *  role fills in a gender the relative's card did not have (web
+ *  `AddFamilyMemberModal`). */
 export function useLinkRelative(contactId: number, opts: { onError?: (e: unknown) => void } = {}) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: ({ relativeId, kind }: { relativeId: number; kind: Parameters<typeof contactsApi.addRelation>[2] }) =>
-      contactsApi.addRelation(contactId, relativeId, kind),
+    mutationFn: async (v: { anchorId: number; tie: RelationTarget & { kind: RelationKind; qualifier: Qualifier }; fillGender?: { id: number; gender: Gender } }) => {
+      const relations = await contactsApi.addRelation(v.anchorId, v.tie);
+      if (v.fillGender) await contactsApi.setGender(v.fillGender.id, v.fillGender.gender);
+      return relations;
+    },
     onError: (e) => opts.onError?.(e),
-    onSettled: (_r, _e, v) => settle(client, [contactsKeys.detail(contactId), contactsKeys.detail(v.relativeId)]),
+    onSettled: (_r, _e, v) =>
+      settle(client, [
+        contactsKeys.detail(contactId),
+        contactsKeys.detail(v.anchorId),
+        ...("relativeId" in v.tie ? [contactsKeys.detail(v.tie.relativeId)] : []),
+        contactsKeys.list(),
+        contactsKeys.families(),
+      ]),
+  });
+}
+
+/** Change a tie's role or qualifier (web `FamilySection` changeRole /
+ *  changeQualifier). The answer is the card's ties, taken as they are. */
+export function useChangeRelation(contactId: number, opts: { onError?: (e: unknown) => void } = {}) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ relation, change }: { relation: Relation; change: Parameters<typeof contactsApi.updateRelation>[2] }) =>
+      contactsApi.updateRelation(contactId, relation.id, change),
+    onSuccess: (relations) => client.setQueryData<Contact | undefined>(contactsKeys.detail(contactId), (c) => (c ? { ...c, relations } : c)),
+    onError: (e) => opts.onError?.(e),
+    onSettled: (_r, _e, v) =>
+      settle(client, [contactsKeys.detail(contactId), contactsKeys.detail(v.relation.relative.id), contactsKeys.list(), contactsKeys.families()]),
+  });
+}
+
+/** Which contact is the user. Marking one unmarks any other on the server,
+ *  so every contact read is refetched. */
+export function useSetSelf(opts: { onError?: (e: unknown) => void } = {}) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, isSelf }: { id: number; isSelf: boolean }) => contactsApi.setSelf(id, isSelf),
+    onSuccess: (saved) => client.setQueryData(contactsKeys.detail(saved.id), saved),
+    onError: (e) => opts.onError?.(e),
+    onSettled: () => settle(client, [contactsKeys.all]),
   });
 }
 

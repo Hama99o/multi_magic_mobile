@@ -12,10 +12,16 @@
  *
  * Then cards, label above value (Telegram): every phone (tap = call, its own
  * WhatsApp and message buttons, long press = copy), every email (tap = mail),
- * addresses (tap = maps), birthday, family, website, notes, documents
- * (`ContactDocuments.tsx`). Then rows: Share,
- * Save to phone contacts, Favourite, Ask the assistant, Delete — the
+ * addresses (tap = maps), birthday, website, social links, tags, family,
+ * notes, documents (`ContactDocuments.tsx`). Then rows: Share, Save to phone
+ * contacts, Favourite, This is me, Ask the assistant, Delete — the
  * destructive one last, alone, in red (WhatsApp).
+ *
+ * Family follows the web's drawer (`FamilySection`, `AddFamilyMemberModal`,
+ * 6de97a32): each tie in its own words (`family.ts`), a pencil to change its
+ * role or its kind (step, half, adoptive), and Add = a role, the kind of tie,
+ * then someone from the book or a new person. "Mother — Sara's family" puts
+ * the tie on the spouse, as the web's in-law buttons do.
  */
 import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
@@ -24,7 +30,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
 import {
-  BookUser, Briefcase, Cake, ChevronLeft, Globe, Mail, MapPin, MessageCircle, MessageSquareText, NotebookPen,
+  BookUser, Briefcase, Cake, ChevronLeft, CircleCheck, ExternalLink, Globe, List, Mail, MapPin, MessageCircle, MessageSquareText, NotebookPen,
   Pencil, Phone, Plus, Share2, Star, StarOff, Trash2, Users, X,
 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
@@ -34,7 +40,7 @@ import { RichText } from "@/components/RichText";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useDraft } from "@/hooks/useDraft";
 import { aiApi } from "@/api/ai";
-import { contactsApi, displayName, RELATION_KINDS, type Contact, type RelationKind } from "@/api/contacts";
+import { contactsApi, displayName, type Contact, type Qualifier, type Relation } from "@/api/contacts";
 import { failureMessage } from "@/api/failure";
 import { htmlToPlainText } from "@/lib/richText";
 import { ContactAvatar } from "@/screens/contacts/ContactAvatar";
@@ -47,10 +53,23 @@ import { phoneBook, PhoneBookUnavailable } from "@/screens/contacts/phoneBook";
 import { sortKey } from "@/screens/contacts/sections";
 import { dayKey } from "@/screens/calendar/dates";
 import { aiKeys, contactsKeys } from "@/api/keys";
-import { useFavourite, useLinkRelative, useTrashContact, useUnlinkRelative } from "@/screens/contacts/useContactMutations";
+import { useChangeRelation, useFavourite, useLinkRelative, useSetSelf, useTrashContact, useUnlinkRelative } from "@/screens/contacts/useContactMutations";
+import { ALL_ROLES, FAMILY_ROLES, groupRelations, IN_LAW_ROLES, OTHER_ROLES, qualifiersFor, relationWord, roleLabel, type Role } from "@/screens/contacts/family";
+import { NameDialog } from "@/screens/pages/ItemSheet";
+import { SHEET_CLOSE_MS } from "@/screens/pages/drive/sheets";
 
 /** WhatsApp's own green, for its button only: people find it by colour. */
 const WHATSAPP = "#1FAF54";
+
+/** After a sheet has slid away: iOS will not present a second Modal over one
+ *  still leaving (`ContactDocuments.tsx` waits the same). */
+const afterSheet = (fn: () => void) => setTimeout(fn, SHEET_CLOSE_MS);
+
+/** A tie being added: who it goes on (the card, or a spouse for an in-law),
+ *  the role, then the kind of tie. */
+type Adding = { anchorId: number; anchorName: string; role: Role; qualifier: Qualifier };
+const cap = (w: string) => w.charAt(0).toLocaleUpperCase() + w.slice(1);
+const withScheme = (url: string) => (/^[a-z][a-z0-9+.-]*:/i.test(url) ? url : `https://${url}`);
 
 /** The phone's full screen, or the split's right pane. */
 function Frame({ embedded, children }: { embedded: boolean; children: ReactNode }) {
@@ -86,10 +105,13 @@ export function ContactCard({
   const { data: sessionId } = useQuery({ queryKey: aiKeys.currentSession(), queryFn: aiApi.currentSessionId });
   const { setDraft } = useDraft(sessionId ?? null);
   const [error, setError] = useState<string | null>(null);
-  const [familyOpen, setFamilyOpen] = useState<null | "kind" | RelationKind>(null);
+  const [rolePicking, setRolePicking] = useState(false);
+  const [adding, setAdding] = useState<{ step: "qualifier" | "who" | "name"; tie: Adding } | null>(null);
+  const [nameError, setNameError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<{ step: "menu" | "role" | "qualifier"; relation: Relation } | null>(null);
   // The whole book, only once "Add" is tapped: the detail can be opened from a
   // birthday or the assistant with no list screen (and no list cache) below it.
-  const book = useQuery({ queryKey: contactsKeys.list(), queryFn: contactsApi.list, enabled: familyOpen != null });
+  const book = useQuery({ queryKey: contactsKeys.list(), queryFn: contactsApi.list, enabled: rolePicking || adding != null });
 
   const favourite = useFavourite({ onError: (e) => setError(failureMessage(e, t("contacts.detail.saveFailed"))) });
   const remove = useTrashContact({
@@ -100,6 +122,8 @@ export function ContactCard({
   const familyFailed = (e: unknown) => setError(failureMessage(e, t("contacts.family.failed")));
   const unlink = useUnlinkRelative(contactId ?? 0, { onError: familyFailed });
   const link = useLinkRelative(contactId ?? 0, { onError: familyFailed });
+  const change = useChangeRelation(contactId ?? 0, { onError: familyFailed });
+  const setSelf = useSetSelf({ onError: (e) => setError(failureMessage(e, t("contacts.family.self.failed"))) });
 
   if (contactId == null || (!contact && query.error)) {
     return (
@@ -163,9 +187,43 @@ export function ContactCard({
   ];
 
   // Everyone else in the book, for "add a family member".
+  const anchorId = adding?.tie.anchorId ?? contact.id;
   const others = (book.data ?? [])
-    .filter((c) => c.id !== contact.id && !contact.relations.some((r) => r.relative.id === c.id))
+    .filter((c) => c.id !== contact.id && c.id !== anchorId && (anchorId !== contact.id || !contact.relations.some((r) => r.relative.id === c.id)))
     .sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
+  // A current spouse is the door into the other family (web `viaFamily`).
+  const spouses = contact.relations.filter((r) => r.kind === "spouse" && r.status === "current").map((r) => r.relative);
+
+  const pickRole = (role: Role, anchor: { id: number; name: string }) => {
+    const tie: Adding = { anchorId: anchor.id, anchorName: anchor.name, role, qualifier: "biological" };
+    afterSheet(() => setAdding({ step: qualifiersFor(role.kind).length ? "qualifier" : "who", tie }));
+  };
+  const linkTo = (tie: Adding, relative: Contact) =>
+    link.mutate({
+      anchorId: tie.anchorId,
+      tie: { relativeId: relative.id, kind: tie.role.kind, qualifier: tie.qualifier },
+      // "Father" says he is a man; his card may not have said so yet.
+      fillGender: tie.role.gender && relative.gender === "unknown" ? { id: relative.id, gender: tie.role.gender } : undefined,
+    });
+  const createAndLink = (tie: Adding, name: string) => {
+    const [firstname, ...rest] = name.trim().split(/\s+/);
+    setNameError(null);
+    link.mutate(
+      { anchorId: tie.anchorId, tie: { relative: { firstname, lastname: rest.join(" "), gender: tie.role.gender ?? undefined }, kind: tie.role.kind, qualifier: tie.qualifier } },
+      { onSuccess: () => setAdding(null), onError: (e) => setNameError(failureMessage(e, t("contacts.family.failed"))) },
+    );
+  };
+
+  const toggleSelf = () => {
+    if (contact.isSelf) {
+      setSelf.mutate({ id: contact.id, isSelf: false });
+      return;
+    }
+    Alert.alert(t("contacts.family.self.confirmTitle", { name }), t("contacts.family.self.confirmBody"), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("contacts.family.self.yes"), onPress: () => setSelf.mutate({ id: contact.id, isSelf: true }) },
+    ]);
+  };
 
   return (
     <Frame embedded={embedded}>
@@ -218,6 +276,18 @@ export function ContactCard({
             <Text testID="contact-role" tone="muted" style={{ textAlign: "center" }}>
               {role}
             </Text>
+          ) : null}
+          {contact.isSelf || contact.closeness !== "unset" ? (
+            <View style={{ flexDirection: "row", gap: metrics.space.xs, flexWrap: "wrap", justifyContent: "center" }}>
+              {contact.isSelf ? <Chip testID="contact-self" label={t("contacts.family.self.badge")} /> : null}
+              {contact.closeness !== "unset" ? (
+                <Chip
+                  testID="contact-closeness"
+                  label={t(`contacts.closenessLevels.${contact.closeness}`)}
+                  a11yLabel={t("contacts.detail.closeness", { level: t(`contacts.closenessLevels.${contact.closeness}`) })}
+                />
+              ) : null}
+            </View>
           ) : null}
         </View>
 
@@ -324,12 +394,47 @@ export function ContactCard({
           </Card>
         ) : null}
 
+        {contact.socialLinks.length ? (
+          <Card>
+            {contact.socialLinks.map((l, i) => (
+              <Row
+                key={`s${i}`}
+                testID={`contact-social-${i}`}
+                label={actions.labelOf(l.label)}
+                value={l.value}
+                first={i === 0}
+                onPress={() => void openOutside(withScheme(l.value), { t, fail: t("contacts.outside.noBrowser"), copy: l.value })}
+                onLongPress={() => copy(l.value)}
+                a11yHint={t("contacts.detail.linkHint")}
+              >
+                <ExternalLink size={18} color={colors.inkMuted} />
+              </Row>
+            ))}
+          </Card>
+        ) : null}
+
+        {contact.tags.length ? (
+          <View testID="contact-tags" accessible accessibilityLabel={`${t("contacts.detail.tags")}: ${contact.tags.join(", ")}`} style={{ flexDirection: "row", flexWrap: "wrap", gap: metrics.space.xs }}>
+            {contact.tags.map((tag) => (
+              <Chip key={tag} label={tag} />
+            ))}
+          </View>
+        ) : null}
+
         <View style={{ gap: metrics.space.sm }}>
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.md }}>
             <Text variant="label" tone="muted" accessibilityRole="header" style={{ flex: 1 }}>
               {t("contacts.family.title")}
             </Text>
-            <Pressable testID="contact-family-add" onPress={() => setFamilyOpen("kind")} accessibilityRole="button" accessibilityLabel={t("contacts.family.add")} hitSlop={6} style={{ minHeight: 40, flexDirection: "row", alignItems: "center", gap: 4 }}>
+            {contact.relations.length ? (
+              <Pressable testID="contact-family-tree" onPress={() => router.push({ pathname: "/contacts/family", params: { id: String(contact.id) } })} accessibilityRole="button" accessibilityLabel={t("contacts.family.tree")} hitSlop={6} style={{ minHeight: 40, flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <List size={16} color={colors.accent} />
+                <Text variant="label" tone="accent">
+                  {t("contacts.family.tree")}
+                </Text>
+              </Pressable>
+            ) : null}
+            <Pressable testID="contact-family-add" onPress={() => setRolePicking(true)} accessibilityRole="button" accessibilityLabel={t("contacts.family.add")} hitSlop={6} style={{ minHeight: 40, flexDirection: "row", alignItems: "center", gap: 4 }}>
               <Plus size={16} color={colors.accent} />
               <Text variant="label" tone="accent">
                 {t("contacts.family.add")}
@@ -338,16 +443,24 @@ export function ContactCard({
           </View>
           {contact.relations.length ? (
             <Card>
-              {contact.relations.map((r, i) => (
+              {groupRelations(contact.relations).map((r, i) => (
                 <Row
                   key={r.id}
                   first={i === 0}
                   testID={`contact-relation-${r.id}`}
-                  label={t(`contacts.family.kinds.${r.kind}`, { defaultValue: r.label })}
-                  value={r.relative.name}
+                  label={[
+                    relationWord(t, r),
+                    r.relative.age != null ? t("contacts.detail.age", { count: r.relative.age }) : null,
+                    r.relative.deceased ? t("contacts.family.deceased") : null,
+                  ].filter(Boolean).join(" · ")}
+                  value={r.relative.isSelf ? `${r.relative.name} (${t("contacts.family.you")})` : r.relative.name}
                   onPress={() => router.push({ pathname: "/contacts/contact", params: { id: String(r.relative.id) } })}
                   a11yHint={t("contacts.family.openHint")}
                 >
+                  {/* Always there: a mistake you cannot see how to fix is a bug (web FamilySection). */}
+                  <IconButton testID={`contact-relation-${r.id}-edit`} label={t("contacts.family.edit", { name: r.relative.name })} onPress={() => setEditing({ step: "menu", relation: r })}>
+                    <Pencil size={18} color={colors.inkMuted} />
+                  </IconButton>
                   <IconButton testID={`contact-relation-${r.id}-remove`} label={t("contacts.family.remove", { name: r.relative.name })} onPress={() => unlink.mutate(r.id)}>
                     <X size={18} color={colors.inkMuted} />
                   </IconButton>
@@ -387,29 +500,104 @@ export function ContactCard({
           <ActionRow testID="contact-share" icon={actions.sharing ? <ActivityIndicator /> : <Share2 size={20} color={colors.ink} />} label={t("contacts.actions.share")} disabled={actions.sharing} onPress={() => void actions.share()} />
           <ActionRow testID="contact-save-to-phone" icon={<BookUser size={20} color={colors.ink} />} label={t("contacts.detail.saveToPhone")} onPress={() => void saveToPhone()} />
           <ActionRow testID="contact-favourite-row" icon={contact.favorite ? <StarOff size={20} color={colors.ink} /> : <Star size={20} color={colors.ink} />} label={contact.favorite ? t("contacts.actions.unfavourite") : t("contacts.actions.favourite")} onPress={() => favourite.mutate(contact)} />
+          <ActionRow testID="contact-self-toggle" icon={setSelf.isPending ? <ActivityIndicator /> : <CircleCheck size={20} color={colors.ink} />} label={contact.isSelf ? t("contacts.family.self.clear") : t("contacts.family.self.set")} disabled={setSelf.isPending} onPress={toggleSelf} />
           <ActionRow testID="contact-ask" icon={<Users size={20} color={colors.ink} />} label={t("contacts.detail.ask")} onPress={ask} />
           <ActionRow testID="contact-delete" icon={remove.isPending ? <ActivityIndicator color={colors.danger} /> : <Trash2 size={20} color={colors.danger} />} label={t("common.delete")} danger disabled={remove.isPending} onPress={confirmDelete} />
         </View>
       </ScrollView>
 
       <ActionSheet
-        open={familyOpen === "kind"}
+        open={rolePicking}
         title={t("contacts.family.whichKind", { name })}
-        actions={RELATION_KINDS.map((k) => ({ key: k, label: t(`contacts.family.kinds.${k}`), onPress: () => setFamilyOpen(k) }))}
-        onClose={() => setFamilyOpen((v) => (v === "kind" ? null : v))}
-        testID="contact-family-kind"
+        actions={[
+          ...[...FAMILY_ROLES, ...OTHER_ROLES].map((r) => ({ key: r.key, label: cap(roleLabel(t, r)), onPress: () => pickRole(r, { id: contact.id, name }) })),
+          ...spouses.flatMap((sp) =>
+            IN_LAW_ROLES.map((r) => ({
+              key: `${sp.id}-${r.key}`,
+              label: cap(roleLabel(t, r)),
+              hint: t("contacts.family.viaFamily", { name: sp.name }),
+              onPress: () => pickRole(r, { id: sp.id, name: sp.name }),
+            })),
+          ),
+        ]}
+        onClose={() => setRolePicking(false)}
+        testID="contact-family-role"
       />
       <ActionSheet
-        open={familyOpen != null && familyOpen !== "kind"}
-        title={familyOpen && familyOpen !== "kind" ? t("contacts.family.whoIs", { kind: t(`contacts.family.kinds.${familyOpen}`), name }) : ""}
-        subtitle={book.isLoading ? t("contacts.list.searching") : others.length ? undefined : t("contacts.family.nobody")}
-        actions={others.map((c) => ({
-          key: String(c.id),
-          label: displayName(c) || t("contacts.noName"),
-          onPress: () => familyOpen && familyOpen !== "kind" && link.mutate({ relativeId: c.id, kind: familyOpen }),
-        }))}
-        onClose={() => setFamilyOpen(null)}
+        open={adding?.step === "qualifier"}
+        title={t("contacts.family.qualifierTitle")}
+        actions={adding ? qualifiersFor(adding.tie.role.kind).map((q) => ({
+          key: q,
+          label: t(`contacts.family.qualifiers.${q}`),
+          hint: q === "biological" && adding.tie.role.kind === "sibling" ? t("contacts.family.autoParents") : undefined,
+          onPress: () => {
+            const tie = { ...adding.tie, qualifier: q };
+            afterSheet(() => setAdding({ step: "who", tie }));
+          },
+        })) : []}
+        onClose={() => setAdding((a) => (a?.step === "qualifier" ? null : a))}
+        testID="contact-family-qualifier"
+      />
+      <ActionSheet
+        open={adding?.step === "who"}
+        title={adding ? t("contacts.family.whoIs", { kind: roleLabel(t, adding.tie.role), name: adding.tie.anchorName }) : ""}
+        subtitle={book.isLoading ? t("contacts.list.searching") : undefined}
+        actions={adding ? [
+          { key: "new", label: t("contacts.family.newPerson"), hint: t("contacts.family.newPersonHint"), icon: Plus, onPress: () => {
+            const tie = adding.tie;
+            afterSheet(() => setAdding({ step: "name", tie }));
+          } },
+          ...others.map((c) => ({ key: String(c.id), label: displayName(c) || t("contacts.noName"), onPress: () => linkTo(adding.tie, c) })),
+        ] : []}
+        onClose={() => setAdding((a) => (a?.step === "who" ? null : a))}
         testID="contact-family-who"
+      />
+      <NameDialog
+        open={adding?.step === "name"}
+        title={t("contacts.family.newPersonTitle")}
+        confirm={t("contacts.family.add")}
+        onCancel={() => setAdding(null)}
+        onSubmit={(value) => adding && createAndLink(adding.tie, value)}
+        busy={link.isPending}
+        error={nameError}
+      />
+      <ActionSheet
+        open={editing?.step === "menu"}
+        title={editing ? t("contacts.family.editTitle", { name: editing.relation.relative.name, word: relationWord(t, editing.relation) }) : ""}
+        actions={editing ? [
+          { key: "role", label: t("contacts.family.changeRole"), icon: Pencil, onPress: () => {
+            const relation = editing.relation;
+            afterSheet(() => setEditing({ step: "role", relation }));
+          } },
+          ...(qualifiersFor(editing.relation.kind).length ? [{ key: "qualifier", label: t("contacts.family.changeQualifier"), onPress: () => {
+            const relation = editing.relation;
+            afterSheet(() => setEditing({ step: "qualifier", relation }));
+          } }] : []),
+        ] : []}
+        onClose={() => setEditing((e) => (e?.step === "menu" ? null : e))}
+        testID="contact-relation-menu"
+      />
+      <ActionSheet
+        open={editing?.step === "role"}
+        title={editing ? t("contacts.family.roleTitle", { name: editing.relation.relative.name, other: name }) : ""}
+        actions={editing ? ALL_ROLES.map((r) => ({
+          key: r.key,
+          label: cap(roleLabel(t, r)),
+          onPress: () => change.mutate({ relation: editing.relation, change: { kind: r.kind, relativeGender: r.gender ?? undefined } }),
+        })) : []}
+        onClose={() => setEditing(null)}
+        testID="contact-relation-role"
+      />
+      <ActionSheet
+        open={editing?.step === "qualifier"}
+        title={t("contacts.family.qualifierTitle")}
+        actions={editing ? qualifiersFor(editing.relation.kind).map((q) => ({
+          key: q,
+          label: t(`contacts.family.qualifiers.${q}`),
+          onPress: () => change.mutate({ relation: editing.relation, change: { qualifier: q } }),
+        })) : []}
+        onClose={() => setEditing(null)}
+        testID="contact-relation-qualifier"
       />
       {actions.element}
     </Frame>
@@ -420,6 +608,19 @@ function Card({ children }: { children: ReactNode }) {
   const colors = useColors();
   const metrics = useMetrics();
   return <View style={{ borderRadius: metrics.radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, overflow: "hidden" }}>{children}</View>;
+}
+
+/** A small pill: closeness, "This is you", a tag (the web's chips). */
+function Chip({ label, testID, a11yLabel }: { label: string; testID?: string; a11yLabel?: string }) {
+  const colors = useColors();
+  const metrics = useMetrics();
+  return (
+    <View testID={testID} accessible={Boolean(testID)} accessibilityLabel={a11yLabel ?? label} style={{ borderRadius: metrics.radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, paddingHorizontal: metrics.space.sm, paddingVertical: 2 }}>
+      <Text variant="caption" tone="accent">
+        {label}
+      </Text>
+    </View>
+  );
 }
 
 function Divider({ show }: { show: boolean }) {

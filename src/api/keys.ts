@@ -85,6 +85,9 @@ export const contactsKeys = {
   allBirthdays: () => ["contacts", "birthdays"] as const,
   birthdays: <D extends number>(days: D) => ["contacts", "birthdays", days] as const,
   duplicates: () => ["contacts", "duplicates"] as const,
+  /** Every family tree, as one prefix (a tie changes several). */
+  families: () => ["contacts", "family"] as const,
+  family: <C extends number>(contactId: C) => ["contacts", "family", contactId] as const,
 };
 
 export const pagesKeys = {

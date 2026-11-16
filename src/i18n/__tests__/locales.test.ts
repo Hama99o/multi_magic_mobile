@@ -69,7 +69,18 @@ const SAME_IN_BOTH = new Set([
   "contacts.form.notes",
   "contacts.form.photoTitle",
   "contacts.documents.title", // "Documents"
-  "contacts.family.kinds.parent",
+  // Family: "parent" and "Parents" are French too, "Distant" as well; the
+  // social networks are product names; "{{name}}, {{word}}" is only its
+  // interpolations.
+  "contacts.family.words.parent.biological.neutral",
+  "contacts.tree.rows.parents",
+  "contacts.closenessLevels.distant",
+  "contacts.family.editTitle",
+  "contacts.labels.linkedin",
+  "contacts.labels.twitter",
+  "contacts.labels.instagram",
+  "contacts.labels.facebook",
+  "contacts.labels.github",
   "scope.pages",
   "scope.flow",
   "calendar.minutes",

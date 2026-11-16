@@ -6,23 +6,33 @@
  * Photo first (Mesh: the avatar with an edit badge), then names in one card,
  * then phones and emails as lists — each row a label chip and a value, ✕ to
  * remove, "+ Add phone" under it (Jobber, Garmin) — then work, birthday,
- * address, website, notes. Every field is one a person might type with the
- * keyboard up, so the scroll view keeps taps and the keyboard behaves.
+ * gender and closeness, address, website, notes, social links, tags (the
+ * web drawer's fields and allowed values, audit #24). Every field is one a
+ * person might type with the keyboard up, so the scroll view keeps taps and
+ * the keyboard behaves.
  */
 import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Keyboard, Pressable, ScrollView, Switch, TextInput, View, type KeyboardTypeOptions } from "react-native";
 import { useTranslation } from "react-i18next";
-import { Cake, Camera, MapPin, Plus, Star, X } from "@/components/icons";
+import { Cake, Camera, MapPin, Plus, Star, Users, X } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { EMAIL_LABELS, PHONE_LABELS } from "@/api/contacts";
+import { CLOSENESS, EMAIL_LABELS, GENDERS, PHONE_LABELS, SOCIAL_LABELS } from "@/api/contacts";
 import { DateWheels } from "@/screens/calendar/pickers";
 import { ContactAvatar } from "./ContactAvatar";
 import { router } from "expo-router";
 import { RichText } from "@/components/RichText";
 import { useRichTextSession } from "@/stores/richTextSession.store";
 import { ActionSheet } from "./ActionSheet";
-import { addEntry, emptyAddress, problems, removeEntry, setAddress, setEntry, type Draft } from "./draft";
+import { addEntry, addTag, emptyAddress, problems, removeEntry, removeTag, setAddress, setEntry, type Draft } from "./draft";
+
+type ListKey = "phones" | "emails" | "socialLinks";
+/** Per list: the words, the keyboard, and the labels its sheet offers. */
+const LISTS = {
+  phones: { field: "contacts.form.phone", add: "contacts.form.addPhone", remove: "contacts.form.removePhone", sheet: "contacts.form.phoneLabel", labels: PHONE_LABELS, keyboard: "phone-pad", autoComplete: "tel", error: "phone" },
+  emails: { field: "contacts.form.email", add: "contacts.form.addEmail", remove: "contacts.form.removeEmail", sheet: "contacts.form.emailLabel", labels: EMAIL_LABELS, keyboard: "email-address", autoComplete: "email", error: "email" },
+  socialLinks: { field: "contacts.form.socialLink", add: "contacts.form.addSocial", remove: "contacts.form.removeSocial", sheet: "contacts.form.socialLabel", labels: SOCIAL_LABELS, keyboard: "url", autoComplete: "url", error: null },
+} as const;
 
 export type PhotoChange = { kind: "set"; uri: string; name: string; mimeType: string } | { kind: "remove" } | null;
 
@@ -70,7 +80,9 @@ export function ContactForm({
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
   const [tried, setTried] = useState(false);
-  const [labelFor, setLabelFor] = useState<{ key: "phones" | "emails"; index: number } | null>(null);
+  const [labelFor, setLabelFor] = useState<{ key: ListKey; index: number } | null>(null);
+  const [picking, setPicking] = useState<"gender" | "closeness" | null>(null);
+  const [tagText, setTagText] = useState("");
   const [photoSheet, setPhotoSheet] = useState(false);
   const [birthdayOpen, setBirthdayOpen] = useState(false);
   const found = tried ? problems(draft) : [];
@@ -119,12 +131,12 @@ export function ContactForm({
     />
   );
 
-  const list = (key: "phones" | "emails") => {
-    const isPhone = key === "phones";
+  const list = (key: ListKey) => {
+    const spec = LISTS[key];
     return (
       <Section testID={`contact-form-${key}`}>
         {draft[key].map((entry, index) => {
-          const bad = found.includes(`${isPhone ? "phone" : "email"}:${index}`);
+          const bad = spec.error != null && found.includes(`${spec.error}:${index}`);
           return (
             <View key={index}>
               {index > 0 ? <View style={divider} /> : null}
@@ -136,7 +148,7 @@ export function ContactForm({
                     setLabelFor({ key, index });
                   }}
                   accessibilityRole="button"
-                  accessibilityLabel={t("contacts.form.labelOf", { label: labelOf(entry.label), field: isPhone ? t("contacts.form.phone") : t("contacts.form.email") })}
+                  accessibilityLabel={t("contacts.form.labelOf", { label: labelOf(entry.label), field: t(spec.field) })}
                   style={{ minHeight: metrics.touch, minWidth: 72, justifyContent: "center" }}
                 >
                   <Text tone="accent" variant="label" numberOfLines={1}>
@@ -147,16 +159,16 @@ export function ContactForm({
                   testID: `contact-form-${key}-${index}`,
                   value: entry.value,
                   onChangeText: (value) => onChange(setEntry(draft, key, index, { value })),
-                  label: isPhone ? t("contacts.form.phone") : t("contacts.form.email"),
-                  keyboardType: isPhone ? "phone-pad" : "email-address",
+                  label: t(spec.field),
+                  keyboardType: spec.keyboard,
                   autoCapitalize: "none",
-                  autoComplete: isPhone ? "tel" : "email",
+                  autoComplete: spec.autoComplete,
                 })}
                 <Pressable
                   testID={`contact-form-${key}-${index}-remove`}
                   onPress={() => onChange(removeEntry(draft, key, index))}
                   accessibilityRole="button"
-                  accessibilityLabel={isPhone ? t("contacts.form.removePhone", { value: entry.value || labelOf(entry.label) }) : t("contacts.form.removeEmail", { value: entry.value || labelOf(entry.label) })}
+                  accessibilityLabel={t(spec.remove, { value: entry.value || labelOf(entry.label) })}
                   hitSlop={4}
                   style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
                 >
@@ -165,7 +177,7 @@ export function ContactForm({
               </View>
               {bad ? (
                 <Text testID={`contact-form-${key}-${index}-error`} tone="danger" variant="caption" accessibilityLiveRegion="polite" style={{ paddingBottom: metrics.space.sm }}>
-                  {isPhone ? t("contacts.form.badPhone") : t("contacts.form.badEmail")}
+                  {spec.error === "phone" ? t("contacts.form.badPhone") : t("contacts.form.badEmail")}
                 </Text>
               ) : null}
             </View>
@@ -176,11 +188,11 @@ export function ContactForm({
           testID={`contact-form-add-${key}`}
           onPress={() => onChange(addEntry(draft, key))}
           accessibilityRole="button"
-          accessibilityLabel={isPhone ? t("contacts.form.addPhone") : t("contacts.form.addEmail")}
+          accessibilityLabel={t(spec.add)}
           style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, minHeight: metrics.touch }}
         >
           <Plus size={18} color={colors.accent} />
-          <Text tone="accent">{isPhone ? t("contacts.form.addPhone") : t("contacts.form.addEmail")}</Text>
+          <Text tone="accent">{t(spec.add)}</Text>
         </Pressable>
       </Section>
     );
@@ -301,6 +313,34 @@ export function ContactForm({
           ) : null}
         </Section>
 
+        {/* Gender turns "parent" into father or mother; closeness is how near
+            this person is to you (web drawer, `ContactApp::Family` enums). */}
+        <Section testID="contact-form-family-section">
+          {(["gender", "closeness"] as const).map((which, i) => {
+            const value = which === "gender" ? t(`contacts.genders.${draft.gender}`) : t(`contacts.closenessLevels.${draft.closeness}`);
+            const label = which === "gender" ? t("contacts.form.gender") : t("contacts.form.closeness");
+            return (
+              <View key={which}>
+                {i > 0 ? <View style={divider} /> : null}
+                <Pressable
+                  testID={`contact-form-${which}`}
+                  onPress={() => {
+                    Keyboard.dismiss();
+                    setPicking(which);
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${label}, ${value}`}
+                  style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, minHeight: metrics.touch }}
+                >
+                  {i === 0 ? <Users size={18} color={colors.inkMuted} /> : <View style={{ width: 18 }} />}
+                  <Text style={{ flex: 1 }}>{label}</Text>
+                  <Text tone="accent">{value} ▾</Text>
+                </Pressable>
+              </View>
+            );
+          })}
+        </Section>
+
         {draft.addresses.map((a, index) => (
           <Section key={index} testID={`contact-form-address-${index}`}>
             <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
@@ -357,6 +397,64 @@ export function ContactForm({
           </Pressable>
         </Section>
 
+        {list("socialLinks")}
+
+        <Section testID="contact-form-tags">
+          {draft.tags.length ? (
+            <View style={{ flexDirection: "row", flexWrap: "wrap", gap: metrics.space.xs, paddingTop: metrics.space.sm }}>
+              {draft.tags.map((tag) => (
+                <Pressable
+                  key={tag}
+                  testID={`contact-form-tag-${tag}-remove`}
+                  onPress={() => onChange(removeTag(draft, tag))}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("contacts.form.removeTag", { tag })}
+                  style={{ flexDirection: "row", alignItems: "center", gap: 4, minHeight: 32, borderRadius: metrics.radius.pill, borderWidth: 1, borderColor: colors.border, paddingHorizontal: metrics.space.sm }}
+                >
+                  <Text variant="caption" tone="accent">
+                    {tag}
+                  </Text>
+                  <X size={14} color={colors.inkMuted} />
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+          <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
+            <TextInput
+              testID="contact-form-tag-input"
+              value={tagText}
+              onChangeText={setTagText}
+              onSubmitEditing={() => {
+                onChange(addTag(draft, tagText));
+                setTagText("");
+              }}
+              submitBehavior="submit"
+              returnKeyType="done"
+              placeholder={t("contacts.form.tags")}
+              placeholderTextColor={colors.inkMuted}
+              accessibilityLabel={t("contacts.form.tags")}
+              autoCapitalize="none"
+              maxLength={60}
+              onFocus={() => setBirthdayOpen(false)}
+              style={field}
+            />
+            <Pressable
+              testID="contact-form-tag-add"
+              onPress={() => {
+                onChange(addTag(draft, tagText));
+                setTagText("");
+              }}
+              disabled={!tagText.trim()}
+              accessibilityRole="button"
+              accessibilityLabel={t("contacts.form.addTag")}
+              accessibilityState={{ disabled: !tagText.trim() }}
+              style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+            >
+              <Plus size={18} color={tagText.trim() ? colors.accent : colors.inkMuted} />
+            </Pressable>
+          </View>
+        </Section>
+
         <Section>
           <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, minHeight: metrics.touch }}>
             <Star size={18} color={colors.inkMuted} />
@@ -374,14 +472,28 @@ export function ContactForm({
 
       <ActionSheet
         open={labelFor != null}
-        title={labelFor?.key === "emails" ? t("contacts.form.emailLabel") : t("contacts.form.phoneLabel")}
-        actions={(labelFor?.key === "emails" ? EMAIL_LABELS : PHONE_LABELS).map((label) => ({
+        title={labelFor ? t(LISTS[labelFor.key].sheet) : ""}
+        actions={(labelFor ? LISTS[labelFor.key].labels : []).map((label) => ({
           key: label,
           label: labelOf(label),
           onPress: () => labelFor && onChange(setEntry(draft, labelFor.key, labelFor.index, { label })),
         }))}
         onClose={() => setLabelFor(null)}
         testID="contact-form-label-sheet"
+      />
+      <ActionSheet
+        open={picking === "gender"}
+        title={t("contacts.form.gender")}
+        actions={GENDERS.map((gender) => ({ key: gender, label: t(`contacts.genders.${gender}`), onPress: () => onChange({ ...draft, gender }) }))}
+        onClose={() => setPicking(null)}
+        testID="contact-form-gender-sheet"
+      />
+      <ActionSheet
+        open={picking === "closeness"}
+        title={t("contacts.form.closeness")}
+        actions={CLOSENESS.map((closeness) => ({ key: closeness, label: t(`contacts.closenessLevels.${closeness}`), onPress: () => onChange({ ...draft, closeness }) }))}
+        onClose={() => setPicking(null)}
+        testID="contact-form-closeness-sheet"
       />
       <ActionSheet
         open={photoSheet}

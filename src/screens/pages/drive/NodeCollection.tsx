@@ -7,7 +7,8 @@
  * - View: `useViewPrefs` (list or grid, kept across restarts, like Drive).
  * - Selection: a long press starts it (Drive), a tap then toggles; the
  *   search pill becomes a selection bar with Download, Star, Move and Trash
- *   (Download for anyone who can see the files; the rest need write access).
+ *   (Download for anyone who can see the files; Star needs write access,
+ *   Move and Trash owner/admin: `rightsOf`, the web's rule, `permissions.ts`).
  * - "⋯" on a row or a card opens the actions sheet; every action
  *   invalidates the `["pages"]` queries so each list shows the result.
  */
@@ -23,6 +24,7 @@ import { NameDialog, shareNode } from "../ItemSheet";
 import { downloadMany } from "../downloadMany";
 import { ActionsSheet, DetailsSheet, MoveSheet } from "./sheets";
 import { GridCard, IconButton, ListRow, SelectionBar, useViewPrefs } from "./ui";
+import type { Rights } from "../permissions";
 import { useMoveNodes, useRenameNode, useRestoreNodes, useStarNodes, useTrashNodes } from "@/screens/pages/usePageMutations";
 
 const GAP = 12;
@@ -47,7 +49,7 @@ export function NodeCollection({
   onOpen,
   showSpace = false,
   locationOf,
-  canWrite = true,
+  rightsOf,
   bottomPadding = 96,
   onSelectingChange,
   testID,
@@ -66,7 +68,10 @@ export function NodeCollection({
   showSpace?: boolean;
   /** "Space / Folder" for the Details sheet. */
   locationOf: (node: PageNode) => string;
-  canWrite?: boolean;
+  /** What the caller may do with each item. Required: there is no safe
+   *  default (audit P0 #2, a default of "may write" offered every write to
+   *  viewers). */
+  rightsOf: (node: PageNode) => Rights;
   bottomPadding?: number;
   /** Drive hides "+ New" while items are selected; the screen owns the "+". */
   onSelectingChange?: (selecting: boolean) => void;
@@ -235,6 +240,9 @@ export function NodeCollection({
   // ── Render ────────────────────────────────────────────────────────────────
 
   const allStarred = chosen.length > 0 && chosen.every((n) => n.starred);
+  // A selection may mix spaces: offered only what EVERY chosen item allows.
+  const chosenCanWrite = chosen.length > 0 && chosen.every((n) => rightsOf(n).canWrite);
+  const chosenCanMove = chosen.length > 0 && chosen.every((n) => rightsOf(n).canMove);
   const columns = mode === "grid" ? 2 : 1;
   // Drive's grid: folders are short tiles, files tall cards, and they never
   // share a row. An odd number of folders leaves the last folder alone on its
@@ -262,15 +270,17 @@ export function NodeCollection({
             tone="ink"
             testID="pages-select-download"
           />
-          {canWrite ? (
+          {chosenCanWrite ? (
+            <IconButton
+              icon={Star}
+              label={allStarred ? t("pages.actions.unstar") : t("pages.actions.star")}
+              onPress={() => void setStar(chosen, !allStarred)}
+              tone="ink"
+              testID="pages-select-star"
+            />
+          ) : null}
+          {chosenCanMove ? (
             <>
-              <IconButton
-                icon={Star}
-                label={allStarred ? t("pages.actions.unstar") : t("pages.actions.star")}
-                onPress={() => void setStar(chosen, !allStarred)}
-                tone="ink"
-                testID="pages-select-star"
-              />
               <IconButton icon={FolderInput} label={t("pages.actions.move")} onPress={() => setMoving(chosen)} tone="ink" testID="pages-select-move" />
               <IconButton icon={Trash2} label={t("pages.actions.trash")} onPress={() => trash(chosen)} tone="ink" testID="pages-select-trash" />
             </>
@@ -341,7 +351,7 @@ export function NodeCollection({
         onMove={(n) => setMoving([n])}
         onDetails={setDetailsFor}
         onTrash={(n) => trash([n])}
-        canWrite={canWrite}
+        rights={actionsFor ? rightsOf(actionsFor) : null}
       />
       <DetailsSheet node={detailsFor} location={detailsFor ? locationOf(detailsFor) : ""} onClose={() => setDetailsFor(null)} />
       {trashed ? (

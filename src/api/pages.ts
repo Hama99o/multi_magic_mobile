@@ -223,6 +223,23 @@ export interface ListOptions {
   kind?: NodeKind;
 }
 
+export interface SpaceListOptions {
+  perPage?: number;
+  /** `VALID_SPACE_SORT_COLUMNS`: name, updated_at, created_at. */
+  sortBy?: "name" | "updated_at" | "created_at";
+  sortDir?: SortDir;
+  search?: string;
+}
+
+/** What the web's space form sends (`SpaceFormPanel.tsx`). */
+export interface SpaceFields {
+  title: string;
+  description: string;
+  icon: string;
+  /** A note colour key (`noteColor.service.ts`), or "" for none. */
+  color: string;
+}
+
 function listParams(page: number, options: ListOptions): Record<string, string | number> {
   const params: Record<string, string | number> = { page };
   if (options.sortBy) params.sort_by = options.sortBy;
@@ -240,11 +257,31 @@ const alreadyGoneIsDone = (status: number): boolean => (status >= 200 && status 
 
 export const pagesApi = {
   /** Spaces this user can open — owned and shared as a whole. */
-  spaces: async (page = 1, search?: string): Promise<Page<Space>> => {
-    const params: Record<string, string | number> = { page, per_page: 50 };
-    if (search?.trim()) params.search = search.trim();
+  /**
+   * Only the caller's OWN spaces (`SpacePolicy::Scope`: `where(owner: user)`);
+   * shared ones come from `sharedWithMe`. Newest first unless asked otherwise:
+   * the owner's rule (2026-11-09), against the server's default of
+   * `created_at ASC` (`spaces_controller.rb` `apply_space_sort`). `per_page`
+   * is capped at 200 by the server (`space_per_page`).
+   */
+  spaces: async (page = 1, options: SpaceListOptions = {}): Promise<Page<Space>> => {
+    const params: Record<string, string | number> = {
+      page,
+      per_page: options.perPage ?? 50,
+      sort_by: options.sortBy ?? "created_at",
+      sort_dir: options.sortDir ?? "desc",
+    };
+    if (options.search?.trim()) params.search = options.search.trim();
     const res = await http.get("/api/v1/page_app/spaces", { params });
     return paged(res.data, "spaces", page, parseSpace);
+  },
+
+  /** A new space, owned by the caller. The fields are `space_params` exactly
+   *  (`spaces_controller.rb`); only the title is required, as on the web's
+   *  `SpaceFormPanel`. */
+  createSpace: async (fields: SpaceFields): Promise<Space> => {
+    const res = await http.post("/api/v1/page_app/spaces", { space: fields });
+    return parseSpace(obj(res.data, "space").space);
   },
 
   space: async (spaceId: number): Promise<Space> => {

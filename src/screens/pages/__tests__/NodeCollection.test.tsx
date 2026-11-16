@@ -45,6 +45,9 @@ jest.mock("expo-router", () => ({ router: { push: jest.fn(), back: jest.fn() } }
 /* eslint-disable import/first */
 import { NodeCollection } from "../drive/NodeCollection";
 import { useViewPrefs, SortRow } from "../drive/ui";
+import { rightsFor, type Rights } from "../permissions";
+
+const OWNER = () => rightsFor("owner");
 
 const base = {
   spaceId: 315,
@@ -65,7 +68,7 @@ const photo: PageNode = { ...base, id: 2, title: "photo-1.jpg", kind: "file", mi
 
 const onOpen = jest.fn();
 
-function renderIt() {
+function renderIt(rightsOf: (node: PageNode) => Rights = OWNER) {
   const client = testQueryClient();
   return render(
     <QueryClientProvider client={client}>
@@ -79,6 +82,7 @@ function renderIt() {
         onRefresh={() => {}}
         onOpen={onOpen}
         locationOf={() => "QA Pages / 2026-11-06"}
+        rightsOf={rightsOf}
       />
     </QueryClientProvider>,
   );
@@ -281,7 +285,7 @@ describe("Move opens where the file lives (Drive), from a FOLDER listing", () =>
     const inFolder: PageNode = { ...clip, space: null };
     render(
       <QueryClientProvider client={testQueryClient()}>
-        <NodeCollection testID="list" nodes={[inFolder]} top={null} empty={null} refreshing={false} onRefresh={() => {}} onOpen={onOpen} locationOf={() => ""} />
+        <NodeCollection testID="list" nodes={[inFolder]} top={null} empty={null} refreshing={false} onRefresh={() => {}} onOpen={onOpen} locationOf={() => ""} rightsOf={OWNER} />
       </QueryClientProvider>,
     );
     fireEvent(screen.getByTestId("list-root"), "layout", { nativeEvent: { layout: { width: 360, height: 800 } } });
@@ -304,7 +308,7 @@ describe("the + button, hidden while selecting (as Drive does)", () => {
     const onSelectingChange = jest.fn();
     render(
       <QueryClientProvider client={testQueryClient()}>
-        <NodeCollection testID="list" nodes={[clip, photo]} top={null} empty={null} refreshing={false} onRefresh={() => {}} onOpen={onOpen} locationOf={() => ""} onSelectingChange={onSelectingChange} />
+        <NodeCollection testID="list" nodes={[clip, photo]} top={null} empty={null} refreshing={false} onRefresh={() => {}} onOpen={onOpen} locationOf={() => ""} rightsOf={OWNER} onSelectingChange={onSelectingChange} />
       </QueryClientProvider>,
     );
     fireEvent(screen.getByTestId("list-root"), "layout", { nativeEvent: { layout: { width: 360, height: 800 } } });
@@ -322,7 +326,7 @@ describe("the grid keeps folders and files apart (Drive's grid)", () => {
     act(() => useViewPrefs.setState({ mode: "grid" }));
     render(
       <QueryClientProvider client={testQueryClient()}>
-        <NodeCollection testID="list" nodes={nodes} top={null} empty={null} refreshing={false} onRefresh={() => {}} onOpen={onOpen} locationOf={() => ""} />
+        <NodeCollection testID="list" nodes={nodes} top={null} empty={null} refreshing={false} onRefresh={() => {}} onOpen={onOpen} locationOf={() => ""} rightsOf={OWNER} />
       </QueryClientProvider>,
     );
     fireEvent(screen.getByTestId("list-root"), "layout", { nativeEvent: { layout: { width: 360, height: 800 } } });
@@ -352,5 +356,54 @@ describe("the list/grid toggle", () => {
     act(() => useViewPrefs.setState({ mode: "list" }));
     await act(async () => useViewPrefs.getState().hydrate());
     expect(useViewPrefs.getState().mode).toBe("grid");
+  });
+});
+
+// Audit P0 #2 (2026-11-16): the phone offered every write to everyone. The
+// web's rule (`drive/menus.ts`): a viewer gets no Rename/Star/Move/Trash; an
+// editor gets Rename and Star but not Move or Trash (owner/admin only).
+describe("permissions: each item's own rights decide its actions", () => {
+  beforeEach(() => {
+    act(() => useViewPrefs.setState({ mode: "list" }));
+  });
+  const layout = () => fireEvent(screen.getByTestId("list-root"), "layout", { nativeEvent: { layout: { width: 360, height: 800 } } });
+
+  it("a viewer: ⋯ offers Share and Details only, and a selection only Download", async () => {
+    renderIt(() => rightsFor("viewer"));
+    layout();
+    fireEvent.press(more("list"));
+    expect(await screen.findByTestId("pages-action-details")).toBeTruthy();
+    expect(screen.getByTestId("pages-action-share")).toBeTruthy();
+    for (const id of ["pages-action-star", "pages-action-rename", "pages-action-move", "pages-action-trash"]) expect(screen.queryByTestId(id)).toBeNull();
+    fireEvent.press(screen.getByTestId("pages-action-details"));
+    fireEvent(item("vlog-a.mp4"), "longPress");
+    expect(await screen.findByTestId("pages-select-download")).toBeTruthy();
+    for (const id of ["pages-select-star", "pages-select-move", "pages-select-trash"]) expect(screen.queryByTestId(id)).toBeNull();
+  });
+
+  it("an editor: Rename and Star, but no Move and no Trash", async () => {
+    renderIt(() => rightsFor("editor"));
+    layout();
+    fireEvent.press(more("list"));
+    expect(await screen.findByTestId("pages-action-rename")).toBeTruthy();
+    expect(screen.getByTestId("pages-action-star")).toBeTruthy();
+    expect(screen.queryByTestId("pages-action-move")).toBeNull();
+    expect(screen.queryByTestId("pages-action-trash")).toBeNull();
+    fireEvent.press(screen.getByTestId("pages-action-details"));
+    fireEvent(item("vlog-a.mp4"), "longPress");
+    expect(await screen.findByTestId("pages-select-star")).toBeTruthy();
+    expect(screen.queryByTestId("pages-select-move")).toBeNull();
+    expect(screen.queryByTestId("pages-select-trash")).toBeNull();
+  });
+
+  it("a selection mixing his item and a read-only one offers only what ALL allow", async () => {
+    renderIt((n) => (n.id === clip.id ? rightsFor("owner") : rightsFor("viewer")));
+    layout();
+    fireEvent(item("vlog-a.mp4"), "longPress");
+    expect(await screen.findByTestId("pages-select-trash")).toBeTruthy();
+    fireEvent.press(item("photo-1.jpg"));
+    await waitFor(() => expect(screen.queryByTestId("pages-select-trash")).toBeNull());
+    expect(screen.queryByTestId("pages-select-star")).toBeNull();
+    expect(screen.getByTestId("pages-select-download")).toBeTruthy();
   });
 });

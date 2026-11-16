@@ -117,6 +117,32 @@ describe("the requests the screens send", () => {
   });
 });
 
+describe("spaces: newest first, paged, and made on the phone", () => {
+  // Owner rule (2026-11-09): a list shows the newest first. The server's
+  // default is created_at ASC (`spaces_controller.rb` apply_space_sort), so
+  // the phone asks for the order rather than taking the default.
+  it("asks for the newest first by default, 50 a page", async () => {
+    mock.onGet("/api/v1/page_app/spaces").reply(200, load("pages_spaces").body);
+    await pagesApi.spaces(1);
+    expect(mock.history.get[0].params).toEqual({ page: 1, per_page: 50, sort_by: "created_at", sort_dir: "desc" });
+  });
+
+  it("asks for the page, the size and the sort it is given", async () => {
+    mock.onGet("/api/v1/page_app/spaces").reply(200, { spaces: [], meta: { pagy: { page: 2, pages: 3 } } });
+    const page = await pagesApi.spaces(2, { perPage: 200, sortBy: "name", sortDir: "asc" });
+    expect(mock.history.get[0].params).toEqual({ page: 2, per_page: 200, sort_by: "name", sort_dir: "asc" });
+    expect(page.hasMore).toBe(true);
+  });
+
+  it("creates a space with exactly the fields the server permits (`space_params`)", async () => {
+    const created = { ...(load("pages_spaces").body as { spaces: Record<string, unknown>[] }).spaces[0], id: 999, title: "Trips", icon: "🚀", color: "teal", description: null };
+    mock.onPost("/api/v1/page_app/spaces").reply(201, { space: created });
+    const space = await pagesApi.createSpace({ title: "Trips", description: "", icon: "🚀", color: "teal" });
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ space: { title: "Trips", description: "", icon: "🚀", color: "teal" } });
+    expect(space).toMatchObject({ id: 999, title: "Trips", icon: "🚀", color: "teal" });
+  });
+});
+
 describe("a row the parser cannot read", () => {
   // A kind the app does not know yet: the server growing a fourth one must
   // cost that row, not every row beside it.

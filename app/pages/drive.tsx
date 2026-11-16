@@ -26,6 +26,7 @@ import { TrashView } from "@/screens/pages/drive/TrashView";
 import { EmptyLine, PagesHeader, Separator } from "@/screens/pages/parts";
 import { openNode } from "@/screens/pages/navigation";
 import { pagesKeys } from "@/api/keys";
+import { useDriveRights } from "@/screens/pages/permissions";
 
 type View_ = DriveView | "shared";
 
@@ -116,6 +117,7 @@ export default function Drive() {
   const sharedQuery = useQuery({ queryKey: pagesKeys.shared(), queryFn: pagesApi.sharedWithMe, enabled: view === "shared" });
 
   const nodes = useMemo(() => (nodesQuery.data?.pages ?? []).flatMap((p) => p.rows), [nodesQuery.data]);
+  const rightsOf = useDriveRights();
   const active = view === "shared" ? sharedQuery : nodesQuery;
 
   if (view === "search") {
@@ -178,6 +180,7 @@ export default function Drive() {
           showSpace
           locationOf={(node) => node.space?.title ?? ""}
           bottomPadding={metrics.space.xl}
+          rightsOf={rightsOf}
         />
       )}
     </Screen>

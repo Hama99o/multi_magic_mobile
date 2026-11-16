@@ -85,7 +85,9 @@ export const contactsKeys = {
 export const pagesKeys = {
   all: ["pages"] as const,
   spaces: () => ["pages", "spaces"] as const,
-  spacesFor: <P extends "move" | "picker">(purpose: P) => ["pages", "spaces", purpose] as const,
+  spacesFor: <P extends "move" | "picker" | "owned">(purpose: P) => ["pages", "spaces", purpose] as const,
+  /** One space's detail: the only answer that carries the caller's permission. */
+  space: <S extends number>(spaceId: S) => ["pages", "space", spaceId] as const,
   shared: () => ["pages", "shared"] as const,
   node: <S extends number, N extends number>(spaceId: S, nodeId: N) => ["pages", "node", spaceId, nodeId] as const,
   children: <S extends number, P extends number | null, B extends string, D extends string, T extends string | null | undefined>(spaceId: S, parentId: P, sortBy: B, sortDir: D, type: T) =>

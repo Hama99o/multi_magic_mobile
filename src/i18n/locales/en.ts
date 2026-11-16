@@ -1315,7 +1315,8 @@ export const en = {
     modified: "Modified {{when}}",
     menu: { title: "More" },
     tabs: { home: "Home", starred: "Starred", shared: "Shared", files: "Files", recentFiles: "Recent files" },
-    new: { title: "New", folder: "Folder", media: "Upload photos or videos", files: "Upload files", camera: "Take a photo or video" },
+    new: { title: "New", folder: "Folder", media: "Upload photos or videos", files: "Upload files", camera: "Take a photo or video", space: "New space" },
+    spaceForm: { name: "Name", description: "Description (optional)", icon: "Icon", iconLabel: "Icon {{icon}}", color: "Colour", noColor: "No colour", failed: "Could not create the space." },
     actions: {
       trashedOne: "“{{title}}” moved to the trash",
       trashedMany_one: "{{count}} item moved to the trash",
@@ -1363,7 +1364,7 @@ export const en = {
     searchPill: "Search",
     loadFailed: "Could not load your Pages.",
     noSpacesTitle: "No spaces yet",
-    noSpacesBody: "Create a space on the web, then add files to it from here.",
+    noSpacesBody: "Make a space to keep your files in.",
     emptyFolder: "This folder is empty",
     emptyFolderBody: "Tap Add to bring in photos, videos or files.",
     emptyFiltered: "Nothing of this type here.",

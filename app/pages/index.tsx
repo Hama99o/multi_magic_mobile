@@ -30,6 +30,9 @@ import { openNode } from "@/screens/pages/navigation";
 import { explainPick, pickDocuments, pickMedia, takePhotoOrVideo, usePendingImport, type PickResult } from "@/screens/pages/addFiles";
 import { useUploads } from "@/stores/uploads.store";
 import { pagesKeys } from "@/api/keys";
+import { useDriveRights } from "@/screens/pages/permissions";
+import { SpaceForm } from "@/screens/pages/SpaceForm";
+import { Button } from "@/components/reusables/button";
 
 function SpaceRow({ space, mode, width }: { space: Space; mode: "list" | "grid"; width: number }) {
   const colors = useColors();
@@ -112,6 +115,7 @@ export default function PagesHome() {
     if (params.tab === "home" || params.tab === "starred" || params.tab === "shared" || params.tab === "files") setTab(params.tab);
   }, [params.tab]);
   const [adding, setAdding] = useState(false);
+  const [spaceForm, setSpaceForm] = useState(false);
   const [menu, setMenu] = useState(false);
   const [selecting, setSelecting] = useState(false);
   const [width, setWidth] = useState(0);
@@ -134,6 +138,7 @@ export default function PagesHome() {
     enabled: tab === "home" || tab === "starred",
   });
   const nodes = useMemo(() => (drive.data?.pages ?? []).flatMap((p) => p.rows), [drive.data]);
+  const rightsOf = useDriveRights();
   const spaces = useQuery({ queryKey: pagesKeys.spaces(), queryFn: () => pagesApi.spaces(1), enabled: tab === "files" });
   const shared = useQuery({ queryKey: pagesKeys.shared(), queryFn: pagesApi.sharedWithMe, enabled: tab === "shared" });
 
@@ -172,6 +177,7 @@ export default function PagesHome() {
             showSpace
             locationOf={(node) => node.space?.title ?? ""}
             onSelectingChange={setSelecting}
+            rightsOf={rightsOf}
           />
         ) : tab === "files" ? (
           <>
@@ -190,7 +196,16 @@ export default function PagesHome() {
                 </View>
               }
               renderItem={({ item }) => <SpaceRow space={item} mode={mode} width={Math.floor((width - 12) / 2)} />}
-              ListEmptyComponent={spaces.isLoading ? <RowsSkeleton rows={4} /> : spaces.error ? null : empty(t("pages.noSpacesTitle"), "pages-no-spaces", t("pages.noSpacesBody"))}
+              ListEmptyComponent={
+                spaces.isLoading ? (
+                  <RowsSkeleton rows={4} />
+                ) : spaces.error ? null : (
+                  <View>
+                    {empty(t("pages.noSpacesTitle"), "pages-no-spaces", t("pages.noSpacesBody"))}
+                    <Button label={t("pages.new.space")} block={false} onPress={() => setSpaceForm(true)} testID="pages-new-space" />
+                  </View>
+                )
+              }
               refreshControl={<RefreshControl refreshing={spaces.isRefetching} onRefresh={() => void spaces.refetch()} tintColor={colors.inkMuted} />}
               contentContainerStyle={{ paddingBottom: 96 }}
             />
@@ -221,7 +236,9 @@ export default function PagesHome() {
         onMedia={() => void pick(pickMedia)}
         onFiles={() => void pick(pickDocuments)}
         onCamera={() => void pick(takePhotoOrVideo)}
+        onSpace={() => setSpaceForm(true)}
       />
+      <SpaceForm open={spaceForm} onClose={() => setSpaceForm(false)} />
       <BottomSheet open={menu} onClose={() => setMenu(false)} testID="pages-menu-sheet">
         <SheetRow icon={Upload} label={t("pages.uploads.title")} onPress={() => (setMenu(false), router.push("/pages/uploads"))} testID="pages-menu-uploads" />
         <SheetRow icon={Trash2} label={t("pages.places.trash")} onPress={() => (setMenu(false), router.push({ pathname: "/pages/drive", params: { view: "trash" } }))} testID="pages-menu-trash" />

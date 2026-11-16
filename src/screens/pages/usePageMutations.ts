@@ -11,11 +11,11 @@
  *
  * OPTIMISTIC: star/unstar, rename, move to trash (Undo stays), restore,
  * delete for ever, empty the trash, move elsewhere (it leaves this list).
- * NOT optimistic: a new folder (it has no id, and its place in a sorted list
+ * NOT optimistic: a new folder or space (it has no id, and its place in a sorted list
  * is the server's to decide).
  */
 import { useMutation, useQueryClient, type InfiniteData, type QueryClient, type QueryKey } from "@tanstack/react-query";
-import { pagesApi, type Page, type PageNode } from "@/api/pages";
+import { pagesApi, type Page, type PageNode, type SpaceFields } from "@/api/pages";
 import { pagesKeys } from "@/api/keys";
 
 type Edit = (node: PageNode) => PageNode | null;
@@ -170,6 +170,16 @@ export function useCreateFolder() {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ spaceId, parentId, title }: { spaceId: number; parentId: number | null; title: string }) => pagesApi.createFolder(spaceId, parentId, title),
+    onSettled: () => refetch(client),
+  });
+}
+
+/** A new space (`POST spaces`). Not optimistic, like a new folder: it has no
+ *  id yet, and the spaces lists are the server's to order. */
+export function useCreateSpace() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (fields: SpaceFields) => pagesApi.createSpace(fields),
     onSettled: () => refetch(client),
   });
 }

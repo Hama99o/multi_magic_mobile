@@ -16,7 +16,7 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FILL } from "@/theme/fill";
-import { Camera, ChevronRight, Download, File, Folder, FolderInput, FolderPlus, Images, Info, Pencil, Star, StarOff, Trash2, type LucideIcon } from "@/components/icons";
+import { Camera, Plus, ChevronRight, Download, File, Folder, FolderInput, FolderPlus, Images, Info, Pencil, Star, StarOff, Trash2, type LucideIcon } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -25,6 +25,7 @@ import { relativeTime } from "@/lib/relativeTime";
 import { formatBytes } from "../parts";
 import { FileTypeIcon, familyOf, type FileFamily } from "./ui";
 import { pagesKeys } from "@/api/keys";
+import type { Rights } from "../permissions";
 
 export function BottomSheet({ open, onClose, children, testID }: { open: boolean; onClose: () => void; children: ReactNode; testID: string }) {
   const colors = useColors();
@@ -101,9 +102,12 @@ export function NewSheet({
   onMedia,
   onFiles,
   onCamera,
+  onSpace,
 }: {
   open: boolean;
   onClose: () => void;
+  /** The Pages home only: a new space (the web's FAB on its home view). */
+  onSpace?: () => void;
   /** Absent where there is no folder to create one in (the drive-wide tabs). */
   onFolder?: () => void;
   onMedia: () => void;
@@ -120,6 +124,7 @@ export function NewSheet({
   };
   return (
     <BottomSheet open={open} onClose={onClose} testID="pages-new-sheet">
+      {onSpace ? <SheetRow icon={Plus} label={t("pages.new.space")} onPress={run(onSpace)} testID="pages-new-sheet-space" /> : null}
       {onFolder ? <SheetRow icon={FolderPlus} label={t("pages.new.folder")} onPress={run(onFolder)} testID="pages-new-folder" /> : null}
       <SheetRow icon={Images} label={t("pages.new.media")} onPress={run(onMedia)} testID="pages-new-media" />
       <SheetRow icon={File} label={t("pages.new.files")} onPress={run(onFiles)} testID="pages-new-files" />
@@ -139,7 +144,7 @@ export function ActionsSheet({
   onMove,
   onDetails,
   onTrash,
-  canWrite,
+  rights,
 }: {
   node: PageNode | null;
   onClose: () => void;
@@ -149,10 +154,14 @@ export function ActionsSheet({
   onMove: (node: PageNode) => void;
   onDetails: (node: PageNode) => void;
   onTrash: (node: PageNode) => void;
-  canWrite: boolean;
+  /** Null (unknown) offers nothing that writes. */
+  rights: Rights | null;
 }) {
   const { t } = useTranslation();
   if (!node) return null;
+  const canWrite = rights?.canWrite === true;
+  // Move and Trash: owner/admin only (the web's `canMove` / `canDelete`).
+  const canMove = rights?.canMove === true;
   const run = (fn: (n: PageNode) => void) => () => {
     onClose();
     fn(node);
@@ -173,9 +182,9 @@ export function ActionsSheet({
           />
         ) : null}
         {canWrite ? <SheetRow icon={Pencil} label={t("pages.actions.rename")} onPress={run(onRename)} testID="pages-action-rename" /> : null}
-        {canWrite ? <SheetRow icon={FolderInput} label={t("pages.actions.move")} onPress={run(onMove)} testID="pages-action-move" /> : null}
+        {canMove ? <SheetRow icon={FolderInput} label={t("pages.actions.move")} onPress={run(onMove)} testID="pages-action-move" /> : null}
         <SheetRow icon={Info} label={t("pages.actions.details")} onPress={run(onDetails)} testID="pages-action-details" />
-        {canWrite ? <SheetRow icon={Trash2} label={t("pages.actions.trash")} danger onPress={run(onTrash)} testID="pages-action-trash" /> : null}
+        {canMove ? <SheetRow icon={Trash2} label={t("pages.actions.trash")} danger onPress={run(onTrash)} testID="pages-action-trash" /> : null}
       </ScrollView>
     </BottomSheet>
   );

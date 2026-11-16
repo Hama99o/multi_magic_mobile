@@ -41,6 +41,7 @@ import { IconButton, NewFab, PagesTabBar, SortRow, UploadBar, useViewPrefs } fro
 import { useUploads } from "@/stores/uploads.store";
 import { pagesKeys } from "@/api/keys";
 import { useCreateFolder } from "@/screens/pages/usePageMutations";
+import { useSpaceRights } from "@/screens/pages/permissions";
 
 function Chip({ label, selected, onPress, testID }: { label: string; selected: boolean; onPress: () => void; testID: string }) {
   const colors = useColors();
@@ -113,6 +114,10 @@ export default function Folder() {
     const seen = new Set<number>();
     return (data?.pages ?? []).flatMap((p) => p.rows).filter((n) => (seen.has(n.id) ? false : (seen.add(n.id), true)));
   }, [data]);
+
+  // The space's permission decides every write here (audit P0 #2).
+  const rights = useSpaceRights(spaceId);
+  const rightsOf = useCallback(() => rights, [rights]);
 
   const here = [trail, title].filter(Boolean).join(" / ");
   const destination = useMemo(() => ({ spaceId, parentId, label: here || title }), [spaceId, parentId, here, title]);
@@ -203,8 +208,10 @@ export default function Folder() {
           locationOf={() => here}
           bottomPadding={96 + insets.bottom}
           onSelectingChange={setSelecting}
+          rightsOf={rightsOf}
         />
-        {selecting ? null : <NewFab onPress={() => setAdding(true)} />}
+        {/* A viewer adds nothing here (the web's `buildNewMenu`: no canWrite, no menu). */}
+        {selecting || !rights.canWrite ? null : <NewFab onPress={() => setAdding(true)} />}
       </View>
       <View style={{ marginHorizontal: -metrics.space.lg, marginBottom: -insets.bottom }}>
         <UploadBar />

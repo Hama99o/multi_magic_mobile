@@ -1331,7 +1331,8 @@ export const fr: Translations = {
     modified: "Modifié {{when}}",
     menu: { title: "Plus" },
     tabs: { home: "Accueil", starred: "Favoris", shared: "Partagés", files: "Fichiers", recentFiles: "Fichiers récents" },
-    new: { title: "Nouveau", folder: "Dossier", media: "Importer des photos ou vidéos", files: "Importer des fichiers", camera: "Prendre une photo ou une vidéo" },
+    new: { title: "Nouveau", folder: "Dossier", media: "Importer des photos ou vidéos", files: "Importer des fichiers", camera: "Prendre une photo ou une vidéo", space: "Nouvel espace" },
+    spaceForm: { name: "Nom", description: "Description (facultative)", icon: "Icône", iconLabel: "Icône {{icon}}", color: "Couleur", noColor: "Aucune couleur", failed: "Impossible de créer l’espace." },
     actions: {
       trashedOne: "« {{title}} » placé dans la corbeille",
       trashedMany_one: "{{count}} élément placé dans la corbeille",
@@ -1379,7 +1380,7 @@ export const fr: Translations = {
     searchPill: "Rechercher",
     loadFailed: "Impossible de charger vos Pages.",
     noSpacesTitle: "Aucun espace",
-    noSpacesBody: "Créez un espace sur le web, puis ajoutez-y des fichiers depuis ici.",
+    noSpacesBody: "Créez un espace pour y ranger vos fichiers.",
     emptyFolder: "Ce dossier est vide",
     emptyFolderBody: "Touchez Ajouter pour importer photos, vidéos ou fichiers.",
     emptyFiltered: "Rien de ce type ici.",

@@ -61,6 +61,7 @@ import {
 } from "@/stores/uploads.store";
 import { pagesKeys } from "@/api/keys";
 import { useCreateFolder } from "@/screens/pages/usePageMutations";
+import { SpaceForm } from "@/screens/pages/SpaceForm";
 
 const THUMB = 64;
 
@@ -161,6 +162,7 @@ type HomeItem =
   | { key: string; type: "title"; label: string; testID?: string }
   | { key: string; type: "recent"; destination: LastDestination; place: Place }
   | { key: string; type: "space"; space: Space }
+  | { key: string; type: "newSpace" }
   | { key: string; type: "share"; share: SharedItem; canWrite: boolean };
 
 export default function SaveToPages() {
@@ -181,6 +183,7 @@ export default function SaveToPages() {
   const [newName, setNewName] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [query, setQuery] = useState("");
+  const [spaceForm, setSpaceForm] = useState(false);
   const searching = query.trim().length >= 2;
 
   // Start where the last upload went (Google Drive's "Location").
@@ -310,9 +313,12 @@ export default function SaveToPages() {
       usableRecents.forEach((r) => items.push({ key: `r-${r.destination.spaceId}-${r.destination.parentId}`, type: "recent", ...r }));
     }
     const mine = spaces.data?.rows ?? [];
-    if (mine.length) {
+    // Always offered, so a person with no space yet is not at a dead end
+    // (audit P0 #1: with 0 spaces this list was blank).
+    if (spaces.data) {
       items.push({ key: "t-mine", type: "title", label: t("pages.save.mySpaces") });
       mine.forEach((space) => items.push({ key: `s-${space.id}`, type: "space", space }));
+      items.push({ key: "new-space", type: "newSpace" });
     }
     const shares = shared.data?.rows ?? [];
     if (shares.length) {
@@ -343,6 +349,15 @@ export default function SaveToPages() {
             title={item.space.title}
             onPress={() => setPlace({ space: { id: item.space.id, title: item.space.title, icon: item.space.icon }, path: [], floor: 0 })}
             testID="pages-save-space"
+          />
+        );
+      case "newSpace":
+        return (
+          <PlaceRow
+            glyph={<Plus size={22} color={colors.inkMuted} />}
+            title={t("pages.new.space")}
+            onPress={() => setSpaceForm(true)}
+            testID="pages-save-new-space"
           />
         );
       case "share":
@@ -693,6 +708,11 @@ export default function SaveToPages() {
           </View>
         </>
       )}
+      <SpaceForm
+        open={spaceForm}
+        onClose={() => setSpaceForm(false)}
+        onCreated={(space) => setPlace({ space: { id: space.id, title: space.title, icon: space.icon }, path: [], floor: 0 })}
+      />
     </Screen>
   );
 }

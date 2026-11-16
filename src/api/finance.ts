@@ -470,6 +470,7 @@ export const financeApi = {
 
   incomes: {
     list: async (f: ListFilters): Promise<Page<Income>> => pageOf((await http.get(`${B}/incomes`, { params: listParams(f) })).data, "incomes", parseIncome, f.page),
+    show: async (incomeId: number): Promise<Income> => parseIncome(obj((await http.get(`${B}/incomes/${incomeId}`)).data, "show").income),
     pending: async (): Promise<Income[]> => readableRows(arr(obj((await http.get(`${B}/incomes/pending`)).data, "pending").incomes, "incomes"), parseIncome).rows,
     trash: async (page: number): Promise<Page<Income>> => pageOf((await http.get(`${B}/incomes/trashes`, { params: { page, per_page: PER_PAGE } })).data, "incomes", parseIncome, page),
     create: async (input: EntryInput): Promise<Income> => parseIncome(obj((await http.post(`${B}/incomes`, { income: incomeBody(input) })).data, "create").income),

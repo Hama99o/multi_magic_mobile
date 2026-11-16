@@ -1297,6 +1297,7 @@ export const fr: Translations = {
     notificationsBody: "Ce qui a changé",
     contactsBody: "Vos proches, à un geste d’un appel",
     todosBody: "Vos listes et ce qui arrive",
+    financeBody: "Dépenses, revenus, prêts et budgets",
     safezoneBody: "Mots de passe, cartes et papiers, derrière votre code",
     calendarBody: "Ce qui arrive",
     conversationsBody: "Vos questions passées",

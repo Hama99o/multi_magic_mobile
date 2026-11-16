@@ -1,6 +1,6 @@
-/** Finance › Expenses tab. Placeholder until it is built (docs/design/finance/SPEC.md §D). */
-import { View } from "react-native";
+/** Finance › Expenses (SPEC F10-F13): the shared ledger, for expenses. */
+import { Ledger } from "../Ledger";
 
 export function ExpensesTab() {
-  return <View testID="finance-tab-expenses" style={{ flex: 1 }} />;
+  return <Ledger kind="expense" />;
 }

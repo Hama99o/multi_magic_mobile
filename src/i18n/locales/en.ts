@@ -1281,6 +1281,7 @@ export const en = {
     notificationsBody: "What changed",
     contactsBody: "Everyone you know, one tap to call",
     todosBody: "Lists and what is due",
+    financeBody: "Spending, income, loans and budgets",
     safezoneBody: "Passwords, cards and IDs, behind your PIN",
     calendarBody: "What's next",
     conversationsBody: "Your past questions",

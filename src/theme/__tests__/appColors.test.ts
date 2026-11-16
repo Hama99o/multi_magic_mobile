@@ -16,14 +16,14 @@ const contrast = (a: string, b: string) => {
 };
 
 it("the map is total: every Home app has a colour, and no two share one", () => {
-  expect(HOME_APPS).toEqual(["pages", "notes", "assistant", "chats", "notifications", "calendar", "contacts", "safezone", "conversations", "todos"]);
+  expect(HOME_APPS).toEqual(["pages", "notes", "assistant", "chats", "notifications", "calendar", "contacts", "safezone", "conversations", "todos", "finance"]);
   for (const app of HOME_APPS) expect(APP_COLORS[app]).toMatch(/^#[0-9a-f]{6}$/i);
   expect(new Set(HOME_APPS.map((a) => APP_COLORS[a])).size).toBe(HOME_APPS.length);
 });
 
-it("the colours are the icon's own (Conversations' indigo and Todo's lime are the additions)", () => {
+it("the colours are the icon's own (Conversations' indigo, Todo's lime and Finance's gold are the additions)", () => {
   for (const app of HOME_APPS) {
-    if (app === "conversations" || app === "todos") continue;
+    if (app === "conversations" || app === "todos" || app === "finance") continue;
     expect(CATEGORY_COLORS as readonly string[]).toContain(APP_COLORS[app]);
   }
 });

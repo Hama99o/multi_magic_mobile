@@ -168,10 +168,17 @@ const COMPOSED = [
   ...["none", "daily", "weekly", "monthly"].map((v) => `todos.frequency.${v}`),
   ...["daily", "weekly", "monthly"].map((v) => `todos.repeatEvery.${v}`),
   ...["today", "upcoming", "overdue"].flatMap((v) => [`todos.views.${v}`, `todos.emptyView.${v}`]),
+  // Finance: the five tabs (app/finance/index.tsx) and the Help sheet's sections (HelpSheet.tsx).
+  ...["overview", "expenses", "income", "loans", "budgets"].map((v) => `finance.tabs.${v}`),
+  ...["overview", "expenses", "recurring", "income", "loans", "budgets", "reports", "categories"].flatMap((v) => [`finance.help.${v}.title`, `finance.help.${v}.body`]),
 ];
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
 const PLURAL = new Set([
+  "finance.ledger.entries",
+  "finance.pending.title",
+  "finance.overview.expenseCount",
+  "finance.overview.active",
   "todos.overdueCount",
   "todos.more",
   "todos.doneCount",

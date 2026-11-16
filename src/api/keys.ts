@@ -148,10 +148,14 @@ export const financeKeys = {
   incomeLists: () => ["finance", "incomes"] as const,
   incomes: <Q extends string, T extends number | null, Y extends number, M extends number>(search: Q, tagId: T, year: Y, month: M) => ["finance", "incomes", search, tagId, year, month] as const,
   pendingIncomes: () => ["finance", "pendingIncomes"] as const,
+  /** One expense or income, for its detail and its edit form. */
+  entry: <K extends "expense" | "income", I extends number>(kind: K, entryId: I) => ["finance", "entry", kind, entryId] as const,
   loanLists: () => ["finance", "loans"] as const,
   loans: <P extends boolean, L extends string, Q extends string, T extends number | null>(paid: P, type: L, search: Q, tagId: T) => ["finance", "loans", paid, type, search, tagId] as const,
   loan: <I extends number>(loanId: I) => ["finance", "loan", loanId] as const,
   outstanding: () => ["finance", "outstanding"] as const,
+  /** The first page of a period's expenses: its count and the latest rows (Overview). */
+  expenseGlance: <Y extends number, M extends number>(year: Y, month: M) => ["finance", "expenseGlance", year, month] as const,
   budgets: () => ["finance", "budgets"] as const,
   recurring: <K extends "expense" | "income">(kind: K) => ["finance", "recurring", kind] as const,
   tags: () => ["finance", "tags"] as const,

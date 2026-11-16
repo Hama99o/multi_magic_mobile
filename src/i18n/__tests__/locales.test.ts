@@ -113,6 +113,10 @@ const SAME_IN_BOTH = new Set([
   "home.title",
   // A task's notes: "Notes" in both, as contacts' and the Notes app's.
   "todos.notes",
+  // Finance: "Budgets" is the word in both; a row's spoken name is "{{name}}, {{amount}}".
+  "finance.tabs.budgets",
+  "finance.overview.budgets",
+  "finance.ledger.openEntry",
 ]);
 
 describe("the two locales", () => {

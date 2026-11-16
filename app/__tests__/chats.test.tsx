@@ -218,3 +218,67 @@ describe("back", () => {
     expect(router.replace).toHaveBeenCalledWith("/home");
   });
 });
+
+// ── SEARCH ACROSS CONVERSATIONS (audit #29) ───────────────────────────────
+// The web's list has a search field (Index.tsx): debounced, sent to the
+// server as `search`, "No conversations match" when nothing does.
+describe("search", () => {
+  const page = (rows: Conversation[]) => ({ conversations: rows, unreadConversations: 0, hasMore: false });
+
+  it("asks the server with the term once typing pauses, and shows its answer", async () => {
+    const list = jest.spyOn(conversationsApi, "list").mockImplementation(async (_page = 1, search?: string) =>
+      search ? page([{ ...conversation(9), displayName: "Anisa Rahimi" }]) : page([conversation(1)]),
+    );
+    renderScreen();
+    await screen.findByText("Person 1");
+    fireEvent.changeText(screen.getByTestId("chats-search"), "  anisa ");
+    expect(await screen.findByText("Anisa Rahimi")).toBeTruthy();
+    expect(list).toHaveBeenCalledWith(1, "anisa");
+    expect(screen.queryByText("Person 1")).toBeNull();
+  });
+
+  it("debounces: a burst of keystrokes is one request", async () => {
+    const list = jest.spyOn(conversationsApi, "list").mockResolvedValue(page([conversation(1)]));
+    renderScreen();
+    await screen.findByText("Person 1");
+    fireEvent.changeText(screen.getByTestId("chats-search"), "a");
+    fireEvent.changeText(screen.getByTestId("chats-search"), "an");
+    fireEvent.changeText(screen.getByTestId("chats-search"), "ani");
+    await waitFor(() => expect(list).toHaveBeenCalledWith(1, "ani"));
+    expect(list.mock.calls.filter((call) => call[1] !== undefined)).toEqual([[1, "ani"]]);
+  });
+
+  it("no match says so, and does not offer to start one as if the list were empty", async () => {
+    jest.spyOn(conversationsApi, "list").mockImplementation(async (_page = 1, search?: string) =>
+      search ? page([]) : page([conversation(1)]),
+    );
+    renderScreen();
+    await screen.findByText("Person 1");
+    fireEvent.changeText(screen.getByTestId("chats-search"), "zz");
+    expect(await screen.findByText("Nothing matches that.")).toBeTruthy();
+    expect(screen.queryByTestId("chats-empty-start")).toBeNull();
+  });
+
+  it("a failed search says so", async () => {
+    jest.spyOn(conversationsApi, "list").mockImplementation(async (_page = 1, search?: string) => {
+      if (search) throw new Error("offline");
+      return page([conversation(1)]);
+    });
+    renderScreen();
+    await screen.findByText("Person 1");
+    fireEvent.changeText(screen.getByTestId("chats-search"), "anisa");
+    expect(await screen.findByTestId("chats-load-failed")).toBeTruthy();
+  });
+
+  it("clearing the field brings the whole list back", async () => {
+    jest.spyOn(conversationsApi, "list").mockImplementation(async (_page = 1, search?: string) =>
+      search ? page([]) : page([conversation(1)]),
+    );
+    renderScreen();
+    await screen.findByText("Person 1");
+    fireEvent.changeText(screen.getByTestId("chats-search"), "zz");
+    await screen.findByText("Nothing matches that.");
+    fireEvent.press(screen.getByLabelText("Clear search"));
+    expect(await screen.findByText("Person 1")).toBeTruthy();
+  });
+});

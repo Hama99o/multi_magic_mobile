@@ -76,9 +76,9 @@ export interface Conversation {
    */
   canDelete: boolean;
   /**
-   * Whether the reader administers this group. Parsed and deliberately NOT
-   * rendered: it is the flag an add/remove UI would hang off, and groups are
-   * read-only in v1 — `docs/design/people-chat/SPEC.md` §2.3.
+   * Whether the reader administers this group: what the members panel hangs
+   * its controls on (audit #30), since only a group's admins may add, remove
+   * or promote (`conversation_policy.rb` `update?`).
    */
   isAdmin: boolean;
   updatedAt: string;
@@ -201,8 +201,12 @@ export const conversationsApi = {
    * `meta.unread_conversations` is on the first page already, so the badge does
    * not need its own request on a cold open — only on a refresh.
    */
-  list: async (page = 1): Promise<ConversationList> => {
-    const res = await http.get("/api/v1/conversations", { params: { page } });
+  list: async (page = 1, search?: string): Promise<ConversationList> => {
+    // `search` is the web's (`Index.tsx`, debounced 350 ms): `pg_search` over
+    // the people in a thread and a group's name (`conversation.rb`
+    // `search_conversations`). Left out when empty, as the web leaves it out.
+    const params = search ? { page, search } : { page };
+    const res = await http.get("/api/v1/conversations", { params });
     const record = obj(res.data, "conversations");
     const meta = obj(record.meta, "conversations.meta");
     const pagy = obj(meta.pagy, "conversations.meta.pagy");
@@ -264,6 +268,31 @@ export const conversationsApi = {
     return parseConversation(obj(res.data, "conversation").conversation);
   },
 
+  /**
+   * GROUP MEMBERS — audit #30, the web's `MembersPanel.tsx`. ONE route for all
+   * three, `PUT /conversations/:id` with `user_id` (`conversations_controller
+   * #update`), and only a group's admins may call it (`conversation_policy.rb`
+   * `update?`). Each answers with the conversation, participants and all.
+   *
+   * Removing the LAST admin is a silent no-op on the server
+   * (`conversation.rb#remove_member!`), which is why the panel never offers
+   * removing an admin at all, as the web does not.
+   */
+  addMember: async (conversationId: number, userId: number): Promise<Conversation> => {
+    const res = await http.put(`/api/v1/conversations/${conversationId}`, { user_id: userId });
+    return parseConversation(obj(res.data, "conversation").conversation);
+  },
+
+  makeAdmin: async (conversationId: number, userId: number): Promise<Conversation> => {
+    const res = await http.put(`/api/v1/conversations/${conversationId}`, { user_id: userId, is_admin: true });
+    return parseConversation(obj(res.data, "conversation").conversation);
+  },
+
+  removeMember: async (conversationId: number, userId: number): Promise<Conversation> => {
+    const res = await http.put(`/api/v1/conversations/${conversationId}`, { user_id: userId, remove: true });
+    return parseConversation(obj(res.data, "conversation").conversation);
+  },
+
   /** Clears it for this reader only — see this file's header, point 4. */
   clearForMe: async (conversationId: number): Promise<void> => {
     await http.delete(`/api/v1/conversations/${conversationId}`);
@@ -312,6 +341,18 @@ export const peopleApi = {
 };
 
 export const threadApi = {
+  /**
+   * FIND A MESSAGE IN THIS THREAD — audit #29, the web's `ThreadSearch.tsx`.
+   * The same index route with `search` (`messages_controller.rb#index`: `body
+   * ILIKE`, newest first, the first 25). Kept newest first: the latest
+   * mention is usually the one being looked for.
+   */
+  search: async (conversationId: number, search: string): Promise<ChatMessage[]> => {
+    const res = await http.get(`/api/v1/conversations/${conversationId}/messages`, { params: { search } });
+    const record = obj(res.data, "messages");
+    return readable(arr(record.messages, "messages.messages"), messagesApi.parseOne);
+  },
+
   /**
    * Send. **HTTP, never the socket** — `messages_controller.rb:5-8`: "`perform`
    * on a subscription that is not up is a silent no-op, and a send that

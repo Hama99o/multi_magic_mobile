@@ -45,6 +45,7 @@ const SAME_IN_BOTH = new Set([
   "composer.length",
   // Words French took whole, and one product name.
   "chat.title", // "Assistant"
+  "thread.admin", // "Admin" — the web's French too
   "chat.assistantSpeaker", // "Assistant" — spoken, and the same word as chat.title
   "chat.notifications", // "Notifications"
   "notes.title", // "Notes"

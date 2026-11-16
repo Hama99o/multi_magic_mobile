@@ -6,31 +6,30 @@
  * chat that already exists, so this never makes a duplicate) and GROUP (two
  * people or more, and a name; with no name it is named after its people's
  * first names, which is what the web sends). The people come from the
- * people-finder, `peopleApi.search`, searched as you type and paged on scroll.
+ * people-finder, `peopleApi.search`, searched as you type and paged on scroll
+ * (`PeoplePicker`, which adding to a group shares).
  *
  * A refusal keeps the sheet open and says why: the person picked somebody
  * and pressed Start, and a sheet that closed with nothing made would read as
  * a missed tap.
  */
-import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Modal, Pressable, TextInput, View } from "react-native";
+import { useState } from "react";
+import { Modal, Pressable, TextInput, View } from "react-native";
 import { KeyboardPadding } from "@/components/KeyboardPadding";
 import { useTranslation } from "react-i18next";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { Check, Search, Users, X } from "@/components/icons";
+import { X } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
-import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { conversationsApi, peopleApi, type Conversation, type Person } from "@/api/conversations";
+import { conversationsApi, type Conversation, type Person } from "@/api/conversations";
 import { conversationKeys } from "@/api/keys";
 import { failureMessage } from "@/api/failure";
-import { Avatar } from "./Avatar";
+import { PeoplePicker } from "./PeoplePicker";
 
 type Mode = "direct" | "group";
 
-const SEARCH_DEBOUNCE_MS = 300;
 const FILL = { position: "absolute", top: 0, left: 0, right: 0, bottom: 0 } as const;
 
 export function NewConversationSheet({
@@ -46,28 +45,8 @@ export function NewConversationSheet({
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>("direct");
-  const [search, setSearch] = useState("");
-  const [term, setTerm] = useState("");
   const [selected, setSelected] = useState<Person[]>([]);
   const [groupName, setGroupName] = useState("");
-
-  useEffect(() => {
-    const timer = setTimeout(() => setTerm(search.trim()), SEARCH_DEBOUNCE_MS);
-    return () => clearTimeout(timer);
-  }, [search]);
-
-  const people = useInfiniteQuery({
-    queryKey: conversationKeys.people(term),
-    queryFn: ({ pageParam }) => peopleApi.search(term, pageParam),
-    initialPageParam: 1,
-    getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
-  });
-  const rows = useMemo(() => {
-    const seen = new Set<number>();
-    return (people.data?.pages ?? [])
-      .flatMap((page) => page.people)
-      .filter((p) => (seen.has(p.id) ? false : (seen.add(p.id), true)));
-  }, [people.data]);
 
   const create = useMutation({
     mutationFn: (args: { mode: Mode; people: Person[]; name: string }) =>
@@ -202,103 +181,16 @@ export function NewConversationSheet({
             />
           ) : null}
 
-          <View
-            style={{
-              flexDirection: "row",
-              alignItems: "center",
-              gap: metrics.space.sm,
-              backgroundColor: colors.surface,
-              borderRadius: metrics.radius.md,
-              borderWidth: 1,
-              borderColor: colors.border,
-              paddingHorizontal: metrics.space.md,
-              minHeight: metrics.touch,
-            }}
-          >
-            <Search size={16} color={colors.inkMuted} />
-            <TextInput
-              testID="new-conversation-search"
-              value={search}
-              onChangeText={setSearch}
-              placeholder={t("chats.searchPeople")}
-              placeholderTextColor={colors.inkMuted}
-              accessibilityLabel={t("chats.searchPeople")}
-              autoCapitalize="none"
-              autoCorrect={false}
-              style={{ flex: 1, color: colors.ink, paddingVertical: metrics.space.sm }}
-            />
-          </View>
-
-          {mode === "group" ? (
-            <Text variant="caption" tone="muted">
-              {t("chats.chosen", { count: selected.length })}
-            </Text>
-          ) : null}
-
-          <FlatList
-            testID="new-conversation-people"
-            style={{ flex: 1 }}
-            data={rows}
-            keyExtractor={(p) => String(p.id)}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => {
-              const on = selected.some((p) => p.id === item.id);
-              return (
-                <Pressable
-                  testID={`person-${item.id}`}
-                  onPress={() => toggle(item)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected: on }}
-                  accessibilityLabel={item.name}
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: metrics.space.md,
-                    paddingVertical: metrics.space.sm,
-                    paddingHorizontal: metrics.space.sm,
-                    minHeight: metrics.touch,
-                    borderRadius: metrics.radius.md,
-                    backgroundColor: on ? colors.surface : "transparent",
-                  }}
-                >
-                  <Avatar name={item.name} uri={item.avatar} userId={item.id} size={36} />
-                  <View style={{ flex: 1 }}>
-                    <Text variant="label" numberOfLines={1}>
-                      {item.name}
-                    </Text>
-                    {item.email && item.email !== item.name ? (
-                      <Text variant="caption" tone="muted" numberOfLines={1}>
-                        {item.email}
-                      </Text>
-                    ) : null}
-                  </View>
-                  {on ? <Check size={18} color={colors.accent} /> : null}
-                </Pressable>
-              );
-            }}
-            ListEmptyComponent={
-              people.isLoading ? (
-                <RowsSkeleton rows={4} testID="new-conversation-loading" />
-              ) : people.error ? (
-                <View style={{ paddingVertical: metrics.space.lg, gap: metrics.space.sm }}>
-                  <Text tone="muted">{failureMessage(people.error, t("chats.peopleFailed"))}</Text>
-                  <Pressable onPress={() => void people.refetch()} accessibilityRole="button" hitSlop={8}>
-                    <Text tone="accent">{t("common.tryAgain")}</Text>
-                  </Pressable>
-                </View>
-              ) : (
-                <View style={{ paddingVertical: metrics.space.lg, flexDirection: "row", gap: metrics.space.sm }}>
-                  <Users size={16} color={colors.inkMuted} />
-                  <Text tone="muted">{t("chats.nobodyFound")}</Text>
-                </View>
-              )
-            }
-            onEndReached={() => {
-              if (people.hasNextPage && !people.isFetchingNextPage) void people.fetchNextPage();
-            }}
-            onEndReachedThreshold={0.5}
-            ListFooterComponent={
-              people.isFetchingNextPage ? <ActivityIndicator color={colors.inkMuted} style={{ paddingVertical: metrics.space.md }} /> : null
+          <PeoplePicker
+            onPick={toggle}
+            isSelected={(person) => selected.some((p) => p.id === person.id)}
+            testIDs={{ search: "new-conversation-search", list: "new-conversation-people", loading: "new-conversation-loading" }}
+            between={
+              mode === "group" ? (
+                <Text variant="caption" tone="muted">
+                  {t("chats.chosen", { count: selected.length })}
+                </Text>
+              ) : null
             }
           />
 

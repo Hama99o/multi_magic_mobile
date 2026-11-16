@@ -16,13 +16,21 @@
  * (`POST /conversations` with `user_id`, or `user_ids` + `name`). A new
  * conversation opens straight away.
  *
+ * ── SEARCHING (audit #29) ─────────────────────────────────────────────────
+ * The web's field (`Index.tsx`): debounced, then the same list route with
+ * `search` — the server's `pg_search` over the people in a thread and a
+ * group's name. A search is its own cached list (`conversationKeys.search`),
+ * so clearing the field puts the whole list back at once; and it says "no
+ * match" rather than the empty state, whose Start button would invite a
+ * duplicate of a conversation that exists.
+ *
  * Back goes Home when nothing is behind, as Notes does (`useBackToHome`).
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, Plus } from "@/components/icons";
+import { ChevronLeft, Plus, Search, X } from "@/components/icons";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -39,6 +47,9 @@ import { Button } from "@/components/reusables/button";
 import { NewConversationSheet } from "@/screens/people/NewConversationSheet";
 import { useBackToHome } from "@/hooks/useBackToHome";
 
+/** The web waits 350 ms (`Index.tsx`); so does this. */
+export const SEARCH_DEBOUNCE_MS = 350;
+
 export default function Chats() {
   const colors = useColors();
   const metrics = useMetrics();
@@ -46,6 +57,13 @@ export default function Chats() {
   const queryClient = useQueryClient();
   const goBack = useBackToHome();
   const [starting, setStarting] = useState(false);
+  const [search, setSearch] = useState("");
+  const [term, setTerm] = useState("");
+
+  useEffect(() => {
+    const timer = setTimeout(() => setTerm(search.trim()), SEARCH_DEBOUNCE_MS);
+    return () => clearTimeout(timer);
+  }, [search]);
 
   /**
    * EVERY PAGE, not the first. The server pages at 15 (`conversations_controller.rb`),
@@ -55,13 +73,23 @@ export default function Chats() {
    * thread's and the socket's invalidations still refetch it; a refetch
    * re-reads every page that is loaded.
    */
+  const all = useInfiniteQuery({
+    queryKey: conversationKeys.list(),
+    queryFn: ({ pageParam }) => conversationsApi.list(pageParam),
+    initialPageParam: 1,
+    getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
+  });
+  // A search is its own list, so the whole one stays cached underneath and
+  // comes back at once when the field is cleared (audit #29).
+  const searched = useInfiniteQuery({
+    queryKey: conversationKeys.search(term),
+    queryFn: ({ pageParam }) => conversationsApi.list(pageParam, term),
+    initialPageParam: 1,
+    getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
+    enabled: term.length > 0,
+  });
   const { data, isLoading, error, refetch, isRefetching, dataUpdatedAt, fetchNextPage, hasNextPage, isFetchingNextPage } =
-    useInfiniteQuery({
-      queryKey: conversationKeys.list(),
-      queryFn: ({ pageParam }) => conversationsApi.list(pageParam),
-      initialPageParam: 1,
-      getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
-    });
+    term ? searched : all;
 
   const reload = useCallback(() => {
     void queryClient.invalidateQueries({ queryKey: conversationKeys.all });
@@ -147,6 +175,48 @@ export default function Chats() {
         <AiButton compact />
       </View>
 
+      <View
+        style={{
+          flexDirection: "row",
+          alignItems: "center",
+          gap: metrics.space.sm,
+          backgroundColor: colors.surface,
+          borderRadius: metrics.radius.md,
+          borderWidth: 1,
+          borderColor: colors.border,
+          paddingHorizontal: metrics.space.md,
+          minHeight: metrics.touch,
+          marginBottom: metrics.space.sm,
+        }}
+      >
+        <Search size={16} color={colors.inkMuted} />
+        <TextInput
+          testID="chats-search"
+          value={search}
+          onChangeText={setSearch}
+          placeholder={t("chats.search")}
+          placeholderTextColor={colors.inkMuted}
+          accessibilityLabel={t("chats.search")}
+          autoCapitalize="none"
+          autoCorrect={false}
+          returnKeyType="search"
+          style={{ flex: 1, color: colors.ink, paddingVertical: metrics.space.sm }}
+        />
+        {search ? (
+          <Pressable
+            onPress={() => {
+              setSearch("");
+              setTerm("");
+            }}
+            accessibilityRole="button"
+            accessibilityLabel={t("chats.clearSearch")}
+            hitSlop={10}
+          >
+            <X size={16} color={colors.inkMuted} />
+          </Pressable>
+        ) : null}
+      </View>
+
       <UnreadableNotice count={(data?.pages ?? []).reduce((n, page) => n + (page.unreadable ?? 0), 0)} />
 
       <LoadFailure
@@ -180,7 +250,11 @@ export default function Chats() {
             // Rows in the rows' own shape while they load (Telegram) — see
             // `skeleton.tsx`. Not a blank list, not a spinner.
             <RowsSkeleton />
-          ) : error ? null : (
+          ) : error ? null : term ? (
+            <View testID="chats-no-matches" style={{ paddingVertical: metrics.space.xl * 2 }}>
+              <Text tone="muted">{t("chats.noMatches")}</Text>
+            </View>
+          ) : (
             /* Gymshark and My BMW: a heading and one line that says what will
                fill it. No icon, no illustration (IDENTITY.md §6). And the way
                to fill it, now that this screen can start one. */
@@ -211,6 +285,8 @@ export default function Chats() {
           ) : null
         }
         contentContainerStyle={{ paddingBottom: metrics.space.xl }}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
         showsVerticalScrollIndicator={false}
       />
 

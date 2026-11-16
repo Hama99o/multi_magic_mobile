@@ -127,3 +127,78 @@ describe("reactions", () => {
     expect(await screen.findByTestId("thread-error")).toBeTruthy();
   });
 });
+
+// ── SEARCH IN THIS THREAD (audit #29) ─────────────────────────────────────
+// The web's ThreadSearch: a field under the header, the messages route with
+// `search`, and a result that loads history back to the message and shows it.
+describe("searching this thread", () => {
+  const url = "/api/v1/conversations/70/messages";
+  type Reply = [number, unknown];
+  let onSearch: (term: string) => Reply;
+  let onBefore: (beforeId: number) => Reply;
+  let latestPages = 1;
+
+  beforeEach(() => {
+    mock.reset();
+    latestPages = 1;
+    onSearch = () => [200, { messages: [], meta: { pagy: { pages: 1 } } }];
+    onBefore = () => [200, { messages: [], meta: { has_more: false } }];
+    mock.onPost("/api/v1/conversations/70/mark_read").reply(200, { conversation: conversation() });
+    mock.onGet("/api/v1/conversations/70").reply(200, { conversation: conversation() });
+    mock.onGet(url).reply((config) => {
+      if (config.params?.search) return onSearch(config.params.search);
+      if (config.params?.before_id) return onBefore(config.params.before_id);
+      return [200, { messages: [message()], meta: { pagy: { pages: latestPages } } }];
+    });
+  });
+
+  async function openSearch(term: string) {
+    renderThread();
+    await screen.findByText("See you at noon");
+    fireEvent.press(screen.getByLabelText("Search in this chat"));
+    fireEvent.changeText(await screen.findByTestId("thread-search-input"), term);
+  }
+
+  it("asks the server with the term and lists what it found", async () => {
+    onSearch = () => [200, { messages: [message({ id: 500 })], meta: { pagy: { pages: 1 } } }];
+    await openSearch("noon");
+    expect(await screen.findByTestId("thread-search-result-500")).toBeTruthy();
+    expect(mock.history.get.find((r) => r.params?.search)?.params).toEqual({ search: "noon" });
+  });
+
+  it("one letter does not search, as on the web", async () => {
+    await openSearch("n");
+    await act(async () => { await new Promise((r) => setTimeout(r, 500)); });
+    expect(mock.history.get.filter((r) => r.params?.search)).toHaveLength(0);
+  });
+
+  it("no match says so", async () => {
+    await openSearch("zebra");
+    expect(await screen.findByText("Nothing matches that.")).toBeTruthy();
+  });
+
+  it("a failed search says so", async () => {
+    onSearch = () => [500, {}];
+    await openSearch("noon");
+    expect(await screen.findByTestId("thread-search-failed")).toBeTruthy();
+  });
+
+  it("a result already on screen closes the search and is marked", async () => {
+    onSearch = () => [200, { messages: [message({ id: 500 })], meta: { pagy: { pages: 1 } } }];
+    await openSearch("noon");
+    fireEvent.press(await screen.findByTestId("thread-search-result-500"));
+    expect(await screen.findByTestId("thread-found-500")).toBeTruthy();
+    expect(screen.queryByTestId("thread-search-input")).toBeNull();
+  });
+
+  it("an older result loads history back to it first", async () => {
+    latestPages = 2;
+    const old = message({ id: 120, body: "the address is 4 rue X", reactions: [] });
+    onSearch = () => [200, { messages: [old], meta: { pagy: { pages: 1 } } }];
+    onBefore = () => [200, { messages: [old], meta: { has_more: false } }];
+    await openSearch("address");
+    fireEvent.press(await screen.findByTestId("thread-search-result-120"));
+    expect(await screen.findByTestId("thread-found-120")).toBeTruthy();
+    expect(mock.history.get.find((r) => r.params?.before_id)?.params).toEqual({ before_id: 500 });
+  });
+});

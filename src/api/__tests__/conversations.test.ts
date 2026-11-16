@@ -328,3 +328,63 @@ describe("starting a conversation", () => {
     expect(found.people[1]).toMatchObject({ id: 3, name: "x@example.com", firstName: null, avatar: `${http.defaults.baseURL}/a.png` });
   });
 });
+
+// ── SEARCH (audit #29) ──────────────────────────────────────────────────────
+// The web sends `search` to the same two index routes: the conversation list
+// (`pg_search` over the people and a group's name) and one thread's messages
+// (`body ILIKE`, newest first, 25 a page).
+describe("search", () => {
+  it("the list sends `search` beside the page", async () => {
+    mock.onGet("/api/v1/conversations").reply(200, page([directRow()]));
+    const result = await conversationsApi.list(1, "anisa");
+    expect(mock.history.get[0].params).toEqual({ page: 1, search: "anisa" });
+    expect(result.conversations[0].displayName).toBe("Anisa Rahimi");
+  });
+
+  it("the list without a term sends no `search`", async () => {
+    mock.onGet("/api/v1/conversations").reply(200, page([]));
+    await conversationsApi.list(2);
+    expect(mock.history.get[0].params).toEqual({ page: 2 });
+  });
+
+  it("a thread is searched on its messages route, newest match first", async () => {
+    const row = (id: number, body: string) => ({
+      id, conversation_id: 7, body, created_at: "2026-09-18T09:00:00Z", deleted: false, edited_at: null,
+      links: [], sources: [], rating: null, read_at: null, role: null, sent_by_me: false, undoable: false,
+      undone_at: null, user_id: 2, reactions: [],
+    });
+    mock.onGet("/api/v1/conversations/7/messages").reply(200, {
+      messages: [row(90, "the address is 4 rue X"), row(12, "what address?")],
+      meta: { pagy: { pages: 1 } },
+    });
+    const found = await threadApi.search(7, "address");
+    expect(mock.history.get[0].params).toEqual({ search: "address" });
+    expect(found.map((m) => m.id)).toEqual([90, 12]);
+  });
+});
+
+// ── GROUP MEMBERS (audit #30) ───────────────────────────────────────────────
+// One route for all three: PUT /conversations/:id with `user_id`, and
+// `is_admin` to promote or `remove` to take out (conversations_controller#update).
+describe("group members", () => {
+  const group = directRow({ is_group: true, is_admin: true, user: { fullname: "Trip", is_online: false } });
+
+  it("adds somebody with user_id alone", async () => {
+    mock.onPut("/api/v1/conversations/7").reply(200, { conversation: group });
+    const updated = await conversationsApi.addMember(7, 9);
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ user_id: 9 });
+    expect(updated.displayName).toBe("Trip");
+  });
+
+  it("makes somebody an admin with is_admin", async () => {
+    mock.onPut("/api/v1/conversations/7").reply(200, { conversation: group });
+    await conversationsApi.makeAdmin(7, 9);
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ user_id: 9, is_admin: true });
+  });
+
+  it("removes somebody with remove", async () => {
+    mock.onPut("/api/v1/conversations/7").reply(200, { conversation: group });
+    await conversationsApi.removeMember(7, 9);
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ user_id: 9, remove: true });
+  });
+});

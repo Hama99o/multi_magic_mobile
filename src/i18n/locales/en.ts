@@ -484,6 +484,9 @@ export const en = {
   },
 
   chats: {
+    search: "Search your chats",
+    clearSearch: "Clear search",
+    noMatches: "Nothing matches that.",
     title: "Chats",
     emptyTitle: "No conversations yet",
     emptyBody: "Start one with somebody on MultiMagic.",
@@ -508,6 +511,23 @@ export const en = {
   },
 
   thread: {
+    search: "Search in this chat",
+    closeSearch: "Close search",
+    noMatches: "Nothing matches that.",
+    searchFailed: "Could not search this conversation.",
+    searchNotReached: "That message is too far back to show here.",
+    you: "You",
+    members: "Members",
+    admin: "Admin",
+    membersCount_one: "{{count}} member",
+    membersCount_other: "{{count}} members",
+    addMembers: "Add someone",
+    makeAdmin: "Make {{name}} an admin",
+    removeMember: "Remove {{name}} from the group",
+    removeMemberQuestion: "Remove {{name}}?",
+    removeMemberBody: "They leave the group and stop getting its messages.",
+    removeMemberConfirm: "Remove",
+    membersFailed: "That change did not go through.",
     gone: "This conversation was deleted on another device.",
     today: "Today",
     typing: "typing…",

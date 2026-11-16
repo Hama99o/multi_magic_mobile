@@ -28,16 +28,22 @@
  * `src/api/ai.ts` is changed to make that work, which is the check that Phase 1
  * really was built generic.
  *
+ * ── SEARCH AND MEMBERS (audit #29, #30) ───────────────────────────────────
+ * The header's search opens `ThreadSearch` (the web's): a result loads
+ * history back to the message by cursor, then the list scrolls to it and
+ * marks it (`revealMessage`, the web's `useChat.reveal`). A group's header
+ * opens `MembersSheet` (the web's `MembersPanel`).
+ *
  * ── SENDING IS HTTP, ALWAYS ───────────────────────────────────────────────
  * `messages_controller.rb:5-8`: "`perform` on a subscription that is not up is
  * a silent no-op, and a send that vanishes is the worst failure a chat can
  * have." `typing` and `mark_read` may ride the socket; a message may not.
  */
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Alert, FlatList, Pressable, View, type ViewStyle } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, Trash2 } from "@/components/icons";
+import { ChevronLeft, Search, Trash2, Users } from "@/components/icons";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient } from "@tanstack/react-query";
@@ -63,6 +69,21 @@ import { PersonComposer } from "@/screens/people/PersonComposer";
 import { ReactionSheet } from "@/screens/people/ReactionSheet";
 import { DayDivider, UnreadDivider, dayLabel } from "@/screens/people/DayDivider";
 import { conversationKeys } from "@/api/keys";
+import { ThreadSearch } from "@/screens/people/ThreadSearch";
+import { MembersSheet } from "@/screens/people/MembersSheet";
+
+/** A bound on `revealMessage`, the web's (`useChat.ts` MAX_REVEAL_PAGES): 25
+ *  pages of history is far enough back for a search result, and keeps a
+ *  runaway loop impossible. */
+export const MAX_REVEAL_PAGES = 25;
+
+/** The transcript as `useConversation` caches it — read here, never written. */
+interface TranscriptCache {
+  messages: ChatMessage[];
+  hasOlder: boolean;
+  unreadableLatest: number;
+  unreadableOlder: number;
+}
 
 /** How long a typing indicator survives its last frame. */
 const TYPING_LINGER_MS = 4_000;
@@ -84,7 +105,7 @@ interface Outgoing {
 type Row =
   | { kind: "day"; key: string; label: string }
   | { kind: "unread"; key: string }
-  | { kind: "message"; key: string; message: ChatMessage; isLastSent: boolean }
+  | { kind: "message"; key: string; message: ChatMessage; isLastSent: boolean; found: boolean }
   | { kind: "outgoing"; key: string; outgoing: Outgoing };
 
 /** Module-level so the list is handed the same function every render. */
@@ -97,7 +118,7 @@ function sameRow(a: Row, b: Row): boolean {
   if (a.kind !== b.kind || a.key !== b.key) return false;
   if (a.kind === "day" && b.kind === "day") return a.label === b.label;
   if (a.kind === "message" && b.kind === "message") {
-    return a.message === b.message && a.isLastSent === b.isLastSent;
+    return a.message === b.message && a.isLastSent === b.isLastSent && a.found === b.found;
   }
   if (a.kind === "outgoing" && b.kind === "outgoing") {
     return (
@@ -167,7 +188,7 @@ const ThreadRow = memo(
       );
     }
     const { message } = row;
-    return (
+    const bubble = (
       <PersonMessageRow
         message={message}
         senderName={nameFor(message)}
@@ -176,6 +197,8 @@ const ThreadRow = memo(
         onToggleReaction={(emoji) => onReact(message, emoji)}
       />
     );
+    // The search result just jumped to, marked so the eye lands on it.
+    return row.found ? <FoundMark id={message.id}>{bubble}</FoundMark> : bubble;
   },
   (a, b) =>
     sameRow(a.row, b.row) &&
@@ -185,6 +208,19 @@ const ThreadRow = memo(
     a.onReact === b.onReact &&
     a.onRetry === b.onRetry,
 );
+
+function FoundMark({ id, children }: { id: number; children: ReactNode }) {
+  const colors = useColors();
+  const metrics = useMetrics();
+  return (
+    <View
+      testID={`thread-found-${id}`}
+      style={{ borderWidth: 2, borderColor: colors.accent, borderRadius: metrics.radius.md, padding: 2 }}
+    >
+      {children}
+    </View>
+  );
+}
 
 /**
  * WHAT THE APP ALREADY KNOWS ABOUT THIS THREAD, so it opens with it (2026-09-25).
@@ -260,6 +296,12 @@ export default function PersonThread() {
   /** A failed edit or delete, said once above the composer until the next try. */
   const [threadError, setThreadError] = useState<string | null>(null);
   const [typingName, setTypingName] = useState<string | null>(null);
+  const [searching, setSearching] = useState(false);
+  /** The search result being loaded back to, and the one last jumped to. */
+  const [revealing, setRevealing] = useState<number | null>(null);
+  const [foundId, setFoundId] = useState<number | null>(null);
+  const [searchNotice, setSearchNotice] = useState<string | null>(null);
+  const [showMembers, setShowMembers] = useState(false);
   const listRef = useRef<FlatList<Row>>(null);
   // Inverted, like the assistant's thread — `useNewestAnchor` has why.
   const { awayFromBottom, onScroll, toBottom, maintainVisibleContentPosition } =
@@ -519,6 +561,7 @@ export default function PersonThread() {
         key: String(message.id),
         message,
         isLastSent: message.id === lastSentId,
+        found: message.id === foundId,
       });
     }
 
@@ -528,8 +571,66 @@ export default function PersonThread() {
     return out;
     // `t` is passed to `dayLabel` because the day labels are words
     // ("Aujourd’hui"), so a language switch re-derives them.
-  }, [messages, outbox, unreadAnchorId, lastSentId, t]);
+  }, [messages, outbox, unreadAnchorId, lastSentId, foundId, t]);
   const newestFirst = useMemo(() => [...rows].reverse(), [rows]);
+
+  /**
+   * BRING A SEARCH RESULT ON SCREEN — the web's `useChat.reveal`. A result is
+   * often far up the history, so marking its id alone would point at
+   * nothing: older pages are loaded by cursor (`loadOlder`) until it is in
+   * the transcript, at most `MAX_REVEAL_PAGES` of them, then the list scrolls
+   * to it (the effect below). Read through the cache, not `messages`, which
+   * would be this render's copy for the whole loop.
+   */
+  const scrolledTo = useRef<number | null>(null);
+  const revealMessage = useCallback(
+    async (target: ChatMessage) => {
+      const transcript = () => queryClient.getQueryData<TranscriptCache>(conversationKeys.transcript(conversationId));
+      setSearchNotice(null);
+      setRevealing(target.id);
+      let found = false;
+      for (let round = 0; round < MAX_REVEAL_PAGES; round += 1) {
+        const now = transcript();
+        if (now?.messages.some((m) => m.id === target.id)) {
+          found = true;
+          break;
+        }
+        if (!now?.hasOlder) break;
+        const oldest = now.messages[0]?.id;
+        await loadOlder();
+        // `loadOlder` keeps what is on screen when a page fails; no progress
+        // means stop rather than ask again.
+        if (transcript()?.messages[0]?.id === oldest) break;
+      }
+      setRevealing(null);
+      if (found) {
+        scrolledTo.current = null;
+        setFoundId(target.id);
+        setSearching(false);
+      } else {
+        setSearchNotice(t("thread.searchNotReached"));
+      }
+    },
+    [conversationId, loadOlder, queryClient, t],
+  );
+
+  /** Scroll to the result once it is a row (inverted list: index from newest). */
+  useEffect(() => {
+    if (foundId == null || scrolledTo.current === foundId) return;
+    const index = newestFirst.findIndex((row) => row.key === String(foundId));
+    if (index < 0) return;
+    scrolledTo.current = foundId;
+    listRef.current?.scrollToIndex({ index, animated: true, viewPosition: 0.5 });
+  }, [foundId, newestFirst]);
+
+  /** Rows are measured as they render, so a far one can need a second try. */
+  const onScrollToIndexFailed = useCallback(
+    (info: { index: number; averageItemLength: number }) => {
+      listRef.current?.scrollToOffset({ offset: info.averageItemLength * info.index, animated: false });
+      setTimeout(() => listRef.current?.scrollToIndex({ index: info.index, animated: true, viewPosition: 0.5 }), 100);
+    },
+    [],
+  );
 
   /**
    * The thread itself — for the header's AVATAR and presence, and for naming
@@ -541,9 +642,8 @@ export default function PersonThread() {
    * face and a name in the header, and its presence is what says "a person" at
    * a glance.
    *
-   * Groups are read-only in v1, so `participants` is used for the sender name
-   * and `is_admin` — the flag an add/remove UI would hang off — is parsed and
-   * left unrendered on purpose (`docs/design/people-chat/SPEC.md` §2.3).
+   * `participants` names the sender in a group, and with `is_admin` it is what
+   * the members sheet draws (audit #30).
    */
   const { data: detail } = useQuery({
     queryKey: conversationKeys.thread(conversationId),
@@ -584,6 +684,16 @@ export default function PersonThread() {
       { text: t("common.delete"), style: "destructive", onPress: () => clearForMe() },
     ]);
   }, [clearForMe, t]);
+
+  /** A search result's second line: who wrote it. */
+  const senderFor = useCallback(
+    (message: ChatMessage): string => {
+      if (message.sentByMe) return t("thread.you");
+      const name = message.userId == null ? null : detail?.participants.find((p) => p.id === message.userId)?.name;
+      return name ?? (detail?.isGroup ? t("thread.someone") : (detail?.displayName ?? title));
+    },
+    [detail, title, t],
+  );
 
   const nameFor = useCallback(
     (message: ChatMessage): string | null => {
@@ -697,6 +807,32 @@ export default function PersonThread() {
             </Text>
           ) : null}
         </View>
+        <Pressable
+          testID="thread-search-toggle"
+          onPress={() => {
+            setSearchNotice(null);
+            setSearching((on) => !on);
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={t("thread.search")}
+          accessibilityState={{ selected: searching }}
+          hitSlop={8}
+          style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+        >
+          <Search size={20} color={searching ? colors.accent : colors.inkMuted} />
+        </Pressable>
+        {detail?.isGroup ? (
+          <Pressable
+            testID="thread-members"
+            onPress={() => setShowMembers(true)}
+            accessibilityRole="button"
+            accessibilityLabel={t("thread.members")}
+            hitSlop={8}
+            style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+          >
+            <Users size={20} color={colors.inkMuted} />
+          </Pressable>
+        ) : null}
         {detail?.canDelete ? (
           <Pressable
             testID="thread-delete"
@@ -710,6 +846,17 @@ export default function PersonThread() {
           </Pressable>
         ) : null}
       </View>
+
+      {searching ? (
+        <ThreadSearch
+          conversationId={conversationId}
+          senderFor={senderFor}
+          onPick={(message) => void revealMessage(message)}
+          onClose={() => setSearching(false)}
+          revealing={revealing}
+          notice={searchNotice}
+        />
+      ) : null}
 
       {/* Messages that could not be read, said rather than skipped in silence. */}
       <UnreadableNotice count={unreadable ?? 0} />
@@ -729,6 +876,7 @@ export default function PersonThread() {
         data={newestFirst}
         keyExtractor={rowKey}
         maintainVisibleContentPosition={maintainVisibleContentPosition}
+        onScrollToIndexFailed={onScrollToIndexFailed}
         renderItem={renderItem}
         onScroll={onScroll}
         scrollEventThrottle={64}
@@ -801,6 +949,10 @@ export default function PersonThread() {
         onDelete={() => void removeMessage()}
         onClose={() => setSheetFor(null)}
       />
+
+      {showMembers && detail?.isGroup ? (
+        <MembersSheet conversation={detail} onClose={() => setShowMembers(false)} />
+      ) : null}
     </Screen>
   );
 }

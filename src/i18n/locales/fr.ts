@@ -501,6 +501,9 @@ export const fr: Translations = {
   },
 
   chats: {
+    search: "Rechercher une discussion",
+    clearSearch: "Effacer la recherche",
+    noMatches: "Aucun résultat.",
     title: "Discussions",
     emptyTitle: "Pas encore de discussion",
     emptyBody: "Commencez-en une avec quelqu’un sur MultiMagic.",
@@ -525,6 +528,23 @@ export const fr: Translations = {
   },
 
   thread: {
+    search: "Rechercher dans cette discussion",
+    closeSearch: "Fermer la recherche",
+    noMatches: "Aucun résultat.",
+    searchFailed: "Impossible de rechercher dans cette discussion.",
+    searchNotReached: "Ce message est trop ancien pour être affiché ici.",
+    you: "Vous",
+    members: "Membres",
+    admin: "Admin",
+    membersCount_one: "{{count}} membre",
+    membersCount_other: "{{count}} membres",
+    addMembers: "Ajouter quelqu’un",
+    makeAdmin: "Nommer {{name}} administrateur",
+    removeMember: "Retirer {{name}} du groupe",
+    removeMemberQuestion: "Retirer {{name}} ?",
+    removeMemberBody: "Il ou elle quitte le groupe et ne reçoit plus ses messages.",
+    removeMemberConfirm: "Retirer",
+    membersFailed: "Ce changement n’a pas abouti.",
     gone: "Cette discussion a été supprimée sur un autre appareil.",
     today: "Aujourd’hui",
     typing: "écrit…",

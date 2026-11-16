@@ -169,6 +169,10 @@ function Form({ kind, existing }: { kind: Kind; existing: Recurring | null }) {
             {error}
           </Text>
         ) : null}
+        {existing ? <Button testID="finance-recurring-edit-delete" label={t("common.delete")} tone="danger" onPress={confirmDelete} /> : null}
+      </ScrollView>
+      {/* Pinned, as in the entry sheet: Save never hides below the fold (device QA F8). */}
+      <View style={{ paddingVertical: metrics.space.sm }}>
         <Button
           testID="finance-recurring-edit-save"
           label={t("common.save")}
@@ -181,8 +185,7 @@ function Form({ kind, existing }: { kind: Kind; existing: Recurring | null }) {
             })
           }
         />
-        {existing ? <Button testID="finance-recurring-edit-delete" label={t("common.delete")} tone="danger" onPress={confirmDelete} /> : null}
-      </ScrollView>
+      </View>
       <ChoiceSheet
         open={sheet === "currency"}
         title={t("finance.manage.recurring.currency")}

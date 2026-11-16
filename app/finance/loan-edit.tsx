@@ -267,8 +267,11 @@ function Form({ existing }: { existing: Loan | null }) {
             {error}
           </Text>
         ) : null}
-        <Button testID="finance-loan-form-save" label={t("finance.loans.form.save")} busy={save.isPending} disabled={!canSave} onPress={submit} />
       </ScrollView>
+      {/* Pinned, as in the entry sheet: Save never hides below the keypad (device QA F8). */}
+      <View style={{ paddingVertical: metrics.space.sm }}>
+        <Button testID="finance-loan-form-save" label={t("finance.loans.form.save")} busy={save.isPending} disabled={!canSave} onPress={submit} />
+      </View>
 
       <ChoiceSheet
         open={choosingCurrency}

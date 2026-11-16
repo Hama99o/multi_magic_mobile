@@ -188,6 +188,7 @@ const PLURAL = new Set([
   "contacts.phone.limited",
   "contacts.share.restBody",
   "safezone.pin.wrong",
+  "chats.chosen",
 ]);
 
 const CALLED = calledKeys();

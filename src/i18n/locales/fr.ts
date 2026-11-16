@@ -500,13 +500,25 @@ export const fr: Translations = {
   chats: {
     title: "Discussions",
     emptyTitle: "Pas encore de discussion",
-    emptyBody: "Les discussions que vous commencez sur MultiMagic apparaissent ici.",
+    emptyBody: "Commencez-en une avec quelqu’un sur MultiMagic.",
     loadFailed: "Impossible de charger vos discussions.",
     untitled: "Conversation sans nom",
     noMessages: "Pas encore de message",
     deleted: "Message supprimé",
     fromYou: "Vous : {{body}}",
     unreadLabel: "{{name}}, {{count}} non lus",
+    newConversation: "Nouvelle discussion",
+    emptyStart: "Commencer une discussion",
+    direct: "Une personne",
+    group: "Groupe",
+    groupName: "Nom du groupe (facultatif)",
+    searchPeople: "Chercher des personnes",
+    chosen_one: "{{count}} personne choisie. Un groupe en demande deux ou plus.",
+    chosen_other: "{{count}} personnes choisies. Un groupe en demande deux ou plus.",
+    nobodyFound: "Personne n’a été trouvé.",
+    peopleFailed: "Impossible de charger les personnes.",
+    start: "Commencer",
+    startFailed: "Impossible de commencer cette discussion.",
   },
 
   thread: {
@@ -555,7 +567,9 @@ export const fr: Translations = {
     today: "Aujourd’hui",
     earlier: "Avant",
     unread: "Non lu : {{title}}",
-    hint: "Ouvre l’assistant avec une question à ce sujet. Appui long pour la supprimer.",
+    hint: "Ouvre ce dont il s’agit. Appui long pour la supprimer.",
+    markRead: "Marquer comme lu",
+    delete: "Supprimer la notification",
   },
 
   calendar: {

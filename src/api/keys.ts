@@ -41,6 +41,8 @@ export const conversationKeys = {
   all: ["conversations"] as const,
   list: () => ["conversations", "list"] as const,
   unreadCount: () => ["conversations", "unreadCount"] as const,
+  /** The people-finder's results for a search, when starting a conversation. */
+  people: <Q extends string>(term: Q) => ["conversations", "people", term] as const,
   thread: <C extends number>(conversationId: C) => ["conversation", conversationId] as const,
   /** A transcript (useConversation): the messages, assistant's or a thread's.
    *  Its own root, so refetching a conversation's details does not re-read it. */

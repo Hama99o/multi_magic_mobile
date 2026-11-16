@@ -9,20 +9,20 @@
  * A client-side filter would be a second implementation of a rule the server
  * enforces, and they would disagree the day one changed.
  *
- * ── AND IT CANNOT START ONE ───────────────────────────────────────────────
- * `POST /conversations` needs a `user_id` or `user_ids`
- * (`conversations_controller.rb:127-141`), which needs a people picker, which
- * needs user search, follow lists and a blocking rule — the same five-
- * permission-question shape that put group administration out of v1. So this
- * screen reads and replies, and the empty state SAYS SO rather than offering a
- * button with no room behind it. Runna's empty inbox has that button; we
- * rejected it by name in the SPEC.
+ * ── STARTING ONE ──────────────────────────────────────────────────────────
+ * It used to only read and reply (audit P0 #4). Now "+" in the header and the
+ * empty state open `NewConversationSheet`: a people picker for one person or a
+ * named group, the web's `NewConversationDialog` and the same two calls
+ * (`POST /conversations` with `user_id`, or `user_ids` + `name`). A new
+ * conversation opens straight away.
+ *
+ * Back goes Home when nothing is behind, as Notes does (`useBackToHome`).
  */
-import { useCallback, useEffect, useMemo } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft } from "@/components/icons";
+import { ChevronLeft, Plus } from "@/components/icons";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -35,12 +35,17 @@ import { LoadFailure } from "@/components/LoadFailure";
 import { ConversationRow } from "@/screens/people/ConversationRow";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { conversationKeys } from "@/api/keys";
+import { Button } from "@/components/reusables/button";
+import { NewConversationSheet } from "@/screens/people/NewConversationSheet";
+import { useBackToHome } from "@/hooks/useBackToHome";
 
 export default function Chats() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const goBack = useBackToHome();
+  const [starting, setStarting] = useState(false);
 
   /**
    * EVERY PAGE, not the first. The server pages at 15 (`conversations_controller.rb`),
@@ -116,7 +121,7 @@ export default function Chats() {
         }}
       >
         <Pressable
-          onPress={() => router.back()}
+          onPress={goBack}
           accessibilityRole="button"
           accessibilityLabel={t("common.back")}
           hitSlop={8}
@@ -127,6 +132,16 @@ export default function Chats() {
         <Text variant="title" style={{ flex: 1 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
           {t("chats.title")}
         </Text>
+        <Pressable
+          testID="chats-new"
+          onPress={() => setStarting(true)}
+          accessibilityRole="button"
+          accessibilityLabel={t("chats.newConversation")}
+          hitSlop={8}
+          style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+        >
+          <Plus size={22} color={colors.ink} />
+        </Pressable>
         {/* The assistant from every screen (the owner, 2026-11-06); it opens
             over this one and closes back to it (docs/QA_FULL.md F4). */}
         <AiButton compact />
@@ -167,14 +182,22 @@ export default function Chats() {
             <RowsSkeleton />
           ) : error ? null : (
             /* Gymshark and My BMW: a heading and one line that says what will
-               fill it. No icon, no illustration (IDENTITY.md §6) — and no CTA,
-               because there is nothing this screen could start. */
+               fill it. No icon, no illustration (IDENTITY.md §6). And the way
+               to fill it, now that this screen can start one. */
             <View
               testID="chats-empty"
               style={{ paddingVertical: metrics.space.xl * 2, gap: metrics.space.sm }}
             >
               <Text variant="label">{t("chats.emptyTitle")}</Text>
               <Text tone="muted">{t("chats.emptyBody")}</Text>
+              <View style={{ paddingTop: metrics.space.md }}>
+                <Button
+                  testID="chats-empty-start"
+                  label={t("chats.emptyStart")}
+                  block={false}
+                  onPress={() => setStarting(true)}
+                />
+              </View>
             </View>
           )
         }
@@ -190,6 +213,16 @@ export default function Chats() {
         contentContainerStyle={{ paddingBottom: metrics.space.xl }}
         showsVerticalScrollIndicator={false}
       />
+
+      {starting ? (
+        <NewConversationSheet
+          onClose={() => setStarting(false)}
+          onCreated={(conversation) => {
+            setStarting(false);
+            open(conversation);
+          }}
+        />
+      ) : null}
     </Screen>
   );
 }

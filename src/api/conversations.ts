@@ -248,9 +248,66 @@ export const conversationsApi = {
     };
   },
 
+  /**
+   * Start a direct chat (`user_id`). The server hands back the existing one
+   * when there already is one, and restores it for a reader who had cleared it
+   * (`conversations_controller.rb#create`), so this never makes a duplicate.
+   */
+  create: async (userId: number): Promise<Conversation> => {
+    const res = await http.post("/api/v1/conversations", { user_id: userId });
+    return parseConversation(obj(res.data, "conversation").conversation);
+  },
+
+  /** Start a named group with these people (`user_ids` + `name`), as the web does. */
+  createGroup: async (userIds: number[], name: string): Promise<Conversation> => {
+    const res = await http.post("/api/v1/conversations", { user_ids: userIds, name });
+    return parseConversation(obj(res.data, "conversation").conversation);
+  },
+
   /** Clears it for this reader only — see this file's header, point 4. */
   clearForMe: async (conversationId: number): Promise<void> => {
     await http.delete(`/api/v1/conversations/${conversationId}`);
+  },
+};
+
+/** Somebody on MultiMagic the reader can start a conversation with. */
+export interface Person {
+  id: number;
+  /** `fullname`, else the email: an account's name can be blank. */
+  name: string;
+  /** For a group's default name ("Anisa, Sam"), as the web builds it. */
+  firstName: string | null;
+  email: string | null;
+  avatar: string | null;
+}
+
+function parsePerson(payload: unknown): Person {
+  const user = obj(payload, "person");
+  const email = optStr(user.email);
+  return {
+    id: id(user.id, "person.id"),
+    name: optStr(user.fullname) ?? email ?? t("thread.someone"),
+    firstName: optStr(user.firstname),
+    email,
+    avatar: absoluteUrl(optStr(user.avatar)),
+  };
+}
+
+export const peopleApi = {
+  /**
+   * The people-finder any member may use (`users_controller.rb#global_users`,
+   * 10 a page, the reader left out). NOT `/users`, which is the admin listing
+   * and refuses everybody else — the web's own comment, `conversations.api.ts`.
+   */
+  search: async (search: string, page = 1): Promise<{ people: Person[]; hasMore: boolean }> => {
+    const res = await http.get("/api/v1/users/global_users", { params: { search, page } });
+    const record = obj(res.data, "users");
+    const meta = obj(record.meta, "users.meta");
+    const pagy = obj(meta.pagy, "users.meta.pagy");
+    return {
+      people: readable(arr(record.users, "users.users"), parsePerson),
+      hasMore: num(pagy.pages, "users.meta.pagy.pages") > page,
+    };
   },
 };
 

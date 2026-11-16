@@ -7,7 +7,7 @@
  * throws, which is exactly why they are tests rather than comments.
  */
 import MockAdapter from "axios-mock-adapter";
-import { conversationsApi, threadApi, absoluteUrl } from "../conversations";
+import { conversationsApi, threadApi, absoluteUrl, peopleApi } from "../conversations";
 import { __resetTokenCache, http } from "../http";
 import { __resetFingerprintCache } from "@/lib/fingerprint";
 
@@ -290,5 +290,41 @@ describe("avatar paths", () => {
     expect(absoluteUrl("https://cdn.example.com/localhost/p.jpg")).toBe(
       "https://cdn.example.com/localhost/p.jpg",
     );
+  });
+});
+
+// ── STARTING ONE (audit P0 #4) ─────────────────────────────────────────────
+// The web's calls (conversations.api.ts:53,60,178): `user_id` for a direct
+// chat, `user_ids` + `name` for a group, and the people-finder
+// `/users/global_users` (not `/users`, the admin listing).
+describe("starting a conversation", () => {
+  it("a direct chat posts user_id and reads the conversation back", async () => {
+    mock.onPost("/api/v1/conversations", { user_id: 2 }).reply(201, { conversation: directRow({ id: 40 }) });
+    const made = await conversationsApi.create(2);
+    expect(made.id).toBe(40);
+    expect(made.displayName).toBe("Anisa Rahimi");
+  });
+
+  it("a group posts user_ids and its name", async () => {
+    mock
+      .onPost("/api/v1/conversations", { user_ids: [2, 3], name: "Trip" })
+      .reply(201, { conversation: directRow({ id: 41, is_group: true, user: { id: 41, fullname: "Trip" } }) });
+    const made = await conversationsApi.createGroup([2, 3], "Trip");
+    expect(made).toMatchObject({ id: 41, isGroup: true, displayName: "Trip" });
+  });
+
+  it("people are searched on the people-finder, one page at a time", async () => {
+    mock.onGet("/api/v1/users/global_users", { params: { search: "ani", page: 1 } }).reply(200, {
+      users: [
+        { id: 2, fullname: "Anisa Rahimi", firstname: "Anisa", email: "anisa@example.com", avatar: null, is_online: true },
+        { id: 3, fullname: null, firstname: null, email: "x@example.com", avatar: "/a.png" },
+      ],
+      meta: { pagy: { page: 1, pages: 2 } },
+    });
+    const found = await peopleApi.search("ani", 1);
+    expect(found.hasMore).toBe(true);
+    expect(found.people[0]).toEqual({ id: 2, name: "Anisa Rahimi", firstName: "Anisa", email: "anisa@example.com", avatar: null });
+    // A nameless account still has something to show: its email.
+    expect(found.people[1]).toMatchObject({ id: 3, name: "x@example.com", firstName: null, avatar: `${http.defaults.baseURL}/a.png` });
   });
 });

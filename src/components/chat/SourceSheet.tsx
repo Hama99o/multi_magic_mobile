@@ -35,7 +35,7 @@ import type { MessageLink } from "@/api/ai";
  * (`rag_chat_job.rb:91`), and both chip rows call this
  * (`MessageRow.tsx:114-115`). Every one of them used to open the sheet, whose
  * whole argument is that this app has no screen for the record — true for a
- * note or a loan, false for the four in `inAppRoute`. So the AI-keys pointer
+ * loan or a todo, false for every key `inAppRoute` maps. So the AI-keys pointer
  * walked somebody out to a browser to do something `app/ai-keys.tsx` does.
  *
  * A link we can open, we OPEN. The sheet stays for the rest, where a preview

@@ -483,13 +483,25 @@ export const en = {
   chats: {
     title: "Chats",
     emptyTitle: "No conversations yet",
-    emptyBody: "Chats you start on MultiMagic appear here.",
+    emptyBody: "Start one with somebody on MultiMagic.",
     loadFailed: "Could not load your chats.",
     untitled: "Conversation",
     noMessages: "No messages yet",
     deleted: "Message deleted",
     fromYou: "You: {{body}}",
     unreadLabel: "{{name}}, {{count}} unread",
+    newConversation: "New conversation",
+    emptyStart: "Start a conversation",
+    direct: "One person",
+    group: "Group",
+    groupName: "Group name (optional)",
+    searchPeople: "Search people",
+    chosen_one: "{{count}} person chosen. A group needs two or more.",
+    chosen_other: "{{count}} people chosen. A group needs two or more.",
+    nobodyFound: "Nobody found.",
+    peopleFailed: "Could not load people.",
+    start: "Start",
+    startFailed: "Could not start that conversation.",
   },
 
   thread: {
@@ -539,7 +551,9 @@ export const en = {
     today: "Today",
     earlier: "Earlier",
     unread: "Unread: {{title}}",
-    hint: "Opens the assistant with a question about this. Long press to delete it.",
+    hint: "Opens what this is about. Long press to delete it.",
+    markRead: "Mark as read",
+    delete: "Delete notification",
   },
 
   calendar: {

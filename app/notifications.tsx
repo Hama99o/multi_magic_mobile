@@ -1,16 +1,18 @@
 /**
  * The bell — `docs/design/notifications/SPEC.md`.
  *
- * ── A TAP COMPOSES A QUESTION. IT DOES NOT OPEN A RECORD ──────────────────
- * His instruction: "the notification should show also, but it redirects on chat
- * to ask etc." — and it is the right architecture rather than a compromise.
- * `path` is a **web** route (`notification_serializer.rb:6`) and this app has no
- * note screen, no loan screen and no contact screen; building them would turn
- * four screens into forty. So the assistant is the single destination.
+ * ── A TAP OPENS WHAT IT IS ABOUT ──────────────────────────────────────────
+ * `path` is a web route (`notification_serializer.rb:6`) and the web's bell
+ * navigates to it (`NotificationBell.tsx:118-129`). This app now has the
+ * screens most paths point at (a thread, an event, a Pages file or space), so
+ * a tap opens that screen; `routeForWebPath` (`src/lib/inAppRoute.ts`) is the
+ * table, tested on its own (audit P0 #3, 2026-11-16).
  *
- * And the question is **composed, not sent**. A tap that fires a question at
- * the model spends one of the 15-per-minute (`ai_controller.rb:5`) on a guess
- * about what he meant by it. He edits it first.
+ * Only a path with no screen here (Tables, forms) still composes a question in
+ * the assistant, and the question is **composed, not sent**: a tap that fired
+ * it would spend one of the 15-per-minute (`ai_controller.rb:5`) on a guess.
+ * Routable kinds never go near the draft, so a prefilled question can no
+ * longer land in the wrong session for them (audit #37).
  *
  * ── REFRESHING, AND WHY THIS SCREEN NEEDED LESS OF IT ─────────────────────
  * His instruction covers this screen and the calendar together: *"you can say
@@ -32,6 +34,7 @@ import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, View } f
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, CheckCheck, Trash2 } from "@/components/icons";
+import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -53,6 +56,8 @@ import { isToday } from "@/lib/relativeTime";
 import { NotificationRow } from "@/screens/people/NotificationRow";
 import { aiKeys, notificationKeys } from "@/api/keys";
 import { useMarkNotificationRead } from "@/hooks/useMarkNotificationRead";
+import { useBackToHome } from "@/hooks/useBackToHome";
+import { routeForWebPath } from "@/lib/inAppRoute";
 
 type Row =
   | { kind: "heading"; key: string; label: string }
@@ -64,6 +69,7 @@ export default function Notifications() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [composed, setComposed] = useState<string | null>(null);
+  const goBack = useBackToHome();
 
   /**
    * EVERY PAGE, not the first. Paged at 20 (`notifications_controller.rb`).
@@ -122,7 +128,14 @@ export default function Notifications() {
     (notification: AppNotification) => {
       if (notification.readAt == null) markRead.mutate(notification.id);
 
-      // Composed and NOT sent — see this file's header.
+      // The screen it is about, as the web navigates to `path`.
+      const route = routeForWebPath(notification.path, notification.body);
+      if (route) {
+        router.push(route);
+        return;
+      }
+
+      // No screen here: composed and NOT sent — see this file's header.
       const question = t("notifications.question", { title: notification.title });
       setDraft(question);
       setComposed(question);
@@ -235,7 +248,7 @@ export default function Notifications() {
         }}
       >
         <Pressable
-          onPress={() => router.back()}
+          onPress={goBack}
           accessibilityRole="button"
           accessibilityLabel={t("common.back")}
           hitSlop={8}
@@ -341,6 +354,8 @@ export default function Notifications() {
               notification={item.notification}
               onPress={() => open(item.notification)}
               onLongPress={() => confirmRemove(item.notification)}
+              onMarkRead={() => markRead.mutate(item.notification.id)}
+              onDelete={() => confirmRemove(item.notification)}
             />
           )
         }
@@ -352,7 +367,11 @@ export default function Notifications() {
           />
         }
         ListEmptyComponent={
-          isLoading || error ? null : (
+          isLoading ? (
+            // Rows in the rows' shape while the first page loads, as the chats
+            // list does; it was a blank screen (audit P2).
+            <RowsSkeleton testID="notifications-loading" />
+          ) : error ? null : (
             // One line, no icon — IDENTITY.md §6.
             <View testID="notifications-empty" style={{ paddingVertical: metrics.space.xl * 2 }}>
               <Text tone="muted">{t("notifications.empty")}</Text>

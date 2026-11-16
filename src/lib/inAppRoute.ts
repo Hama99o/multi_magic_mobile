@@ -20,13 +20,19 @@
  * mobile does not own. Reading the key it already sends costs nothing and
  * keeps each side owning its own addresses.
  *
- * ── AND MOST KEYS DELIBERATELY HAVE NO SCREEN ────────────────────────────
- * `docs/design/README.md`: this app has no note, loan, contact or event
- * screen — wherever something would open a record it composes a question
- * instead. So `notes`, `todos`, `contacts`, `expenses`, `incomes`, `loan` and
- * the flow keys return null here on purpose, and those links still open on the
- * web, which is the only place they exist. **Adding a key here is a claim that
- * this app has that screen.**
+ * ── AND WHICH KEYS HAVE A SCREEN HERE ─────────────────────────────────────
+ * The app now has Notes, Contacts, an event screen, Pages and threads with
+ * people, so `note`, `contact`, `calendar_event`, `conversation`, `page_space`
+ * and `page_node` open those screens (audit P1 #13, 2026-11-16). The record's
+ * id is read from the link's `path`, whose shape `frontend_routes.rb` owns.
+ * `todos`, `expenses`, `incomes`, `loan`, the flow and table keys still return
+ * null: this app has no screen for them, so they open the preview sheet and
+ * from there the web. **Adding a key here is a claim that this app has that
+ * screen.**
+ *
+ * `routeForWebPath` is the same table read by PATH alone, for what carries no
+ * key: a notification's `path` (audit P0 #3; the web's bell navigates to it,
+ * `NotificationBell.tsx:118-129`).
  */
 
 import type { router } from "expo-router";
@@ -41,34 +47,90 @@ import type { router } from "expo-router";
  */
 type AppRoute = Parameters<typeof router.push>[0];
 
-/** The four route keys this app actually has a screen for. */
+/** Route keys whose screen needs no id. */
 const SCREENS = {
   // The one he asked about: "add your own API key" is `app/ai-keys.tsx`.
   ai_keys: "/ai-keys",
   ai: "/chat",
-  calendar_event: "/calendar",
-  conversation: "/chats",
+  notes: "/notes",
+  contacts: "/contacts",
 } as const satisfies Record<string, AppRoute>;
 
+/** Keys whose record is read from the path; the list screen when the path has no id. */
+const BY_PATH: Record<string, AppRoute> = {
+  note: "/notes",
+  contact: "/contacts",
+  calendar_event: "/calendar",
+  conversation: "/chats",
+  page_space: "/pages",
+  page_node: "/pages",
+};
+
+const DIGITS = /^\d+$/;
+
 /**
- * PAGES, since 2026-11-06 a screen this app has. The server's keys carry ids
- * in the path (`frontend_routes.rb`: `page_space` → `/pages/:space_id`,
- * `page_node` → `/pages/:space_id?node=:node_id`), so they are read from it.
- * A path that does not parse stays on the web rather than guessing.
+ * The in-app route for a web path, or null when only the web has that page.
+ * `label` titles a Pages screen (the folder header reads it before its own
+ * load). A path that does not parse returns null rather than guessing.
  */
-function pagesRoute(link: { key: string; path: string | null; label: string | null }): AppRoute | null {
-  const match = link.path?.match(/^\/pages\/(\d+)(?:\?(?:.*&)?node=(\d+))?/);
-  if (!match) return null;
-  const [, spaceId, nodeId] = match;
-  const title = link.label ?? "";
-  if (link.key === "page_space") return { pathname: "/pages/folder", params: { spaceId, title } };
-  if (link.key === "page_node" && nodeId) return { pathname: "/pages/view", params: { spaceId, nodeId, title } };
+export function routeForWebPath(path: string | null | undefined, label?: string | null): AppRoute | null {
+  if (!path) return null;
+  const [pathname, search = ""] = path.split("?", 2);
+  const query = new Map<string, string>();
+  for (const pair of search.split("&")) {
+    const [k, v] = pair.split("=", 2);
+    if (k) query.set(k, decodeURIComponent(v ?? ""));
+  }
+  const id = (name: string) => {
+    const value = query.get(name);
+    return value && DIGITS.test(value) ? value : null;
+  };
+
+  if (pathname === "/conversations") {
+    if (!query.has("conversation_id")) return "/chats";
+    const conversation = id("conversation_id");
+    return conversation ? { pathname: "/chat/[id]", params: { id: conversation } } : null;
+  }
+  if (pathname === "/calendar") {
+    if (!query.has("event")) return "/calendar";
+    const event = id("event");
+    if (!event) return null;
+    const on = query.get("on");
+    return { pathname: "/calendar/event", params: on && /^\d{4}-\d{2}-\d{2}$/.test(on) ? { id: event, on } : { id: event } };
+  }
+  const page = pathname.match(/^\/pages\/(\d+)$/);
+  if (page) {
+    const spaceId = page[1];
+    const title = label ?? "";
+    // `?preview=` from a share notification, `?node=` from `frontend_routes.rb`.
+    const nodeId = id("preview") ?? id("node");
+    if (nodeId) return { pathname: "/pages/view", params: { spaceId, nodeId, title } };
+    if (query.has("preview") || query.has("node")) return null;
+    return { pathname: "/pages/folder", params: { spaceId, title } };
+  }
+  const note = pathname.match(/^\/notes\/(\d+)$/);
+  if (note) return { pathname: "/notes/edit", params: { id: note[1] } };
+  if (pathname === "/notes") return "/notes";
+  if (pathname === "/contacts") {
+    if (!query.has("contact")) return "/contacts";
+    const contact = id("contact");
+    return contact ? { pathname: "/contacts/contact", params: { id: contact } } : null;
+  }
+  if (pathname === "/profile/me/api-keys") return "/ai-keys";
+  if (pathname === "/ai") return "/chat";
   return null;
 }
 
 /** The in-app route for a link, or null when only the web has it. */
 export function inAppRoute(link: { key: string | null | undefined; path: string | null; label: string | null }): AppRoute | null {
   if (!link.key) return null;
-  if (link.key === "page_space" || link.key === "page_node") return pagesRoute({ key: link.key, path: link.path, label: link.label });
+  if (link.key in BY_PATH) {
+    const route = routeForWebPath(link.path, link.label);
+    if (route) return route;
+    // A Pages link that does not parse stays on the web (no guessing); the
+    // others fall back to their list, which is where the record lives.
+    if (link.key === "page_space" || link.key === "page_node") return null;
+    return BY_PATH[link.key];
+  }
   return (SCREENS as Record<string, AppRoute>)[link.key] ?? null;
 }

@@ -36,7 +36,7 @@ function Host({ link }: { link: MessageLink }) {
 }
 
 const aiKeys: MessageLink = { label: "AI keys", path: "/profile/me/api-keys", key: "ai_keys" };
-const note: MessageLink = { label: "Groceries", path: "/notes/7", key: "note" };
+const note: MessageLink = { label: "Rent", path: "/finance/loans?loan=7", key: "loan" };
 
 beforeEach(() => mockPush.mockClear());
 
@@ -96,4 +96,12 @@ it("a link with no key at all falls back to the sheet", () => {
   fireEvent.press(screen.getByTestId("chip"));
   expect(mockPush).not.toHaveBeenCalled();
   expect(screen.getByTestId("source-sheet")).toBeTruthy();
+});
+
+// Audit P1 #13: a note the assistant wrote opens in the note editor.
+it("a note link opens the note, not the sheet", () => {
+  render(<Host link={{ label: "Groceries", path: "/notes/7", key: "note" }} />);
+  fireEvent.press(screen.getByTestId("chip"));
+  expect(mockPush).toHaveBeenCalledWith({ pathname: "/notes/edit", params: { id: "7" } });
+  expect(screen.queryByTestId("source-sheet")).toBeNull();
 });

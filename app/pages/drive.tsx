@@ -17,10 +17,11 @@ import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
-import { ChevronRight, Folder } from "@/components/icons";
+import { ChevronRight } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { pagesApi, type DriveView, type SharedItem } from "@/api/pages";
 import { NodeCollection } from "@/screens/pages/drive/NodeCollection";
+import { SharedNodeGlyph } from "@/screens/pages/drive/ui";
 import { SearchView } from "@/screens/pages/drive/SearchView";
 import { TrashView } from "@/screens/pages/drive/TrashView";
 import { EmptyLine, PagesHeader, Separator } from "@/screens/pages/parts";
@@ -87,7 +88,7 @@ function SharedRow({ item }: { item: SharedItem }) {
       testID="pages-shared-row"
     >
       <View style={{ width: 44, height: 44, borderRadius: metrics.radius.sm, backgroundColor: colors.surface, alignItems: "center", justifyContent: "center" }}>
-        {item.node ? <Folder size={22} color={colors.accent} /> : <Text style={{ fontSize: 22, lineHeight: 28 }}>{item.space.icon ?? "📁"}</Text>}
+        {item.node ? <SharedNodeGlyph node={item.node} /> : <Text style={{ fontSize: 22, lineHeight: 28 }}>{item.space.icon ?? "📁"}</Text>}
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1}>{label}</Text>

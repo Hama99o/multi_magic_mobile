@@ -25,7 +25,7 @@ import { pagesApi, type SharedItem, type SortDir, type Space, type SpaceListOpti
 import { sortLabel } from "@/screens/pages/labels";
 import { NodeCollection } from "@/screens/pages/drive/NodeCollection";
 import { BottomSheet, NewSheet, SheetRow } from "@/screens/pages/drive/sheets";
-import { NewFab, PagesTabBar, SearchPill, SortRow, UploadBar, useViewPrefs, type PagesTab } from "@/screens/pages/drive/ui";
+import { NewFab, PagesTabBar, SearchPill, SharedNodeGlyph, SortRow, UploadBar, useViewPrefs, type PagesTab } from "@/screens/pages/drive/ui";
 import { EmptyLine } from "@/screens/pages/parts";
 import { openNode } from "@/screens/pages/navigation";
 import { explainPick, pickDocuments, pickMedia, takePhotoOrVideo, usePendingImport, type PickResult } from "@/screens/pages/addFiles";
@@ -96,7 +96,7 @@ function SharedRow({ item }: { item: SharedItem }) {
   return (
     <Pressable onPress={open} accessibilityRole="button" accessibilityLabel={t("pages.rowLabel", { title, meta: item.space.title })} style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.md, minHeight: 64 }} testID="pages-shared-row">
       <View style={{ width: 40, alignItems: "center" }}>
-        <Text style={{ fontSize: 22 }}>{item.node ? "📄" : (item.space.icon ?? "📁")}</Text>
+        {item.node ? <SharedNodeGlyph node={item.node} /> : <Text style={{ fontSize: 22 }}>{item.space.icon ?? "📁"}</Text>}
       </View>
       <View style={{ flex: 1, minWidth: 0 }}>
         <Text numberOfLines={1}>{title}</Text>

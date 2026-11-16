@@ -80,7 +80,24 @@ function exifDate(exif: Record<string, unknown> | null | undefined): string | nu
   return typeof value === "string" ? value : null;
 }
 
-export async function pickMedia(): Promise<PickResult> {
+/**
+ * Any step of a pick can reject: the permission request (no activity yet),
+ * the picker itself (a file it cannot read, "Different document picking in
+ * progress"). The screens call these as `void pick(...)`, so a rejection
+ * here was an uncaught promise and nothing was said (audit P2, 2026-11-16);
+ * it answers `failed`, which `explainPick` says.
+ */
+async function safely(pick: () => Promise<PickResult>): Promise<PickResult> {
+  try {
+    return await pick();
+  } catch {
+    return { failed: true };
+  }
+}
+
+export const pickMedia = (): Promise<PickResult> => safely(pickMediaRaw);
+
+async function pickMediaRaw(): Promise<PickResult> {
   const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (!permission.granted) return { denied: true };
   let result: ImagePicker.ImagePickerResult;
@@ -110,7 +127,9 @@ export async function pickMedia(): Promise<PickResult> {
   };
 }
 
-export async function pickDocuments(): Promise<PickResult> {
+export const pickDocuments = (): Promise<PickResult> => safely(pickDocumentsRaw);
+
+async function pickDocumentsRaw(): Promise<PickResult> {
   const result = await DocumentPicker.getDocumentAsync({ multiple: true, copyToCacheDirectory: true, type: "*/*" });
   if (result.canceled) return null;
   return {
@@ -123,7 +142,9 @@ export async function pickDocuments(): Promise<PickResult> {
   };
 }
 
-export async function takePhotoOrVideo(): Promise<PickResult> {
+export const takePhotoOrVideo = (): Promise<PickResult> => safely(takePhotoOrVideoRaw);
+
+async function takePhotoOrVideoRaw(): Promise<PickResult> {
   const permission = await ImagePicker.requestCameraPermissionsAsync();
   if (!permission.granted) return { denied: true };
   let result: ImagePicker.ImagePickerResult;

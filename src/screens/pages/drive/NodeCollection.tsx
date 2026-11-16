@@ -394,6 +394,7 @@ export function NodeCollection({
         title={t("pages.actions.rename")}
         confirm={t("pages.actions.renameConfirm")}
         initial={renaming?.title ?? ""}
+        keepExtension={renaming?.kind === "file"}
         onCancel={() => setRenaming(null)}
         onSubmit={(name) => void rename(name)}
         busy={renameBusy}

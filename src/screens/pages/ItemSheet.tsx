@@ -123,6 +123,13 @@ export function ItemSheet({ node, onClose, onOpen }: { node: PageNode | null; on
   );
 }
 
+/** Where the opening selection ends: before the extension of a file's name
+ *  ("vlog-a.mp4" → "vlog-a"), the whole name otherwise. */
+function selectionEnd(name: string, keepExtension: boolean): number {
+  const dot = name.lastIndexOf(".");
+  return keepExtension && dot > 0 ? dot : name.length;
+}
+
 /** A name, asked for: New folder. Android has no `Alert.prompt`. */
 export function NameDialog({
   open,
@@ -133,12 +140,15 @@ export function NameDialog({
   busy,
   error,
   initial = "",
+  keepExtension = false,
 }: {
   open: boolean;
   title: string;
   confirm: string;
   /** Rename starts from the current name. */
   initial?: string;
+  /** A file's rename: the extension is left out of the selection (Drive). */
+  keepExtension?: boolean;
   onCancel: () => void;
   onSubmit: (name: string) => void;
   busy: boolean;
@@ -148,13 +158,20 @@ export function NameDialog({
   const metrics = useMetrics();
   const { t } = useTranslation();
   const [name, setName] = useState(initial);
+  const [selection, setSelection] = useState<{ start: number; end: number } | undefined>(undefined);
   const [shownFor, setShownFor] = useState<string | null>(null);
-  // Reset to `initial` each time the dialog opens for a different item.
+  // Reset to `initial` each time the dialog OPENS (or opens for another
+  // item). Keyed on the opening, not only on `initial`: New folder's initial
+  // is always "", so the text typed last time stayed (audit P2, 2026-11-16).
   if (open && shownFor !== initial) {
     setShownFor(initial);
     setName(initial);
+    setSelection({ start: 0, end: selectionEnd(initial, keepExtension) });
   }
-  if (!open) return null;
+  if (!open) {
+    if (shownFor !== null) setShownFor(null);
+    return null;
+  }
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
       <View style={{ flex: 1, justifyContent: "center", padding: metrics.space.xl }}>
@@ -176,7 +193,11 @@ export function NameDialog({
             value={name}
             onChangeText={setName}
             autoFocus
-            selectTextOnFocus
+            // The selection is set once, on opening; then it is the person's.
+            selection={selection}
+            onSelectionChange={() => {
+              if (selection) setSelection(undefined);
+            }}
             onSubmitEditing={() => name.trim() && onSubmit(name.trim())}
             returnKeyType="done"
             accessibilityLabel={title}

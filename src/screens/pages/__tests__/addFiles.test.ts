@@ -19,7 +19,9 @@ jest.mock("expo-image-picker", () => ({
 jest.mock("expo-document-picker", () => ({ getDocumentAsync: jest.fn() }));
 
 /* eslint-disable import/first */
-import { explainPick, pickMedia, takePhotoOrVideo } from "../addFiles";
+import * as ImagePicker from "expo-image-picker";
+import * as DocumentPicker from "expo-document-picker";
+import { explainPick, pickDocuments, pickMedia, takePhotoOrVideo } from "../addFiles";
 
 beforeEach(() => {
   jest.clearAllMocks();
@@ -34,6 +36,24 @@ describe("a picker that throws", () => {
   it("camera: the same", async () => {
     mockLaunch.mockRejectedValueOnce(new Error("camera unavailable"));
     await expect(takePhotoOrVideo()).resolves.toEqual({ failed: true });
+  });
+});
+
+// Audit P2 (2026-11-16): the permission requests and the document picker
+// could reject outside any try (addFiles.ts), an uncaught promise in the
+// screens' `void pick(...)`.
+describe("every step of a pick, not only the launch", () => {
+  it("photos: a permission request that rejects answers 'failed'", async () => {
+    (ImagePicker.requestMediaLibraryPermissionsAsync as jest.Mock).mockRejectedValueOnce(new Error("no activity"));
+    await expect(pickMedia()).resolves.toEqual({ failed: true });
+  });
+  it("camera: the same", async () => {
+    (ImagePicker.requestCameraPermissionsAsync as jest.Mock).mockRejectedValueOnce(new Error("no activity"));
+    await expect(takePhotoOrVideo()).resolves.toEqual({ failed: true });
+  });
+  it("files: a document picker that rejects answers 'failed'", async () => {
+    (DocumentPicker.getDocumentAsync as jest.Mock).mockRejectedValueOnce(new Error("Different document picking in progress"));
+    await expect(pickDocuments()).resolves.toEqual({ failed: true });
   });
 });
 

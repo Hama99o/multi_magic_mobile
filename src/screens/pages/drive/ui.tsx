@@ -117,6 +117,17 @@ export function FileTypeIcon({ node, size = 24 }: { node: Pick<PageNode, "kind" 
   });
 }
 
+/** A shared item's icon, from its kind and name: a share carries no mime
+ *  type (`ShareSerializer`), so a file is told by its extension. */
+export function SharedNodeGlyph({ node, size = 22 }: { node: Pick<PageNode, "kind" | "title">; size?: number }) {
+  const shape = { kind: node.kind, title: node.title, mimeType: null };
+  return (
+    <View testID={`pages-shared-glyph-${familyOf(shape)}`}>
+      <FileTypeIcon node={shape} size={size} />
+    </View>
+  );
+}
+
 // ── View preferences, kept across restarts (Drive keeps the toggle) ─────────
 
 export type ViewMode = "list" | "grid";

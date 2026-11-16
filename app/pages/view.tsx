@@ -21,7 +21,7 @@
  * html are current, not whatever the list had.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -32,13 +32,16 @@ import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { LoadFailure } from "@/components/LoadFailure";
 import { AnswerMarkdown } from "@/components/chat/AnswerMarkdown";
-import { Download, Pause, Play } from "@/components/icons";
+import { Download, MoreVertical, Pause, Play, Star } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { pagesApi, type PageNode } from "@/api/pages";
 import { ImageGallery } from "@/screens/pages/ImageGallery";
 import { PdfView } from "@/screens/pages/PdfView";
 import { failureMessage } from "@/api/failure";
-import { shareNode } from "@/screens/pages/ItemSheet";
+import { NameDialog, shareNode } from "@/screens/pages/ItemSheet";
+import { ActionsSheet, DetailsSheet, MoveSheet } from "@/screens/pages/drive/sheets";
+import { useSpaceRights } from "@/screens/pages/permissions";
+import { useMoveNodes, useRenameNode, useStarNodes, useTrashNodes } from "@/screens/pages/usePageMutations";
 import { HeaderButton, NodeGlyph, PagesHeader, metaLine } from "@/screens/pages/parts";
 import { modeFor, pageDocument } from "@/screens/pages/viewerModes";
 import { pagesKeys } from "@/api/keys";
@@ -222,15 +225,49 @@ export default function Viewer() {
   // Swiping changes what the header names and what Share sends.
   const [shown, setShown] = useState<PageNode | null>(null);
   useEffect(() => setShown(null), [nodeId]);
-  const current = shown ?? node;
+  // The shown photo as the cache has it now, so a star or a rename shows.
+  const current = (shown && gallery.find((n) => n.id === shown.id)) ?? shown ?? node;
   const canShare = current?.kind === "file" && Boolean(current.attachmentUrl);
+
+  // The web Lightbox's header actions (audit #17): the drive lists' sheets,
+  // mutations and rights (`permissions.ts`), so a viewer gets nothing that
+  // writes and an editor no move or trash, exactly as in a folder.
+  const rights = useSpaceRights(spaceId);
+  const space = useQuery({ queryKey: pagesKeys.space(spaceId), queryFn: () => pagesApi.space(spaceId), enabled: Number.isFinite(spaceId) });
+  const [actionsFor, setActionsFor] = useState<PageNode | null>(null);
+  const [detailsFor, setDetailsFor] = useState<PageNode | null>(null);
+  const [moving, setMoving] = useState<PageNode[] | null>(null);
+  const [renaming, setRenaming] = useState<PageNode | null>(null);
+  const [renameError, setRenameError] = useState<string | null>(null);
+  const failed = useCallback((e: unknown) => Alert.alert(failureMessage(e, t("pages.actions.failed"))), [t]);
+  const starring = useStarNodes({ onError: failed });
+  // Gone from here: back to where it was opened from, which no longer lists it.
+  const trashing = useTrashNodes({ onDone: () => router.back(), onError: failed });
+  const mover = useMoveNodes();
+  const renamer = useRenameNode({
+    onDone: () => setRenaming(null),
+    onError: (e) => setRenameError(failureMessage(e, t("pages.actions.failed"))),
+  });
+  const location = [space.data?.title ?? current?.space?.title ?? "", ...(current?.ancestors ?? []).map((a) => a.title)].filter(Boolean).join(" / ");
 
   return (
     <Screen measure={mode === "page" || mode === "text" || mode === "markdown" || mode === "other"}>
       <PagesHeader
         title={current?.title ?? params.title ?? ""}
         subtitle={current ? metaLine(current, t, i18n.language) : null}
-        right={canShare ? <HeaderButton icon={Download} label={t("pages.item.share")} onPress={() => void share()} testID="pages-view-share" /> : null}
+        right={
+          current ? (
+            <View style={{ flexDirection: "row", alignItems: "center" }}>
+              {current.starred ? (
+                <View accessible accessibilityLabel={t("pages.places.starred")} testID="pages-view-starred" style={{ marginHorizontal: metrics.space.xs }}>
+                  <Star size={16} color={colors.accent} fill={colors.accent} />
+                </View>
+              ) : null}
+              {canShare ? <HeaderButton icon={Download} label={t("pages.item.share")} onPress={() => void share()} testID="pages-view-share" /> : null}
+              <HeaderButton icon={MoreVertical} label={t("pages.item.more", { title: current.title })} onPress={() => setActionsFor(current)} testID="pages-view-more" />
+            </View>
+          ) : null
+        }
       />
       {shareError ? (
         <Text tone="danger" testID="pages-view-share-error">
@@ -292,6 +329,41 @@ export default function Viewer() {
           )}
         </View>
       )}
+      <ActionsSheet
+        node={actionsFor}
+        onClose={() => setActionsFor(null)}
+        onShare={() => void share()}
+        onStar={(n) => starring.mutate({ nodes: [n], starred: !n.starred })}
+        onRename={(n) => {
+          setRenameError(null);
+          setRenaming(n);
+        }}
+        onMove={(n) => setMoving([n])}
+        onDetails={setDetailsFor}
+        onTrash={(n) => trashing.mutate([n])}
+        rights={rights}
+      />
+      <DetailsSheet node={detailsFor} location={location} onClose={() => setDetailsFor(null)} />
+      <MoveSheet
+        nodes={moving}
+        onClose={() => setMoving(null)}
+        onMove={async (to) => {
+          if (moving) await mover.mutateAsync({ nodes: moving, to: { spaceId: to.spaceId, parentId: to.parentId } });
+        }}
+      />
+      <NameDialog
+        open={renaming != null}
+        title={t("pages.actions.rename")}
+        confirm={t("pages.actions.renameConfirm")}
+        initial={renaming?.title ?? ""}
+        keepExtension={renaming?.kind === "file"}
+        onCancel={() => setRenaming(null)}
+        onSubmit={(name) => {
+          if (renaming) renamer.mutate({ node: renaming, title: name });
+        }}
+        busy={renamer.isPending}
+        error={renameError}
+      />
     </Screen>
   );
 }

@@ -19,6 +19,7 @@ import { FILL } from "@/theme/fill";
 import { Download, Eye, FolderOpen, type LucideIcon } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
+import { KeyboardPadding } from "@/components/KeyboardPadding";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { downloadToCache, type PageNode } from "@/api/pages";
 import { failureMessage } from "@/api/failure";
@@ -174,6 +175,7 @@ export function NameDialog({
   }
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onCancel}>
+      <KeyboardPadding>
       <View style={{ flex: 1, justifyContent: "center", padding: metrics.space.xl }}>
         <Pressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={onCancel} style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.5)" }} />
         <View
@@ -226,6 +228,7 @@ export function NameDialog({
           </View>
         </View>
       </View>
+      </KeyboardPadding>
     </Modal>
   );
 }

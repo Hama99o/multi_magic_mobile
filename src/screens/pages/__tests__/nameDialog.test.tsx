@@ -38,3 +38,11 @@ it("a folder, or a name with no extension, is selected whole", () => {
   view.rerender(<NameDialog {...props} open initial="README" keepExtension />);
   expect(screen.getByTestId("pages-name-input").props.selection).toEqual({ start: 0, end: 6 });
 });
+
+// Rename now opens from the file viewer too (audit #17): its field must rise
+// with the keyboard, as every dialog with a field (KeyboardPadding).
+it("rises with the keyboard", () => {
+  const { KeyboardPadding } = jest.requireActual("@/components/KeyboardPadding");
+  render(<NameDialog {...props} open />);
+  expect(screen.UNSAFE_getByType(KeyboardPadding)).toBeTruthy();
+});

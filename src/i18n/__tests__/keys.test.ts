@@ -164,6 +164,7 @@ const COMPOSED = [
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
 const PLURAL = new Set([
+  "pages.trash.deleteManyTitle",
   "safezone.health.reusedAcross",
   "shareDoor.unreadableTitle",
   "shareDoor.unreadableBody",

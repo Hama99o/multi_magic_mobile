@@ -90,6 +90,61 @@ describe("Trash", () => {
   });
 });
 
+// Audit #21, the web's trash toolbar (`Drive.tsx` purge, `Toolbar.tsx`): pick
+// several, then Restore them all, or Delete them forever after one question.
+describe("Trash: several at once", () => {
+  const second: PageNode = { ...old, id: 8, title: "notes.txt", mimeType: "text/plain" };
+  const rowsOf = () => screen.getAllByTestId("pages-row-file");
+
+  beforeEach(() => mockApi.drive.mockImplementation(async () => page([old, second])));
+  afterEach(() => mockApi.drive.mockImplementation(async () => page([old])));
+
+  it("a long press starts a selection; a tap then adds; Restore brings them all back", async () => {
+    wrap(<TrashView />);
+    await screen.findByText("notes.txt");
+    fireEvent(rowsOf()[0], "longPress");
+    expect(screen.getByTestId("pages-select-count")).toHaveTextContent("1 selected");
+    // While picking, a tap picks; it does not open the item's sheet.
+    fireEvent.press(rowsOf()[1]);
+    expect(screen.queryByTestId("pages-trash-sheet")).toBeNull();
+    expect(screen.getByTestId("pages-select-count")).toHaveTextContent("2 selected");
+    // The trash-wide Empty steps aside for the selection's own actions.
+    expect(screen.queryByTestId("pages-trash-empty")).toBeNull();
+    await act(async () => fireEvent.press(screen.getByTestId("pages-trash-select-restore")));
+    await waitFor(() => expect(mockApi.restore).toHaveBeenCalledTimes(2));
+    expect(mockApi.restore).toHaveBeenCalledWith(315, 7);
+    expect(mockApi.restore).toHaveBeenCalledWith(315, 8);
+    expect(screen.queryByTestId("pages-selection-bar")).toBeNull();
+  });
+
+  it("Delete forever asks once, naming how many, and deletes only on yes", async () => {
+    wrap(<TrashView />);
+    await screen.findByText("notes.txt");
+    fireEvent(rowsOf()[0], "longPress");
+    fireEvent.press(rowsOf()[1]);
+    fireEvent.press(screen.getByTestId("pages-trash-select-delete"));
+    expect((Alert.alert as jest.Mock).mock.calls[0][0]).toBe("Delete 2 items forever?");
+    expect((Alert.alert as jest.Mock).mock.calls[0][1]).toMatch(/can’t be undone/);
+    expect(mockApi.destroyForever).not.toHaveBeenCalled();
+    await act(async () => lastButtons().find((b) => b.style === "destructive")!.onPress!());
+    await waitFor(() => expect(mockApi.destroyForever).toHaveBeenCalledTimes(2));
+    expect(screen.queryByTestId("pages-selection-bar")).toBeNull();
+  });
+
+  it("Cancel deletes nothing and keeps the selection; ✕ clears it", async () => {
+    wrap(<TrashView />);
+    await screen.findByText("notes.txt");
+    fireEvent(rowsOf()[0], "longPress");
+    fireEvent.press(screen.getByTestId("pages-trash-select-delete"));
+    lastButtons().find((b) => b.style === "cancel")?.onPress?.();
+    expect(mockApi.destroyForever).not.toHaveBeenCalled();
+    expect(screen.getByTestId("pages-select-count")).toHaveTextContent("1 selected");
+    fireEvent.press(screen.getByTestId("pages-select-clear"));
+    expect(screen.queryByTestId("pages-selection-bar")).toBeNull();
+    expect(screen.getByTestId("pages-trash-empty")).toBeTruthy();
+  });
+});
+
 describe("Search", () => {
   it("nothing asked, nothing fetched: a hint", () => {
     wrap(<SearchView />);

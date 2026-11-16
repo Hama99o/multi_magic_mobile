@@ -4,6 +4,10 @@
  * first, and say it cannot be undone. A tap on an item opens the same
  * sheet, since a trashed file is not opened in Drive either.
  *
+ * Several at once (audit #21, the web's trash toolbar): a long press starts a
+ * selection, as in every other list; a tap then picks. The selection bar
+ * restores them all, or deletes them forever after one question.
+ *
  * Only the items that were put in the bin are listed (`trash_roots`); a
  * folder's contents come back, or go, with it. The server has no "empty"
  * endpoint, so `pagesApi.emptyTrash` deletes each one.
@@ -21,7 +25,7 @@ import { pagesApi, type PageNode } from "@/api/pages";
 import { failureMessage } from "@/api/failure";
 import { EmptyLine } from "../parts";
 import { BottomSheet, SheetRow } from "./sheets";
-import { ListRow } from "./ui";
+import { IconButton, ListRow, SelectionBar } from "./ui";
 import { pagesKeys } from "@/api/keys";
 import { useDestroyNodes, useEmptyTrash, useRestoreNodes } from "@/screens/pages/usePageMutations";
 
@@ -30,6 +34,8 @@ export function TrashView() {
   const metrics = useMetrics();
   const { t } = useTranslation();
   const [chosen, setChosen] = useState<PageNode | null>(null);
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+  const selecting = selected.size > 0;
 
   const trash = useInfiniteQuery({
     queryKey: pagesKeys.drive("trash", ""),
@@ -38,6 +44,15 @@ export function TrashView() {
     getNextPageParam: (last, pages) => (last.hasMore ? pages.length + 1 : undefined),
   });
   const nodes = useMemo(() => (trash.data?.pages ?? []).flatMap((p) => p.rows), [trash.data]);
+  const picked = useMemo(() => nodes.filter((n) => selected.has(n.id)), [nodes, selected]);
+  const toggle = useCallback((node: PageNode) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(node.id)) next.delete(node.id);
+      else next.add(node.id);
+      return next;
+    });
+  }, []);
   // Optimistic (out of the trash at once, back on a refusal): usePageMutations.ts.
   const restoring = useRestoreNodes({ onError: (e) => Alert.alert(failureMessage(e, t("pages.trash.restoreFailed"))) });
   const destroying = useDestroyNodes({ onError: (e) => Alert.alert(failureMessage(e, t("pages.trash.deleteFailed"))) });
@@ -66,6 +81,27 @@ export function TrashView() {
     [destroying, t],
   );
 
+  const restoreMany = useCallback(() => {
+    setSelected(new Set());
+    restoring.mutate(picked);
+  }, [picked, restoring]);
+
+  const destroyMany = useCallback(() => {
+    const targets = picked;
+    if (!targets.length) return;
+    Alert.alert(t("pages.trash.deleteManyTitle", { count: targets.length }), t("pages.trash.deleteManyBody"), [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("pages.trash.deleteForever"),
+        style: "destructive",
+        onPress: () => {
+          setSelected(new Set());
+          destroying.mutate(targets);
+        },
+      },
+    ]);
+  }, [picked, destroying, t]);
+
   const empty = useCallback(() => {
     Alert.alert(t("pages.trash.emptyTitle"), t("pages.trash.emptyBody"), [
       { text: t("common.cancel"), style: "cancel" },
@@ -75,7 +111,12 @@ export function TrashView() {
 
   return (
     <View style={{ flex: 1 }}>
-      {nodes.length > 0 ? (
+      {selecting ? (
+        <SelectionBar count={selected.size} onClose={() => setSelected(new Set())}>
+          <IconButton icon={RotateCcw} label={t("pages.trash.restore")} onPress={restoreMany} tone="ink" testID="pages-trash-select-restore" />
+          <IconButton icon={Trash2} label={t("pages.trash.deleteForever")} onPress={destroyMany} tone="ink" testID="pages-trash-select-delete" />
+        </SelectionBar>
+      ) : nodes.length > 0 ? (
         <View style={{ flexDirection: "row", justifyContent: "flex-end", paddingBottom: metrics.space.sm }}>
           <Pressable
             onPress={empty}
@@ -107,7 +148,15 @@ export function TrashView() {
         data={nodes}
         keyExtractor={(n) => String(n.id)}
         renderItem={({ item }) => (
-          <ListRow node={item} onPress={() => setChosen(item)} onMore={() => setChosen(item)} onLongPress={() => setChosen(item)} selecting={false} selected={false} showSpace />
+          <ListRow
+            node={item}
+            onPress={() => (selecting ? toggle(item) : setChosen(item))}
+            onMore={() => setChosen(item)}
+            onLongPress={() => toggle(item)}
+            selecting={selecting}
+            selected={selected.has(item.id)}
+            showSpace
+          />
         )}
         ListEmptyComponent={trash.isLoading ? <RowsSkeleton /> : trash.error ? null : <EmptyLine title={t("pages.empty.trash")} testID="pages-drive-empty" />}
         onEndReached={() => {

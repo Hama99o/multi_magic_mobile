@@ -84,6 +84,8 @@ export const fr: Translations = {
 
   signUp: {
     title: "Créer un compte",
+    agree: "J’accepte les conditions d’utilisation",
+    privacy: "Lire la politique de confidentialité",
     subtitle: "Un seul compte pour vos notes, votre argent, vos contacts et votre agenda.",
     firstName: "Prénom",
     lastName: "Nom",

@@ -67,6 +67,8 @@ export const en = {
 
   signUp: {
     title: "Create an account",
+    agree: "I agree to the terms and conditions",
+    privacy: "Read the privacy policy",
     subtitle: "One account for your notes, money, contacts and calendar.",
     firstName: "First name",
     lastName: "Last name",

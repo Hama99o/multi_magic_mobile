@@ -269,6 +269,8 @@ export async function signUp(params: {
   lastname: string;
   email: string;
   password: string;
+  /** The terms box on the sign-up screen, as the person left it (audit #39). */
+  agreedToTerms: boolean;
 }): Promise<CurrentUser> {
   const response = await http.post("/users/signup", {
     user: {
@@ -277,7 +279,7 @@ export async function signUp(params: {
       email: params.email.trim(),
       password: params.password,
       password_confirmation: params.password,
-      agreed_to_terms: true,
+      agreed_to_terms: params.agreedToTerms,
     },
   });
 

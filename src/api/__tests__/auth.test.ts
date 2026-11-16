@@ -152,7 +152,19 @@ describe("creating an account", () => {
     lastname: "Safi",
     email: "new@example.com",
     password: "Correct-Horse-9!",
+    agreedToTerms: true,
   };
+
+  // Audit 2026-11-16 #39 (legal): agreed_to_terms is what the person ticked,
+  // never a constant.
+  it("sends agreed_to_terms from the box the person ticked", async () => {
+    mock.onPost("/users/signup").reply(200, USER, { authorization: "Bearer t" });
+    await signUp(SIGNUP_BODY);
+    expect(JSON.parse(mock.history.post[0].data).user.agreed_to_terms).toBe(true);
+    mock.resetHistory();
+    await signUp({ ...SIGNUP_BODY, agreedToTerms: false }).catch(() => undefined);
+    expect(JSON.parse(mock.history.post[0].data).user.agreed_to_terms).toBe(false);
+  });
 
   it("signs in when registration returns no token, because the account exists", async () => {
     // Exactly what the server does today: 200, the user, no header.

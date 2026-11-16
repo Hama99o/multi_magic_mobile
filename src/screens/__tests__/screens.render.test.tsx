@@ -481,7 +481,7 @@ const SCREENS: {
   },
   { name: "pages-uploads", element: () => <PagesUploads />, handles: ["pages-uploads-list", "pages-uploads-empty"], french: "Aucun envoi" },
   { name: "sign-in", element: () => <SignIn />, handles: ["sign-in-email", "sign-in-password", "sign-in-submit", "sign-in-forgot", "sign-in-create-account"], french: "Se connecter avec un e-mail" },
-  { name: "sign-up", element: () => <SignUp />, handles: ["sign-up-firstname", "sign-up-lastname", "sign-up-email", "sign-up-password", "sign-up-submit", "sign-up-to-sign-in"], french: "Créer le compte" },
+  { name: "sign-up", element: () => <SignUp />, handles: ["sign-up-firstname", "sign-up-lastname", "sign-up-email", "sign-up-password", "sign-up-terms", "sign-up-privacy", "sign-up-submit", "sign-up-to-sign-in"], french: "Créer le compte" },
   { name: "forgot-password", element: () => <ForgotPassword />, handles: ["forgot-password-email", "forgot-password-submit"] /* -back and -sent belong to the sent state, not this one */, french: "Envoyer le lien" },
 ];
 

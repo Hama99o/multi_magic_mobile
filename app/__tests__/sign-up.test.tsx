@@ -11,8 +11,9 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 
 const mockReplace = jest.fn();
+const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
-  router: { replace: (...a: unknown[]) => mockReplace(...a) },
+  router: { replace: (...a: unknown[]) => mockReplace(...a), push: (...a: unknown[]) => mockPush(...a) },
   Link: ({ children }: { children: unknown }) => children,
 }));
 
@@ -56,6 +57,12 @@ function fill(over: Partial<Record<"firstname" | "lastname" | "email" | "passwor
   for (const [field, value] of Object.entries(values)) {
     if (value !== "") fireEvent.changeText(screen.getByTestId(`sign-up-${field}`), value);
   }
+  agree();
+}
+
+/** Tick the terms box (audit #39): Create account waits for it. */
+function agree() {
+  fireEvent.press(screen.getByTestId("sign-up-terms"));
 }
 
 beforeEach(() => {
@@ -68,6 +75,7 @@ describe("before the request", () => {
   // The flow asserts this sentence word for word on an untouched form.
   it("says one sentence for an untouched form", () => {
     render(<SignUp />);
+    agree();
 
     fireEvent.press(screen.getByTestId("sign-up-submit"));
 
@@ -199,10 +207,35 @@ describe("success", () => {
         lastname: "Mobile",
         email: "new@example.com",
         password: "a-real-password",
+        agreedToTerms: true,
       }),
     );
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/home"));
     expect(useAuthStore.getState().status).toBe("signedIn");
     expect(useAuthStore.getState().user).toEqual(USER);
+  });
+});
+
+// Audit 2026-11-16 #39 (LEGAL, store risk): the app sent agreed_to_terms:true
+// without ever showing a box. Now an unticked box, with the privacy policy one
+// tap away, and Create account waits for it.
+describe("the terms box", () => {
+  it("starts unticked, and Create account cannot be pressed until it is ticked", () => {
+    render(<SignUp />);
+    fill({});
+    fireEvent.press(screen.getByTestId("sign-up-terms")); // fill() ticked it: untick
+    expect(screen.getByTestId("sign-up-terms").props.accessibilityState).toMatchObject({ checked: false });
+    expect(screen.getByTestId("sign-up-submit").props.accessibilityState).toMatchObject({ disabled: true });
+    fireEvent.press(screen.getByTestId("sign-up-submit"));
+    expect(mockSignUp).not.toHaveBeenCalled();
+    fireEvent.press(screen.getByTestId("sign-up-terms"));
+    expect(screen.getByTestId("sign-up-terms").props.accessibilityState).toMatchObject({ checked: true });
+    expect(screen.getByTestId("sign-up-submit").props.accessibilityState).toMatchObject({ disabled: false });
+  });
+
+  it("the privacy policy opens from the box's line", () => {
+    render(<SignUp />);
+    fireEvent.press(screen.getByTestId("sign-up-privacy"));
+    expect(mockPush).toHaveBeenCalledWith("/privacy");
   });
 });

@@ -44,9 +44,12 @@ tags:
 - takeScreenshot: reports/60-sign-up-empty
 
 # ── Validate on press, and NAME what is missing ──────────────────────────
-# The same decision as sign-in: the button is enabled from the start. A
-# disabled button with no explanation is the commonest reason somebody believes
-# a form is broken.
+# The same decision as sign-in: the fields are validated on press. Since
+# 2026-11-16 (audit #39, legal) Create account waits for the terms box, which
+# sits right above it and says why; once it is ticked the button is enabled
+# and the blank fields are named on press.
+- tapOn:
+    id: "sign-up-terms"
 - tapOn:
     id: "sign-up-submit"
 - assertVisible:

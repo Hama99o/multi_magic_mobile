@@ -24,14 +24,15 @@
  * is now required here, before the request, against the field.
  */
 import { useState } from "react";
-import { View } from "react-native";
+import { Pressable, View } from "react-native";
 import { Link, router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { Input } from "@/components/reusables/input";
-import { useMetrics } from "@/hooks/useColors";
+import { useColors, useMetrics } from "@/hooks/useColors";
+import { Check } from "@/components/icons";
 import { signUp } from "@/api/auth";
 import { useAuthStore, forgetSession } from "@/stores/auth.store";
 import { apiErrorMessage, isNetworkFailure } from "@/api/http";
@@ -124,6 +125,9 @@ export default function SignUp() {
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<Field, string>>>({});
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Audit 2026-11-16 #39 (legal): unticked until the person ticks it, and
+  // sent as it is; the web's sign-up refuses without it too (Signup.tsx).
+  const [agreed, setAgreed] = useState(false);
 
   const setField = (field: Field) => (text: string) => {
     setValues((current) => ({ ...current, [field]: text }));
@@ -133,7 +137,7 @@ export default function SignUp() {
   };
 
   async function submit() {
-    if (busy) return;
+    if (busy || !agreed) return;
     setError(null);
     setFieldErrors({});
 
@@ -156,6 +160,7 @@ export default function SignUp() {
         lastname: values.lastname,
         email: values.email,
         password: values.password,
+        agreedToTerms: agreed,
       });
       // Devise signs the new account in, so this lands in the app rather than
       // back at a login the user has just proved they can pass.
@@ -243,7 +248,8 @@ export default function SignUp() {
         </View>
 
         <View style={{ gap: metrics.space.lg }}>
-          <Button label={t("signUp.submit")} busy={busy} onPress={() => void submit()} testID="sign-up-submit" />
+          <TermsBox checked={agreed} onToggle={() => setAgreed((v) => !v)} />
+          <Button label={t("signUp.submit")} busy={busy} disabled={!agreed} onPress={() => void submit()} testID="sign-up-submit" />
           <View style={{ flexDirection: "row", justifyContent: "center", gap: metrics.space.xs }}>
             <Text variant="caption" tone="muted">
               {t("signUp.haveAccount")}
@@ -257,5 +263,38 @@ export default function SignUp() {
         </View>
       </View>
     </Screen>
+  );
+}
+
+/**
+ * The terms box (audit 2026-11-16 #39). The web's sign-up has the same box
+ * ("I agree to the terms and conditions", Signup.tsx) and no link; the policy
+ * that exists is the privacy policy, which this app renders itself
+ * (`app/privacy.tsx`, the web's /privacy), so it is one tap away here.
+ */
+function TermsBox({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
+  const colors = useColors();
+  const metrics = useMetrics();
+  const { t } = useTranslation();
+  return (
+    <View style={{ gap: metrics.space.xs }}>
+      <Pressable
+        testID="sign-up-terms"
+        onPress={onToggle}
+        accessibilityRole="checkbox"
+        accessibilityState={{ checked }}
+        accessibilityLabel={t("signUp.agree")}
+        hitSlop={8}
+        style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, minHeight: 44 }}
+      >
+        <View style={{ width: 24, height: 24, borderRadius: 6, borderWidth: 2, borderColor: checked ? colors.accent : colors.border, backgroundColor: checked ? colors.accent : "transparent", alignItems: "center", justifyContent: "center" }}>
+          {checked ? <Check size={16} color={colors.onAccent} /> : null}
+        </View>
+        <Text style={{ flex: 1 }}>{t("signUp.agree")}</Text>
+      </Pressable>
+      <Pressable testID="sign-up-privacy" onPress={() => router.push("/privacy")} accessibilityRole="link" hitSlop={8} style={{ minHeight: 44, justifyContent: "center", alignSelf: "flex-start", paddingLeft: 24 + metrics.space.sm }}>
+        <Text tone="accent">{t("signUp.privacy")}</Text>
+      </Pressable>
+    </View>
   );
 }

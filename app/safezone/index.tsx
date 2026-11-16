@@ -21,6 +21,7 @@ import { KIND_ICONS, Tile } from "@/screens/safezone/Tile";
 import { APP_COLORS } from "@/theme/appColors";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { secureScreen } from "@/screens/safezone/secureScreen";
+import { goHome, useAndroidBackToHome } from "@/hooks/useBackToHome";
 
 const SEARCH_DELAY_MS = 300;
 
@@ -28,10 +29,11 @@ export default function SafeZoneScreen() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
+  useAndroidBackToHome();
   return (
     <Screen measure>
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable testID="safezone-back" onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
+        <Pressable testID="safezone-back" onPress={goHome} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
           <ChevronLeft size={24} color={colors.ink} />
         </Pressable>
         <Text variant="title" accessibilityRole="header" style={{ flex: 1 }} testID="safezone-title">

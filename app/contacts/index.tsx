@@ -14,6 +14,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AccessibilityInfo, ActivityIndicator, Pressable, RefreshControl, ScrollView, SectionList, TextInput, View } from "react-native";
 import { router } from "expo-router";
+import { goHome, useAndroidBackToHome } from "@/hooks/useBackToHome";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -251,7 +252,7 @@ function ContactsList({ pane = false, openId = null, onOpen }: { pane?: boolean;
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
         <Pressable
           testID={selecting ? "contacts-select-done" : "contacts-back"}
-          onPress={() => (selecting ? leaveSelect() : router.back())}
+          onPress={() => (selecting ? leaveSelect() : goHome())}
           accessibilityRole="button"
           accessibilityLabel={selecting ? t("contacts.list.leaveSelect") : t("common.back")}
           hitSlop={8}
@@ -533,6 +534,7 @@ export default function ContactsScreen() {
   const { t } = useTranslation();
   const { split, paneWidth } = useSplit();
   const [openId, setOpenId] = useState<number | null>(null);
+  useAndroidBackToHome();
 
   if (!split) return <ContactsList />;
   return (

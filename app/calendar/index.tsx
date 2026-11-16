@@ -53,6 +53,7 @@ import { useCalendarView } from "@/stores/calendarView.store";
 import { useCalendarUndo } from "@/stores/calendarUndo.store";
 import { calendarKeys } from "@/api/keys";
 import { useRestoreEvent } from "@/screens/calendar/useCalendarMutations";
+import { goHome, useAndroidBackToHome } from "@/hooks/useBackToHome";
 
 /** "The next few days", his phrase. The assistant reads this same key. */
 const WINDOW_DAYS = 7;
@@ -97,6 +98,7 @@ export default function Calendar() {
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
+  useAndroidBackToHome();
   const queryClient = useQueryClient();
   const { view, hydrate, setView } = useCalendarView();
   const today = dayKey(new Date());
@@ -216,7 +218,7 @@ export default function Calendar() {
   return (
     <Screen measure>
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
+        <Pressable testID="calendar-back" onPress={goHome} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
           <ChevronLeft size={24} color={colors.ink} />
         </Pressable>
         <Text variant="title" accessibilityRole="header" style={{ flex: 1 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>

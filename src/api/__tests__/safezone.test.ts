@@ -278,3 +278,41 @@ describe("create and update", () => {
     expect(err).toMatchObject({ kind: "invalid", fields: { document_number: ["can't be blank"] } });
   });
 });
+
+// Password health (audit #28): the web's Security tab, `GET /passwords/health`
+// (`SafezoneApp::PasswordHealthService`): counts, and which entries are weak or
+// share a password, by id and title. No value ever; the phone rebuilds the
+// report from named fields, so a server that leaked one could not pass it on.
+describe("password health", () => {
+  const report = {
+    total: 4,
+    weak_count: 1,
+    reused_count: 2,
+    weak: [{ id: 11, title: "Mail", password: "hunter2-very-secret" }],
+    reused: [{ count: 2, value: "hunter2-very-secret", entries: [{ id: 12, title: "Bank" }, { id: 13, title: null }] }],
+  };
+
+  it("GETs the report with the token and keeps ids, titles and counts only", async () => {
+    mock.onGet(`${BASE}/passwords/health`).reply((config) => {
+      expect(config.headers?.["X-Safezone-Unlock"]).toBe("tok");
+      return [200, report];
+    });
+    const health = await safezoneApi.health("tok");
+    expect(health).toEqual({
+      total: 4,
+      weakCount: 1,
+      reusedCount: 2,
+      weak: [{ id: 11, title: "Mail" }],
+      reused: [{ count: 2, entries: [{ id: 12, title: "Bank" }, { id: 13, title: null }] }],
+    });
+    holdsNoSecret(health);
+  });
+
+  it("a locked vault (403 safezone_pin_locked) locks, as every call", async () => {
+    const onLocked = jest.fn();
+    setSafezoneLockedHandler(onLocked);
+    mock.onGet(`${BASE}/passwords/health`).reply(403, { error: "safezone_pin_locked" });
+    await expect(safezoneApi.health("old")).rejects.toMatchObject({ kind: "locked" });
+    expect(onLocked).toHaveBeenCalled();
+  });
+});

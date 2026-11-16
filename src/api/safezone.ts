@@ -98,6 +98,25 @@ export interface SafeZoneItem {
   updatedAt?: string | null;
 }
 
+/** One entry of the password health report: which item, never its value. */
+export interface HealthEntry {
+  id: number;
+  title: string | null;
+}
+/**
+ * `GET /passwords/health` (`SafezoneApp::PasswordHealthService`): weak (under
+ * 8 characters) and reused passwords, by id and title. It holds no secret
+ * value, but "these two share a password" is a fact about the secrets, so the
+ * screen keeps it in its own state, out of the query cache, like an item.
+ */
+export interface HealthReport {
+  total: number;
+  weakCount: number;
+  reusedCount: number;
+  weak: HealthEntry[];
+  reused: { count: number; entries: HealthEntry[] }[];
+}
+
 export interface PinStatus {
   enabled: boolean;
   lockedOut: boolean;
@@ -270,6 +289,23 @@ function toItem(kind: SafeZoneKind, raw: unknown): SafeZoneItem {
   return { kind, id: id(r.id, `${kind}.id`), title: optStr(r[TITLE[kind]]) ?? "", fields, updatedAt: optStr(r.updated_at) };
 }
 
+/** Rebuilt from named fields only, as `stripSecrets`: a value never passes. */
+function healthOf(raw: unknown): HealthReport {
+  const r = obj(raw, "health");
+  const num = (v: unknown) => (typeof v === "number" ? v : 0);
+  const entry = (e: unknown): HealthEntry => {
+    const o = obj(e, "health entry");
+    return { id: id(o.id, "health.id"), title: optStr(o.title) };
+  };
+  const weak = arr(r.weak ?? [], "health.weak").map(entry);
+  const reused = arr(r.reused ?? [], "health.reused").map((g) => {
+    const o = obj(g, "health group");
+    const entries = arr(o.entries ?? [], "health.entries").map(entry);
+    return { count: typeof o.count === "number" ? o.count : entries.length, entries };
+  });
+  return { total: num(r.total), weakCount: num(r.weak_count ?? weak.length), reusedCount: num(r.reused_count), weak, reused };
+}
+
 // ── the calls ────────────────────────────────────────────────────────────
 
 function pinStatusOf(raw: unknown): PinStatus {
@@ -339,6 +375,9 @@ export const safezoneApi = {
       const pages = typeof meta.pagy?.pages === "number" ? meta.pagy.pages : 1;
       return { rows, page, pages };
     }),
+
+  /** The password health report (the web's Security tab). */
+  health: (token: string) => call(async () => healthOf((await http.get(`${BASE}/passwords/health`, withToken(token))).data)),
 
   /** The full record, secrets included: for the item screen's memory only. */
   show: (kind: SafeZoneKind, itemId: number, token: string) =>

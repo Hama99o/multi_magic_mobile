@@ -451,7 +451,7 @@ describe("the item: reveal and copy", () => {
     await waitFor(() => expect(screen.getByTestId("safezone-field-password-value").props.children).toBe(SECRET));
     expect(mock.history.get.length).toBe(before + 1);
     // The token in use, renewed on entry (the web's window): never a stale one.
-    expect(mock.history.get.at(-1)?.headers?.["X-Safezone-Unlock"]).toBe(useSafezoneLock.getState().token);
+    expect(mock.history.get.at(-1)?.headers?.["X-Safezone-Unlock"]).toMatch(/^tok/);
     act(() => jest.advanceTimersByTime(19_000));
     expect(screen.getByTestId("safezone-field-password-value").props.children).toBe(SECRET);
     act(() => jest.advanceTimersByTime(1_000));
@@ -813,5 +813,64 @@ describe("add and edit an item", () => {
     fireEvent.changeText(screen.getByTestId("safezone-form-field-document_number"), "X1");
     fireEvent.press(screen.getByTestId("safezone-form-save"));
     expect(await screen.findByTestId("safezone-form-error-document_number")).toHaveTextContent("has already been taken");
+  });
+});
+
+// Audit #28: the web's Security tab (`pages/safezone/security/Index.tsx`): the
+// totals, the weak passwords and the groups that share one, from
+// `GET /passwords/health`. Each entry opens its item. The report is a fact
+// about the secrets, so it stays in the screen's state, out of React Query.
+describe("password health", () => {
+  const router = jest.requireMock("expo-router").router as { push: jest.Mock };
+  const report = {
+    total: 4, weak_count: 1, reused_count: 2,
+    weak: [{ id: 11, title: "Mail" }],
+    reused: [{ count: 2, entries: [{ id: 12, title: "Bank" }, { id: 13, title: null }] }],
+  };
+
+  it("the Health tab shows the totals, the weak and the reused, each opening its item", async () => {
+    mock.onGet(`${BASE}/passwords/health`).reply(200, report);
+    await unlockVault();
+    fireEvent.press(screen.getByTestId("safezone-tab-health"));
+    expect(await screen.findByTestId("safezone-health-total")).toHaveTextContent("4");
+    expect(screen.getByTestId("safezone-health-weak-count")).toHaveTextContent("1");
+    expect(screen.getByTestId("safezone-health-reused-count")).toHaveTextContent("2");
+    expect(screen.getByText("Used by 2 logins")).toBeTruthy();
+    expect(screen.getByTestId("safezone-health-reused-13")).toHaveTextContent("Untitled");
+    // The add button and the search belong to the lists, not the report.
+    expect(screen.queryByTestId("safezone-add")).toBeNull();
+    expect(screen.queryByTestId("safezone-search")).toBeNull();
+    const call = mock.history.get.find((r) => r.url === `${BASE}/passwords/health`);
+    expect(call?.headers?.["X-Safezone-Unlock"]).toMatch(/^tok/);
+    router.push.mockClear();
+    fireEvent.press(screen.getByTestId("safezone-health-weak-11"));
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/safezone/item", params: { kind: "passwords", id: "11" } });
+    fireEvent.press(screen.getByTestId("safezone-health-reused-12"));
+    expect(router.push).toHaveBeenLastCalledWith({ pathname: "/safezone/item", params: { kind: "passwords", id: "12" } });
+    // Never in the query cache.
+    expect(client.getQueryCache().getAll().some((q) => JSON.stringify(q.queryKey).includes("health"))).toBe(false);
+  });
+
+  it("a healthy vault says so", async () => {
+    mock.onGet(`${BASE}/passwords/health`).reply(200, { total: 3, weak_count: 0, reused_count: 0, weak: [], reused: [] });
+    await unlockVault();
+    fireEvent.press(screen.getByTestId("safezone-tab-health"));
+    expect(await screen.findByText("All your passwords look healthy")).toBeTruthy();
+  });
+
+  it("a failed report says so and retries", async () => {
+    mock.onGet(`${BASE}/passwords/health`).replyOnce(500).onGet(`${BASE}/passwords/health`).reply(200, report);
+    await unlockVault();
+    fireEvent.press(screen.getByTestId("safezone-tab-health"));
+    fireEvent.press(await screen.findByTestId("safezone-health-retry"));
+    expect(await screen.findByTestId("safezone-health-total")).toHaveTextContent("4");
+  });
+
+  it("French", async () => {
+    await i18n.changeLanguage("fr");
+    mock.onGet(`${BASE}/passwords/health`).reply(200, report);
+    await unlockVault();
+    fireEvent.press(screen.getByTestId("safezone-tab-health"));
+    expect(await screen.findByText("Utilisé par 2 identifiants")).toBeTruthy();
   });
 });

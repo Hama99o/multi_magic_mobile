@@ -108,3 +108,8 @@ describe("display", () => {
     expect(item.fields).toEqual([{ key: "card_number", value: "", secret: true }, { key: "expiry_date", value: "12/29", secret: false }]);
   });
 });
+
+it("the password health report never goes through React Query (audit #28)", () => {
+  const source = readFileSync(join(ROOT, "src/screens/safezone/HealthPanel.tsx"), "utf8");
+  expect(source).not.toMatch(/useQuery|useInfiniteQuery|useMutation|queryClient/);
+});

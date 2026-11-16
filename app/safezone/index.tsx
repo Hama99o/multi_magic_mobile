@@ -7,13 +7,13 @@ import { useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, type InfiniteData, type UseInfiniteQueryResult } from "@tanstack/react-query";
 import { ChevronLeft, ChevronRight, Lock, Plus, Search, ShieldCheck, TriangleAlert, X } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { SAFEZONE_KINDS, safezoneApi, safezoneKeys, type SafeZoneKind, type SafeZoneRow } from "@/api/safezone";
+import { SAFEZONE_KINDS, safezoneApi, safezoneKeys, type SafeZoneKind, type SafeZonePage, type SafeZoneRow } from "@/api/safezone";
 import { useSafezoneLock } from "@/stores/safezoneLock.store";
 import { SafeZoneGate } from "@/screens/safezone/SafeZoneGate";
 import { choiceLabel, isExpired, rowSubtitle } from "@/screens/safezone/display";
@@ -21,6 +21,7 @@ import { KIND_ICONS, Tile } from "@/screens/safezone/Tile";
 import { APP_COLORS } from "@/theme/appColors";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { secureScreen } from "@/screens/safezone/secureScreen";
+import { HealthPanel } from "@/screens/safezone/HealthPanel";
 import { goHome, useAndroidBackToHome } from "@/hooks/useBackToHome";
 
 const SEARCH_DELAY_MS = 300;
@@ -81,6 +82,8 @@ function Vault() {
   const metrics = useMetrics();
   const { t } = useTranslation();
   const [kind, setKind] = useState<SafeZoneKind>("passwords");
+  // The password health report (audit #28), the web's Security tab.
+  const [health, setHealth] = useState(false);
   const [typed, setTyped] = useState("");
   const [search, setSearch] = useState("");
 
@@ -103,7 +106,6 @@ function Vault() {
     getNextPageParam: (last) => (last.page < last.pages ? last.page + 1 : undefined),
     retry: false,
   });
-  const rows = list.data?.pages.flatMap((p) => p.rows) ?? [];
 
   return (
     <View style={{ flex: 1, gap: metrics.space.md }}>
@@ -117,12 +119,15 @@ function Vault() {
       ) : null}
       <View accessibilityRole="tablist" style={{ flexDirection: "row", backgroundColor: colors.surface, borderRadius: metrics.radius.md, padding: metrics.space.xs }}>
         {SAFEZONE_KINDS.map((k) => {
-          const on = k === kind;
+          const on = !health && k === kind;
           return (
             <Pressable
               key={k}
               testID={`safezone-tab-${k}`}
-              onPress={() => setKind(k)}
+              onPress={() => {
+                setKind(k);
+                setHealth(false);
+              }}
               accessibilityRole="tab"
               accessibilityState={{ selected: on }}
               style={{ flex: 1, minHeight: 40, alignItems: "center", justifyContent: "center", borderRadius: metrics.radius.sm, backgroundColor: on ? colors.accent : "transparent" }}
@@ -133,7 +138,30 @@ function Vault() {
             </Pressable>
           );
         })}
+        <Pressable
+          testID="safezone-tab-health"
+          onPress={() => setHealth(true)}
+          accessibilityRole="tab"
+          accessibilityState={{ selected: health }}
+          style={{ flex: 1, minHeight: 40, alignItems: "center", justifyContent: "center", borderRadius: metrics.radius.sm, backgroundColor: health ? colors.accent : "transparent" }}
+        >
+          <Text variant="label" tone={health ? "onAccent" : "default"} numberOfLines={1}>
+            {t("safezone.tabs.health")}
+          </Text>
+        </Pressable>
       </View>
+      {health ? <HealthPanel /> : <Lists kind={kind} list={list} search={search} typed={typed} setTyped={setTyped} />}
+    </View>
+  );
+}
+
+function Lists({ kind, list, search, typed, setTyped }: { kind: SafeZoneKind; list: VaultList; search: string; typed: string; setTyped: (v: string) => void }) {
+  const colors = useColors();
+  const metrics = useMetrics();
+  const { t } = useTranslation();
+  const rows = list.data?.pages.flatMap((p) => p.rows) ?? [];
+  return (
+    <>
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, paddingHorizontal: metrics.space.md }}>
         <Search size={18} color={colors.inkMuted} />
         <TextInput
@@ -180,9 +208,11 @@ function Vault() {
       >
         <Plus size={26} color="#04161a" />
       </Pressable>
-    </View>
+    </>
   );
 }
+
+type VaultList = UseInfiniteQueryResult<InfiniteData<SafeZonePage>>;
 
 function rowTitle(row: SafeZoneRow, t: (key: string) => string): string {
   if (row.kind === "passwords") return row.title || row.link || t("safezone.noTitle");

@@ -119,3 +119,10 @@ describe("routeForWebPath", () => {
     expect(routeForWebPath("")).toBeNull();
   });
 });
+
+describe("routeForWebPath never throws on a damaged path", () => {
+  it("a malformed %-escape reads as no route, not a crash on tap", () => {
+    expect(() => routeForWebPath("/calendar?event=1&on=%E0%A4%A")).not.toThrow();
+    expect(routeForWebPath("/calendar?event=1&on=%E0%A4%A")).toEqual({ pathname: "/calendar/event", params: { id: "1" } });
+  });
+});

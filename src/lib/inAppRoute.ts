@@ -79,7 +79,12 @@ export function routeForWebPath(path: string | null | undefined, label?: string 
   const query = new Map<string, string>();
   for (const pair of search.split("&")) {
     const [k, v] = pair.split("=", 2);
-    if (k) query.set(k, decodeURIComponent(v ?? ""));
+    if (!k) continue;
+    try {
+      query.set(k, decodeURIComponent(v ?? ""));
+    } catch {
+      // A damaged escape: the value is unreadable, never a crash on tap.
+    }
   }
   const id = (name: string) => {
     const value = query.get(name);

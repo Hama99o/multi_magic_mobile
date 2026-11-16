@@ -212,8 +212,11 @@ describe("the calendar's main screen", () => {
     useCalendarUndo.setState({ trashed: { id: 41, title: "Dentist", at: Date.now() } });
     renderScreen(<Calendar />);
     expect(screen.getByText("“Dentist” moved to the trash.")).toBeTruthy();
-    // The + gives way to the Undo, so the two never overlap.
-    expect(screen.queryByTestId("calendar-new")).toBeNull();
+    // Audit 2026-11-16 (P2): the + stayed hidden for as long as the Undo bar
+    // showed. Both are there now, the + lifted clear above the bar.
+    const flat = (style: unknown) => Object.assign({}, ...[style].flat(Infinity).filter(Boolean)) as { bottom: number; minHeight: number };
+    const bar = flat(screen.getByTestId("calendar-undo").props.style);
+    expect(flat(screen.getByTestId("calendar-new").props.style).bottom).toBeGreaterThanOrEqual(bar.bottom + bar.minHeight);
     fireEvent.press(screen.getByTestId("calendar-undo-button"));
     await waitFor(() => expect(mock.history.put).toHaveLength(1));
     await waitFor(() => expect(screen.queryByTestId("calendar-undo")).toBeNull());
@@ -378,6 +381,24 @@ describe("editing an event", () => {
     renderScreen(<EditEvent />);
     await screen.findByTestId("event-form-title");
     expect(screen.queryByTestId("event-form-series-note")).toBeNull();
+  });
+
+  // Audit 2026-11-16 (P2): while the event loaded, or after it failed to,
+  // the screen had no way back but the system's.
+  it("has a back key while the event loads", async () => {
+    mock.onGet("/api/v1/calendar_app/events/41").reply(() => new Promise(() => undefined));
+    renderScreen(<EditEvent />);
+    await screen.findByTestId("event-form-loading");
+    fireEvent.press(screen.getByTestId("event-form-back"));
+    expect(router.back).toHaveBeenCalledTimes(1);
+  });
+
+  it("has a back key after the event failed to load", async () => {
+    mock.onGet("/api/v1/calendar_app/events/41").networkError();
+    renderScreen(<EditEvent />);
+    await screen.findByTestId("event-form-load-failed");
+    fireEvent.press(screen.getByTestId("event-form-back"));
+    expect(router.back).toHaveBeenCalledTimes(1);
   });
 
   it("fills the form from the event and PUTs the change, with an EMPTY reminder list when all are removed", async () => {

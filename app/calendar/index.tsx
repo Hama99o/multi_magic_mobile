@@ -93,6 +93,9 @@ function open(occurrence: Occurrence) {
   router.push({ pathname: "/calendar/event", params: { id: String(occurrence.event.id), on: occurrence.on } });
 }
 
+/** The Undo bar's height; the + sits above it while it shows. */
+const UNDO_BAR_HEIGHT = 52;
+
 export default function Calendar() {
   const colors = useColors();
   const metrics = useMetrics();
@@ -361,7 +364,7 @@ export default function Calendar() {
             alignItems: "center",
             gap: metrics.space.md,
             paddingHorizontal: metrics.space.lg,
-            minHeight: 52,
+            minHeight: UNDO_BAR_HEIGHT,
             borderRadius: metrics.radius.md,
             backgroundColor: colors.ink,
           }}
@@ -377,32 +380,33 @@ export default function Calendar() {
             </Text>
           </Pressable>
         </View>
-      ) : (
-        <Pressable
-          testID="calendar-new"
-          onPress={() => router.push({ pathname: "/calendar/edit", params: { day: newDay } })}
-          accessibilityRole="button"
-          accessibilityLabel={t("calendar.newEvent")}
-          style={{
-            position: "absolute",
-            right: metrics.space.lg,
-            bottom: insets.bottom + metrics.space.lg,
-            width: 56,
-            height: 56,
-            borderRadius: 28,
-            alignItems: "center",
-            justifyContent: "center",
-            backgroundColor: colors.accent,
-            elevation: 4,
-            shadowColor: "#000",
-            shadowOpacity: 0.25,
-            shadowRadius: 6,
-            shadowOffset: { width: 0, height: 3 },
-          }}
-        >
-          <Plus size={26} color={colors.onAccent} />
-        </Pressable>
-      )}
+      ) : null}
+      <Pressable
+        testID="calendar-new"
+        onPress={() => router.push({ pathname: "/calendar/edit", params: { day: newDay } })}
+        accessibilityRole="button"
+        accessibilityLabel={t("calendar.newEvent")}
+        style={{
+          position: "absolute",
+          right: metrics.space.lg,
+          // Lifted clear above the Undo bar while it shows (audit P2: it
+          // used to give way to the bar and vanish).
+          bottom: insets.bottom + metrics.space.lg + (showUndo ? UNDO_BAR_HEIGHT + metrics.space.sm : 0),
+          width: 56,
+          height: 56,
+          borderRadius: 28,
+          alignItems: "center",
+          justifyContent: "center",
+          backgroundColor: colors.accent,
+          elevation: 4,
+          shadowColor: "#000",
+          shadowOpacity: 0.25,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 3 },
+        }}
+      >
+        <Plus size={26} color={colors.onAccent} />
+      </Pressable>
     </Screen>
   );
 }

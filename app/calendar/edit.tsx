@@ -13,13 +13,15 @@
  *   back button all go through `beforeRemove`.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Alert, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, View } from "react-native";
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
+import { ChevronLeft } from "@/components/icons";
+import { useColors } from "@/hooks/useColors";
 import { calendarApi } from "@/api/calendar";
 import { failureMessage } from "@/api/failure";
 import { EventForm } from "@/screens/calendar/EventForm";
@@ -107,6 +109,8 @@ export default function EditEvent() {
   if (!draft) {
     return (
       <Screen>
+        {/* A way back while the event loads, or after it failed to (audit P2). */}
+        <BackKey label={t("common.back")} />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 16 }}>
           {loadError ? (
             <>
@@ -136,5 +140,16 @@ export default function EditEvent() {
         saveError={saveError}
       />
     </Screen>
+  );
+}
+
+function BackKey({ label }: { label: string }) {
+  const colors = useColors();
+  return (
+    <View style={{ paddingVertical: 12 }}>
+      <Pressable testID="event-form-back" onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={label} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
+        <ChevronLeft size={24} color={colors.ink} />
+      </Pressable>
+    </View>
   );
 }

@@ -2,8 +2,8 @@
  * One contact's card — `docs/design/contacts/SPEC.md` §C.3. Drawn by its own
  * route on a phone (`app/contacts/contact.tsx`) and, `embedded`, as the right
  * pane of the tablet split (`app/contacts/index.tsx`, SPEC §C.11): there it
- * has no back button, and a delete clears the selection instead of going
- * back.
+ * draws no shared header (the split screen has one), and a delete clears the
+ * selection instead of going back.
  *
  * A contact card, not a form: big avatar, name, job · company, then four
  * round actions — Call · WhatsApp · Message · Email (WhatsApp's contact info,
@@ -30,10 +30,11 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import * as Clipboard from "expo-clipboard";
 import {
-  BookUser, Briefcase, Cake, ChevronLeft, CircleCheck, ExternalLink, Globe, List, Mail, MapPin, MessageCircle, MessageSquareText, NotebookPen,
+  BookUser, Briefcase, Cake, CircleCheck, ExternalLink, Globe, List, Mail, MapPin, MessageCircle, MessageSquareText, NotebookPen,
   Pencil, Phone, Plus, Share2, Star, StarOff, Trash2, Users, X,
 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { RichText } from "@/components/RichText";
@@ -71,9 +72,16 @@ type Adding = { anchorId: number; anchorName: string; role: Role; qualifier: Qua
 const cap = (w: string) => w.charAt(0).toLocaleUpperCase() + w.slice(1);
 const withScheme = (url: string) => (/^[a-z][a-z0-9+.-]*:/i.test(url) ? url : `https://${url}`);
 
-/** The phone's full screen, or the split's right pane. */
-function Frame({ embedded, children }: { embedded: boolean; children: ReactNode }) {
-  return embedded ? <View style={{ flex: 1 }}>{children}</View> : <Screen>{children}</Screen>;
+/** The phone's full screen, under the shared header; or the split's right
+ *  pane, which has no header of its own (the split screen already draws one). */
+function Frame({ embedded, title, children }: { embedded: boolean; title?: string; children: ReactNode }) {
+  if (embedded) return <View style={{ flex: 1 }}>{children}</View>;
+  return (
+    <Screen>
+      <AppHeader app="contacts" title={title} back />
+      {children}
+    </Screen>
+  );
 }
 
 export function ContactCard({
@@ -133,7 +141,6 @@ export function ContactCard({
             {failureMessage(query.error, t("contacts.detail.loadFailed"))}
           </Text>
           <Button label={t("common.tryAgain")} block={false} onPress={() => void query.refetch()} />
-          {embedded ? null : <Button label={t("common.back")} tone="neutral" block={false} onPress={() => router.back()} />}
         </View>
       </Frame>
     );
@@ -226,14 +233,9 @@ export function ContactCard({
   };
 
   return (
-    <Frame embedded={embedded}>
-      <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: metrics.space.md, gap: metrics.space.sm }}>
-        {embedded ? null : (
-          <Pressable testID="contact-back" onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-            <ChevronLeft size={24} color={colors.ink} />
-          </Pressable>
-        )}
-        <View style={{ flex: 1 }} />
+    <Frame embedded={embedded} title={name}>
+      {/* The card's own row (under the shared header on a phone): favourite and edit. */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", paddingVertical: embedded ? metrics.space.md : metrics.space.xs, gap: metrics.space.sm }}>
         <Pressable
           testID="contact-favourite"
           onPress={() => favourite.mutate(contact)}

@@ -13,6 +13,7 @@ import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { UnreadableNotice } from "@/components/UnreadableNotice";
@@ -24,7 +25,7 @@ import { NodeCollection } from "@/screens/pages/drive/NodeCollection";
 import { SharedNodeGlyph } from "@/screens/pages/drive/ui";
 import { SearchView } from "@/screens/pages/drive/SearchView";
 import { TrashView } from "@/screens/pages/drive/TrashView";
-import { EmptyLine, PagesHeader, Separator } from "@/screens/pages/parts";
+import { EmptyLine, Separator } from "@/screens/pages/parts";
 import { openNode } from "@/screens/pages/navigation";
 import { pagesKeys } from "@/api/keys";
 import { useDriveRights } from "@/screens/pages/permissions";
@@ -131,7 +132,7 @@ export default function Drive() {
   if (view === "trash") {
     return (
       <Screen measure>
-        <PagesHeader title={titleFor(view, t)} />
+        <AppHeader app="pages" title={titleFor(view, t)} back />
         <TrashView />
       </Screen>
     );
@@ -139,7 +140,7 @@ export default function Drive() {
 
   return (
     <Screen measure>
-      <PagesHeader title={titleFor(view, t)} />
+      <AppHeader app="pages" title={titleFor(view, t)} back />
 
       <UnreadableNotice
         count={view === "shared" ? (sharedQuery.data?.unreadable ?? 0) : (nodesQuery.data?.pages ?? []).reduce((n, p) => n + p.unreadable, 0)}

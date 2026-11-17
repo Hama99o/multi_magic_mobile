@@ -23,7 +23,7 @@ jest.mock("@/api/pages", () => ({
 }));
 const mockParams: { current: Record<string, string> } = { current: {} };
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) },
   useLocalSearchParams: () => mockParams.current,
 }));
 

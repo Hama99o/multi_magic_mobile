@@ -1340,7 +1340,6 @@ export const en = {
     taskDeleted: "Task deleted",
     taskDone: "Task done",
     listActions: "List actions",
-    renameList: "Rename {{name}}",
     rename: "Rename",
     reorder: "Reorder",
     reorderDone: "Done",

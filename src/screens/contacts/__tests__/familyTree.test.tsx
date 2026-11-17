@@ -15,7 +15,7 @@ import FamilyTree from "../../../../app/contacts/family";
 
 const mockParams: { current: Record<string, string> } = { current: { id: "7" } };
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn() },
   useLocalSearchParams: () => mockParams.current,
 }));
 
@@ -65,7 +65,7 @@ it("reads the tree by generation, oldest first, with what each person is to the 
   expect(screen.getByTestId("family-tree-person-7")).toHaveTextContent(/Jamil Safi.*you/);
   expect(screen.getByTestId("family-tree-person-8")).toHaveTextContent(/sister · 30 years old/);
   expect(rows[3]).toHaveTextContent(/^Children.*Noor Safi/);
-  expect(screen.getByTestId("family-tree-title")).toHaveTextContent("Family of Jamil Safi");
+  expect(screen.getByTestId("header-title")).toHaveTextContent("Family of Jamil Safi");
 });
 
 it("a tap opens that person", async () => {

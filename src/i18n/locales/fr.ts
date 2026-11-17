@@ -1356,7 +1356,6 @@ export const fr: Translations = {
     taskDeleted: "Tâche supprimée",
     taskDone: "Tâche faite",
     listActions: "Actions de la liste",
-    renameList: "Renommer {{name}}",
     rename: "Renommer",
     reorder: "Réordonner",
     reorderDone: "Terminé",

@@ -23,7 +23,7 @@ import SafeZone from "../../../../app/safezone";
 import SafeZoneSettings from "../../../../app/safezone/settings";
 
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) },
   useLocalSearchParams: () => ({}),
   useFocusEffect: (cb: () => void) => jest.requireActual("react").useEffect(cb, [cb]),
 }));

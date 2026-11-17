@@ -34,7 +34,7 @@ import Trash from "../../../../app/finance/trash";
 
 const mockParams: { current: Record<string, string> } = { current: {} };
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) },
   useLocalSearchParams: () => mockParams.current,
   Link: ({ children }: { children: unknown }) => children,
 }));
@@ -449,7 +449,7 @@ describe("categories", () => {
     mockParams.current = { parent: "3" };
     renderScreen(<Categories />);
     expect(await screen.findByText("Groceries")).toBeTruthy();
-    expect(screen.getByTestId("finance-categories-title")).toHaveTextContent("Food");
+    expect(screen.getByTestId("header-title")).toHaveTextContent("Food");
     expect(screen.getByText("Restaurants")).toBeTruthy();
     expect(screen.queryByText("Rent")).toBeNull();
     fireEvent.press(screen.getByTestId("finance-categories-new"));

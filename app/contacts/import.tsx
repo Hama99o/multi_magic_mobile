@@ -15,8 +15,9 @@ import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import * as DocumentPicker from "expo-document-picker";
 import { File } from "expo-file-system";
-import { BookUser, ChevronLeft, Circle, CircleCheck, FileText, Search, UserPlus, X } from "@/components/icons";
+import { BookUser, Circle, CircleCheck, FileText, Search, UserPlus, X } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -145,15 +146,12 @@ export default function ImportContacts() {
     );
   }, [stage, filter]);
 
-  const header = (title: string, onBack: () => void) => (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-      <Pressable testID="contacts-import-back" onPress={onBack} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-        <ChevronLeft size={24} color={colors.ink} />
-      </Pressable>
-      <Text variant="title" accessibilityRole="header" style={{ flex: 1 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-        {title}
-      </Text>
-    </View>
+  // The shared header, with this step's name; `onBack` steps back inside the import.
+  const header = (title: string, onBack?: () => void) => (
+    <>
+      <AppHeader app="contacts" title={title} back onBack={onBack} />
+      <View style={{ height: metrics.space.md }} />
+    </>
   );
 
   // ── choose ───────────────────────────────────────────────────────────────
@@ -180,7 +178,7 @@ export default function ImportContacts() {
     );
     return (
       <Screen measure>
-        {header(t("contacts.import.title"), () => router.back())}
+        {header(t("contacts.import.title"))}
         <View style={{ gap: metrics.space.md }}>
           {option("contacts-import-one", <UserPlus size={24} color={colors.accent} />, t("contacts.import.one"), t("contacts.import.oneBody"), () => void pickOne())}
           {option("contacts-import-phone", <BookUser size={24} color={colors.accent} />, t("contacts.import.phone"), t("contacts.import.phoneBody"), () => void fromPhone())}
@@ -341,7 +339,7 @@ export default function ImportContacts() {
   );
   return (
     <Screen measure>
-      {header(t("contacts.import.doneTitle"), () => router.back())}
+      {header(t("contacts.import.doneTitle"))}
       <View style={{ gap: metrics.space.md }}>
         <SharedRestToPages rest={params.rest} />
         <Text testID="contacts-import-summary" variant="title" style={{ fontSize: 22 }} accessibilityLiveRegion="polite">

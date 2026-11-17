@@ -467,7 +467,7 @@ const SCREENS: {
   },
   // The Drive-style shell (2026-11-06): tabs, the search pill, "+", ⋯ on a row.
   { name: "pages", element: () => <PagesHome />, handles: ["pages-home-list", "pages-row-file", "pages-more-file", "pages-tab-home", "pages-tab-starred", "pages-tab-shared", "pages-tab-files", "pages-open-search", "pages-menu", "pages-add", "app-header", "header-chats", "header-notifications", "header-ai", "header-apps", "header-profile"], french: "Fichiers récents" },
-  { name: "pages-folder", element: () => <PagesFolder />, handles: ["pages-folder-list", "pages-row-folder", "pages-row-file", "pages-more-folder", "pages-sort", "pages-view-toggle", "pages-type-all", "pages-type-folders", "pages-type-video", "pages-add", "pages-tab-files", "pages-tab-home", "ai-button"], french: "Nom" },
+  { name: "pages-folder", element: () => <PagesFolder />, handles: ["pages-folder-list", "pages-row-folder", "pages-row-file", "pages-more-folder", "pages-sort", "pages-view-toggle", "pages-type-all", "pages-type-folders", "pages-type-video", "pages-add", "pages-tab-files", "pages-tab-home", "header-ai"], french: "Nom" },
   { name: "pages-drive", element: () => <PagesDrive />, handles: ["pages-drive-list", "pages-row-file"], french: "Récents" },
   { name: "pages-view", element: () => <PagesView />, handles: ["pages-view-other", "pages-view-card", "pages-view-share", "pages-view-share-button"], french: "Pas d’aperçu" },
   // Files in hand, as the share sheet or the Add sheet leaves them.

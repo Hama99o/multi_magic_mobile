@@ -9,8 +9,9 @@ import { ActivityIndicator, FlatList, Pressable, ScrollView, TextInput, View } f
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, Mail, Phone, Search, UserPlus, Users, X } from "@/components/icons";
+import { Mail, Phone, Search, UserPlus, Users, X } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -90,14 +91,8 @@ export default function SharedIntoContactsScreen() {
 
   return (
     <Screen measure>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable testID="contacts-shared-back" onPress={() => (picking ? setPicking(false) : router.back())} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        <Text variant="title" accessibilityRole="header" style={{ flex: 1 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-          {picking ? t("contacts.share.pickTitle") : t("contacts.share.title")}
-        </Text>
-      </View>
+      <AppHeader app="contacts" title={picking ? t("contacts.share.pickTitle") : t("contacts.share.title")} back onBack={picking ? () => setPicking(false) : undefined} />
+      <View style={{ height: metrics.space.md }} />
 
       {error ? (
         <Text testID="contacts-shared-error" tone="danger" style={{ paddingBottom: metrics.space.sm }}>

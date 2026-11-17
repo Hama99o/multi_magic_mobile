@@ -20,8 +20,9 @@ import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, Vie
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { Bell, CalendarDays, ChevronLeft, ExternalLink, LogOut, MapPin, MessageSquareText, NotebookPen, Pencil, Repeat, Trash2, Users } from "@/components/icons";
+import { Bell, CalendarDays, ExternalLink, LogOut, MapPin, MessageSquareText, NotebookPen, Pencil, Repeat, Trash2, Users } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -92,7 +93,7 @@ export default function EventDetail() {
   if (!event) {
     return (
       <Screen>
-        <Header onBack={() => router.back()} />
+        <AppHeader app="calendar" back />
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: metrics.space.lg }}>
           {error || eventId === 0 ? (
             <>
@@ -156,23 +157,22 @@ export default function EventDetail() {
 
   return (
     <Screen>
-      <Header
-        onBack={() => router.back()}
-        right={
-          canWrite ? (
-            <Pressable
-              testID="event-edit"
-              onPress={() => router.push({ pathname: "/calendar/edit", params: { id: String(event.id) } })}
-              accessibilityRole="button"
-              accessibilityLabel={t("calendar.detail.edit")}
-              style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
-            >
-              <Pencil size={20} color={colors.ink} />
-            </Pressable>
-          ) : null
-        }
-      />
-      <ScrollView testID="event-detail" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingBottom: metrics.space.xl * 2 }}>
+      <AppHeader app="calendar" title={title} back />
+      {canWrite ? (
+        // The event's own row, under the shared header: edit.
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
+          <Pressable
+            testID="event-edit"
+            onPress={() => router.push({ pathname: "/calendar/edit", params: { id: String(event.id) } })}
+            accessibilityRole="button"
+            accessibilityLabel={t("calendar.detail.edit")}
+            style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
+          >
+            <Pencil size={20} color={colors.ink} />
+          </Pressable>
+        </View>
+      ) : null}
+      <ScrollView testID="event-detail" keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag" contentContainerStyle={{ paddingTop: canWrite ? 0 : metrics.space.md, paddingBottom: metrics.space.xl * 2 }}>
         <View style={{ flexDirection: "row", gap: metrics.space.md, paddingBottom: metrics.space.md }}>
           <View style={{ width: 6, borderRadius: 3, backgroundColor: eventColor(event) }} />
           <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
@@ -284,21 +284,6 @@ export default function EventDetail() {
         </View>
       </ScrollView>
     </Screen>
-  );
-}
-
-function Header({ onBack, right }: { onBack: () => void; right?: ReactNode }) {
-  const colors = useColors();
-  const metrics = useMetrics();
-  const { t } = useTranslation();
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: metrics.space.sm }}>
-      <Pressable onPress={onBack} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: metrics.touch, height: metrics.touch, justifyContent: "center" }}>
-        <ChevronLeft size={24} color={colors.ink} />
-      </Pressable>
-      <View style={{ flex: 1 }} />
-      {right}
-    </View>
   );
 }
 

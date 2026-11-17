@@ -27,7 +27,7 @@ import TemplateForm from "../../../../app/todos/template";
 
 const mockParams: { current: Record<string, string> } = { current: {} };
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) },
   useLocalSearchParams: () => mockParams.current,
   Link: ({ children }: { children: unknown }) => children,
 }));
@@ -291,11 +291,12 @@ describe("a list", () => {
     alert.mockRestore();
   });
 
-  it("renames the list from its title", async () => {
+  it("renames the list from its menu", async () => {
     standard();
     renderScreen(<TodoList />);
     await screen.findByText("Milk");
-    fireEvent.press(screen.getByTestId("todo-list-title"));
+    fireEvent.press(screen.getByTestId("todo-list-menu"));
+    fireEvent.press(screen.getByTestId("todo-list-actions-rename"));
     fireEvent.changeText(screen.getByTestId("pages-name-input"), "Shop");
     fireEvent.press(screen.getByTestId("pages-name-confirm"));
     expect(await screen.findByText("Shop")).toBeTruthy();

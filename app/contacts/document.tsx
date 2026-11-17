@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { WebView } from "react-native-webview";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -31,7 +32,7 @@ import type { PageNode } from "@/api/pages";
 import { ImageGallery } from "@/screens/pages/ImageGallery";
 import { PdfView } from "@/screens/pages/PdfView";
 import { shareNode } from "@/screens/pages/ItemSheet";
-import { HeaderButton, NodeGlyph, PagesHeader, formatBytes } from "@/screens/pages/parts";
+import { HeaderButton, NodeGlyph, formatBytes } from "@/screens/pages/parts";
 import { modeFor } from "@/screens/pages/viewerModes";
 import { asPageNode } from "@/screens/contacts/documents";
 import { parseId } from "./contact";
@@ -79,11 +80,16 @@ export default function ContactDocumentScreen() {
 
   return (
     <Screen measure={mode !== "image" && mode !== "pdf" && mode !== "document"}>
-      <PagesHeader
-        title={current?.title ?? ""}
-        subtitle={current ? formatBytes(current.fileSize, t, i18n.language) : null}
-        right={current ? <HeaderButton icon={Download} label={t("pages.item.share")} onPress={() => void share()} testID="contact-document-share" /> : null}
-      />
+      <AppHeader app="contacts" title={current?.title ?? t("contacts.documents.title")} back />
+      {current ? (
+        // The document's own row, under the shared header: its size, and share.
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
+          <Text variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1 }}>
+            {formatBytes(current.fileSize, t, i18n.language)}
+          </Text>
+          <HeaderButton icon={Download} label={t("pages.item.share")} onPress={() => void share()} testID="contact-document-share" />
+        </View>
+      ) : null}
       {shareError ? (
         <Text tone="danger" testID="contact-document-share-error">
           {shareError}

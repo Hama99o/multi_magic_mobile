@@ -12,8 +12,9 @@ import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, View } from "
 import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import * as Clipboard from "expo-clipboard";
-import { ChevronLeft, Copy, ExternalLink, Eye, EyeOff, Pencil, Trash2 } from "@/components/icons";
+import { Copy, ExternalLink, Eye, EyeOff, Pencil, Trash2 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -34,20 +35,18 @@ import Animated, { FadeIn, FadeInUp } from "react-native-reanimated";
 const COPIED_MS = 2_000;
 
 export default function SafeZoneItemScreen() {
-  const colors = useColors();
   const metrics = useMetrics();
-  const { t } = useTranslation();
+  // The item's name, once it is open; the app's name while it loads or is locked.
+  const [title, setTitle] = useState<string | null>(null);
   return (
     <Screen measure>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable testID="safezone-item-back" onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        <View style={{ flex: 1 }} />
+      <AppHeader app="safezone" title={title ?? undefined} back />
+      {/* The item's own row, under the shared header: edit. */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
         <EditKey />
       </View>
       <SafeZoneGate>
-        <Item />
+        <Item onTitle={setTitle} />
       </SafeZoneGate>
     </Screen>
   );
@@ -91,7 +90,7 @@ function token(): string {
   return live;
 }
 
-function Item() {
+function Item({ onTitle }: { onTitle: (title: string | null) => void }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
@@ -205,6 +204,13 @@ function Item() {
     ]);
   };
 
+  // The header names the item while it is on screen; a lock unmounts this and the name goes with it.
+  const shownTitle = item ? (item.kind === "identities" ? choiceLabel("type", item.title, t) : item.title) || t("safezone.noTitle") : null;
+  useEffect(() => {
+    onTitle(shownTitle);
+  }, [onTitle, shownTitle]);
+  useEffect(() => () => onTitle(null), [onTitle]);
+
   if (!params) return <Text tone="danger">{t("safezone.itemFailed")}</Text>;
   if (error) {
     return (
@@ -218,7 +224,7 @@ function Item() {
   }
   if (!item) return <ActivityIndicator testID="safezone-item-loading" style={{ marginTop: metrics.space.xl }} />;
 
-  const title = (item.kind === "identities" ? choiceLabel("type", item.title, t) : item.title) || t("safezone.noTitle");
+  const title = shownTitle ?? t("safezone.noTitle");
   const updated = item.updatedAt ? new Date(item.updatedAt) : null;
   const site = item.fields.find((f) => f.key === "link")?.value || item.title || "";
   const who = item.fields.find((f) => !f.secret && (f.key === "username" || f.key === "email"))?.value ?? "";

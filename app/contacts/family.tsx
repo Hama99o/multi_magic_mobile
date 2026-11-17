@@ -13,8 +13,9 @@ import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight } from "@/components/icons";
+import { ChevronRight } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -40,17 +41,10 @@ export default function ContactFamilyTree() {
 
   return (
     <Screen measure>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable testID="family-tree-back" onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        <Text testID="family-tree-title" variant="title" accessibilityRole="header" numberOfLines={2} style={{ flex: 1 }}>
-          {root?.name ? t("contacts.tree.of", { name: root.name }) : t("contacts.tree.title")}
-        </Text>
-      </View>
+      <AppHeader app="contacts" title={root?.name ? t("contacts.tree.of", { name: root.name }) : t("contacts.tree.title")} back />
       <LoadFailure error={query.error} loadFailed={t("contacts.tree.loadFailed")} hasData={Boolean(query.data)} updatedAt={query.dataUpdatedAt} onRetry={() => void query.refetch()} testID="family-tree-load-failed" />
       {!query.data && !query.error ? <ActivityIndicator style={{ marginTop: metrics.space.xl }} /> : null}
-      <ScrollView contentContainerStyle={{ gap: metrics.space.lg, paddingBottom: 48 }}>
+      <ScrollView contentContainerStyle={{ gap: metrics.space.lg, paddingTop: metrics.space.md, paddingBottom: 48 }}>
         {query.data && nodes.length <= 1 ? (
           <Text testID="family-tree-empty" tone="muted" style={{ textAlign: "center", paddingVertical: metrics.space.xl }}>
             {t("contacts.tree.empty")}

@@ -19,8 +19,9 @@ import { useQuery } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
 import { CURRENCY_SYMBOLS, financeApi, formatMoney, type Loan } from "@/api/finance";
 import { apiErrorMessage } from "@/api/http";
-import { ChevronLeft, Pencil, Plus, Trash2, X } from "@/components/icons";
+import { Pencil, Plus, Trash2, X } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
@@ -78,13 +79,9 @@ export default function LoanScreen() {
 
   return (
     <Screen measure>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable testID="finance-loan-back" onPress={back} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        <Text variant="title" accessibilityRole="header" numberOfLines={1} style={{ flex: 1 }}>
-          {loan?.contactName ?? " "}
-        </Text>
+      <AppHeader app="finance" title={loan?.contactName ?? t("finance.tabs.loans")} back onBack={back} />
+      {/* The loan's own row, under the shared header: edit and delete. */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
         <Pressable
           testID="finance-loan-edit"
           disabled={!loan}

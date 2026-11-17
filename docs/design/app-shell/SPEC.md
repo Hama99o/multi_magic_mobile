@@ -1,6 +1,6 @@
 # App shell — one header everywhere, the app switcher, Home — SPEC
 
-**Status: DESIGN REVIEW** (2026-11-17). Nothing built yet: the owner reviews
+**Status: NEEDS HAMMA9900** (2026-11-17): design review. Nothing built yet; the owner reviews
 this SPEC and the mockups first. Branch `feat/app-shell-header`, off
 `feat/todo-finance-apps` (so Tasks and Finance are in the switcher).
 

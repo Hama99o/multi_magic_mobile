@@ -28,6 +28,16 @@ export const profileKeys = {
   me: () => ["profile"] as const,
   summary: () => ["me", "summary"] as const,
   aiKeys: () => ["aiKeys"] as const,
+  /** `GET /ai_usage?period=` — one entry per period. */
+  aiUsage: (period: string) => ["aiUsage", period] as const,
+  /** Signed-in devices, trusted devices, sign-in history (`app/security.tsx`). */
+  sessions: () => ["security", "sessions"] as const,
+  trustedDevices: () => ["security", "trustedDevices"] as const,
+  loginHistory: () => ["security", "loginHistory"] as const,
+  /** Personal API keys: the LIST only. A new key's token is never cached. */
+  apiKeys: () => ["apiKeys"] as const,
+  mcp: () => ["mcp", "connections"] as const,
+  follows: (kind: "followers" | "following") => ["follows", kind] as const,
 };
 
 export const aiKeys = {

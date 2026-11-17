@@ -1,3 +1,4 @@
+import { accountFr } from "./account/fr";
 import { financeFr } from "./finance/fr";
 import { loansFr } from "./finance/loans.fr";
 import { manageFr } from "./finance/manage.fr";
@@ -380,7 +381,6 @@ export const fr: Translations = {
     about: "À propos",
     aboutPlaceholder: "Une ligne à votre sujet",
     email: "E-mail",
-    emailLocked: "C’est l’e-mail avec lequel vous vous connectez. Il ne peut pas encore être changé dans l’app.",
     changePassword: "Changer le mot de passe",
     yourAiKey: "Votre clé de fournisseur IA",
     safezonePin: "Code SafeZone",
@@ -1905,4 +1905,6 @@ export const fr: Translations = {
       noPreview: "Pas d’aperçu pour ce type. Partagez-le pour l’ouvrir dans une autre app.",
     },
   },
+  // Security, email change, API keys, Connect Claude, followers, usage, lending: ./account/.
+  ...accountFr,
 };

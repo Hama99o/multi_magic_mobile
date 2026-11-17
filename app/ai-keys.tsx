@@ -41,6 +41,8 @@ import { KeyRefused, aiKeysApi, type AiKey, type AiKeyPayload } from "@/api/aiKe
 import { failureMessage } from "@/api/failure";
 import { LoadFailure } from "@/components/LoadFailure";
 import { BorrowedKeyRow } from "@/components/settings/BorrowedKeyRow";
+import { AiUsagePanel } from "@/components/settings/AiUsagePanel";
+import { KeyLending } from "@/components/settings/KeyLending";
 import { MorningBriefRow } from "@/components/settings/MorningBriefRow";
 import { profileKeys } from "@/api/keys";
 import { useActivateAiKey, useRemoveAiKey } from "@/hooks/useAccountMutations";
@@ -256,6 +258,9 @@ export default function AiKeys() {
                   </Text>
                 </Pressable>
               </View>
+
+              {/* Lend it, as on the web (KeySharing.tsx). */}
+              <KeyLending aiKey={key} />
             </View>
           ))}
         </View>
@@ -278,6 +283,10 @@ export default function AiKeys() {
 
       {/* ── The morning brief, beside the keys as on the web ────────────── */}
       <MorningBriefRow />
+
+      {/* ── What it cost, by period (AiUsagePanel.tsx on the web) ───────── */}
+      {/* Only beside an answer: offline, one "could not reach" is enough. */}
+      {data ? <AiUsagePanel /> : null}
 
       {/* ── Adding or replacing one ────────────────────────────────────── */}
       <View style={{ marginTop: metrics.space.xl, gap: metrics.space.md }}>

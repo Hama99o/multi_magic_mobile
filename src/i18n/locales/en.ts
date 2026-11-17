@@ -1,3 +1,4 @@
+import { accountEn } from "./account/en";
 import { financeEn } from "./finance/en";
 import { loansEn } from "./finance/loans.en";
 import { manageEn } from "./finance/manage.en";
@@ -364,7 +365,6 @@ export const en = {
     about: "About",
     aboutPlaceholder: "A line about you",
     email: "Email",
-    emailLocked: "This is the email you sign in with. It cannot be changed in the app yet.",
     changePassword: "Change password",
     yourAiKey: "Your AI provider key",
     safezonePin: "SafeZone PIN",
@@ -1889,6 +1889,8 @@ export const en = {
       noPreview: "No preview for this type. Share it to open it in another app.",
     },
   },
+  // Security, email change, API keys, Connect Claude, followers, usage, lending: ./account/.
+  ...accountEn,
 };
 
 /**

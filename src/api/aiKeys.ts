@@ -41,6 +41,8 @@ export interface AiKey {
   verifiedAt: string | null;
   /** The provider's own words when it last refused. */
   verificationError: string | null;
+  /** Who may use it — their address, limit and spend. Never the key. */
+  sharedWith?: KeyLoan[];
 }
 
 /** A key somebody else lent this user. Usable, never readable — no mask, no
@@ -67,9 +69,29 @@ export interface AiKeyPayload {
   borrowed: BorrowedKey[];
 }
 
+/** One person this key is lent to (`Ai::KeySharing.shared_with`). */
+export interface KeyLoan {
+  email: string;
+  /** Invited, no account yet. */
+  pending: boolean;
+  monthlyCreditLimit: number | null;
+  spentThisMonth: number;
+}
+
+function parseLoan(payload: unknown): KeyLoan {
+  const record = obj(payload, "shared_with");
+  return {
+    email: str(record.email, "shared_with.email"),
+    pending: record.pending === true,
+    monthlyCreditLimit: typeof record.monthly_credit_limit === "number" ? record.monthly_credit_limit : null,
+    spentThisMonth: typeof record.spent_this_month === "number" ? record.spent_this_month : 0,
+  };
+}
+
 function parseKey(payload: unknown): AiKey {
   const record = obj(payload, "ai_key");
   return {
+    sharedWith: readable(Array.isArray(record.shared_with) ? record.shared_with : [], parseLoan),
     id: parseId(record.id, "ai_key.id"),
     provider: str(record.provider, "ai_key.provider"),
     masked: optStr(record.masked),
@@ -165,6 +187,42 @@ export const aiKeysApi = {
     } catch (error) {
       throw refusalFrom(error) ?? error;
     }
+  },
+
+  /**
+   * Lend this key to an address with an optional monthly credit limit
+   * (`KeySharing.tsx` on the web). The server emails them; they can use the key
+   * and never see it. A refusal (own address, bad email, bad limit) is a 422
+   * `{ error }` in the reader's language, raised as a KeyRefused.
+   */
+  lend: async (keyId: number, email: string, monthlyCreditLimit: number | null): Promise<AiKeyPayload> => {
+    try {
+      const res = await http.post(`/api/v1/ai_keys/${keyId}/share`, {
+        email,
+        monthly_credit_limit: monthlyCreditLimit ?? "",
+      });
+      return parseKeyPayload(res.data);
+    } catch (error) {
+      throw refusalFrom(error) ?? error;
+    }
+  },
+
+  /** Blank removes the limit. */
+  setLoanLimit: async (keyId: number, email: string, monthlyCreditLimit: number | null): Promise<AiKeyPayload> => {
+    try {
+      const res = await http.patch(`/api/v1/ai_keys/${keyId}/share`, {
+        email,
+        monthly_credit_limit: monthlyCreditLimit ?? "",
+      });
+      return parseKeyPayload(res.data);
+    } catch (error) {
+      throw refusalFrom(error) ?? error;
+    }
+  },
+
+  stopLending: async (keyId: number, email: string): Promise<AiKeyPayload> => {
+    const res = await http.delete(`/api/v1/ai_keys/${keyId}/share`, { data: { email } });
+    return parseKeyPayload(res.data);
   },
 
   /** At most one active key per user — the server promotes and demotes. */

@@ -50,6 +50,16 @@ export interface Profile {
   aiMorningBrief: boolean | null;
   /** Absolute by the time it leaves here — `<Image>` cannot use a bare path. */
   avatar: string | null;
+  /** The web's profile banner (`user[cover_photo]`). Absolute, like the avatar. */
+  coverPhoto?: string | null;
+  /** `YYYY-MM-DD`, as the column stores it. */
+  birthDate?: string | null;
+  /** Whether sign-in asks for an emailed code. NULL from a server that predates it. */
+  twoFactorEnabled?: boolean | null;
+  /** `"light"` | `"dark"` | `"system"`, the same column the web's theme menu writes. */
+  theme?: string | null;
+  followersCount?: number | null;
+  followingCount?: number | null;
   createdAt: string | null;
 }
 
@@ -65,7 +75,15 @@ export interface ProfileChanges {
   /** Written by the morning brief switch on the AI keys screen. A real
    *  boolean, both ways: the server casts anything that is not false. */
   ai_morning_brief?: boolean;
+  /** `YYYY-MM-DD`, or `""` to clear it. */
+  birth_date?: string;
+  /** Written by the theme row, as the web's TopNav does. */
+  theme?: string;
 }
+
+/** The two pictures a profile has, by the names the server's allowlist uses
+ *  (`ALLOWED_IMAGE_TYPES`, users_controller.rb). */
+export type ProfileImage = "photo" | "cover_photo";
 
 export function parseProfile(payload: unknown): Profile {
   const record = obj(payload, "user");
@@ -81,6 +99,12 @@ export function parseProfile(payload: unknown): Profile {
     phoneNumber: optStr(record.phone_number),
     aiMorningBrief: typeof record.ai_morning_brief === "boolean" ? record.ai_morning_brief : null,
     avatar: absoluteUrl(optStr(record.avatar)),
+    coverPhoto: absoluteUrl(optStr(record.cover_photo)),
+    birthDate: optStr(record.birth_date),
+    twoFactorEnabled: typeof record.two_factor_enabled === "boolean" ? record.two_factor_enabled : null,
+    theme: optStr(record.theme),
+    followersCount: typeof record.followers_count === "number" ? record.followers_count : null,
+    followingCount: typeof record.following_count === "number" ? record.following_count : null,
     createdAt: optStr(record.created_at),
   };
 }
@@ -129,10 +153,11 @@ export const profileApi = {
   uploadPhoto: async (
     userId: number,
     file: { uri: string; name: string; mimeType: string },
+    image: ProfileImage = "photo",
   ): Promise<Profile> => {
     const form = new FormData();
     // React Native's FormData takes {uri,name,type} rather than a Blob.
-    form.append("user[photo]", {
+    form.append(`user[${image}]`, {
       uri: file.uri,
       name: file.name,
       type: file.mimeType,
@@ -151,11 +176,11 @@ export const profileApi = {
   /**
    * Remove it. A real endpoint, so a real button — `image_type_name` is checked
    * against an allowlist server-side (`ALLOWED_IMAGE_TYPES`), and `photo` is
-   * the avatar. `cover_photo` exists and this app has nowhere to show one.
+   * the avatar; `cover_photo` is the banner on Your profile.
    */
-  removePhoto: async (userId: number): Promise<Profile> => {
+  removePhoto: async (userId: number, image: ProfileImage = "photo"): Promise<Profile> => {
     const res = await http.delete(`/api/v1/users/${userId}/destroy_avatar`, {
-      params: { image_type_name: "photo" },
+      params: { image_type_name: image },
     });
     return parseProfile(obj(res.data, "user").user);
   },

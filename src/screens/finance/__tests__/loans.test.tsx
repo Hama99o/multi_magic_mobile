@@ -10,6 +10,8 @@
  * same handler), the native modal, and whether a French line fits 360 dp.
  * Invented data only: this repo is public.
  */
+import { lastCurrencyKey } from "@/screens/finance/lastCurrency";
+import { useAuthStore } from "@/stores/auth.store";
 import MockAdapter from "axios-mock-adapter";
 import { Alert } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
@@ -378,12 +380,12 @@ describe("the loan form", () => {
         },
       },
     ]);
-    expect(await AsyncStorage.getItem("finance_last_currency")).toBe("usd");
+    expect(await AsyncStorage.getItem(lastCurrencyKey(useAuthStore.getState().user?.id ?? null))).toBe("usd");
   });
 
-  it("starts in the last currency used on this phone, and needs a name and an amount", async () => {
+  it("starts in the last currency this user used, and needs a name and an amount", async () => {
     standard();
-    await AsyncStorage.setItem("finance_last_currency", "gbp");
+    await AsyncStorage.setItem(lastCurrencyKey(useAuthStore.getState().user?.id ?? null), "gbp");
     renderScreen(<LoanEdit />);
     await waitFor(() => expect(screen.getByTestId("finance-loan-form-currency")).toHaveTextContent("£ GBP"));
     expect(screen.getByTestId("finance-loan-form-save")).toBeDisabled();

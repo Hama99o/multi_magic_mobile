@@ -70,6 +70,25 @@ describe("reopening (M11)", () => {
     expect(await boot({ v: 2, app: "finance", root: "/finance?tab=loans", userId: 7 })).toBe("/sign-in");
   });
 
+  it("left on Home, Home reopens", async () => {
+    expect(await boot({ v: 2, app: "home", root: "/home", userId: 7 })).toBe("/home");
+    await settle();
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
+  it("a people-chat thread re-opens over Chats, once fetched, with its name", async () => {
+    mock.onGet("/api/v1/conversations/266").reply(200, { conversation: { id: 266, user: { fullname: "Sam QA" }, is_group: false, participants: [], updated_at: "2026-11-17T10:00:00Z" } });
+    expect(await boot({ v: 2, app: "chats", root: "/chats", sub: { kind: "thread", id: 266 }, userId: 7 })).toBe("/chats");
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: "/chat/[id]", params: { id: "266", name: "Sam QA", isGroup: "0" } }));
+  });
+
+  it("a thread deleted since stays on Chats", async () => {
+    mock.onGet("/api/v1/conversations/266").reply(404);
+    expect(await boot({ v: 2, app: "chats", root: "/chats", sub: { kind: "thread", id: 266 }, userId: 7 })).toBe("/chats");
+    await settle();
+    expect(router.push).not.toHaveBeenCalled();
+  });
+
   it("Finance › Loans reopens Finance › Loans, not Home", async () => {
     expect(await boot({ v: 2, app: "finance", root: "/finance?tab=loans", userId: 7 })).toBe("/finance?tab=loans");
     await settle();
@@ -194,12 +213,19 @@ describe("PlaceRecorder: moving between apps saves the place (M11)", () => {
     await waitFor(async () => expect(JSON.parse((await AsyncStorage.getItem(LAST_PLACE_KEY)) ?? "{}").root).toBe("/finance?tab=loans"));
   });
 
-  it("a visit to Home keeps the last app", async () => {
+  it("leaving from Home saves Home (reopen where he left)", async () => {
     await useLastPlace.getState().record({ app: "todos", root: "/todos" }, 7);
     at("/home");
     mount();
+    await waitFor(() => expect(useLastPlace.getState().place?.app).toBe("home"));
+  });
+
+  it("opening a form over Finance › Expenses keeps Finance › Expenses saved", async () => {
+    await useLastPlace.getState().record({ app: "finance", root: "/finance?tab=expenses" }, 7);
+    at("/finance/entry", { kind: "expense" });
+    mount();
     await settle();
-    expect(useLastPlace.getState().place?.app).toBe("todos");
+    expect(useLastPlace.getState().place?.root).toBe("/finance?tab=expenses");
   });
 
   it("signed out, nothing is saved", async () => {

@@ -16,6 +16,9 @@ describe("placeFor: what the current screen saves", () => {
     ["/contacts", {}, { app: "contacts", root: "/contacts" }],
     ["/safezone", {}, { app: "safezone", root: "/safezone" }],
     ["/pages", {}, { app: "pages", root: "/pages" }],
+    ["/pages", { tab: "files" }, { app: "pages", root: "/pages?tab=files" }],
+    ["/pages", { tab: "home" }, { app: "pages", root: "/pages" }],
+    ["/home", {}, { app: "home", root: "/home" }],
     ["/chats", {}, { app: "chats", root: "/chats" }],
     ["/notifications", {}, { app: "notifications", root: "/notifications" }],
   ])("%s %j is that app's root", (path, params, expected) => {
@@ -34,22 +37,25 @@ describe("placeFor: what the current screen saves", () => {
   });
 
   it.each([
-    ["/finance/entry", {}, "finance"],
-    ["/finance/loan-edit", { id: "7" }, "finance"],
-    ["/finance/recurring-edit", {}, "finance"],
-    ["/todos/template", {}, "todos"],
-    ["/calendar/edit", { id: "5" }, "calendar"],
-    ["/contacts/edit", { id: "3" }, "contacts"],
-    ["/notes/edit", { id: "9" }, "notes"],
-    ["/notes/note", { id: "9" }, "notes"],
-    ["/safezone/item", { kind: "passwords", id: "4" }, "safezone"],
-    ["/safezone/edit", {}, "safezone"],
-    ["/pages/view", { nodeId: "1" }, "pages"],
-    ["/chat/266", { id: "266" }, "chats"],
-  ])("a form, an editor or a secret (%s) saves only its app's root", (path, params, app) => {
-    const place = placeFor(path, params);
-    expect(place?.app).toBe(app);
-    expect(place?.sub).toBeUndefined();
+    ["/finance/entry", {}],
+    ["/finance/loan-edit", { id: "7" }],
+    ["/finance/recurring-edit", {}],
+    ["/todos/template", {}],
+    ["/calendar/edit", { id: "5" }],
+    ["/contacts/edit", { id: "3" }],
+    ["/notes/edit", { id: "9" }],
+    ["/notes/note", { id: "9" }],
+    ["/safezone/item", { kind: "passwords", id: "4" }],
+    ["/safezone/edit", {}],
+    ["/pages/view", { nodeId: "1" }],
+    ["/pages/save", {}],
+  ])("a form, an editor, a viewer or a secret (%s) is not a place: the screen under it stays saved", (path, params) => {
+    expect(placeFor(path, params)).toBeNull();
+  });
+
+  it("a people-chat thread is a record to re-open, with its name", () => {
+    expect(placeFor("/chat/266", { id: "266", name: "Sam QA", isGroup: "0" })).toEqual({ app: "chats", root: "/chats", sub: { kind: "thread", id: 266 } });
+    expect(placeFor("/chat/abc", { id: "abc" })).toEqual({ app: "chats", root: "/chats" });
   });
 
   it("a record with no usable id saves the root", () => {
@@ -57,7 +63,7 @@ describe("placeFor: what the current screen saves", () => {
     expect(placeFor("/finance/loan", { id: "abc" })).toEqual({ app: "finance", root: "/finance?tab=loans" });
   });
 
-  it.each(["/home", "/chat", "/profile", "/account", "/sign-in", "/share", "/", "/somewhere-new"])(
+  it.each(["/chat", "/profile", "/account", "/sign-in", "/share", "/", "/somewhere-new"])(
     "%s is not a place: it leaves the last app as it was",
     (path) => {
       expect(placeFor(path, {})).toBeNull();
@@ -84,7 +90,17 @@ describe("parsePlace: reading what an earlier run saved", () => {
     expect(parsePlace(JSON.stringify({ v: 2, app: "todos", root: "/todos", sub: { kind: "list", id: "x" }, userId: 1 }))).toEqual({ v: 2, app: "todos", root: "/todos", userId: 1 });
   });
 
-  it.each([null, "", "not json", JSON.stringify({ app: "home" }), JSON.stringify({ app: "assistant" }), JSON.stringify({ app: "nope" }), JSON.stringify(42)])(
+  it("Home is a place too (left on Home → Home)", () => {
+    expect(parsePlace(JSON.stringify({ v: 2, app: "home", root: "/home", userId: 1 }))).toEqual({ v: 2, app: "home", root: "/home", userId: 1 });
+  });
+
+  it("a saved thread and a saved Pages tab read back", () => {
+    expect(parsePlace(JSON.stringify({ v: 2, app: "chats", root: "/chats", sub: { kind: "thread", id: 266 }, userId: 1 }))?.sub).toEqual({ kind: "thread", id: 266 });
+    expect(parsePlace(JSON.stringify({ v: 2, app: "pages", root: "/pages?tab=shared", userId: 1 }))?.root).toBe("/pages?tab=shared");
+    expect(parsePlace(JSON.stringify({ v: 2, app: "pages", root: "/pages?tab=nope", userId: 1 }))?.root).toBe("/pages");
+  });
+
+  it.each([null, "", "not json", JSON.stringify({ app: "assistant" }), JSON.stringify({ app: "nope" }), JSON.stringify(42)])(
     "nothing usable (%j) is no place",
     (raw) => {
       expect(parsePlace(raw)).toBeNull();

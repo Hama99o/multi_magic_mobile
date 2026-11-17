@@ -124,13 +124,14 @@ describe("the header (M1, M2, M3, M10)", () => {
     expect(screen.getByTestId("header-chats").props.accessibilityLabel).toBe("Chats");
   });
 
-  it("Chats and Notifications open their screens", async () => {
+  it.each([
+    ["header-chats", "/chats"],
+    ["header-notifications", "/notifications"],
+  ])("%s opens its screen", async (id, route) => {
     counts(0, 0);
     open("finance");
-    fireEvent.press(await screen.findByTestId("header-chats"));
-    expect(router.push).toHaveBeenCalledWith("/chats");
-    fireEvent.press(screen.getByTestId("header-notifications"));
-    expect(router.push).toHaveBeenCalledWith("/notifications");
+    fireEvent.press(await screen.findByTestId(id));
+    expect(router.push).toHaveBeenCalledWith(route);
   });
 
   it("the AI button opens the assistant over the current screen, and says so", async () => {
@@ -182,6 +183,35 @@ describe("the header (M1, M2, M3, M10)", () => {
       expect(screen.getByTestId("header-ai-label")).toHaveTextContent("AI");
       expect(screen.getByTestId("header-chats-label")).toHaveTextContent("Chats");
     });
+  });
+
+  it.each([
+    ["header-chats", "/chats"],
+    ["header-notifications", "/notifications"],
+    ["header-ai", "/chat"],
+  ])("a double tap on %s opens its screen once (black-box run)", async (id, route) => {
+    counts(0, 0);
+    open("finance");
+    const button = await screen.findByTestId(id);
+    fireEvent.press(button);
+    fireEvent.press(button);
+    expect(router.push).toHaveBeenCalledTimes(1);
+    expect(router.push).toHaveBeenCalledWith(route);
+  });
+
+  it("a second tap after the guard window works again", async () => {
+    counts(0, 0);
+    jest.useFakeTimers();
+    try {
+      open("finance");
+      const ai = screen.getByTestId("header-ai");
+      fireEvent.press(ai);
+      act(() => jest.advanceTimersByTime(1200));
+      fireEvent.press(ai);
+      expect(router.push).toHaveBeenCalledTimes(2);
+    } finally {
+      jest.useRealTimers();
+    }
   });
 
   it("on the Chats screen its own button is shown selected and does nothing", async () => {
@@ -282,13 +312,18 @@ describe("the switcher (M4, M10)", () => {
     expect(router.push).toHaveBeenCalledWith("/notes");
   });
 
-  it("Home and the assistant: Home is reached by going down, the assistant opens over", async () => {
+  it("Home is reached by going down the stack", async () => {
     counts(0, 0);
     open("todos");
     fireEvent.press(await screen.findByTestId("header-apps"));
     fireEvent.press(await screen.findByTestId("switcher-app-home"));
     expect(router.dismissTo).toHaveBeenCalledWith("/home");
-    fireEvent.press(screen.getByTestId("header-apps"));
+  });
+
+  it("Ask the assistant opens it over the screen", async () => {
+    counts(0, 0);
+    open("todos");
+    fireEvent.press(await screen.findByTestId("header-apps"));
     fireEvent.press(await screen.findByTestId("switcher-ask"));
     expect(router.push).toHaveBeenCalledWith("/chat");
   });

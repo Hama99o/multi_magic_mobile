@@ -9,25 +9,28 @@
  *   - a record (a Tasks list, a loan, an event): pushed only once it has been
  *     fetched again, so one deleted since, or a phone offline, leaves the
  *     app's root on screen, never Home;
+ *   - a people-chat thread;
  *   - one of Finance's own lists (recurring, categories, reports, trash).
- * Forms, editors, modals, SafeZone's items and the note editor are never
- * places: their app's root is saved instead. Home, the assistant and the
- * account screens are not places at all, so visiting them keeps the last app.
+ * Home is a place (left on Home → Home). Forms, editors, viewers, SafeZone's
+ * items, the assistant and the account screens are not places at all, so
+ * opening one keeps the screen under it saved.
  */
 import { router } from "expo-router";
 import type { QueryClient } from "@tanstack/react-query";
-import { calendarKeys, financeKeys, todoKeys } from "@/api/keys";
+import { calendarKeys, conversationKeys, financeKeys, todoKeys } from "@/api/keys";
+import { conversationsApi } from "@/api/conversations";
 import { todoGroupsApi } from "@/api/todos";
 import { financeApi } from "@/api/finance";
 import { calendarApi } from "@/api/calendar";
 import { FINANCE_TABS } from "@/screens/finance/tabs/names";
 import type { AppKey } from "./registry";
 
-/** The apps a place can be in: every app with a root of its own. */
-export const PLACE_APPS = ["safezone", "notes", "todos", "pages", "finance", "chats", "contacts", "calendar", "notifications"] as const;
+/** The apps a place can be in: every app with a root of its own, and Home (left on Home → Home). */
+export const PLACE_APPS = ["home", "safezone", "notes", "todos", "pages", "finance", "chats", "contacts", "calendar", "notifications"] as const;
 export type PlaceApp = (typeof PLACE_APPS)[number];
 
 const ROOTS: Record<PlaceApp, string> = {
+  home: "/home",
   safezone: "/safezone",
   notes: "/notes",
   todos: "/todos",
@@ -39,12 +42,25 @@ const ROOTS: Record<PlaceApp, string> = {
   notifications: "/notifications",
 };
 
+/**
+ * Forms, editors, viewers and SafeZone's secrets are not places: opening one
+ * leaves the screen under it saved, so a kill there reopens that screen and
+ * never the half-filled form (src/components/shell/CLAUDE.md).
+ */
+const NOT_PLACES = [
+  "/finance/entry", "/finance/loan-edit", "/finance/recurring-edit", "/todos/template", "/calendar/edit",
+  "/contacts/edit", "/notes/edit", "/notes/note", "/safezone/item", "/safezone/edit", "/pages/view", "/pages/save",
+] as const;
+const PAGES_TABS = ["starred", "shared", "files"] as const;
+const pagesRoot = (tab: string | undefined) => ((PAGES_TABS as readonly string[]).includes(tab ?? "") ? `/pages?tab=${tab}` : "/pages");
+
 const FINANCE_SCREENS = ["/finance/recurring", "/finance/categories", "/finance/reports", "/finance/trash"] as const;
 
 export type PlaceSub =
   | { kind: "list"; id: number }
   | { kind: "loan"; id: number }
   | { kind: "event"; id: number; on?: string }
+  | { kind: "thread"; id: number }
   | { kind: "screen"; path: (typeof FINANCE_SCREENS)[number] };
 
 export interface Place {
@@ -71,9 +87,14 @@ const financeRoot = (tab: string | undefined) => ((FINANCE_TABS as readonly stri
 
 /** The place the screen at `pathname` saves, or null when it is not a place (it then leaves the last one as it was). */
 export function placeFor(pathname: string, params: Params): PlaceDraft | null {
+  if ((NOT_PLACES as readonly string[]).includes(pathname)) return null;
+  if (pathname.startsWith("/chat/")) {
+    const id = idOf(params.id) ?? idOf(pathname.slice("/chat/".length));
+    return id == null ? { app: "chats", root: ROOTS.chats } : { app: "chats", root: ROOTS.chats, sub: { kind: "thread", id } };
+  }
   const app = (Object.keys(ROOTS) as PlaceApp[]).find((a) => pathname === ROOTS[a] || pathname.startsWith(`${ROOTS[a]}/`));
-  if (pathname.startsWith("/chat/")) return { app: "chats", root: ROOTS.chats };
   if (!app) return null;
+  if (pathname === "/pages") return { app, root: pagesRoot(one(params.tab)) };
 
   if (app === "finance") {
     if (pathname === "/finance") return { app, root: financeRoot(one(params.tab)) };
@@ -94,8 +115,8 @@ export function placeFor(pathname: string, params: Params): PlaceDraft | null {
     if (id == null) return { app, root: ROOTS.calendar };
     return { app, root: ROOTS.calendar, sub: on && /^\d{4}-\d{2}-\d{2}$/.test(on) ? { kind: "event", id, on } : { kind: "event", id } };
   }
-  // Everything else inside an app (forms, editors, SafeZone's items, a file
-  // viewer…) reopens that app's root.
+  // Any other screen inside an app (a folder, the trash, settings…) reopens
+  // that app's root.
   return { app, root: ROOTS[app] };
 }
 
@@ -103,7 +124,7 @@ function parseSub(raw: unknown): PlaceSub | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const r = raw as Record<string, unknown>;
   const id = typeof r.id === "number" && Number.isInteger(r.id) && r.id > 0 ? r.id : null;
-  if ((r.kind === "list" || r.kind === "loan") && id != null) return { kind: r.kind, id };
+  if ((r.kind === "list" || r.kind === "loan" || r.kind === "thread") && id != null) return { kind: r.kind, id };
   if (r.kind === "event" && id != null) return typeof r.on === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.on) ? { kind: "event", id, on: r.on } : { kind: "event", id };
   if (r.kind === "screen") {
     const path = FINANCE_SCREENS.find((p) => p === r.path);
@@ -130,7 +151,8 @@ export function parsePlace(raw: string | null): Place | null {
   if (!isPlaceApp(r.app)) return null;
   const app = r.app;
   const ownRoot = typeof r.root === "string" && (r.root === ROOTS[app] || r.root.startsWith(`${ROOTS[app]}?`));
-  const root = app === "finance" && ownRoot ? financeRoot(new URLSearchParams((r.root as string).split("?")[1] ?? "").get("tab") ?? undefined) : ROOTS[app];
+  const tab = ownRoot ? (new URLSearchParams((r.root as string).split("?")[1] ?? "").get("tab") ?? undefined) : undefined;
+  const root = app === "finance" ? financeRoot(tab) : app === "pages" ? pagesRoot(tab) : ROOTS[app];
   const sub = parseSub(r.sub);
   const userId = typeof r.userId === "number" ? r.userId : null;
   return sub ? { v: 2, app, root, sub, userId } : { v: 2, app, root, userId };
@@ -174,6 +196,11 @@ export async function restoreSub(place: Place, queryClient: QueryClient): Promis
     if (sub.kind === "loan") {
       await queryClient.fetchQuery({ queryKey: financeKeys.loan(sub.id), queryFn: () => financeApi.loans.show(sub.id) });
       router.push({ pathname: "/finance/loan", params: { id: String(sub.id) } });
+      return;
+    }
+    if (sub.kind === "thread") {
+      const thread = await queryClient.fetchQuery({ queryKey: conversationKeys.thread(sub.id), queryFn: () => conversationsApi.show(sub.id) });
+      router.push({ pathname: "/chat/[id]", params: { id: String(sub.id), name: thread.displayName, isGroup: thread.isGroup ? "1" : "0" } });
       return;
     }
     await queryClient.fetchQuery({ queryKey: calendarKeys.event(sub.id), queryFn: () => calendarApi.show(sub.id) });

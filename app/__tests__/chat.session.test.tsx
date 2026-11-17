@@ -163,3 +163,38 @@ describe("opened from Home's Conversations tile (docs/QA_FULL.md F2)", () => {
     expect(screen.queryByTestId("sessions-sheet")).toBeNull();
   });
 });
+
+/**
+ * A REMEMBERED ID IS TRUSTED ONLY IF IT IS ONE OF THE USER'S AI SESSIONS
+ * (black-box run, 2026-11-17). The phone kept a session id from another
+ * database; on this one that id was a PEOPLE conversation, and the assistant
+ * rendered someone's chat as AI answers. Never again: the id must be in
+ * `GET /ai/sessions` (which lists AI sessions only), else it is forgotten
+ * and the server's current session opens.
+ */
+describe("a remembered session the user does not have as an AI session", () => {
+  const KEY = "mm:aiSession:v1:2";
+  const calledWith = () => mockUseConversation.mock.calls.map((c) => (c[0] as { conversationId: number | null }).conversationId);
+
+  it("a remembered AI session of this user opens", async () => {
+    await AsyncStorage.setItem(KEY, "9");
+    renderChat();
+    await waitFor(() => expect(calledWith()).toContain(9));
+  });
+
+  it("a remembered id that is a PEOPLE conversation is never rendered, and is forgotten", async () => {
+    await AsyncStorage.setItem(KEY, "3");
+    renderChat();
+    await waitFor(() => expect(calledWith()).toContain(4));
+    await waitFor(async () => expect(await AsyncStorage.getItem(KEY)).toBeNull());
+    expect(calledWith()).not.toContain(3);
+  });
+
+  it("while the AI sessions cannot be read, a remembered id is not trusted: the server's current one opens", async () => {
+    await AsyncStorage.setItem(KEY, "3");
+    (sessionsApi.list as jest.Mock).mockRejectedValue(new Error("offline"));
+    renderChat();
+    await waitFor(() => expect(calledWith()).toContain(4));
+    expect(calledWith()).not.toContain(3);
+  });
+});

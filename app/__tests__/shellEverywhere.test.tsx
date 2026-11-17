@@ -196,3 +196,11 @@ describe("Finance keeps its tab in the address, so a reopen lands on it (M11)", 
     expect(router.setParams).toHaveBeenCalledWith({ tab: "loans" });
   });
 });
+
+describe("Pages keeps its bottom tab in the address (black-box run)", () => {
+  it("choosing Files writes tab=files", async () => {
+    wrap(<Pages />);
+    fireEvent.press(await screen.findByTestId("pages-tab-files"));
+    expect(router.setParams).toHaveBeenCalledWith({ tab: "files" });
+  });
+});

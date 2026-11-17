@@ -33,7 +33,7 @@ import { failureMessage } from "@/api/failure";
 import { useConversation } from "@/hooks/useConversation";
 import { useDraft } from "@/hooks/useDraft";
 import { useStarterPrompts } from "@/hooks/useStarterPrompts";
-import { loadRememberedSession, rememberSession } from "@/lib/rememberedSession";
+import { forgetSession, loadRememberedSession, rememberSession } from "@/lib/rememberedSession";
 import { MessageRow } from "@/components/chat/MessageRow";
 import { ThinkingDots } from "@/components/chat/ThinkingDots";
 import { Composer } from "@/components/chat/Composer";
@@ -201,13 +201,27 @@ export default function Chat() {
   const { mutate: activateSession } = useMutation({ mutationFn: (id: number) => sessionsApi.activate(id), onError: () => undefined });
   const { mutateAsync: askServer } = useMutation({ mutationFn: (q: Parameters<typeof aiApi.ask>[0]) => aiApi.ask(q) });
 
-  // Restore this device's choice once, before the server's default is used.
+  // Restore this device's choice once, before the server's default is used,
+  // but ONLY if it is one of this user's AI sessions (src/components/shell/
+  // CLAUDE.md; black-box run 2026-11-17). A remembered id from another
+  // database pointed at a PEOPLE conversation, and the assistant rendered
+  // someone's chat as its answers. `GET /ai/sessions` lists AI sessions only:
+  // an id not in it is forgotten, and the server's current session opens.
+  // While that list cannot be read, the remembered id is not trusted.
+  const [remembered, setRemembered] = useState<number | null>(null);
+  const { data: aiSessions } = useQuery({ queryKey: aiKeys.sessions(), queryFn: sessionsApi.list, enabled: Boolean(userId) });
   useEffect(() => {
     if (!userId) return;
     void loadRememberedSession(userId).then((id) => {
-      if (id) setChosenId(id);
+      if (id) setRemembered(id);
     });
   }, [userId]);
+  useEffect(() => {
+    if (remembered == null || !aiSessions || !userId) return;
+    if (aiSessions.some((s) => s.id === remembered)) setChosenId((current) => current ?? remembered);
+    else void forgetSession(userId);
+    setRemembered(null);
+  }, [remembered, aiSessions, userId]);
 
   const chooseSession = useCallback(
     (id: number) => {

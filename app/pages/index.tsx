@@ -280,7 +280,14 @@ export default function PagesHome() {
       </View>
       <View style={{ marginHorizontal: -metrics.space.lg, marginBottom: -insets.bottom }}>
         <UploadBar />
-        <PagesTabBar tab={tab} onTab={setTab} />
+        <PagesTabBar
+          tab={tab}
+          onTab={(next) => {
+            setTab(next);
+            // In the address too, so the app reopens on this tab (src/components/shell/CLAUDE.md).
+            router.setParams({ tab: next });
+          }}
+        />
       </View>
 
       <NewSheet

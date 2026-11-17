@@ -18,7 +18,7 @@
  * assistant, modals, lock screens): the web's rule, pages outside MainLayout
  * draw their own chrome.
  */
-import { useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { I18nManager, Pressable, View, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -128,6 +128,24 @@ function HeaderButton({
   );
 }
 
+/** How long a navigation tap stays the only one (the screen it opens is still sliding in). */
+export const SINGLE_FIRE_MS = 800;
+
+/**
+ * Every navigation a tap starts fires once (src/components/shell/CLAUDE.md,
+ * the black-box run: a double tap on the bell pushed Notifications twice, so
+ * back showed it again). A second press inside the window does nothing.
+ */
+export function useSingleFire(): (run: () => void) => void {
+  const last = useRef(0);
+  return useCallback((run: () => void) => {
+    const now = Date.now();
+    if (now - last.current < SINGLE_FIRE_MS) return;
+    last.current = now;
+    run();
+  }, []);
+}
+
 /** Android's back at an app's root with nothing behind goes Home; a sub-screen leaves it to the stack. */
 function RootBackKey() {
   useAndroidBackToHome();
@@ -167,12 +185,14 @@ export function AppHeader({
   const chats = capBadge(badges.chats, 9);
   const notifications = capBadge(badges.notifications, 99);
 
-  const goBack = () => {
-    if (onBack) return onBack();
-    if (router.canGoBack()) router.back();
-    else router.replace(entry.route);
-  };
-  const open = (key: AppKey) => openApp(key, { current: app, subScreen: back });
+  const once = useSingleFire();
+  const goBack = () =>
+    once(() => {
+      if (onBack) return onBack();
+      if (router.canGoBack()) router.back();
+      else router.replace(entry.route);
+    });
+  const open = (key: AppKey) => once(() => openApp(key, { current: app, subScreen: back }));
 
   return (
     <View
@@ -208,7 +228,7 @@ export function AppHeader({
           accessibilityRole="button"
           accessibilityLabel={badgeOnly ? `${name}, ${t("shell.goHome")}` : t("shell.goHome")}
           hitSlop={6}
-          onPress={app === "home" ? undefined : goHomeFromApp}
+          onPress={app === "home" ? undefined : () => once(goHomeFromApp)}
           disabled={app === "home"}
           testID="header-home"
         >
@@ -239,7 +259,7 @@ export function AppHeader({
           badge={chats}
           selected={app === "chats"}
           size={size}
-          onPress={() => router.push("/chats")}
+          onPress={() => once(() => router.push("/chats"))}
           testID="header-chats"
         />
         <HeaderButton
@@ -249,7 +269,7 @@ export function AppHeader({
           badge={notifications}
           selected={app === "notifications"}
           size={size}
-          onPress={() => router.push("/notifications")}
+          onPress={() => once(() => router.push("/notifications"))}
           testID="header-notifications"
         />
         {/* The web's AI button (owner, 2026-11-17: "it's important, same as
@@ -261,7 +281,7 @@ export function AppHeader({
           name={tablet ? t("home.ai") : null}
           tinted
           size={size}
-          onPress={() => router.push("/chat")}
+          onPress={() => once(() => router.push("/chat"))}
           testID="header-ai"
         />
         <HeaderButton icon={LayoutGrid} label={t("shell.apps")} name={tablet ? t("shell.apps") : null} size={size} onPress={() => setSwitcherOpen(true)} testID="header-apps" />

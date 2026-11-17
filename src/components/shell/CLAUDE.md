@@ -31,3 +31,30 @@ phones too.
   row under the header.
 - **Every app list comes from `APP_REGISTRY`.** Home, the switcher and the
   Profile menu never list apps by hand.
+
+## Rules from the black-box run (2026-11-17)
+
+A tester who did not read the code broke these; each is now a rule.
+
+- **Every navigation a tap starts fires once.** A double tap on Chats,
+  Notifications or AI pushed the screen twice, so back showed the same screen
+  again. Header buttons, switcher tiles and Profile rows go through one guard
+  (`useSingleFire` in `AppHeader.tsx`): a second press within the guard window
+  does nothing.
+- **A form, an editor or a modal never overwrites the saved place.** Killing
+  during "New expense" reopened Finance › Overview: the form had saved
+  Finance's bare root over Finance › Expenses. Those routes are not places at
+  all (`placeFor` returns null), so the screen under them is what reopens. The
+  half-filled form itself is never restored.
+- **Every tab an app shows is in its address** (`router.setParams({ tab })`),
+  so a reopen lands on it: Finance's five tabs, and Pages' Home, Starred,
+  Shared and Files.
+- **Reopen means the screen he left, the screen inside an app included**: a
+  people-chat thread reopens as that thread, like a Tasks list or a loan.
+- **The assistant shows only the user's own AI sessions.** A session id
+  remembered on the phone is used only if it is in `GET /ai/sessions`.
+  Otherwise it is forgotten, and the server's current session is used. A
+  stored id that points at a people conversation must never render it
+  (`app/__tests__/chat.session.test.tsx`).
+- **No currency is hard-coded.** A money form defaults to the currency last
+  used, else the user's own currency, never "usd" written into the code.

@@ -5,14 +5,13 @@
  * Lent / Borrowed, the person (typed, or picked from Contacts: the server
  * keeps only the name), the amount on the Finance keypad with its currency,
  * the due day (or none), the category and labels (made on the spot if
- * missing), and a note. A new loan starts in the last currency used on this
- * phone (`finance_last_currency`, shared with the entry sheet; there is no
- * server setting). Tags are sent as the web sends them: the first picked is
+ * missing), and a note. A new loan starts in the currency this user used
+ * last (`useLastCurrency`, shared with the entry sheet; there is no server
+ * setting). Tags are sent as the web sends them: the first picked is
  * the category, every picked one a label.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Modal, Pressable, ScrollView, TextInput, View } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -36,9 +35,8 @@ import { addDays, addMonths, formatDay, startOfMonth, todayKey } from "@/screens
 import { ContactAvatar } from "@/screens/contacts/ContactAvatar";
 import { AmountPad, CurrencyChip, FChip, Field, MONEY_IN, MONEY_OWED, TagPicker, typedAmount } from "@/screens/finance/parts";
 import { useCreateTag, useSaveLoan } from "@/screens/finance/useFinanceMutations";
+import { APP_CURRENCY, useLastCurrency } from "@/screens/finance/lastCurrency";
 
-/** The last currency used on this phone; the entry sheet reads and writes the same key. */
-const LAST_CURRENCY_KEY = "finance_last_currency";
 
 export default function LoanEditScreen() {
   const metrics = useMetrics();
@@ -67,7 +65,7 @@ function Form({ existing }: { existing: Loan | null }) {
   const [type, setType] = useState<LoanType>(existing?.type ?? "given");
   const [name, setName] = useState(existing?.contactName ?? "");
   const [value, setValue] = useState(existing ? String(existing.amount) : "");
-  const [currency, setCurrency] = useState<Currency>(existing?.currency ?? "eur");
+  const [currency, setCurrency] = useState<Currency>(existing?.currency ?? APP_CURRENCY);
   const [dueDate, setDueDate] = useState<string | null>(existing?.dueDate ?? null);
   const [tagIds, setTagIds] = useState<number[]>(() => (existing ? [...new Set([existing.tagId, ...existing.labelIds].filter((x): x is number => x != null))] : []));
   const [description, setDescription] = useState(existing?.description ?? "");
@@ -79,28 +77,19 @@ function Form({ existing }: { existing: Loan | null }) {
   const [error, setError] = useState<string | null>(null);
   const touchedCurrency = useRef(existing != null);
 
-  // A new loan starts in the last currency used here (a phone preference, not server data).
+  // A new loan starts in the currency this user used last (lastCurrency.ts).
+  const last = useLastCurrency();
   useEffect(() => {
-    if (touchedCurrency.current) return;
-    let live = true;
-    void (async () => {
-      try {
-        const saved = await AsyncStorage.getItem(LAST_CURRENCY_KEY);
-        if (live && !touchedCurrency.current && CURRENCIES.includes(saved as Currency)) setCurrency(saved as Currency);
-      } catch {
-        // Storage unreadable: stay on euros.
-      }
-    })();
-    return () => {
-      live = false;
-    };
-  }, []);
+    if (touchedCurrency.current || !last.ready) return;
+    touchedCurrency.current = true;
+    setCurrency(last.currency);
+  }, [last.ready, last.currency]);
 
   const tags = useQuery({ queryKey: financeKeys.tags(), queryFn: financeApi.tags.all });
   const createTag = useCreateTag({ onDone: (tag) => setTagIds((ids) => (ids.includes(tag.id) ? ids : [...ids, tag.id])), onError: () => setError(t("finance.loans.failed")) });
   const save = useSaveLoan({
     onDone: () => {
-      void AsyncStorage.setItem(LAST_CURRENCY_KEY, currency).catch(() => undefined);
+      last.remember(currency);
       router.back();
     },
     onError: (e) => setError(apiErrorMessage(e) ?? t("finance.loans.failed")),

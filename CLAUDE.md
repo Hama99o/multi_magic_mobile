@@ -511,7 +511,9 @@ page, it's very important"*. Code: `src/apps/lastPlace.ts` (what may be
 restored), `src/stores/lastPlace.store.ts` (kept on the phone),
 `app/index.tsx` (the cold start), `PlaceRecorder` in `app/_layout.tsx`.
 
-- **Home shows only on the very first launch and after a sign-out.** Every
+- **Home reopens only when Home is where he left** (owner via Hello,
+  2026-11-17: "reopen where you left" means exactly that), on the very first
+  launch, and after a sign-out. Every
   fallback goes to the SAME app's root, never Home: a record that is gone, a
   screen that may not be restored, a stale route, a failed or offline
   restore, a save written by an older version of the app.
@@ -519,16 +521,18 @@ restored), `src/stores/lastPlace.store.ts` (kept on the phone),
   happens through `app/index.tsx`, which a link never reaches. A notification
   tap pushes its target over whatever was restored.
 - **Never restore a form, an editor or a modal** (an entry, an edit screen,
-  the note editor, the assistant). Their app's root opens instead. A record
-  screen (a Tasks list, a loan, an event) is re-opened only after the record
+  the note editor, the assistant). The screen under it opens instead. A record
+  screen (a Tasks list, a loan, an event, a chat thread) is re-opened only after the record
   is fetched again. Until then the app's root is on screen, and it stays the
   screen when the fetch fails.
 - **SafeZone always reopens on its PIN gate.** Its lock lives in memory, and
   an item screen is never restored.
 - **Signed out → sign-in.** The saved place is cleared on sign-out and when a
   different account signs in.
-- **Visiting Home does not erase the last app.** Home is the hub, not a place
-  to come back to.
+- **Home is a place like any app.** Left on Home → reopens on Home. Left in
+  an app → reopens in that app, and every fallback stays in that app.
+- **A form, an editor or a modal is not a place**: the screen under it is
+  what reopens (`src/components/shell/CLAUDE.md`).
 
 ## Design
 

@@ -48,6 +48,8 @@ jest.mock("expo-router", () => ({
   // The root renders `ShareIntentBridge`, which asks where it is
   // (`src/screens/pages/ShareIntentBridge.tsx`).
   usePathname: () => "/",
+  // And `PlaceRecorder`, which saves the place to reopen (src/apps/PlaceRecorder.tsx).
+  useGlobalSearchParams: () => ({}),
 }));
 
 jest.mock("expo-splash-screen", () => ({

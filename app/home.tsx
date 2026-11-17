@@ -18,7 +18,6 @@ import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -28,6 +27,7 @@ import { Text } from "@/components/reusables/text";
 import { Sparkles } from "@/components/icons";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { AppMark } from "@/components/shell/AppMark";
+import { GradientFill } from "@/components/shell/GradientFill";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
 import { useMe } from "@/hooks/useMe";
 import { useShellBadges } from "@/hooks/useShellBadges";
@@ -189,15 +189,7 @@ function AskBox() {
       style={{ borderRadius: metrics.radius.lg, padding: 2, overflow: "hidden" }}
       testID="home-ask"
     >
-      <Svg width="100%" height="100%" style={{ position: "absolute" }} preserveAspectRatio="none">
-        <Defs>
-          <LinearGradient id="home-ask" x1="0" y1="0" x2="1" y2="1">
-            <Stop offset="0" stopColor={ASSISTANT_GRADIENT[0]} />
-            <Stop offset="1" stopColor={ASSISTANT_GRADIENT[1]} />
-          </LinearGradient>
-        </Defs>
-        <Rect width="100%" height="100%" fill="url(#home-ask)" />
-      </Svg>
+      <GradientFill id="home-ask" />
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, minHeight: 50, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.lg - 2, backgroundColor: colors.surface }}>
         <Sparkles size={20} color={ASSISTANT_GRADIENT[0]} />
         <Text tone="muted" numberOfLines={1} style={{ flex: 1 }}>

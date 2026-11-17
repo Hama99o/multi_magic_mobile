@@ -16,15 +16,15 @@ import { useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
-import Svg, { Defs, LinearGradient, Rect, Stop } from "react-native-svg";
 import { Search, Sparkles } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { FILL } from "@/theme/fill";
-import { ASSISTANT_GRADIENT, tileColors } from "@/theme/appColors";
+import { tileColors } from "@/theme/appColors";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
 import { SPLIT_AT } from "@/screens/contacts/split";
 import { APP_REGISTRY, type AppEntry, type AppKey } from "@/apps/registry";
 import { AppMark } from "./AppMark";
+import { GradientFill } from "./GradientFill";
 
 /** Accents and case do not matter: "tâches" finds Tasks typed as "taches". */
 function fold(s: string): string {
@@ -230,15 +230,7 @@ export function AppSwitcher({
                 style={{ height: 52, borderRadius: metrics.radius.md, overflow: "hidden", flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingHorizontal: metrics.space.md }}
                 testID="switcher-ask"
               >
-                <Svg width="100%" height="100%" style={{ position: "absolute" }} preserveAspectRatio="none">
-                  <Defs>
-                    <LinearGradient id="switcher-ask" x1="0" y1="0" x2="1" y2="1">
-                      <Stop offset="0" stopColor={ASSISTANT_GRADIENT[0]} />
-                      <Stop offset="1" stopColor={ASSISTANT_GRADIENT[1]} />
-                    </LinearGradient>
-                  </Defs>
-                  <Rect width="100%" height="100%" fill="url(#switcher-ask)" />
-                </Svg>
+                <GradientFill id="switcher-ask" />
                 <Sparkles size={20} color={tileColors("assistant", scheme).glyph} />
                 <Text variant="label" style={{ color: tileColors("assistant", scheme).glyph, fontSize: 16 }}>
                   {t("home.askAi")}

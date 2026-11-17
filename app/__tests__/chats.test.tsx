@@ -32,7 +32,7 @@ function renderScreen() {
 }
 
 const { router } = jest.requireMock("expo-router") as {
-  router: { push: jest.Mock; back: jest.Mock; replace: jest.Mock; canGoBack: jest.Mock };
+  router: { push: jest.Mock; back: jest.Mock; replace: jest.Mock; dismissTo: jest.Mock; canGoBack: jest.Mock };
 };
 beforeEach(() => {
   router.push.mockClear();

@@ -19,7 +19,7 @@ import { testQueryClient } from "@/__tests__/queryClient";
 import { aiApi } from "@/api/ai";
 
 const { router } = jest.requireMock("expo-router") as {
-  router: { push: jest.Mock; back: jest.Mock; replace: jest.Mock; canGoBack: jest.Mock };
+  router: { push: jest.Mock; back: jest.Mock; replace: jest.Mock; dismissTo: jest.Mock; canGoBack: jest.Mock };
 };
 beforeEach(() => {
   router.push.mockClear();

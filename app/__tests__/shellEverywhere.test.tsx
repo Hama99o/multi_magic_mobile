@@ -188,3 +188,11 @@ describe("Home, in a mobile style (M8)", () => {
     expect(await screen.findByTestId("home-tile-chats-count")).toHaveTextContent("2");
   });
 });
+
+describe("Finance keeps its tab in the address, so a reopen lands on it (M11)", () => {
+  it("choosing Loans writes tab=loans", async () => {
+    wrap(<Finance />);
+    fireEvent.press(await screen.findByTestId("finance-tab-button-loans"));
+    expect(router.setParams).toHaveBeenCalledWith({ tab: "loans" });
+  });
+});

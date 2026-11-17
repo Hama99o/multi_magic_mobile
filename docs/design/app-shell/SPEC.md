@@ -1,7 +1,9 @@
 # App shell — one header everywhere, the app switcher, Home — SPEC
 
-**Status: NEEDS HAMMA9900** (2026-11-17): design review. Nothing built yet; the owner reviews
-this SPEC and the mockups first. Branch `feat/app-shell-header`, off
+**Status: IN PROGRESS** (2026-11-17). The owner OK'd the design ("ok design"), then
+reversed one decision: **AI is in the header** ("add AI also in topbar, it's
+important, same as we have in web"), mockup 4. He also added **reopening
+where he left it, never Home** (§J). Built on this branch; device QA to come. Branch `feat/app-shell-header`, off
 `feat/todo-finance-apps` (so Tasks and Finance are in the switcher).
 
 The owner's words (via Hello, 2026-11-17, cleaned up):
@@ -26,7 +28,7 @@ The owner's words (via Hello, 2026-11-17, cleaned up):
 | A4 | Workspace (desktop only; a tile on phones) | `TopNav.tsx:163-181` | Not on mobile (the web hides it on phones too) |
 | A5 | Chats `MessageSquare`, red badge, cap "9+", count = conversations with unread | `ChatLauncher.tsx`; `GET /api/v1/conversations/unread_messages_count`, stale 30 s | Chats button → `/chats`, badge `unreadConversations`, cap 9+ |
 | A6 | Bell, red badge, cap "99+" | `NotificationBell.tsx`; `GET /api/v1/notifications/unread_count`, refetch 5 min | Bell → `/notifications`, cap 99+ |
-| A7 | AI `Sparkles` toggles the assistant window | `TopNav.tsx:200-234` | The first row of the switcher sheet, and the Ask box on Home. Not a fifth header icon: 360 dp has no room (§C2) |
+| A7 | AI `Sparkles` toggles the assistant window | `TopNav.tsx:200-234` | **The header's AI button** (owner's reversal, 2026-11-17), plus the switcher's first row and the Home Ask box (§C2) |
 | A8 | Apps grid `LayoutGrid`, "Apps"/"Applications": 3 columns on phones, 4 from `sm`; active app ringed; no groups | `TopNav.tsx:237-328`, `lib/apps.ts APP_REGISTRY` | The switcher sheet (§D) |
 | A9 | Avatar → Profile, Logout, Theme, Language | `TopNav.tsx:331-421` | Avatar → the existing `ProfileSheet`, plus the Apps section (§E) |
 | A10 | App order: SafeZone, Notes, Tasks, Pages, Finance, FlowApp, Chat, Doc Tools, Contacts, Calendar, Tables, (Workspace), AI | `lib/apps.ts` | Same order, mobile apps only (§D3) |
@@ -65,7 +67,7 @@ to the mark, or to back on a sub-screen.
 
 ```
 ┌ safe area (status bar) ─────────────────────────────────┐
-│ [◆ or ‹]  App name ……………   [💬•3] [🔔•12] [▦] [(HS)]     │  56 dp, full width
+│ [◆ or ‹]  App name ………  [💬•3] [🔔•12] [✦] [▦] [(AM)]    │  56 dp, full width
 ├─────────────────────────────────────────────────────────┤  hairline `border`
 │ the app's own row: search / tabs / ⋮ (unchanged design) │
 ```
@@ -79,13 +81,16 @@ to the mark, or to back on a sub-screen.
   17 sp/600, one line, ellipsized. Never a second big title below it: the
   apps' current 26 sp title rows go away, and their actions move into the
   app's own row.
-- **Right cluster**: 4 buttons of 40 × 40 (touch target 48 through `hitSlop`),
-  4 dp apart, in the web's order:
+- **Right cluster**: 5 buttons, in the web's order. Each is 40 × 40, 4 dp
+  apart, or 36 × 36, 2 dp apart, under 400 dp (§C2). The vertical `hitSlop`
+  brings the touch target to 48.
   1. **Chats** (`MessageSquare`) → `/chats`. Badge `unreadConversations`, cap
      "9+".
   2. **Notifications** (`Bell`) → `/notifications`. Badge, cap "99+".
-  3. **Apps** (`LayoutGrid`) → the switcher sheet (§D).
-  4. **Avatar**: the photo or initials, 32 dp. → `ProfileSheet` (§E).
+  3. **AI** (`Sparkles`, always accent-tinted like the web's pill) → `/chat`
+     over the screen. Read aloud as "Ask the assistant".
+  4. **Apps** (`LayoutGrid`) → the switcher sheet (§D).
+  5. **Avatar**: the photo or initials → `ProfileSheet` (§E).
 - **On the screen a button leads to** (Chats, Notifications), that button is
   shown pressed (accent tint) and tapping it does nothing. The header does not
   change shape.
@@ -94,16 +99,28 @@ to the mark, or to back on a sub-screen.
   `accessibilityLabel` reads "Chats, 3 waiting" / "Notifications, 12 unread"
   (the web's own strings).
 - **Width check at 360 dp**: 360 − 2 × 16 gutter = 328. The right cluster is
-  4 × 40 + 3 × 4 = 172. The left slot is 40 + 8 gap. That leaves 108 dp for the
-  title: "Notifications" at 17 sp fits (≈ 104 dp); longer names ellipsize.
+  4 × 36 + 30 (avatar) + 4 × 2 = 182. The left slot is 32 + 8 gap. That leaves
+  about 100 dp for the title, so "Notifications" and "Calendar" ellipsize.
+  Under 340 dp the title gives way to the badge (§C2, mockup 4).
 
-### C2 · Why four buttons and not the web's seven
+### C2 · Five buttons, the web's order (decision reversed 2026-11-17)
 
-Search, Workspace and AI do not fit on a phone next to a title. The web hides
-Workspace on phones itself. AI moves to the top of the switcher and the Ask box
-on Home. The `AiButton compact` on six screens goes away so the top stays
-identical. If the owner wants AI in the header anyway, it becomes the fifth
-button and the title drops to the app badge alone (mockup 1 can show both).
+The first design left AI out to make room at 360 dp. The owner reversed it:
+*"add AI also in topbar, it's important, same as we have in web"*. The right
+side is now **Chats, Notifications, AI, Apps, Avatar**. The rule is written in
+`src/components/shell/CLAUDE.md`. Room is made by shrinking, never by dropping
+a control:
+
+| Width | Buttons | Title |
+|---|---|---|
+| ≥ 400 dp | 40 dp, 4 dp apart | full, ellipsized if long |
+| 340–399 dp | 36 dp, 2 dp apart | about 96 dp at 360: "Calen…", "Notific…" |
+| < 340 dp | 36 dp | badge only; the name is read aloud with it |
+| ≥ 800 dp | labelled pills | full |
+
+The AI button pushes `/chat`, a modal, so the screen stays underneath, as the
+web's assistant window floats over the page. Search and Workspace stay off
+phones; the web hides Workspace there too.
 
 ### C3 · Back behaviour
 
@@ -157,7 +174,7 @@ button and the title drops to the app badge alone (mockup 1 can show both).
 2. In order:
    - a search field "Find an app" / "Trouver une app". Typing turns the grid
      into a list: icon, name, one line.
-   - "Ask the assistant" as a wide row in the assistant's gradient.
+   - "Ask the assistant" as a wide row in the assistant's gradient (kept with the header's AI button).
    - the grid: 4 columns on phones, 5 on tablets. Each tile is the app's colour
      badge (`tileColors`), its label, and its unread badge (Chats,
      Notifications). The current app gets a ring in its colour, as on the web
@@ -244,3 +261,32 @@ Test-first, in jest:
 Then the full gates. Device QA on one emulator (slot from Hello): every app,
 the same header; jumping between all apps; back; badges; light/dark; phone and
 tablet. A contact sheet goes beside these Mobbin refs.
+
+## J · Reopening where he left it (owner, 2026-11-17)
+
+His words: *"a cache system: if I close the app while in one app, when I open
+it again it should open in the same app"*, then *"not home page, it's very
+important"*. The rules are in the repo `CLAUDE.md`, "Reopening the app".
+
+- **What is saved.** `src/apps/lastPlace.ts` `placeFor()` saves an app root,
+  with Finance's tab (`/finance?tab=loans`, which Finance now writes with
+  `router.setParams`). It can add one screen to re-open over the root:
+  - a record: a Tasks list, a loan or an event;
+  - one of Finance's own lists.
+
+  `PlaceRecorder` (`app/_layout.tsx`) writes it to AsyncStorage
+  (`mm-last-place`) as the person moves. Home, the assistant and the account
+  screens are not places, so they never erase the last app.
+- **The cold start.** `_layout` reads the saved place with the theme and the
+  language, before the first paint. `app/index.tsx` then redirects to the
+  app's root. `restoreSub()` fetches the saved record into its query cache
+  and pushes the record's screen only on success. When the record is gone,
+  forbidden or offline, the app's root stays on screen. Never Home.
+- **Deep links win** because they never reach `index.tsx`. A notification
+  tap pushes over whatever was restored.
+- **SafeZone** reopens on its PIN gate, and its items are never saved.
+- **Forms, editors and modals** save their app's root instead.
+- **Sign-out** clears the saved place, and so does another account signing
+  in. A save from another account is ignored.
+- **An older or partial save** still reopens its app (`parsePlace`). Only an
+  unknown app is no place.

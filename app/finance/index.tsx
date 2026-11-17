@@ -52,7 +52,11 @@ export default function FinanceScreen() {
               <Pressable
                 key={k}
                 testID={`finance-tab-button-${k}`}
-                onPress={() => setTab(k)}
+                onPress={() => {
+                  setTab(k);
+                  // In the address too, so the app reopens on this tab (CLAUDE.md, "Reopening the app").
+                  router.setParams({ tab: k });
+                }}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: on }}
                 style={{ flexGrow: 1, minHeight: 40, paddingHorizontal: metrics.space.md, alignItems: "center", justifyContent: "center", borderRadius: metrics.radius.sm, backgroundColor: on ? FINANCE : "transparent" }}

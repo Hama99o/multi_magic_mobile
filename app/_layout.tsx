@@ -36,6 +36,8 @@ import { onReminderTap, onTodoReminderTap, resyncReminders, resyncTodoReminders 
 import { todoKeys } from "@/api/keys";
 import { todosApi } from "@/api/todos";
 import { NOTES_EDITOR_ENABLED } from "@/config/features";
+import { useLastPlace } from "@/stores/lastPlace.store";
+import { PlaceRecorder } from "@/apps/PlaceRecorder";
 
 void SplashScreen.preventAutoHideAsync();
 
@@ -79,9 +81,12 @@ export default function RootLayout() {
       // that arrives a frame late is a white flash on a dark app, and a
       // language that does is a screen of English on a French phone — both
       // are at their most obvious in the first frame.
+      // And where to reopen: the last app, read before the first screen so
+      // `index.tsx` never shows Home on the way there.
       await Promise.all([
         useThemeStore.getState().hydrate(),
         useLanguage.getState().hydrate(),
+        useLastPlace.getState().hydrate(),
       ]);
       const token = await loadToken();
       useAuthStore.setState({ status: token ? "signedIn" : "signedOut" });
@@ -206,6 +211,7 @@ export default function RootLayout() {
         {opening ? <OpeningAnimation ground={TOKENS[scheme].ground} onDone={endOpening} /> : null}
         <ShareIntentBridge />
         <SessionProfile />
+        <PlaceRecorder />
       </SafeAreaProvider>
     </QueryClientProvider>
     </ShareIntentProvider>

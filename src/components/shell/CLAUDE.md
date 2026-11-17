@@ -19,6 +19,15 @@ phones too.
   340 dp, where the title would have less than about 56 dp, does it give way
   to the app's badge alone (`COMPACT_BELOW`, `BADGE_ONLY_BELOW` in
   `AppHeader.tsx`).
+- **An app's name is never cut on a phone, in any language** (mm-40 saw
+  "Discussio…" at FR 360 dp). Below 400 dp the gaps tighten (6 dp around
+  the title, none between the 36 dp buttons). The title shrinks to fit
+  (`adjustsFontSizeToFit`, floor `TITLE_MIN_SCALE` = 75 %) before it would
+  ellipsize. `appShell.test.tsx` checks every registry name, en and fr, against
+  `titleRoom()` at 340 and 360 dp, with a glyph table wider than Roboto. A new
+  app or a translation that fails it gets a shorter name, never a smaller floor.
+  Only text the user typed (a list or record name on a sub-screen) may
+  still ellipsize.
 - **The AI button opens the assistant OVER the current screen** (`/chat` is
   a modal in `app/_layout.tsx`). The screen underneath stays mounted, as the
   web's assistant window floats over the page.

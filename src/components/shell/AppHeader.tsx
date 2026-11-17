@@ -43,6 +43,22 @@ export const COMPACT_BELOW = 400;
 const COMPACT_BUTTON = 36;
 /** Below this width the name would get under ~56 dp: the app's badge stands for it (and is read aloud with it). */
 export const BADGE_ONLY_BELOW = 340;
+/** The app's name: 17 sp, shrinking to fit down to 75 % before it would ever ellipsize (French "Notifications" at 340 dp). */
+export const TITLE_SIZE = 17;
+export const TITLE_MIN_SCALE = 0.75;
+const MARK = 32;
+/** Screens lay the header out inside their 16 dp gutter. */
+const GUTTER = 16;
+/** Between the badge, the title and the buttons; tighter on a compact phone. */
+const gapFor = (width: number) => (width < COMPACT_BELOW ? 6 : 8);
+/** Between the five buttons: none on a compact phone (each keeps its 36 dp). */
+const buttonGapFor = (width: number) => (width < COMPACT_BELOW ? 0 : 4);
+const buttonFor = (width: number) => (width < COMPACT_BELOW ? COMPACT_BUTTON : BUTTON);
+
+/** The dp a phone of `width` leaves for the app's name, after the badge, the gaps and the five buttons. */
+export function titleRoom(width: number): number {
+  return width - 2 * GUTTER - MARK - 2 * gapFor(width) - 5 * buttonFor(width) - 4 * buttonGapFor(width);
+}
 
 function HeaderButton({
   icon: Icon,
@@ -80,7 +96,7 @@ function HeaderButton({
         // Already here: the button says so, and does nothing.
         if (!selected) onPress();
       }}
-      hitSlop={{ top: 6, bottom: 6, left: 2, right: 2 }}
+      hitSlop={{ top: 6, bottom: 6, left: size >= BUTTON ? 2 : 0, right: size >= BUTTON ? 2 : 0 }}
       android_ripple={{ color: colors.border, borderless: true, radius: size / 2 }}
       style={{
         width: name ? undefined : size,
@@ -170,7 +186,6 @@ export function AppHeader({
   onBack?: () => void;
 }) {
   const colors = useColors();
-  const metrics = useMetrics();
   const { t } = useTranslation();
   const me = useMe();
   const badges = useShellBadges();
@@ -178,7 +193,7 @@ export function AppHeader({
   const [profileOpen, setProfileOpen] = useState(false);
   const { width } = useWindowDimensions();
   const tablet = width >= SPLIT_AT;
-  const size = width < COMPACT_BELOW ? COMPACT_BUTTON : BUTTON;
+  const size = buttonFor(width);
   const badgeOnly = width < BADGE_ONLY_BELOW;
   const entry = appEntry(app);
   const name = title ?? (app === "home" ? t("home.title") : t(entry.labelKey));
@@ -201,7 +216,7 @@ export function AppHeader({
         height: HEADER_HEIGHT,
         flexDirection: "row",
         alignItems: "center",
-        gap: metrics.space.sm,
+        gap: gapFor(width),
         borderBottomWidth: 1,
         borderBottomColor: colors.border,
         backgroundColor: colors.ground,
@@ -232,7 +247,7 @@ export function AppHeader({
           disabled={app === "home"}
           testID="header-home"
         >
-          <AppMark app={app} size={32} />
+          <AppMark app={app} size={MARK} />
         </Pressable>
       )}
 
@@ -243,15 +258,17 @@ export function AppHeader({
           variant="label"
           accessibilityRole="header"
           numberOfLines={1}
+          adjustsFontSizeToFit
+          minimumFontScale={TITLE_MIN_SCALE}
           ellipsizeMode="tail"
-          style={{ flex: 1, fontSize: 17, lineHeight: 22 }}
+          style={{ flex: 1, fontSize: TITLE_SIZE, lineHeight: 22 }}
           testID="header-title"
         >
           {name}
         </Text>
       )}
 
-      <View style={{ flexDirection: "row", alignItems: "center", gap: size === BUTTON ? 4 : 2 }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: buttonGapFor(width) }} testID="header-buttons">
         <HeaderButton
           icon={MessageSquare}
           label={badges.chats ? t("shell.chatsWaiting", { count: badges.chats }) : t("chat.chats")}

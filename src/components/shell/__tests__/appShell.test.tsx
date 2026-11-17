@@ -12,7 +12,8 @@ import i18n from "@/i18n";
 import { http, __resetTokenCache } from "@/api/http";
 import { __resetFingerprintCache } from "@/lib/fingerprint";
 import { testQueryClient } from "@/__tests__/queryClient";
-import { AppHeader } from "../AppHeader";
+import { AppHeader, TITLE_MIN_SCALE, TITLE_SIZE, titleRoom } from "../AppHeader";
+import { textWidth } from "./glyphWidths";
 import { APP_REGISTRY, capBadge, type AppKey } from "@/apps/registry";
 
 jest.mock("expo-router", () => ({
@@ -173,6 +174,39 @@ describe("the header (M1, M2, M3, M10)", () => {
       expect(screen.queryByTestId("header-title")).toBeNull();
       expect(screen.getByTestId("header-home").props.accessibilityLabel).toBe("Finance, Go to Home");
       for (const id of ORDER) expect(screen.getByTestId(id)).toBeTruthy();
+    });
+
+    // mm-40 saw "Discussio…" at FR 360 dp: an app's name is never cut on a phone.
+    it.each(["en", "fr"])("in %s every app's name fits its header at 340 and 360 dp, scaled down at most to the floor", (lng) => {
+      const tr = i18n.getFixedT(lng);
+      const names = APP_REGISTRY.filter((a) => !a.modal).map((a) => (a.key === "home" ? tr("home.title") : tr(a.labelKey)));
+      expect(names).toContain(lng === "fr" ? "Discussions" : "Chats");
+      for (const w of [340, 360]) {
+        for (const n of names) {
+          expect({ n, w, fits: textWidth(n, TITLE_SIZE * TITLE_MIN_SCALE) <= titleRoom(w) }).toEqual({ n, w, fits: true });
+        }
+      }
+      // At 360 the French Chats name fits at full size, without shrinking.
+      if (lng === "fr") expect(textWidth("Discussions", TITLE_SIZE)).toBeLessThanOrEqual(titleRoom(360));
+    });
+
+    it("the title shrinks to fit before it would ever ellipsize", async () => {
+      widthOf(360);
+      counts(0, 0);
+      open("chats");
+      const title = await screen.findByTestId("header-title");
+      expect(title.props.adjustsFontSizeToFit).toBe(true);
+      expect(title.props.minimumFontScale).toBe(TITLE_MIN_SCALE);
+      expect(StyleSheet.flatten(title.props.style).fontSize).toBe(TITLE_SIZE);
+    });
+
+    it("the room a phone gives the title is what the header lays out (360: 36 dp buttons with no gap)", async () => {
+      widthOf(360);
+      counts(0, 0);
+      open("finance");
+      await screen.findByTestId("header-title");
+      expect(StyleSheet.flatten(screen.getByTestId("header-buttons").props.style).gap).toBe(0);
+      expect(titleRoom(360)).toBe(360 - 2 * 16 - 32 - 2 * 6 - 5 * 36);
     });
 
     it("on a tablet the buttons carry their names", async () => {

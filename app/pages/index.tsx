@@ -10,7 +10,7 @@
  * people come back to, and a folder or the viewer is pushed over it.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Alert, BackHandler, FlatList, Pressable, RefreshControl, View } from "react-native";
+import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -25,6 +25,7 @@ import { pagesApi, type SharedItem, type SortDir, type Space, type SpaceListOpti
 import { sortLabel } from "@/screens/pages/labels";
 import { NodeCollection } from "@/screens/pages/drive/NodeCollection";
 import { BottomSheet, NewSheet, SheetRow } from "@/screens/pages/drive/sheets";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { IconButton, NewFab, PagesTabBar, SearchPill, SharedNodeGlyph, SortRow, UploadBar, useViewPrefs, type PagesTab } from "@/screens/pages/drive/ui";
 import { EmptyLine } from "@/screens/pages/parts";
 import { openNode } from "@/screens/pages/navigation";
@@ -158,16 +159,7 @@ export default function PagesHome() {
     void hydrateUploads();
   }, [hydrateView, hydrateUploads]);
 
-  // Android back at Pages with nothing behind (a share, a link): Home, not
-  // out of the app. With history, the stack's own back runs (as in Notes).
-  useEffect(() => {
-    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (router.canGoBack()) return false;
-      router.replace("/home");
-      return true;
-    });
-    return () => sub.remove();
-  }, []);
+  // Android back at Pages with nothing behind goes Home: the shared header does it (AppHeader).
 
   const view = tab === "starred" ? "starred" : "recent";
   const drive = useInfiniteQuery({
@@ -207,6 +199,7 @@ export default function PagesHome() {
 
   return (
     <Screen measure={false}>
+      <AppHeader app="pages" />
       <View style={{ flex: 1 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
         {tab === "home" || tab === "starred" ? (
           <NodeCollection

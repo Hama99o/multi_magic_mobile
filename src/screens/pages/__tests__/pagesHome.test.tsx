@@ -23,14 +23,14 @@ jest.mock("@/api/pages", () => ({
 }));
 const mockParams: { current: Record<string, string> } = { current: {} };
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) },
   useLocalSearchParams: () => mockParams.current,
 }));
 
 /* eslint-disable import/first */
 import PagesHome from "../../../../app/pages/index";
 
-const { router } = jest.requireMock("expo-router") as { router: { back: jest.Mock; replace: jest.Mock; canGoBack: jest.Mock } };
+const { router } = jest.requireMock("expo-router") as { router: { back: jest.Mock; replace: jest.Mock; dismissTo: jest.Mock; canGoBack: jest.Mock } };
 
 function wrap() {
   return render(
@@ -60,17 +60,17 @@ describe("the Shared tab", () => {
 });
 
 describe("back to the app grid (Home) from Pages", () => {
-  it("with Home behind, back goes back to it", async () => {
+  it("with Home behind, the shared header's badge goes down the stack to it", async () => {
     wrap();
-    fireEvent.press(await screen.findByTestId("pages-back"));
-    expect(router.back).toHaveBeenCalledTimes(1);
+    fireEvent.press(await screen.findByTestId("header-home"));
+    expect(router.dismissTo).toHaveBeenCalledWith("/home");
     expect(router.replace).not.toHaveBeenCalled();
   });
 
   it("opened with nothing behind (a share, a link), back replaces with Home", async () => {
     router.canGoBack.mockReturnValue(false);
     wrap();
-    fireEvent.press(await screen.findByTestId("pages-back"));
+    fireEvent.press(await screen.findByTestId("header-home"));
     expect(router.back).not.toHaveBeenCalled();
     expect(router.replace).toHaveBeenCalledWith("/home");
   });
@@ -83,7 +83,7 @@ describe("back to the app grid (Home) from Pages", () => {
     });
     router.canGoBack.mockReturnValue(false);
     wrap();
-    await screen.findByTestId("pages-back");
+    await screen.findByTestId("header-home");
     let handled = false;
     act(() => {
       handled = handlers.some((h) => h());
@@ -100,7 +100,7 @@ describe("back to the app grid (Home) from Pages", () => {
       return { remove: () => undefined };
     });
     wrap();
-    await screen.findByTestId("pages-back");
+    await screen.findByTestId("header-home");
     expect(handlers.length).toBeGreaterThan(0);
     let handled = true;
     act(() => {

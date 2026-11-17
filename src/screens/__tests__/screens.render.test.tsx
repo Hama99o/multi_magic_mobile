@@ -439,10 +439,10 @@ const SCREENS: {
 }[] = [
   // The empty conversation: the suggested questions are the French sentence.
   { name: "assistant", element: () => <Assistant />, handles: ["chat-empty", "composer-input"], french: "Qu’y a-t-il dans mes notes ?", settled: ["facture-mars.pdf"] },
-  { name: "chats", element: () => <Chats />, handles: ["chats-list", "chat-row-266", "chat-unread-266", "ai-button"], french: "Discussions" },
+  { name: "chats", element: () => <Chats />, handles: ["chats-list", "chat-row-266", "chat-unread-266", "app-header", "header-chats", "header-notifications", "header-ai", "header-apps", "header-profile"], french: "Discussions" },
   { name: "thread", element: () => <Thread />, handles: ["thread-list", "thread-title", "msg-mine-2311", "people-composer-input", "people-composer-send"], french: "En ligne" },
-  { name: "notifications", element: () => <Notifications />, handles: ["notifications-list", "notification-row-9", "notification-unread-9", "notifications-refresh", "notifications-updated", "ai-button"], french: "Aujourd’hui" },
-  { name: "calendar", element: () => <Calendar />, handles: ["calendar-list", "calendar-day-today", "calendar-event-5:2026-09-19", "calendar-refresh", "calendar-updated", "ai-button"], french: "À venir" },
+  { name: "notifications", element: () => <Notifications />, handles: ["notifications-list", "notification-row-9", "notification-unread-9", "notifications-refresh", "notifications-updated", "app-header", "header-chats", "header-notifications", "header-ai", "header-apps", "header-profile"], french: "Aujourd’hui" },
+  { name: "calendar", element: () => <Calendar />, handles: ["calendar-list", "calendar-day-today", "calendar-event-5:2026-09-19", "calendar-refresh", "calendar-updated", "app-header", "header-chats", "header-notifications", "header-ai", "header-apps", "header-profile"], french: "À venir" },
   { name: "profile", element: () => <Profile />, handles: ["profile-photo", "profile-firstname", "profile-lastname", "profile-email-locked", "profile-save", "profile-password", "profile-keys", "profile-safezone"], french: "Profil" },
   { name: "change-password", element: () => <ChangePassword />, handles: ["password-current", "password-new", "password-confirm", "password-save", "password-current-reveal"], french: "Au moins 6 caractères." },
   { name: "ai-keys", element: () => <AiKeys />, handles: ["ai-keys-list", "ai-key-gemini", "ai-key-active-gemini", "ai-key-replace-gemini", "ai-key-remove-gemini"], french: "Votre clé IA" },
@@ -466,7 +466,7 @@ const SCREENS: {
     french: "Vérification en deux étapes",
   },
   // The Drive-style shell (2026-11-06): tabs, the search pill, "+", ⋯ on a row.
-  { name: "pages", element: () => <PagesHome />, handles: ["pages-home-list", "pages-row-file", "pages-more-file", "pages-tab-home", "pages-tab-starred", "pages-tab-shared", "pages-tab-files", "pages-open-search", "pages-menu", "pages-add", "pages-open-profile"], french: "Fichiers récents" },
+  { name: "pages", element: () => <PagesHome />, handles: ["pages-home-list", "pages-row-file", "pages-more-file", "pages-tab-home", "pages-tab-starred", "pages-tab-shared", "pages-tab-files", "pages-open-search", "pages-menu", "pages-add", "app-header", "header-chats", "header-notifications", "header-ai", "header-apps", "header-profile"], french: "Fichiers récents" },
   { name: "pages-folder", element: () => <PagesFolder />, handles: ["pages-folder-list", "pages-row-folder", "pages-row-file", "pages-more-folder", "pages-sort", "pages-view-toggle", "pages-type-all", "pages-type-folders", "pages-type-video", "pages-add", "pages-tab-files", "pages-tab-home", "ai-button"], french: "Nom" },
   { name: "pages-drive", element: () => <PagesDrive />, handles: ["pages-drive-list", "pages-row-file"], french: "Récents" },
   { name: "pages-view", element: () => <PagesView />, handles: ["pages-view-other", "pages-view-card", "pages-view-share", "pages-view-share-button"], french: "Pas d’aperçu" },

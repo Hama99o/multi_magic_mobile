@@ -1268,6 +1268,20 @@ export const en = {
     },
   },
 
+  shell: {
+    home: "Home",
+    homeBody: "All your apps",
+    goHome: "Go to Home",
+    apps: "Apps",
+    findApp: "Find an app",
+    noAppMatch: "No app matches",
+    chatsWaiting_one: "Chats, {{count}} waiting",
+    chatsWaiting_other: "Chats, {{count}} waiting",
+    notificationsUnread_one: "Notifications, {{count}} unread",
+    notificationsUnread_other: "Notifications, {{count}} unread",
+    comingUp: "Coming up",
+    openCalendar: "Open the calendar",
+  },
   home: {
     title: "MultiMagic",
     ai: "AI",
@@ -1489,7 +1503,6 @@ export const en = {
       search: "Search your notes",
       layoutGrid: "Show as a grid",
       layoutList: "Show as a list",
-      profile: "Your profile",
       searchEmpty: "Nothing matches “{{query}}”.",
       newNote: "New note",
       newChecklist: "New checklist",

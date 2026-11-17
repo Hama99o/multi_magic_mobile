@@ -32,12 +32,13 @@
  * Each pane has a back arrow to the root, because a chooser that can only be
  * left by dismissing the whole sheet loses the place you came from.
  */
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Modal, Pressable, ScrollView, View } from "react-native";
 import { FILL } from "@/theme/fill";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { router } from "expo-router";
-import { ChevronLeft, ChevronRight, X } from "@/components/icons";
+import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LayoutGrid, X } from "@/components/icons";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -47,6 +48,80 @@ import { LanguageRow } from "./LanguageRow";
 import { DictationRow } from "./DictationRow";
 import { useDictationLang } from "@/hooks/useSpeechToText";
 import { useMe } from "@/hooks/useMe";
+import { APP_REGISTRY, openApp, type AppKey } from "@/apps/registry";
+import { AppMark } from "@/components/shell/AppMark";
+
+/** Whether the Apps section is open, per device (a convenience, never state that must survive). */
+export const APPS_OPEN_KEY = "profile_apps_open";
+
+/**
+ * EVERY APP, IN THE MENU TOO (owner, 2026-11-17: the Profile menu's app list
+ * "complete and collapsible"; before, it listed Pages alone). The same
+ * registry as the switcher and Home, collapsed by default so the account rows
+ * stay where they were, and the choice remembered.
+ */
+function AppsSection({ current, onOpenApp }: { current: AppKey | undefined; onOpenApp: (key: AppKey) => void }) {
+  const colors = useColors();
+  const metrics = useMetrics();
+  const { t } = useTranslation();
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    AsyncStorage.getItem(APPS_OPEN_KEY)
+      .then((v) => alive && v === "1" && setOpen(true))
+      .catch(() => undefined);
+    return () => {
+      alive = false;
+    };
+  }, []);
+  const toggle = () => {
+    const next = !open;
+    setOpen(next);
+    void AsyncStorage.setItem(APPS_OPEN_KEY, next ? "1" : "0").catch(() => undefined);
+  };
+  const Chevron = open ? ChevronUp : ChevronDown;
+  return (
+    <View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={t("shell.apps")}
+        accessibilityState={{ expanded: open }}
+        onPress={toggle}
+        style={{ minHeight: metrics.touch, flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingHorizontal: metrics.space.sm }}
+        testID="profile-apps-toggle"
+      >
+        <LayoutGrid size={20} color={colors.ink} />
+        <Text style={{ flex: 1 }}>{t("shell.apps")}</Text>
+        <Chevron size={18} color={colors.inkMuted} />
+      </Pressable>
+      {open ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", paddingHorizontal: metrics.space.sm, paddingBottom: metrics.space.sm }}>
+          {APP_REGISTRY.map((a) => {
+            const selected = a.key === current;
+            const name = a.key === "home" ? t("shell.home") : t(a.labelKey);
+            return (
+              <Pressable
+                key={a.key}
+                accessibilityRole="button"
+                accessibilityLabel={name}
+                accessibilityState={{ selected }}
+                onPress={() => onOpenApp(a.key)}
+                style={{ width: "50%", minHeight: metrics.touch, flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingEnd: metrics.space.sm }}
+                testID={`profile-app-${a.key}`}
+              >
+                <AppMark app={a.key} size={28} />
+                <Text numberOfLines={1} style={{ flex: 1 }}>
+                  {name}
+                </Text>
+                {selected ? <Check size={18} color={colors.accent} /> : null}
+              </Pressable>
+            );
+          })}
+        </View>
+      ) : null}
+    </View>
+  );
+}
 
 type Pane = "root" | "language" | "theme" | "dictation";
 
@@ -92,10 +167,16 @@ export function ProfileSheet({
   onClose,
   onSignOut,
   userId,
+  currentApp,
+  onOpenApp,
 }: {
   visible: boolean;
   onClose: () => void;
   onSignOut: () => void;
+  /** The app the sheet was opened from: checked in the Apps list. */
+  currentApp?: AppKey;
+  /** How to switch app; by default down to Home and the app on top, as from inside an app. */
+  onOpenApp?: (key: AppKey) => void;
   /** Absent for one launch after a cold start; the language still applies
    *  locally without it — see `LanguageRow`. */
   userId: number | null;
@@ -210,17 +291,16 @@ export function ProfileSheet({
                   </Text>
                 </View>
 
-                {/* Pages lives here, not in the chat header: at 360 dp that
-                    row already holds the title and five 48 dp targets
-                    (docs/design/pages/SPEC.md §2, "The door"). */}
-                <Row
-                  label={t("pages.title")}
-                  chevron
-                  onPress={() => {
+                {/* Every app, collapsible: the switcher's list, for those who
+                    look for apps under their own name (SPEC §E). It replaces
+                    the lone Pages row that used to stand here. */}
+                <AppsSection
+                  current={currentApp}
+                  onOpenApp={(key) => {
                     close();
-                    router.push("/pages");
+                    if (onOpenApp) onOpenApp(key);
+                    else openApp(key, { current: currentApp ?? "assistant", subScreen: true });
                   }}
-                  testID="profile-open-pages"
                 />
                 <Row
                   label={t("sessions.yourProfile")}

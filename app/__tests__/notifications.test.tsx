@@ -9,7 +9,7 @@ import { QueryClientProvider } from "@tanstack/react-query";
 
 jest.mock("@/lib/cable", () => ({ subscribeToChannel: () => () => {} }));
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) },
 }));
 
 /* eslint-disable import/first */
@@ -231,11 +231,11 @@ describe("a row's own actions", () => {
 
 // ── BACK TO THE APP GRID (owner's known issue; as Notes does) ─────────────
 describe("back", () => {
-  it("goes back when Home is behind", async () => {
+  it("the shared header's badge goes down to Home when it is behind", async () => {
     jest.spyOn(notificationsApi, "list").mockResolvedValue({ notifications: [], unreadCount: 0, hasMore: false });
     renderScreen();
-    fireEvent.press(screen.getByLabelText("Back"));
-    expect(router.back).toHaveBeenCalledTimes(1);
+    fireEvent.press(await screen.findByTestId("header-home"));
+    expect(router.dismissTo).toHaveBeenCalledWith("/home");
     expect(router.replace).not.toHaveBeenCalled();
   });
 
@@ -243,7 +243,7 @@ describe("back", () => {
     router.canGoBack.mockReturnValue(false);
     jest.spyOn(notificationsApi, "list").mockResolvedValue({ notifications: [], unreadCount: 0, hasMore: false });
     renderScreen();
-    fireEvent.press(screen.getByLabelText("Back"));
+    fireEvent.press(await screen.findByTestId("header-home"));
     expect(router.replace).toHaveBeenCalledWith("/home");
     expect(router.back).not.toHaveBeenCalled();
   });

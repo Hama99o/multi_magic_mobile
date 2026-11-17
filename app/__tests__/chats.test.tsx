@@ -8,7 +8,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-
 import { QueryClientProvider } from "@tanstack/react-query";
 
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) },
 }));
 jest.mock("@/lib/cable", () => ({ subscribeToChannel: () => () => {} }));
 
@@ -186,18 +186,18 @@ describe("starting a conversation", () => {
 describe("back", () => {
   const empty = { conversations: [], unreadConversations: 0, hasMore: false };
 
-  it("goes back when Home is behind", async () => {
+  it("the shared header's badge goes down to Home when it is behind", async () => {
     jest.spyOn(conversationsApi, "list").mockResolvedValue(empty);
     renderScreen();
-    fireEvent.press(screen.getByLabelText("Back"));
-    expect(router.back).toHaveBeenCalledTimes(1);
+    fireEvent.press(await screen.findByTestId("header-home"));
+    expect(router.dismissTo).toHaveBeenCalledWith("/home");
   });
 
   it("goes Home when nothing is behind", async () => {
     router.canGoBack.mockReturnValue(false);
     jest.spyOn(conversationsApi, "list").mockResolvedValue(empty);
     renderScreen();
-    fireEvent.press(screen.getByLabelText("Back"));
+    fireEvent.press(await screen.findByTestId("header-home"));
     expect(router.replace).toHaveBeenCalledWith("/home");
     expect(router.back).not.toHaveBeenCalled();
   });

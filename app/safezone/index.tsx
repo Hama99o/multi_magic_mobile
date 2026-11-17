@@ -8,7 +8,7 @@ import { ActivityIndicator, FlatList, Pressable, RefreshControl, TextInput, View
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, type InfiniteData, type UseInfiniteQueryResult } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Lock, Plus, Search, ShieldCheck, TriangleAlert, X } from "@/components/icons";
+import { ChevronRight, Lock, Plus, Search, ShieldCheck, TriangleAlert, X } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -22,31 +22,32 @@ import { APP_COLORS } from "@/theme/appColors";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import { secureScreen } from "@/screens/safezone/secureScreen";
 import { HealthPanel } from "@/screens/safezone/HealthPanel";
-import { goHome, useAndroidBackToHome } from "@/hooks/useBackToHome";
+import { AppHeader } from "@/components/shell/AppHeader";
 
 const SEARCH_DELAY_MS = 300;
 
 export default function SafeZoneScreen() {
-  const colors = useColors();
-  const metrics = useMetrics();
-  const { t } = useTranslation();
-  useAndroidBackToHome();
   return (
     <Screen measure>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable testID="safezone-back" onPress={goHome} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        <Text variant="title" accessibilityRole="header" style={{ flex: 1 }} testID="safezone-title">
-          {t("safezone.title")}
-        </Text>
-        <SettingsButton />
-        <LockButton />
-      </View>
+      <AppHeader app="safezone" />
+      <VaultActions />
       <SafeZoneGate>
         <Vault />
       </SafeZoneGate>
     </Screen>
+  );
+}
+
+/** The app's own row, under the shared header: only once the vault is open. */
+function VaultActions() {
+  const metrics = useMetrics();
+  const unlocked = useSafezoneLock((s) => s.status.kind === "unlocked");
+  if (!unlocked) return null;
+  return (
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
+      <SettingsButton />
+      <LockButton />
+    </View>
   );
 }
 

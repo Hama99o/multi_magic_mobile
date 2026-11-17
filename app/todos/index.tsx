@@ -18,7 +18,7 @@ import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { todoKeys } from "@/api/keys";
 import { todoGroupsApi, todosApi, type Todo, type TodoGroup } from "@/api/todos";
-import { CalendarClock, ChevronLeft, ChevronRight, CircleAlert, LayoutTemplate, ListChecks, Plus, Search, Sun, X, type LucideIcon } from "@/components/icons";
+import { CalendarClock, ChevronRight, CircleAlert, LayoutTemplate, ListChecks, Plus, Search, Sun, X, type LucideIcon } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
@@ -26,7 +26,7 @@ import { LoadFailure } from "@/components/LoadFailure";
 import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { UndoToast } from "@/components/UndoToast";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { goHome, useAndroidBackToHome } from "@/hooks/useBackToHome";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { APP_COLORS } from "@/theme/appColors";
 import { NameDialog } from "@/screens/pages/ItemSheet";
 import { todayKey } from "@/screens/calendar/dates";
@@ -42,7 +42,6 @@ export default function TodosScreen() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  useAndroidBackToHome();
   const today = todayKey();
   const [searching, setSearching] = useState(false);
   const [typed, setTyped] = useState("");
@@ -94,13 +93,9 @@ export default function TodosScreen() {
 
   return (
     <Screen measure>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable testID="todos-back" onPress={goHome} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        <Text variant="title" accessibilityRole="header" style={{ flex: 1 }} testID="todos-title">
-          {t("todos.title")}
-        </Text>
+      <AppHeader app="todos" />
+      {/* The app's own row, under the shared header: search and templates. */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
         <Pressable
           testID="todos-search-toggle"
           onPress={() => {

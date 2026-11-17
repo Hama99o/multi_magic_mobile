@@ -10,11 +10,11 @@ import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, CircleHelp, FileSpreadsheet, MoreVertical, Repeat, Tag as TagIcon, Trash2 } from "@/components/icons";
+import { CircleHelp, FileSpreadsheet, MoreVertical, Repeat, Tag as TagIcon, Trash2 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { goHome, useAndroidBackToHome } from "@/hooks/useBackToHome";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { ActionSheet } from "@/screens/contacts/ActionSheet";
 import { FINANCE } from "@/screens/finance/parts";
 import { FINANCE_TABS, type FinanceTab } from "@/screens/finance/tabs/names";
@@ -29,7 +29,6 @@ export default function FinanceScreen() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  useAndroidBackToHome();
   const params = useLocalSearchParams<{ tab?: string }>();
   const [tab, setTab] = useState<FinanceTab>(FINANCE_TABS.find((x) => x === params.tab) ?? "overview");
   const [menu, setMenu] = useState(false);
@@ -41,19 +40,11 @@ export default function FinanceScreen() {
 
   return (
     <Screen measure>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable testID="finance-back" onPress={goHome} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        <Text variant="title" accessibilityRole="header" style={{ flex: 1 }} testID="finance-title">
-          {t("finance.title")}
-        </Text>
-        <Pressable testID="finance-menu" onPress={() => setMenu(true)} accessibilityRole="button" accessibilityLabel={t("finance.more")} style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}>
-          <MoreVertical size={22} color={colors.ink} />
-        </Pressable>
-      </View>
+      <AppHeader app="finance" />
 
-      <View style={{ marginBottom: metrics.space.md }}>
+      {/* The app's own row: its five tabs, and ⋮ for the rest (recurring, categories, reports, trash). */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.xs, marginTop: metrics.space.sm, marginBottom: metrics.space.md }}>
+      <View style={{ flex: 1 }}>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} accessibilityRole="tablist" contentContainerStyle={{ gap: metrics.space.xs, padding: metrics.space.xs, backgroundColor: colors.surface, borderRadius: metrics.radius.md, flexGrow: 1 }}>
           {FINANCE_TABS.map((k) => {
             const on = k === tab;
@@ -73,6 +64,10 @@ export default function FinanceScreen() {
             );
           })}
         </ScrollView>
+      </View>
+        <Pressable testID="finance-menu" onPress={() => setMenu(true)} accessibilityRole="button" accessibilityLabel={t("finance.more")} style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}>
+          <MoreVertical size={22} color={colors.ink} />
+        </Pressable>
       </View>
 
       <View style={{ flex: 1 }}>

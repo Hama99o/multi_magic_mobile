@@ -24,17 +24,17 @@
  * match" rather than the empty state, whose Start button would invite a
  * duplicate of a conversation that exists.
  *
- * Back goes Home when nothing is behind, as Notes does (`useBackToHome`).
+ * The shared header (`AppHeader`) carries Home, the other apps and Android's back.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, Plus, Search, X } from "@/components/icons";
+import { Plus, Search, X } from "@/components/icons";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
-import { AiButton } from "@/components/AiButton";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { subscribeToChannel } from "@/lib/cable";
 import { conversationsApi, type Conversation } from "@/api/conversations";
@@ -45,7 +45,6 @@ import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { conversationKeys } from "@/api/keys";
 import { Button } from "@/components/reusables/button";
 import { NewConversationSheet } from "@/screens/people/NewConversationSheet";
-import { useBackToHome } from "@/hooks/useBackToHome";
 
 /** The web waits 350 ms (`Index.tsx`); so does this. */
 export const SEARCH_DEBOUNCE_MS = 350;
@@ -55,7 +54,6 @@ export default function Chats() {
   const metrics = useMetrics();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const goBack = useBackToHome();
   const [starting, setStarting] = useState(false);
   const [search, setSearch] = useState("");
   const [term, setTerm] = useState("");
@@ -140,41 +138,9 @@ export default function Chats() {
 
   return (
     <Screen measure>
-      <View
-        style={{
-          flexDirection: "row",
-          alignItems: "center",
-          gap: metrics.space.sm,
-          paddingVertical: metrics.space.md,
-        }}
-      >
-        <Pressable
-          onPress={goBack}
-          accessibilityRole="button"
-          accessibilityLabel={t("common.back")}
-          hitSlop={8}
-          style={{ width: 32, height: 32, justifyContent: "center" }}
-        >
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        <Text variant="title" style={{ flex: 1 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-          {t("chats.title")}
-        </Text>
-        <Pressable
-          testID="chats-new"
-          onPress={() => setStarting(true)}
-          accessibilityRole="button"
-          accessibilityLabel={t("chats.newConversation")}
-          hitSlop={8}
-          style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
-        >
-          <Plus size={22} color={colors.ink} />
-        </Pressable>
-        {/* The assistant from every screen (the owner, 2026-11-06); it opens
-            over this one and closes back to it (docs/QA_FULL.md F4). */}
-        <AiButton compact />
-      </View>
-
+      <AppHeader app="chats" />
+      {/* The app's own row: search, and a new conversation beside it. */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, marginTop: metrics.space.sm, marginBottom: metrics.space.sm }}>
       <View
         style={{
           flexDirection: "row",
@@ -186,7 +152,7 @@ export default function Chats() {
           borderColor: colors.border,
           paddingHorizontal: metrics.space.md,
           minHeight: metrics.touch,
-          marginBottom: metrics.space.sm,
+          flex: 1,
         }}
       >
         <Search size={16} color={colors.inkMuted} />
@@ -215,6 +181,17 @@ export default function Chats() {
             <X size={16} color={colors.inkMuted} />
           </Pressable>
         ) : null}
+      </View>
+        <Pressable
+          testID="chats-new"
+          onPress={() => setStarting(true)}
+          accessibilityRole="button"
+          accessibilityLabel={t("chats.newConversation")}
+          hitSlop={8}
+          style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
+        >
+          <Plus size={22} color={colors.ink} />
+        </Pressable>
       </View>
 
       <UnreadableNotice count={(data?.pages ?? []).reduce((n, page) => n + (page.unreadable ?? 0), 0)} />

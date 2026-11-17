@@ -33,12 +33,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, CheckCheck, Trash2 } from "@/components/icons";
+import { CheckCheck, Trash2 } from "@/components/icons";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
-import { AiButton } from "@/components/AiButton";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { RefreshButton, UpdatedLine } from "@/components/Freshness";
 import { subscribeToChannel } from "@/lib/cable";
@@ -56,7 +56,6 @@ import { isToday } from "@/lib/relativeTime";
 import { NotificationRow } from "@/screens/people/NotificationRow";
 import { aiKeys, notificationKeys } from "@/api/keys";
 import { useMarkNotificationRead } from "@/hooks/useMarkNotificationRead";
-import { useBackToHome } from "@/hooks/useBackToHome";
 import { routeForWebPath } from "@/lib/inAppRoute";
 
 type Row =
@@ -69,7 +68,6 @@ export default function Notifications() {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const [composed, setComposed] = useState<string | null>(null);
-  const goBack = useBackToHome();
 
   /**
    * EVERY PAGE, not the first. Paged at 20 (`notifications_controller.rb`).
@@ -239,28 +237,17 @@ export default function Notifications() {
 
   return (
     <Screen measure>
+      <AppHeader app="notifications" />
+      {/* The app's own row: mark all read, clear the read ones, refresh. */}
       <View
         style={{
           flexDirection: "row",
           alignItems: "center",
+          justifyContent: "flex-end",
           gap: metrics.space.sm,
-          paddingVertical: metrics.space.md,
+          paddingVertical: metrics.space.xs,
         }}
       >
-        <Pressable
-          onPress={goBack}
-          accessibilityRole="button"
-          accessibilityLabel={t("common.back")}
-          hitSlop={8}
-          style={{ width: 32, height: 32, justifyContent: "center" }}
-        >
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        {/* One line, shrinking a little if it must: at 360 dp with four
-            controls it wrapped to "Notificatio / ns" (2026-11-07). */}
-        <Text variant="title" style={{ flex: 1 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-          {t("notifications.title")}
-        </Text>
 
         {unread > 0 ? (
           <Pressable
@@ -296,8 +283,6 @@ export default function Notifications() {
           label={t("notifications.refresh")}
           testID="notifications-refresh"
         />
-        {/* The assistant from every screen, rightmost as everywhere (F4). */}
-        <AiButton compact />
       </View>
 
       {/* One freshness claim at a time; see `LoadFailure`. */}

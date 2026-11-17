@@ -336,7 +336,7 @@ export const en = {
     notes: "Notes",
     pages: "Pages",
     contacts: "Contacts",
-    todos: "To-dos",
+    todos: "Tasks",
     money: "Money",
     flow: "Flow",
     calendar: "Calendar",
@@ -1287,7 +1287,7 @@ export const en = {
     conversationsBody: "Your past questions",
   },
   todos: {
-    title: "Todo",
+    title: "Tasks",
     myLists: "My lists",
     matchingLists: "Lists",
     matchingTasks: "Tasks",

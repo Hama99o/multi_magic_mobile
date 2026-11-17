@@ -177,11 +177,12 @@ describe("the photo", () => {
 });
 
 describe("the password rule", () => {
-  it("is six characters, and there is only one of them", () => {
-    // `config/initializers/devise.rb:185` — `config.password_length = 6..128`.
+  it("is eight characters, and there is only one of them", () => {
+    // multi_magic `config/initializers/devise.rb` — `config.password_length = 8..128`
+    // (PR #31, d4d8a0e6: the server was 6 and the web 8; one rule, the web's).
     // No uppercase, digit or symbol rule exists server-side, so the screen must
     // not render one. This is the test that would fail if somebody added
     // "must contain a number" to the UI.
-    expect(PASSWORD_MIN_LENGTH).toBe(6);
+    expect(PASSWORD_MIN_LENGTH).toBe(8);
   });
 });

@@ -12,7 +12,7 @@
 | 2 | Username (EditProfileDrawer) | missing | **edit** on Your profile; 422 field errors shown |
 | 3 | Birth date (EditProfileDrawer) | missing | **edit** on Your profile |
 | 4 | Cover photo set/remove (Show, EditProfileDrawer) | missing | **set and remove** on Your profile |
-| 5 | Change password (ChangePassword) | present (min 6) | **unchanged at 6**: `src/api/profile.ts` documents 6 as the server's only rule (devise 6..128) and a deliberate SPEC §2.3 decision; the web's 8 is stricter than its own server. Owner decision |
+| 5 | Change password (ChangePassword) | present (min 6) | **min 8**, the server's rule after #31 (d4d8a0e6) and the web's. Server and web disagreed (6 vs 8); decided: the server is the source of truth, 8 where they disagree [`change-password` test, `profile.test.ts`] |
 | 6 | Two-factor on/off (EditProfileDrawer) | missing (login verify only) | **on/off with the password re-asked**, on Security |
 | 7 | 2FA code at sign-in, trust this device | present | unchanged |
 | 8 | Active sessions: list, sign one out (devices/Index) | missing | **Security › Signed-in devices**; the current one is marked and has no sign-out |
@@ -69,7 +69,7 @@
 - **Email change needs the password plus a code to the new address**, and the plain PATCH no longer accepts `email`. Default: yes.
 - **In-app password reset (audit #12)** stays on the web for now: it needs universal links and a store build.
 - **The web lacks delete account and email change.** The owner said "web and mobile should have all features"; that is a web follow-up, not this branch.
-- **New-password minimum:** mobile keeps 6, the server's rule, by the existing SPEC §2.3 decision; the web asks for 8. Which one is right is the owner's call.
+- **New-password minimum: DECIDED 2026-11-17** (relayed by the supervisor session): the mobile follows exactly what the server validates; where server and web disagree, 8. Server moved 6 → 8 in #31 (d4d8a0e6, spec `password_minimum_spec.rb`), mobile 6 → 8, web already 8. Existing shorter passwords still sign in. Until #31 is deployed the phone is stricter than the live server.
 
 ## Evidence (2026-11-17)
 Device: qa_phone3 (emulator-5562), dev build on Metro 3029 serving this worktree at fe1c05f (bundle grepped for the new testIDs and for `10.0.2.2:3002`), API = multi_magic PR #31's branch on :3002 against the throwaway `mm_int_profileapi_development` (dropped afterwards), QA account only. Contact sheet: `~/Downloads/multimagic-mobile-qa/2026-11-17-profile-parity.jpg`, also in MultiMagic Pages › MultiMagic › 2026-11-17. API-key tokens are blurred; the one unblurred explorer screenshot was deleted.

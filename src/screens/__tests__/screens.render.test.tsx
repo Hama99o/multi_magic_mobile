@@ -239,7 +239,7 @@ jest.mock("@/api/calendar", () => ({
 }));
 
 jest.mock("@/api/profile", () => ({
-  PASSWORD_MIN_LENGTH: 6,
+  PASSWORD_MIN_LENGTH: 8,
   PASSWORD_MAX_LENGTH: 128,
   WrongCurrentPassword: class WrongCurrentPassword extends Error {},
   profileApi: {
@@ -444,7 +444,7 @@ const SCREENS: {
   { name: "notifications", element: () => <Notifications />, handles: ["notifications-list", "notification-row-9", "notification-unread-9", "notifications-refresh", "notifications-updated", "app-header", "header-chats", "header-notifications", "header-ai", "header-apps", "header-profile"], french: "Aujourd’hui" },
   { name: "calendar", element: () => <Calendar />, handles: ["calendar-list", "calendar-day-today", "calendar-event-5:2026-09-19", "calendar-refresh", "calendar-updated", "app-header", "header-chats", "header-notifications", "header-ai", "header-apps", "header-profile"], french: "À venir" },
   { name: "profile", element: () => <Profile />, handles: ["profile-photo", "profile-firstname", "profile-lastname", "profile-email-locked", "profile-save", "profile-password", "profile-keys", "profile-safezone"], french: "Profil" },
-  { name: "change-password", element: () => <ChangePassword />, handles: ["password-current", "password-new", "password-confirm", "password-save", "password-current-reveal"], french: "Au moins 6 caractères." },
+  { name: "change-password", element: () => <ChangePassword />, handles: ["password-current", "password-new", "password-confirm", "password-save", "password-current-reveal"], french: "Au moins 8 caractères." },
   { name: "ai-keys", element: () => <AiKeys />, handles: ["ai-keys-list", "ai-key-gemini", "ai-key-active-gemini", "ai-key-replace-gemini", "ai-key-remove-gemini"], french: "Votre clé IA" },
   { name: "account", element: () => <AccountScreen />, handles: ["account-privacy", "account-delete"], french: "Confidentialité" },
   { name: "delete-account", element: () => <DeleteAccount />, handles: ["delete-what-goes", "delete-password", "delete-account-confirm"], french: "Ce qui est supprimé" },

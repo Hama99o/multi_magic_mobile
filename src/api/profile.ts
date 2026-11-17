@@ -223,8 +223,10 @@ export const profileApi = {
   },
 };
 
-/** The ONLY rule this server enforces — `config/initializers/devise.rb:185`,
- *  `config.password_length = 6..128`. Stating more would reject passwords the
- *  server accepts; see the SPEC §2.3. */
-export const PASSWORD_MIN_LENGTH = 6;
+/** The ONLY rule this server enforces — multi_magic `config/initializers/devise.rb`,
+ *  `config.password_length = 8..128` (PR #31: the server said 6 and the web 8;
+ *  decided 2026-11-17, one rule, the web's). Stating more would reject
+ *  passwords the server accepts; see the SPEC §2.3. Until #31 is deployed the
+ *  server still takes 6, so the phone is the stricter side for that window. */
+export const PASSWORD_MIN_LENGTH = 8;
 export const PASSWORD_MAX_LENGTH = 128;

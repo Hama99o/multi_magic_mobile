@@ -102,7 +102,9 @@ export function CardRow({
       <View style={{ flex: 1, gap: 2 }}>
         <Text numberOfLines={2}>{title}</Text>
         {detail ? (
-          <Text variant="caption" tone="muted" numberOfLines={2}>
+          // Three, not two: device QA 2026-11-17 found an API key's expiry
+          // year cut off at 360 dp in French ("Expire le 17 déc.…").
+          <Text variant="caption" tone="muted" numberOfLines={3}>
             {detail}
           </Text>
         ) : null}

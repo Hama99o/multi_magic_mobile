@@ -111,7 +111,7 @@ export default function ChangeEmail() {
       <AccountHeader title={t("changeEmail.title")} />
       <View style={{ gap: metrics.space.lg }}>
         <Text variant="caption" tone="muted" testID="change-email-current">
-          {t("changeEmail.current")}: {me.data?.email ?? "—"}
+          {t("changeEmail.current", { email: me.data?.email ?? "—" })}
         </Text>
 
         {done ? (

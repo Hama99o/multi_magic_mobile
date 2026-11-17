@@ -125,7 +125,17 @@ export default function ProfileScreen() {
       about !== (profile.about ?? "") ||
       username !== (profile.username ?? "") ||
       birthDate !== (profile.birthDate ?? ""));
-  const birthDateBad = birthDateProblem(birthDate);
+  const birthDateIssue = birthDateProblem(birthDate);
+  const birthDateBad = birthDateIssue !== null;
+
+  /** An edit makes the last save's answer stale: drop its error and its
+   *  "Saved", or a refusal outlives the value it was about (black-box run
+   *  2026-11-17: Save is disabled once nothing differs, so nothing cleared it). */
+  const edit = (set: (next: string) => void) => (next: string) => {
+    set(next);
+    setFailure(null);
+    setSaved(false);
+  };
 
   // The hooks put the server's answer in the cache (`useAccountMutations.ts`).
   const onSaved = () => {
@@ -258,12 +268,12 @@ export default function ProfileScreen() {
           </View>
 
           <View style={{ gap: metrics.space.lg, marginTop: metrics.space.lg }}>
-            <Field label={t("profile.firstName")} value={firstName} onChange={setFirstName} testID="profile-firstname" />
-            <Field label={t("profile.lastName")} value={lastName} onChange={setLastName} testID="profile-lastname" />
+            <Field label={t("profile.firstName")} value={firstName} onChange={edit(setFirstName)} testID="profile-firstname" />
+            <Field label={t("profile.lastName")} value={lastName} onChange={edit(setLastName)} testID="profile-lastname" />
             <Field
               label={t("profileMore.username")}
               value={username}
-              onChange={setUsername}
+              onChange={edit(setUsername)}
               testID="profile-username"
               autoCapitalize="none"
             />
@@ -273,20 +283,20 @@ export default function ProfileScreen() {
             <Field
               label={t("profileMore.birthDate")}
               value={birthDate}
-              onChange={setBirthDate}
+              onChange={edit(setBirthDate)}
               placeholder={t("profileMore.birthDatePlaceholder")}
               testID="profile-birthdate"
               autoCapitalize="none"
             />
             {birthDateBad ? (
               <Text testID="profile-birthdate-error" tone="danger" variant="caption">
-                {t("profileMore.birthDateInvalid")}
+                {birthDateIssue === "future" ? t("profileMore.birthDateFuture") : t("profileMore.birthDateInvalid")}
               </Text>
             ) : null}
             <Field
               label={t("profile.about")}
               value={about}
-              onChange={setAbout}
+              onChange={edit(setAbout)}
               placeholder={t("profile.aboutPlaceholder")}
               testID="profile-about"
               autoCapitalize="none"

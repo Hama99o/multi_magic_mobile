@@ -34,11 +34,38 @@ beforeEach(() => {
 });
 afterEach(() => jest.restoreAllMocks());
 
-it("checks a birth date is a real YYYY-MM-DD", () => {
-  expect(birthDateProblem("")).toBe(false);
-  expect(birthDateProblem("1990-02-28")).toBe(false);
-  expect(birthDateProblem("1990-02-30")).toBe(true);
-  expect(birthDateProblem("28/02/1990")).toBe(true);
+it("checks a birth date is a real YYYY-MM-DD, and not in the future", () => {
+  const today = new Date("2026-11-17T12:00:00Z");
+  expect(birthDateProblem("", today)).toBeNull();
+  expect(birthDateProblem("1990-02-28", today)).toBeNull();
+  expect(birthDateProblem("2026-11-17", today)).toBeNull();
+  expect(birthDateProblem("1990-02-30", today)).toBe("format");
+  expect(birthDateProblem("28/02/1990", today)).toBe("format");
+  // Black-box run 2026-11-17: 2099-01-01 was saved and kept after a relaunch.
+  expect(birthDateProblem("2026-11-18", today)).toBe("future");
+  expect(birthDateProblem("2099-01-01", today)).toBe("future");
+});
+
+it("will not save a birth date in the future, and says why", async () => {
+  renderScreen();
+  fireEvent.changeText(await screen.findByTestId("profile-birthdate"), "2099-01-01");
+  expect(screen.getByTestId("profile-birthdate-error")).toHaveTextContent(/future/);
+  expect(screen.getByTestId("profile-save")).toBeDisabled();
+});
+
+// Black-box run 2026-11-17: a refused username's error stayed after the field
+// was put right, and Save (disabled once nothing differs) could not clear it.
+it("drops the last save's error and 'Saved' as soon as a field is edited", async () => {
+  const update = jest
+    .spyOn(profileApi, "update")
+    .mockRejectedValueOnce(Object.assign(new Error("Request failed"), { isAxiosError: true, response: { status: 422, data: { errors: ["Username only allows letters and numbers"] } } }));
+  renderScreen();
+  fireEvent.changeText(await screen.findByTestId("profile-username"), "a.b");
+  fireEvent.press(screen.getByTestId("profile-save"));
+  await waitFor(() => expect(update).toHaveBeenCalled());
+  expect(await screen.findByTestId("profile-error")).toBeTruthy();
+  fireEvent.changeText(screen.getByTestId("profile-username"), "qamobile");
+  expect(screen.queryByTestId("profile-error")).toBeNull();
 });
 
 it("saves the username and birth date with the rest", async () => {

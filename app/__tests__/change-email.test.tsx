@@ -14,6 +14,7 @@ jest.mock("@/api/http", () => ({ ...jest.requireActual("@/api/http"), setSession
 import { setSessionEmail } from "@/api/http";
 import { profileApi, WrongCurrentPassword, type Profile } from "@/api/profile";
 import { EmailChangeRefused, securityApi } from "@/api/security";
+import i18n from "@/i18n";
 import ChangeEmail from "../change-email";
 
 function renderScreen() {
@@ -91,4 +92,17 @@ it("takes digits only, six of them", async () => {
   const code = await screen.findByTestId("change-email-code");
   fireEvent.changeText(code, "12a34567");
   await waitFor(() => expect(screen.getByTestId("change-email-code").props.value).toBe("123456"));
+});
+
+// Black-box run 2026-11-17: French read "Adresse actuelle:" with no space
+// before the colon. The colon belongs to each language, so it is in the string.
+it("lets each language punctuate the current address", async () => {
+  jest.spyOn(profileApi, "me").mockResolvedValue({ id: 8, email: "qa@example.test" } as Profile);
+  await i18n.changeLanguage("fr");
+  try {
+    renderScreen();
+    await waitFor(() => expect(screen.getByTestId("change-email-current")).toHaveTextContent("Adresse actuelle : qa@example.test"));
+  } finally {
+    await i18n.changeLanguage("en");
+  }
 });

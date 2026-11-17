@@ -113,6 +113,21 @@ it("lists keys masked, and asks before deleting one", async () => {
   await waitFor(() => expect(del).toHaveBeenCalledWith(3));
 });
 
+// Device QA 2026-11-17: a key made "In 30 days" listed as "Expires just now",
+// because the past-only relative formatter clamps every future date to "just now".
+it("shows a future expiry as its date and a past one as expired", async () => {
+  const later = new Date(Date.now() + 30 * 86_400_000);
+  jest.spyOn(developerApi, "apiKeys").mockResolvedValue([
+    key({ expiresAt: later.toISOString() }),
+    key({ id: 4, name: "Old bot", expiresAt: new Date(Date.now() - 86_400_000).toISOString() }),
+  ]);
+  renderScreen();
+  const row = await screen.findByTestId("api-key-3");
+  expect(row).not.toHaveTextContent(/just now/);
+  expect(row).toHaveTextContent(new RegExp(`Expires .*${later.getDate()}.*${later.getFullYear()}`));
+  expect(screen.getByTestId("api-key-4")).toHaveTextContent(/Expired/);
+});
+
 it("says why a create failed when offline", async () => {
   jest.spyOn(developerApi, "createApiKey").mockRejectedValue(Object.assign(new Error("Network Error"), { isAxiosError: true }));
   renderScreen();

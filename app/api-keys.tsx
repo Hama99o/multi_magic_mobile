@@ -15,6 +15,7 @@ import { useState } from "react";
 import { Pressable, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -35,6 +36,17 @@ const EXPIRIES = [
   { key: "year1", labelKey: "apiKeys.year1", days: 365 },
 ] as const;
 
+/**
+ * An expiry is a date in the app's language, or "Expired" once passed.
+ * Not `relativeTime`: that reads only the past and clamps a future date to
+ * "just now" (device QA 2026-11-17: a 30-day key listed as "Expires just now").
+ */
+function expiryLabel(iso: string, t: TFunction, language: string): string {
+  const at = new Date(iso);
+  if (at.getTime() <= Date.now()) return t("apiKeys.expired");
+  return t("apiKeys.expires", { when: at.toLocaleDateString(language, { day: "numeric", month: "short", year: "numeric" }) });
+}
+
 function Choice({ label, detail, selected, onPress, testID }: { label: string; detail?: string; selected: boolean; onPress: () => void; testID: string }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -46,6 +58,11 @@ function Choice({ label, detail, selected, onPress, testID }: { label: string; d
       accessibilityState={{ checked: selected }}
       style={{
         flexGrow: 1,
+        // Device QA 2026-11-17: grow alone let a described card push its
+        // neighbour off a 411 dp screen. Cards with a description share the
+        // row equally and wrap their text; short chips keep their own width.
+        flexShrink: 1,
+        flexBasis: detail ? 0 : "auto",
         minHeight: metrics.touch,
         paddingHorizontal: metrics.space.md,
         paddingVertical: metrics.space.sm,
@@ -68,7 +85,7 @@ function Choice({ label, detail, selected, onPress, testID }: { label: string; d
 export default function ApiKeys() {
   const colors = useColors();
   const metrics = useMetrics();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const client = useQueryClient();
   const list = useQuery({ queryKey: profileKeys.apiKeys(), queryFn: developerApi.apiKeys });
 
@@ -256,7 +273,7 @@ export default function ApiKeys() {
                 k.masked,
                 k.scopes.includes("write") ? t("apiKeys.readWrite") : t("apiKeys.readOnly"),
                 k.lastUsedAt ? t("apiKeys.lastUsed", { when: relativeTime(k.lastUsedAt) }) : t("apiKeys.neverUsed"),
-                k.expiresAt ? t("apiKeys.expires", { when: relativeTime(k.expiresAt) }) : null,
+                k.expiresAt ? expiryLabel(k.expiresAt, t, i18n.language) : null,
               ]
                 .filter(Boolean)
                 .join(" · ")}

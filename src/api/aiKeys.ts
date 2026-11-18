@@ -39,7 +39,8 @@ export interface AiKey {
   active: boolean;
   verified: boolean;
   verifiedAt: string | null;
-  /** The provider's own words when it last refused. */
+  /** Set when the provider refused the key after it was saved. Its text is
+   *  not shown (`ai-keys.tsx` says it in the reader's words). */
   verificationError: string | null;
   /** Who may use it — their address, limit and spend. Never the key. */
   sharedWith?: KeyLoan[];
@@ -132,30 +133,41 @@ export function parseKeyPayload(payload: unknown): AiKeyPayload {
 }
 
 /**
- * The provider refused the key, in its own words.
+ * The provider refused the key (or, for lending, the server refused the loan).
  *
  * Kept distinct from a transport failure because they call for opposite
  * actions: one means "check what you pasted", the other means "try again in a
  * moment". `Ai::Keys.verify` guarantees nothing was written either way.
+ *
+ * `code` is what the screen words (`invalid_key`, `no_credit`, …), never the
+ * provider's own text: that reached a French screen as "the server responded
+ * with status 400 for POST https://…" (device QA 2026-11-17). A verdict from a
+ * server older than #31 carries no code and reads as a plain `refused`. A
+ * lending refusal is `{ error }`, already our sentence: `code` null, `message`
+ * shown as it is.
  */
 export class KeyRefused extends Error {
-  constructor(message: string) {
+  readonly code: string | null;
+  constructor(message: string, code: string | null = null) {
     super(message);
     this.name = "KeyRefused";
+    this.code = code;
   }
 }
 
 function refusalFrom(error: unknown): KeyRefused | null {
   const response = (error as { response?: { status?: number; data?: unknown } })?.response;
   if (response?.status !== 422) return null;
-  const body = response.data as { message?: unknown; error?: unknown } | undefined;
+  const body = response.data as { message?: unknown; error?: unknown; code?: unknown } | undefined;
   // `render json: { message: [verdict.message], provider: … }` — an ARRAY.
   const message = Array.isArray(body?.message)
     ? body.message.filter((m): m is string => typeof m === "string").join(" ")
     : typeof body?.error === "string"
       ? body.error
       : null;
-  return message ? new KeyRefused(message) : null;
+  if (!message) return null;
+  const code = typeof body?.code === "string" ? body.code : Array.isArray(body?.message) ? "refused" : null;
+  return new KeyRefused(message, code);
 }
 
 export const aiKeysApi = {

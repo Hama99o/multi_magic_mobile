@@ -36,6 +36,10 @@ export function KeyLending({ aiKey }: { aiKey: AiKey }) {
   const [limit, setLimit] = useState("");
   const [limitError, setLimitError] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  // The address whose limit is being changed, or null when lending. Lending
+  // an address again changes nothing on the server, so a limit is changed
+  // through its own call (`setLoanLimit`), from its row.
+  const [editing, setEditing] = useState<string | null>(null);
   const loans = aiKey.sharedWith ?? [];
 
   const done = {
@@ -55,6 +59,29 @@ export function KeyLending({ aiKey }: { aiKey: AiKey }) {
     },
   });
   const stop = useMutation({ mutationFn: (to: string) => aiKeysApi.stopLending(aiKey.id, to), ...done });
+  const reset = () => {
+    setEditing(null);
+    setEmail("");
+    setLimit("");
+    setLimitError(null);
+    setFailure(null);
+  };
+  const changeLimit = useMutation({
+    mutationFn: ({ to, value }: { to: string; value: number | null }) => aiKeysApi.setLoanLimit(aiKey.id, to, value),
+    ...done,
+    onSuccess: (payload) => {
+      done.onSuccess(payload);
+      reset();
+    },
+  });
+  const startEditing = (to: string, current: number | null) => {
+    setEditing(to);
+    setEmail(to);
+    setLimit(current == null ? "" : String(current));
+    setLimitError(null);
+    setFailure(null);
+  };
+  const busy = lend.isPending || changeLimit.isPending;
 
   const submit = () => {
     const value = parseLimit(limit);
@@ -62,7 +89,8 @@ export function KeyLending({ aiKey }: { aiKey: AiKey }) {
       setLimitError(t("lending.limitInvalid"));
       return;
     }
-    lend.mutate(value);
+    if (editing) changeLimit.mutate({ to: editing, value });
+    else lend.mutate(value);
   };
 
   return (
@@ -92,6 +120,12 @@ export function KeyLending({ aiKey }: { aiKey: AiKey }) {
               </Text>
             </View>
             <RowAction
+              testID={`ai-key-loan-limit-${loan.email}`}
+              label={t("lending.changeLimit")}
+              accessibilityLabel={t("lending.changeLimitFor", { email: loan.email })}
+              onPress={() => startEditing(loan.email, loan.monthlyCreditLimit)}
+            />
+            <RowAction
               testID={`ai-key-loan-stop-${loan.email}`}
               label={t("lending.stop")}
               tone="danger"
@@ -113,6 +147,7 @@ export function KeyLending({ aiKey }: { aiKey: AiKey }) {
         keyboardType="email-address"
         autoCapitalize="none"
         autoCorrect={false}
+        editable={editing === null}
       />
       <Input
         testID={`ai-key-lend-limit-${aiKey.provider}`}
@@ -137,11 +172,18 @@ export function KeyLending({ aiKey }: { aiKey: AiKey }) {
       ) : null}
       <Button
         testID={`ai-key-lend-${aiKey.provider}`}
-        label={lend.isPending ? t("lending.sending") : t("lending.send")}
-        busy={lend.isPending}
-        disabled={email.trim().length === 0}
+        label={
+          editing
+            ? changeLimit.isPending ? t("lending.savingLimit") : t("lending.saveLimit")
+            : lend.isPending ? t("lending.sending") : t("lending.send")
+        }
+        busy={busy}
+        disabled={email.trim().length === 0 || busy}
         onPress={submit}
       />
+      {editing ? (
+        <Button testID={`ai-key-lend-cancel-${aiKey.provider}`} label={t("lending.cancelEdit")} tone="neutral" onPress={reset} />
+      ) : null}
     </View>
   );
 }

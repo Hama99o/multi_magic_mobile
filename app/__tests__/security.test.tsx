@@ -22,6 +22,7 @@ async function flush() {
 import { profileApi, WrongCurrentPassword, type Profile } from "@/api/profile";
 import { securityApi } from "@/api/security";
 import Security from "../security";
+import i18n from "@/i18n";
 
 const me = (over: Partial<Profile> = {}): Profile => ({ id: 8, email: "qa@example.test", twoFactorEnabled: false, ...over }) as Profile;
 const offline = () => Object.assign(new Error("Network Error"), { isAxiosError: true });
@@ -143,4 +144,24 @@ describe("trusted devices and history", () => {
     expect(await screen.findByTestId("security-trusted-empty")).toHaveTextContent("No trusted devices.");
     expect(await screen.findByTestId("security-history-empty")).toBeTruthy();
   });
+});
+
+// Device QA 2026-11-17: the app's own session read "Unknown Browser on Unknown
+// OS", in English on a French phone.
+it("names an unknown device in the reader's language", async () => {
+  await i18n.changeLanguage("fr");
+  jest.spyOn(securityApi, "sessions").mockResolvedValue([
+    { id: 7, deviceLabel: "Unknown Browser on Unknown OS", ipAddress: "10.0.0.7", createdAt: "2026-11-17T08:00:00Z", expiresAt: null, isCurrent: true },
+  ]);
+  try {
+    render(
+      <QueryClientProvider client={testQueryClient()}>
+        <Security />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByTestId("security-session-7")).toHaveTextContent(/Appareil inconnu/);
+    expect(screen.getByTestId("security-session-7")).not.toHaveTextContent(/Unknown/);
+  } finally {
+    await i18n.changeLanguage("en");
+  }
 });

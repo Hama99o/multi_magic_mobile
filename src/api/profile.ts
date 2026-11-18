@@ -93,7 +93,10 @@ export function parseProfile(payload: unknown): Profile {
     lang: optStr(record.lang),
     firstName: optStr(record.firstname),
     lastName: optStr(record.lastname),
-    fullName: optStr(record.fullname),
+    // As typed. The server's `fullname` upcased the last name until #31
+    // ("Qa PARITY", device QA 2026-11-17); the two parts are the source.
+    fullName:
+      [optStr(record.firstname), optStr(record.lastname)].filter(Boolean).join(" ") || optStr(record.fullname),
     username: optStr(record.username),
     about: optStr(record.about),
     phoneNumber: optStr(record.phone_number),

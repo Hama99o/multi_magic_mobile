@@ -101,15 +101,24 @@ Device: qa_phone3 (emulator-5562), dev build on Metro 3029 serving this worktree
 - BB2 a save error outlived the edit that fixed it → any edit drops the last save's error and "Saved". [profile-parity test, planted red]
 - "Adresse actuelle:" → the colon lives in each language's string ("Adresse actuelle : …"). [change-email test]
 
+### Fixed 2026-11-18 (Hello relay: "fix the 4 flaws you reported, test-first")
+Device: qa_phone3, Metro 3029 serving this worktree, API = #31's branch at 1ebed366 then 7f8be11d on :3002 against a recreated throwaway `mm_int_profileapi_development`, QA account in French. Sheet: `~/Downloads/multimagic-mobile-qa/2026-11-18-profile-flaws.jpg`.
+
+| Flaw | Fix | Evidence |
+|---|---|---|
+| BB3 raw provider error in English | server `Ai::Keys` answers a code (`invalid_key`, `no_credit`, `rate_limited`, `unreachable`, `refused`, …) and our sentence in the reader's language, raw text to the log only; a key refused later lists `verification_code: rejected_later`. The phone words the code itself (`ai-keys.tsx` `refusalText`), so even today's server, which sends no code, never shows the raw text | rspec `keys_spec`, `ai_keys_controller_spec`; jest `ai-keys`, `aiKeys` (red first). Device: a fake DeepSeek key, refused by the real provider with 401 → "DeepSeek n’a pas accepté cette clé. Vérifiez que vous l’avez copiée en entier." |
+| BB4 "Unknown Browser on Unknown OS" | the app sends `User-Agent: MultiMagic/<version> (Android <api>)` (`http.ts`); the server names it "MultiMagic app · Android" / "Application MultiMagic · Android" (also okhttp/CFNetwork from builds already in the stores), translates the unknown parts, and words a session's label in the account's language (`DeviceLabel`, `User::JwtDispatch`). Labels stored earlier are translated on the phone (`src/lib/deviceLabel.ts`) | rspec `user_agent_parsing_spec`, `session_device_label_spec`; jest `deviceLabel`, `security`, `http`. Device: server saw `MultiMagic/1.2.0 (Android 35)`; Security lists "Application MultiMagic · Android", a planted legacy row reads "Appareil inconnu" |
+| BB5 "Qa PARITY" | server `User#fullname` is the two parts exactly as typed (mail subjects follow); the phone builds its own name from the parts too, so it is right before #31 deploys | rspec `user_spec` + mailer specs; jest `profile`. Device: typed "Qa" / "de Parity" → account sheet "Qa de Parity" |
+| AI key lending unproven | proven on device with a fake verified key in the throwaway DB (lending never calls the provider): lend to a throwaway address with 50 → "0 crédits sur 50", revoke after an Android confirm, notice mail in the dev mail file. **Found doing it:** a loan's limit could not be changed (re-lending is a no-op on the server, nothing called `setLoanLimit`) → each loan row has "Limite", which edits that address's limit | jest `accountExtras` "changing a loan's limit" (red first). Device: 50 → 20, row "0 crédits sur 20" |
+
+Found and not fixed (outside this diff): on AI keys, with the keyboard up, "Vérifier et enregistrer" sits under the keyboard (a tap there lands on the suggestion bar). In edit mode the fixed address field looks the same as an editable one.
+
 ### Found and NOT fixed here (not this branch's code)
-- BB3 "Your AI provider key" shows the provider's raw English error ("the server responded with status 400 for POST https://…"), also in French. Pre-existing (not in this branch's diff).
-- BB4 every session reads "Unknown Browser on Unknown OS", untranslated: the server parses the user agent and sends English text. A server/client follow-up (send a readable device name, translate on the phone).
-- BB5 the account menu shows "Qa PARITY" for QA Parity: the server's `fullname` casing. Pre-existing.
 - BB6 French 360 dp: "Discussions" cut to "Discussio…" in the header and apps grid: shell files, owned by the app-shell branch.
 - Buttons go grey with no reason (invalid email on Change email, no scope on API keys); the offline banner promises "it'll all send" for writes that are refused instead. Polish, noted.
 
 ### Unproven
-- AI key lending on device (needs a real provider key); jest only.
 - The two new mails' look in a real mail client (only the dev file delivery was read).
 - A concurrent confirm of the same email code.
 - BB1 and BB2 fixes on a device.
+- The 2026-11-18 fixes on iOS (the User-Agent override is only measured on Android), in dark mode, and at 360/800 dp.

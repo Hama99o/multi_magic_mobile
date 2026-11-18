@@ -77,6 +77,46 @@ describe("lending", () => {
   });
 });
 
+// Device QA 2026-11-18: lending the same address again is a no-op on the
+// server ("can already use your key"), and nothing called `setLoanLimit`, so a
+// loan's limit could not be changed from the phone at all.
+describe("changing a loan's limit", () => {
+  const loaned = aiKey({ sharedWith: [{ email: "a@example.test", pending: false, monthlyCreditLimit: 5, spentThisMonth: 1 }] });
+
+  it("edits that address's limit, not a new loan", async () => {
+    const lend = jest.spyOn(aiKeysApi, "lend").mockResolvedValue(payload);
+    const set = jest.spyOn(aiKeysApi, "setLoanLimit").mockResolvedValue(payload);
+    wrap(<KeyLending aiKey={loaned} />);
+
+    fireEvent.press(screen.getByTestId("ai-key-loan-limit-a@example.test"));
+    expect(screen.getByTestId("ai-key-lend-email-gemini").props.value).toBe("a@example.test");
+    expect(screen.getByTestId("ai-key-lend-email-gemini").props.editable).toBe(false);
+    expect(screen.getByTestId("ai-key-lend-limit-gemini").props.value).toBe("5");
+
+    fireEvent.changeText(screen.getByTestId("ai-key-lend-limit-gemini"), "8");
+    fireEvent.press(screen.getByTestId("ai-key-lend-gemini"));
+    await waitFor(() => expect(set).toHaveBeenCalledWith(3, "a@example.test", 8));
+    expect(lend).not.toHaveBeenCalled();
+    // Back to lending once saved.
+    await waitFor(() => expect(screen.getByTestId("ai-key-lend-email-gemini").props.value).toBe(""));
+  });
+
+  it("clears the limit when left empty, and can be abandoned", async () => {
+    const set = jest.spyOn(aiKeysApi, "setLoanLimit").mockResolvedValue(payload);
+    wrap(<KeyLending aiKey={loaned} />);
+
+    fireEvent.press(screen.getByTestId("ai-key-loan-limit-a@example.test"));
+    fireEvent.press(screen.getByTestId("ai-key-lend-cancel-gemini"));
+    expect(screen.getByTestId("ai-key-lend-email-gemini").props.value).toBe("");
+    expect(set).not.toHaveBeenCalled();
+
+    fireEvent.press(screen.getByTestId("ai-key-loan-limit-a@example.test"));
+    fireEvent.changeText(screen.getByTestId("ai-key-lend-limit-gemini"), "");
+    fireEvent.press(screen.getByTestId("ai-key-lend-gemini"));
+    await waitFor(() => expect(set).toHaveBeenCalledWith(3, "a@example.test", null));
+  });
+});
+
 describe("usage", () => {
   it("asks for the period pressed, and says so when nothing was used", async () => {
     const usage = jest.spyOn(developerApi, "aiUsage").mockImplementation(async (period) => ({

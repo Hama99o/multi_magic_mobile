@@ -29,6 +29,7 @@ import { securityApi } from "@/api/security";
 import { relativeTime } from "@/lib/relativeTime";
 import { SecretField } from "@/components/settings/SecretField";
 import { AccountHeader, Card, CardRow, RowAction, SectionTitle, confirmDestructive } from "@/components/settings/AccountUi";
+import { deviceName } from "@/lib/deviceLabel";
 
 const when = (iso: string | null | undefined) => (iso ? relativeTime(iso) : "—");
 
@@ -161,7 +162,7 @@ function Sessions() {
       {rows.length > 0 ? (
         <Card testID="security-sessions">
           {rows.map((s, i) => {
-            const device = s.deviceLabel ?? t("security.unknownDevice");
+            const device = deviceName(s.deviceLabel, t);
             return (
               <CardRow
                 key={s.id}
@@ -342,7 +343,7 @@ function History() {
               key={r.id}
               first={i === 0}
               testID={`security-history-${r.id}`}
-              title={r.deviceLabel ?? t("security.unknownDevice")}
+              title={deviceName(r.deviceLabel, t)}
               detail={[when(r.createdAt), r.ipAddress].filter(Boolean).join(" · ")}
               end={
                 <RowAction

@@ -395,6 +395,14 @@ export const en = {
   },
 
   aiKeys: {
+    refusedInvalid: "{{provider}} did not accept this key. Check that you copied all of it.",
+    refusedNoCredit: "{{provider}} accepted this key, but the account behind it has no credit left.",
+    refusedRateLimited: "{{provider}} is limiting this key right now. Try again in a few minutes.",
+    refusedUnreachable: "{{provider}} could not be reached. Check your connection and try again.",
+    refusedUnsupported: "You cannot add a key for {{provider}}.",
+    refusedBlank: "Paste a key first.",
+    refusedGeneric: "{{provider}} refused this key. Try again, or use another key.",
+    rejectedLater: "{{provider}} refused this key the last time it was used. Replace it with a working key.",
     briefTitle: "Morning brief",
     briefHint:
       "A notification at 8:00 your time: today’s events, birthdays this week, loans past due, cards expiring and any spending well above your usual. Nothing on a quiet day.",

@@ -411,6 +411,14 @@ export const fr: Translations = {
   },
 
   aiKeys: {
+    refusedInvalid: "{{provider}} n’a pas accepté cette clé. Vérifiez que vous l’avez copiée en entier.",
+    refusedNoCredit: "{{provider}} a accepté cette clé, mais le compte associé n’a plus de crédit.",
+    refusedRateLimited: "{{provider}} limite cette clé pour le moment. Réessayez dans quelques minutes.",
+    refusedUnreachable: "Impossible de joindre {{provider}}. Vérifiez votre connexion et réessayez.",
+    refusedUnsupported: "Vous ne pouvez pas ajouter de clé pour {{provider}}.",
+    refusedBlank: "Collez d’abord une clé.",
+    refusedGeneric: "{{provider}} a refusé cette clé. Réessayez, ou utilisez une autre clé.",
+    rejectedLater: "{{provider}} a refusé cette clé lors de sa dernière utilisation. Remplacez-la par une clé valide.",
     briefTitle: "Point du matin",
     briefHint:
       "Une notification à 8 h, heure locale : les événements du jour, les anniversaires de la semaine, les prêts en retard, les cartes qui expirent et toute dépense bien au-dessus de l’habitude. Rien les jours calmes.",

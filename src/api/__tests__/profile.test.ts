@@ -142,6 +142,13 @@ describe("the current user", () => {
     );
   });
 
+  // Device QA 2026-11-17: "Qa Parity" read "Qa PARITY" — the server recased
+  // `fullname`. The name is shown exactly as it was typed.
+  it("shows the name exactly as it was typed, not the server's recased one", () => {
+    const p = parseProfile(user({ firstname: "Qa", lastname: "de Parity", fullname: "Qa DE PARITY" }));
+    expect(p.fullName).toBe("Qa de Parity");
+  });
+
   it("tolerates a user with no name and no photo", () => {
     const bare = parseProfile(
       user({ firstname: null, lastname: null, fullname: null, avatar: null }),

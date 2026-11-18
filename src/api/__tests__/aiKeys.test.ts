@@ -63,19 +63,42 @@ describe("the key itself", () => {
   });
 });
 
-// ── THE REFUSAL IS THE PROVIDER'S SENTENCE ──────────────────────────────────
+// ── A REFUSAL IS A CODE, NOT THE PROVIDER'S SENTENCE ────────────────────────
+// Device QA 2026-11-17: the provider's raw text reached a French screen. The
+// screen words it; this layer only carries the code.
 describe("a key the provider refuses", () => {
-  it("surfaces the provider's own wording, not ours", async () => {
-    // `render json: { message: [verdict.message], provider: … }` — an ARRAY.
+  it("carries the server's code", async () => {
     mock.onPost("/api/v1/ai_keys").reply(422, {
-      message: ["API key not valid. Please pass a valid API key."],
+      message: ["Gemini did not accept this key. Check that you copied all of it."],
+      code: "invalid_key",
       provider: "gemini",
     });
 
-    await expect(aiKeysApi.add("gemini", "nope")).rejects.toThrow(
-      "API key not valid. Please pass a valid API key.",
-    );
-    await expect(aiKeysApi.add("gemini", "nope")).rejects.toBeInstanceOf(KeyRefused);
+    const refused = await aiKeysApi.add("gemini", "nope").catch((e: unknown) => e);
+    expect(refused).toBeInstanceOf(KeyRefused);
+    expect((refused as KeyRefused).code).toBe("invalid_key");
+  });
+
+  // The server in production today sends the provider's raw text and no code.
+  it("reads a verdict with no code as a plain refusal, so the raw text is never shown", async () => {
+    mock.onPost("/api/v1/ai_keys").reply(422, {
+      message: ["the server responded with status 400 for POST https://x"],
+      provider: "gemini",
+    });
+
+    const refused = await aiKeysApi.add("gemini", "nope").catch((e: unknown) => e);
+    expect((refused as KeyRefused).code).toBe("refused");
+  });
+
+  // Lending answers `{ error }`, already a sentence of ours in the reader's
+  // language ("You cannot lend a key to yourself."): kept as it is.
+  it("keeps a lending refusal's own sentence, with no code", async () => {
+    mock.onPost("/api/v1/ai_keys/3/share").reply(422, { error: "Vous ne pouvez pas vous prêter une clé." });
+
+    const refused = await aiKeysApi.lend(3, "me@example.com", null).catch((e: unknown) => e);
+    expect(refused).toBeInstanceOf(KeyRefused);
+    expect((refused as KeyRefused).code).toBeNull();
+    expect((refused as KeyRefused).message).toBe("Vous ne pouvez pas vous prêter une clé.");
   });
 
   it("is told apart from a transport failure, because the advice differs", async () => {

@@ -25,7 +25,7 @@ import SafeZoneEdit from "../../../../app/safezone/edit";
 
 const mockParams: { current: Record<string, string> } = { current: {} };
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn() },
   useLocalSearchParams: () => mockParams.current,
   useFocusEffect: (cb: () => void) => jest.requireActual("react").useEffect(cb, [cb]),
 }));
@@ -437,7 +437,8 @@ describe("the item: reveal and copy", () => {
 
   it("shows the plain fields and masks the secret", async () => {
     await openItem();
-    expect(screen.getByText("Mail")).toBeTruthy();
+    expect(screen.getByTestId("safezone-item-title")).toHaveTextContent("Mail");
+    expect(screen.getByTestId("header-title")).toHaveTextContent("Mail");
     expect(screen.getByTestId("safezone-field-username-value")).toHaveTextContent("qa-user");
     expect(screen.getByTestId("safezone-field-password-value").props.children).toBe("••••••••");
     assertNoSecretOnScreen();

@@ -14,19 +14,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AccessibilityInfo, ActivityIndicator, Pressable, RefreshControl, ScrollView, SectionList, TextInput, View } from "react-native";
 import { router } from "expo-router";
-import { goHome, useAndroidBackToHome } from "@/hooks/useBackToHome";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Sharing from "expo-sharing";
 import {
-  BookUser, Cake, Check, ChevronLeft, CircleCheck, Circle, Copy, Globe, Import, Mail, MessageCircle,
+  BookUser, Cake, Check, CircleCheck, Circle, Copy, Globe, Import, Mail, MessageCircle,
   MoreVertical, Phone, Plus, Search, Share2, Star, StarOff, Trash2, Upload, X,
 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
-import { AiButton } from "@/components/AiButton";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { LoadFailure } from "@/components/LoadFailure";
 import { CONTACT_KEYS, useAssistantEcho } from "@/hooks/useAssistantEcho";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -247,22 +246,27 @@ function ContactsList({ pane = false, openId = null, onOpen }: { pane?: boolean;
 
   return (
     <ListFrame pane={pane}>
-      {/* Header: back · title · select · more · assistant. In select mode the
-          title says how many and the left button leaves the mode. */}
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable
-          testID={selecting ? "contacts-select-done" : "contacts-back"}
-          onPress={() => (selecting ? leaveSelect() : goHome())}
-          accessibilityRole="button"
-          accessibilityLabel={selecting ? t("contacts.list.leaveSelect") : t("common.back")}
-          hitSlop={8}
-          style={{ width: 32, height: 32, justifyContent: "center" }}
-        >
-          {selecting ? <X size={22} color={colors.ink} /> : <ChevronLeft size={24} color={colors.ink} />}
-        </Pressable>
-        <Text testID="contacts-title" variant="title" accessibilityRole="header" style={{ flex: 1 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
-          {selecting ? t("contacts.list.selected", { count: selected.size }) : t("contacts.title")}
-        </Text>
+      {/* The shared header on a phone; in the split it spans both panes, above. */}
+      {pane ? null : <AppHeader app="contacts" />}
+      {/* The app's own row: ⋮. In select mode it says how many, and X leaves the mode. */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
+        {selecting ? (
+          <>
+            <Pressable
+              testID="contacts-select-done"
+              onPress={leaveSelect}
+              accessibilityRole="button"
+              accessibilityLabel={t("contacts.list.leaveSelect")}
+              hitSlop={8}
+              style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+            >
+              <X size={22} color={colors.ink} />
+            </Pressable>
+            <Text testID="contacts-title" variant="label" accessibilityRole="header" style={{ flex: 1, fontSize: 16 }} numberOfLines={1}>
+              {t("contacts.list.selected", { count: selected.size })}
+            </Text>
+          </>
+        ) : null}
         {selecting ? (
           <Pressable
             testID="contacts-select-all"
@@ -280,7 +284,6 @@ function ContactsList({ pane = false, openId = null, onOpen }: { pane?: boolean;
             <Pressable testID="contacts-more" onPress={() => setMore("menu")} accessibilityRole="button" accessibilityLabel={t("contacts.menu.title")} hitSlop={4} style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}>
               <MoreVertical size={22} color={colors.ink} />
             </Pressable>
-            <AiButton compact />
           </>
         )}
       </View>
@@ -534,11 +537,11 @@ export default function ContactsScreen() {
   const { t } = useTranslation();
   const { split, paneWidth } = useSplit();
   const [openId, setOpenId] = useState<number | null>(null);
-  useAndroidBackToHome();
 
   if (!split) return <ContactsList />;
   return (
     <Screen measure={false}>
+      <AppHeader app="contacts" />
       <View style={{ flex: 1, flexDirection: "row" }}>
         <View style={{ width: paneWidth, paddingRight: metrics.space.lg, borderRightWidth: 1, borderRightColor: colors.border }}>
           <ContactsList pane openId={openId} onOpen={setOpenId} />

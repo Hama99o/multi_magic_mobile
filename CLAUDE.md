@@ -502,6 +502,38 @@ Two device facts that have each cost an hour (`qa/QA_HANDBOOK.md`):
 
 ---
 
+## Reopening the app (owner, 2026-11-17)
+
+**The app reopens where the user left it; deep links win. Reopen never lands
+on Home when a last app exists.** His words: *"if I close the app while in one
+app, when I open it again it should open in the same app"*, then *"not home
+page, it's very important"*. Code: `src/apps/lastPlace.ts` (what may be
+restored), `src/stores/lastPlace.store.ts` (kept on the phone),
+`app/index.tsx` (the cold start), `PlaceRecorder` in `app/_layout.tsx`.
+
+- **Home reopens only when Home is where he left** (owner via Hello,
+  2026-11-17: "reopen where you left" means exactly that), on the very first
+  launch, and after a sign-out. Every
+  fallback goes to the SAME app's root, never Home: a record that is gone, a
+  screen that may not be restored, a stale route, a failed or offline
+  restore, a save written by an older version of the app.
+- **A deep link, a share or a notification tap always wins.** Restoring only
+  happens through `app/index.tsx`, which a link never reaches. A notification
+  tap pushes its target over whatever was restored.
+- **Never restore a form, an editor or a modal** (an entry, an edit screen,
+  the note editor, the assistant). The screen under it opens instead. A record
+  screen (a Tasks list, a loan, an event, a chat thread) is re-opened only after the record
+  is fetched again. Until then the app's root is on screen, and it stays the
+  screen when the fetch fails.
+- **SafeZone always reopens on its PIN gate.** Its lock lives in memory, and
+  an item screen is never restored.
+- **Signed out → sign-in.** The saved place is cleared on sign-out and when a
+  different account signs in.
+- **Home is a place like any app.** Left on Home → reopens on Home. Left in
+  an app → reopens in that app, and every fallback stays in that app.
+- **A form, an editor or a modal is not a place**: the screen under it is
+  what reopens (`src/components/shell/CLAUDE.md`).
+
 ## Design
 
 `docs/design/README.md` is both the rules and the board — one folder per screen,

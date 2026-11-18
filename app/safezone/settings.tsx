@@ -9,27 +9,21 @@ import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, KeyRound, Lock } from "@/components/icons";
+import { KeyRound, Lock } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { SafeZoneGate } from "@/screens/safezone/SafeZoneGate";
 import { ChangePinForm, TurnOffPinForm } from "@/screens/safezone/PinForms";
 
 export default function SafeZoneSettingsScreen() {
-  const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
   return (
     <Screen avoidKeyboard>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable testID="safezone-settings-back" onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        <Text variant="title" accessibilityRole="header" style={{ flex: 1 }} numberOfLines={1}>
-          {t("safezone.settings.title")}
-        </Text>
-      </View>
+      <AppHeader app="safezone" title={t("safezone.settings.title")} back />
+      <View style={{ height: metrics.space.md }} />
       <SafeZoneGate>
         <Settings />
       </SafeZoneGate>

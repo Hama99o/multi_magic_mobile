@@ -15,6 +15,7 @@ import { financeKeys } from "@/api/keys";
 import { financeApi, type Currency, type Expense, type Income, type Loan, type Page } from "@/api/finance";
 import { RotateCcw, Trash2 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -23,7 +24,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { formatDay } from "@/screens/calendar/dates";
 import { MONEY_IN, useMoney } from "@/screens/finance/parts";
 import { useDestroyForever, useRestoreEntry } from "@/screens/finance/useFinanceMutations";
-import { EmptyState, ManageHeader, PillButton, Segmented } from "@/screens/finance/manage/common";
+import { EmptyState, PillButton, Segmented } from "@/screens/finance/manage/common";
 import { useFinanceUndo } from "@/stores/financeUndo.store";
 
 type Kind = "expenses" | "incomes" | "loans";
@@ -74,7 +75,8 @@ export default function TrashScreen() {
 
   return (
     <Screen measure>
-      <ManageHeader testID="finance-trash" title={t("finance.manage.trash.title")} />
+      <AppHeader app="finance" title={t("finance.manage.trash.title")} back />
+      <View style={{ height: metrics.space.md }} />
       <Segmented
         testID="finance-trash-kind"
         value={kind}

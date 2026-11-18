@@ -5,11 +5,11 @@
  */
 import { useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, View } from "react-native";
-import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronLeft, RotateCcw, Trash2 } from "@/components/icons";
+import { RotateCcw, Trash2 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -43,14 +43,7 @@ export default function ContactsTrash() {
 
   return (
     <Screen measure>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable testID="contacts-trash-back" onPress={() => router.back()} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        <Text variant="title" accessibilityRole="header" style={{ flex: 1 }}>
-          {t("contacts.trash.title")}
-        </Text>
-      </View>
+      <AppHeader app="contacts" title={t("contacts.trash.title")} back />
       <LoadFailure error={trash.error} loadFailed={t("contacts.trash.loadFailed")} hasData={Boolean(trash.data)} updatedAt={trash.dataUpdatedAt} onRetry={() => void trash.refetch()} testID="contacts-trash-load-failed" />
       {error ? (
         <Text testID="contacts-trash-error" tone="danger" style={{ paddingBottom: metrics.space.sm }}>

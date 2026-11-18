@@ -22,13 +22,13 @@ import { financeKeys } from "@/api/keys";
 import { financeApi, formatMoney, formatTotals, type ExportFormat, type Totals } from "@/api/finance";
 import { Download } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { LoadFailure } from "@/components/LoadFailure";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { addDays, addMonths, startOfMonth, todayKey } from "@/screens/calendar/dates";
 import { chartColor, DayChooser, Field, MONEY_IN, PeriodSwitcher, ShareBar } from "@/screens/finance/parts";
-import { ManageHeader } from "@/screens/finance/manage/common";
 
 type Resource = "expenses" | "incomes" | "loans";
 const FORMATS: ExportFormat[] = ["csv", "xlsx", "pdf"];
@@ -66,8 +66,8 @@ export default function ReportsScreen() {
 
   return (
     <Screen measure>
-      <ManageHeader testID="finance-reports" title={t("finance.manage.reports.title")} />
-      <ScrollView refreshControl={<RefreshControl refreshing={summary.isRefetching} onRefresh={() => void summary.refetch()} tintColor={colors.inkMuted} />} contentContainerStyle={{ gap: metrics.space.lg, paddingBottom: metrics.space.xl }}>
+      <AppHeader app="finance" title={t("finance.manage.reports.title")} back />
+      <ScrollView refreshControl={<RefreshControl refreshing={summary.isRefetching} onRefresh={() => void summary.refetch()} tintColor={colors.inkMuted} />} contentContainerStyle={{ gap: metrics.space.lg, paddingTop: metrics.space.md, paddingBottom: metrics.space.xl }}>
         <PeriodSwitcher
           testID="finance-reports-period"
           year={year}

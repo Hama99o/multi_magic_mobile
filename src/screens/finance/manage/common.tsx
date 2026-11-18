@@ -1,15 +1,13 @@
 /**
  * What the Finance "manage" screens share (budgets, recurring, categories,
- * reports, trash; `docs/design/finance/SPEC.md` §D 8-11): the header, the
+ * reports, trash; `docs/design/finance/SPEC.md` §D 8-11): the
  * segmented bar, the empty state, the FAB, a small pill button, the amount
  * block of a form, and the repeat label. Tokens only, the Todo family's sizes.
  */
-import type { ReactNode } from "react";
 import { Pressable, View } from "react-native";
-import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { CURRENCY_SYMBOLS, type Currency, type Frequency } from "@/api/finance";
-import { ChevronLeft, Plus, type LucideIcon } from "@/components/icons";
+import { Plus, type LucideIcon } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { AmountPad, CurrencyChip, FINANCE, typedAmount } from "@/screens/finance/parts";
@@ -18,35 +16,6 @@ type Tr = (key: string, options?: Record<string, unknown>) => string;
 
 /** Text on the Finance colour (the tab bar's). */
 export const ON_FINANCE = "#04161a";
-
-export function goBackToFinance() {
-  if (router.canGoBack()) router.back();
-  else router.replace("/finance");
-}
-
-export function ManageHeader({ title, subtitle, testID, onBack = goBackToFinance, right }: { title: string; subtitle?: string; testID: string; onBack?: () => void; right?: ReactNode }) {
-  const colors = useColors();
-  const metrics = useMetrics();
-  const { t } = useTranslation();
-  return (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-      <Pressable testID={`${testID}-back`} onPress={onBack} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-        <ChevronLeft size={24} color={colors.ink} />
-      </Pressable>
-      <View style={{ flex: 1 }}>
-        <Text variant="title" accessibilityRole="header" numberOfLines={1} testID={`${testID}-title`}>
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text variant="caption" tone="muted" numberOfLines={1}>
-            {subtitle}
-          </Text>
-        ) : null}
-      </View>
-      {right}
-    </View>
-  );
-}
 
 export function Segmented<T extends string>({ value, options, onChange, testID }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; testID: string }) {
   const colors = useColors();

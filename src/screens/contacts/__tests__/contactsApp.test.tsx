@@ -44,7 +44,7 @@ const mockNavigation = {
   dispatch: jest.fn(),
 };
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn() },
   useLocalSearchParams: () => mockParams.current,
   useNavigation: () => mockNavigation,
   Link: ({ children }: { children: unknown }) => children,

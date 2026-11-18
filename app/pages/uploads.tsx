@@ -10,13 +10,13 @@
  */
 import { useEffect } from "react";
 import { FlatList, Pressable, View } from "react-native";
-import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { Check, RotateCw, X } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { EmptyLine, HeaderButton, PagesHeader, formatBytes } from "@/screens/pages/parts";
+import { EmptyLine, HeaderButton, formatBytes } from "@/screens/pages/parts";
 import { useUploads, type UploadError, type UploadItem } from "@/stores/uploads.store";
 
 function errorKey(error: UploadError | null): string {
@@ -95,6 +95,7 @@ function UploadRow({ item }: { item: UploadItem }) {
 
 export default function Uploads() {
   const colors = useColors();
+  const metrics = useMetrics();
   const { t } = useTranslation();
   const items = useUploads((s) => s.items);
   const hydrate = useUploads((s) => s.hydrate);
@@ -109,20 +110,22 @@ export default function Uploads() {
 
   return (
     <Screen measure>
-      <PagesHeader
-        title={t("pages.uploads.title")}
-        subtitle={active > 0 ? t("pages.uploads.active", { count: active }) : null}
-        onBack={() => (router.canGoBack() ? router.back() : router.replace("/pages"))}
-        right={
-          finished > 0 ? (
-            <Pressable onPress={clearFinished} accessibilityRole="button" hitSlop={8} testID="pages-uploads-clear">
-              <Text tone="accent" variant="label">
-                {t("pages.uploads.clear")}
-              </Text>
-            </Pressable>
-          ) : null
-        }
-      />
+      <AppHeader app="pages" title={t("pages.uploads.title")} back />
+      {/* The screen's own row, under the shared header: what is running, and clear. */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs, minHeight: metrics.touch }}>
+        {active > 0 ? (
+          <Text variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1 }} testID="pages-uploads-active">
+            {t("pages.uploads.active", { count: active })}
+          </Text>
+        ) : null}
+        {finished > 0 ? (
+          <Pressable onPress={clearFinished} accessibilityRole="button" hitSlop={8} testID="pages-uploads-clear">
+            <Text tone="accent" variant="label">
+              {t("pages.uploads.clear")}
+            </Text>
+          </Pressable>
+        ) : null}
+      </View>
       {active > 0 ? (
         <Text variant="caption" tone="muted" testID="pages-uploads-keep-going">
           {t("pages.uploads.keepGoing")}

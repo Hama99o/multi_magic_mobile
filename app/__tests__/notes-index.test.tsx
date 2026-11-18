@@ -11,7 +11,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const mockPush = jest.fn();
 jest.mock("expo-router", () => ({
-  router: { push: (...a: unknown[]) => mockPush(...a), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
+  router: { push: (...a: unknown[]) => mockPush(...a), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) },
   useLocalSearchParams: () => ({}),
 }));
 
@@ -399,7 +399,7 @@ describe("a search result opens on the first tap (device, 2026-11-13: the first 
 // on topbar side". The Notes bar read the sign-in identity from the auth store
 // (no photo there since the 2026-11-13 data audit); Home reads the profile
 // (useMe), which has it. The Notes bar now reads the same profile.
-describe("the profile photo in the Notes bar", () => {
+describe("the profile photo in the shared header, on Notes", () => {
   it("shows the photo from the profile, even when the sign-in identity has none", async () => {
     useAuthStore.setState({ status: "signedIn", user: { id: 1, email: "qa@example.com", fullName: "QA", avatar: null } as never });
     mock.onGet("/api/v1/users/connected_user").reply(200, {
@@ -409,7 +409,7 @@ describe("the profile photo in the Notes bar", () => {
     await screen.findByText("Pinned seed");
     const { Image } = jest.requireActual("react-native");
     await waitFor(() => {
-      const imgs = within(screen.getByTestId("notes-profile")).UNSAFE_queryAllByType(Image);
+      const imgs = within(screen.getByTestId("header-profile")).UNSAFE_queryAllByType(Image);
       expect(imgs.map((i) => (i.props as { source?: { uri?: string } }).source?.uri)).toEqual([expect.stringMatching(/^https?:\/\/.+\/rails\/active_storage\/blobs\/x\/qa\.jpg$/)]);
     });
   });
@@ -419,22 +419,23 @@ describe("the profile photo in the Notes bar", () => {
 // menu where we select the app". The drawer starts with All apps; Android
 // back at a Notes root with nothing behind goes Home, not out of the app.
 describe("back to the app grid (Home) from Notes", () => {
-  const { router } = jest.requireMock("expo-router") as { router: { back: jest.Mock; replace: jest.Mock; canGoBack: jest.Mock } };
+  const { router } = jest.requireMock("expo-router") as { router: { back: jest.Mock; replace: jest.Mock; dismissTo: jest.Mock; canGoBack: jest.Mock } };
   beforeEach(() => {
     router.back.mockClear();
+    router.dismissTo.mockClear();
     router.replace.mockClear();
     router.canGoBack.mockReturnValue(true);
     mock.onGet("/api/v1/note_app/tags").reply(200, { tags: [], meta: { pagy: { page: 1, pages: 1 } } });
   });
 
-  it("the drawer's first entry is All apps; with Home behind, it goes back to it", async () => {
+  it("the drawer's first entry is All apps; with Home behind, it goes down the stack to it", async () => {
     open();
     await screen.findByText("Pinned seed");
     fireEvent.press(screen.getByTestId("notes-menu"));
     const home = await screen.findByTestId("drawer-home");
     expect(home).toHaveTextContent("All apps");
     fireEvent.press(home);
-    expect(router.back).toHaveBeenCalledTimes(1);
+    expect(router.dismissTo).toHaveBeenCalledWith("/home");
     expect(router.replace).not.toHaveBeenCalled();
   });
 

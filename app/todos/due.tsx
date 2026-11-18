@@ -8,13 +8,14 @@
 import { useMemo, useState } from "react";
 import { Pressable, RefreshControl, SectionList, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { router, useLocalSearchParams } from "expo-router";
+import { useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQueries, useQuery, type InfiniteData } from "@tanstack/react-query";
 import { todoKeys } from "@/api/keys";
 import { todoGroupsApi, todosApi, type Todo, type TodoGroup, type TodoGroupsPage } from "@/api/todos";
-import { ChevronLeft, ListChecks } from "@/components/icons";
+import { ListChecks } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -71,16 +72,9 @@ export default function DueScreen() {
 
   return (
     <Screen measure>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable testID="todo-due-back" onPress={() => (router.canGoBack() ? router.back() : router.replace("/todos"))} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        <Text variant="title" accessibilityRole="header" style={{ flex: 1 }} testID="todo-due-title">
-          {t(`todos.views.${view}`)}
-        </Text>
-      </View>
+      <AppHeader app="todos" title={t(`todos.views.${view}`)} back />
 
-      <View accessibilityRole="tablist" style={{ flexDirection: "row", backgroundColor: colors.surface, borderRadius: metrics.radius.md, padding: metrics.space.xs, marginBottom: metrics.space.md }}>
+      <View accessibilityRole="tablist" style={{ flexDirection: "row", backgroundColor: colors.surface, borderRadius: metrics.radius.md, padding: metrics.space.xs, marginTop: metrics.space.md, marginBottom: metrics.space.md }}>
         {DUE_VIEWS.map((v) => {
           const on = v === view;
           return (

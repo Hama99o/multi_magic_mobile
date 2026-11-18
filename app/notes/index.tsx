@@ -18,7 +18,7 @@
  * do not exist on the web (MISSING_FEATURES.md).
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ActivityIndicator, BackHandler, Modal, Pressable, RefreshControl, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 
@@ -35,6 +35,8 @@ import {
 } from "@/screens/notes/api/queries";
 import { NOTES_EDITOR_ENABLED } from "@/config/features";
 import { useMe } from "@/hooks/useMe";
+import { AppHeader } from "@/components/shell/AppHeader";
+import { goHomeFromApp } from "@/apps/registry";
 import { APP_COLORS } from "@/theme/appColors";
 import { useNotesView } from "@/stores/notesView.store";
 import { Avatar } from "@/screens/people/Avatar";
@@ -176,19 +178,8 @@ export default function NotesScreen() {
     gray: t("notes.grid.colors.gray"),
   } satisfies Record<NoteColorKey, string>;
 
-  // Back to the app grid (TestFlight 1.2.0, 2026-11-15: "no option to go back
-  // to the menu where we select the app"): back if Home is behind, else Home.
-  const goHome = () => (router.canGoBack() ? router.back() : router.replace("/home"));
-  // Android back at a Notes root with nothing behind (a reminder, a link):
-  // Home, not out of the app. With history, the stack's own back runs.
-  useEffect(() => {
-    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (router.canGoBack()) return false;
-      router.replace("/home");
-      return true;
-    });
-    return () => sub.remove();
-  }, []);
+  // Home, the other apps and Android's back live in the shared header
+  // (AppHeader); the drawer's "Home" row goes the same way.
 
   const iconKey = (testID: string, label: string, onPress: () => void, icon: ReactNode) => (
     <Pressable
@@ -205,6 +196,7 @@ export default function NotesScreen() {
 
   return (
     <Screen>
+      <AppHeader app="notes" />
       {selecting ? (
         <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: metrics.space.sm, gap: 4 }}>
           {iconKey("notes-selection-close", t("notes.grid.clearSelection"), () => setSelected([]), <X size={22} color={colors.ink} />)}
@@ -257,12 +249,6 @@ export default function NotesScreen() {
             layout === "grid" ? t("notes.grid.layoutList") : t("notes.grid.layoutGrid"),
             () => setLayout(layout === "grid" ? "list" : "grid"),
             layout === "grid" ? <List size={22} color={colors.ink} /> : <LayoutGrid size={22} color={colors.ink} />,
-          )}
-          {iconKey(
-            "notes-profile",
-            t("notes.grid.profile"),
-            () => router.push("/profile"),
-            <Avatar name={user?.fullName ?? user?.email ?? ""} uri={user?.avatar ?? null} userId={user?.id ?? 0} size={30} />,
           )}
         </View>
       )}
@@ -356,7 +342,7 @@ export default function NotesScreen() {
         onClose={() => setDrawer(false)}
         onGoHome={() => {
           setDrawer(false);
-          goHome();
+          goHomeFromApp();
         }}
         view={view}
         onPick={(tag) => {

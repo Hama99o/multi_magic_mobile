@@ -175,6 +175,8 @@ const COMPOSED = [
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
 const PLURAL = new Set([
+  "shell.chatsWaiting",
+  "shell.notificationsUnread",
   "finance.ledger.entries",
   "finance.pending.title",
   "finance.overview.expenseCount",

@@ -13,7 +13,7 @@
  * (PDF red, document blue, sheet green, slides yellow) that file managers
  * share, chosen so a glance tells a PDF from a clip.
  */
-import { createElement, useState, type ReactNode } from "react";
+import { createElement, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { useTranslation } from "react-i18next";
@@ -25,7 +25,6 @@ import {
   ArrowDown,
   ArrowUp,
   Check,
-  ChevronLeft,
   Clock,
   File,
   FileArchive,
@@ -49,14 +48,9 @@ import {
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { relativeTime } from "@/lib/relativeTime";
-import { Avatar } from "@/screens/people/Avatar";
-import { AiButton } from "@/components/AiButton";
-import { ProfileSheet } from "@/components/settings/ProfileSheet";
-import { useAuthStore } from "@/stores/auth.store";
 import { useUploads } from "@/stores/uploads.store";
 import { SORTS, type PageNode, type SortBy, type SortDir } from "@/api/pages";
 import { PlayBadge, formatBytes } from "../parts";
-import { useMe } from "@/hooks/useMe";
 
 // ── Type: icon and colour ───────────────────────────────────────────────────
 
@@ -155,16 +149,6 @@ export const useViewPrefs = create<ViewPrefs>((set) => ({
   },
 }));
 
-// ── Back to the app grid ────────────────────────────────────────────────────
-
-/**
- * Pages' root goes back to Home (the app grid), as Notes does
- * (`app/notes/index.tsx` `goHome`): back if Home is behind, otherwise Home.
- * Opened from a share or a link there is nothing behind, and a bare
- * `router.back()` did nothing (owner's known issue, 2026-11-16).
- */
-export const goHome = () => (router.canGoBack() ? router.back() : router.replace("/home"));
-
 // ── The folder sort, kept across folders and restarts (Drive keeps it) ─────
 
 const SORT_KEY = "mm-pages-folder-sort";
@@ -195,14 +179,14 @@ export const useFolderSort = create<FolderSort>((set) => ({
   },
 }));
 
-// ── The search pill (Drive's "Search in Drive" with the avatar) ─────────────
+// ── The search pill (Drive's "Search in Drive"), under the shared header ────
+// Home, the apps, the assistant and the avatar moved up into `AppHeader`
+// (docs/design/app-shell/SPEC.md §C), so the pill keeps search and ⋮.
 
 export function SearchPill({ onMenu }: { onMenu?: () => void }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const user = useMe();
-  const [profileOpen, setProfileOpen] = useState(false);
   return (
     <View
       style={{
@@ -214,20 +198,11 @@ export function SearchPill({ onMenu }: { onMenu?: () => void }) {
         backgroundColor: colors.surface,
         borderWidth: 1,
         borderColor: colors.border,
-        paddingHorizontal: metrics.space.sm,
+        paddingHorizontal: metrics.space.md,
         marginVertical: metrics.space.sm,
       }}
     >
-      <Pressable
-        onPress={goHome}
-        accessibilityRole="button"
-        accessibilityLabel={t("common.back")}
-        hitSlop={6}
-        style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
-        testID="pages-back"
-      >
-        <ChevronLeft size={22} color={colors.ink} />
-      </Pressable>
+      <Search size={18} color={colors.inkMuted} />
       <Pressable
         onPress={() => router.push({ pathname: "/pages/drive", params: { view: "search" } })}
         accessibilityRole="search"
@@ -242,27 +217,6 @@ export function SearchPill({ onMenu }: { onMenu?: () => void }) {
       {onMenu ? (
         <IconButton icon={MoreVertical} label={t("pages.menu.title")} onPress={onMenu} testID="pages-menu" />
       ) : null}
-      <AiButton compact />
-      {/* Drive's avatar opens the account; ours opens the same sheet as Home. */}
-      <Pressable
-        onPress={() => setProfileOpen(true)}
-        accessibilityRole="button"
-        accessibilityLabel={t("profileMenu.openLabel")}
-        hitSlop={6}
-        style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
-        testID="pages-open-profile"
-      >
-        <Avatar name={user?.fullName ?? user?.email ?? ""} uri={user?.avatar ?? null} userId={user?.id ?? 0} size={32} />
-      </Pressable>
-      <ProfileSheet
-        visible={profileOpen}
-        userId={user?.id ?? null}
-        onClose={() => setProfileOpen(false)}
-        onSignOut={() => {
-          setProfileOpen(false);
-          void useAuthStore.getState().signOut().then(() => router.replace("/sign-in"));
-        }}
-      />
     </View>
   );
 }

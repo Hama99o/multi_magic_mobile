@@ -11,7 +11,7 @@ import { __resetFingerprintCache } from "@/lib/fingerprint";
 import { testQueryClient } from "@/__tests__/queryClient";
 import Reports from "../../../../app/finance/reports";
 
-jest.mock("expo-router", () => ({ router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) }, useLocalSearchParams: () => ({}) }));
+jest.mock("expo-router", () => ({ router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) }, useLocalSearchParams: () => ({}) }));
 jest.mock("expo-sharing", () => ({ isAvailableAsync: jest.fn(async () => true), shareAsync: jest.fn(async () => undefined) }));
 
 let mock: MockAdapter;

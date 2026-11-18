@@ -16,7 +16,7 @@ import { router as mockedRouter } from "expo-router";
 
 const mockParams: { current: Record<string, string> } = { current: {} };
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn() },
   useLocalSearchParams: () => mockParams.current,
 }));
 jest.mock("react-native-webview", () => ({ WebView: () => null }));

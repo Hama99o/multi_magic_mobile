@@ -27,7 +27,7 @@ jest.mock("../split", () => {
   return { ...actual, useSplit: () => actual.splitFor(mockWidth.current) };
 });
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn() },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn() },
   useLocalSearchParams: () => ({}),
   useNavigation: () => ({ addListener: jest.fn(() => () => undefined), dispatch: jest.fn() }),
   Link: ({ children }: { children: unknown }) => children,
@@ -142,11 +142,12 @@ describe.each([800, 1280])("a tablet at %i dp: master-detail", (width) => {
     expect(screen.getByTestId("contacts-row-8").props.accessibilityState?.selected).toBeFalsy();
   });
 
-  it("the card in the pane has no back button", async () => {
+  it("the card in the pane has no back button and no second header", async () => {
     renderAt(width);
     fireEvent.press(await screen.findByTestId("contacts-row-7"));
     await screen.findByTestId("contact-name");
-    expect(screen.queryByTestId("contact-back")).toBeNull();
+    expect(screen.queryByTestId("header-back")).toBeNull();
+    expect(screen.getAllByTestId("app-header")).toHaveLength(1);
   });
 
   it("another tap moves the selection", async () => {

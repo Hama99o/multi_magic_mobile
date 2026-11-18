@@ -13,8 +13,9 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { todoKeys } from "@/api/keys";
 import { todoTemplatesApi, type TodoTemplate } from "@/api/todos";
-import { ChevronLeft, LayoutTemplate, Pencil, Play, Plus, Repeat, Trash2 } from "@/components/icons";
+import { LayoutTemplate, Pencil, Play, Plus, Repeat, Trash2 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -44,15 +45,8 @@ export default function TemplatesScreen() {
 
   return (
     <Screen measure>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable testID="todo-templates-back" onPress={() => (router.canGoBack() ? router.back() : router.replace("/todos"))} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        <Text variant="title" accessibilityRole="header" style={{ flex: 1 }}>
-          {t("todos.templates")}
-        </Text>
-      </View>
-      <Text tone="muted" style={{ paddingBottom: metrics.space.md }}>
+      <AppHeader app="todos" title={t("todos.templates")} back />
+      <Text tone="muted" style={{ paddingVertical: metrics.space.md }}>
         {t("todos.templatesHint")}
       </Text>
       <LoadFailure error={templates.error} loadFailed={t("todos.loadFailed")} hasData={Boolean(templates.data)} updatedAt={templates.dataUpdatedAt} onRetry={() => void templates.refetch()} testID="todo-templates-load-failed" />

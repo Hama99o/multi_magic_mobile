@@ -33,12 +33,12 @@ import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { CalendarDays, ChevronLeft, List, Plus } from "@/components/icons";
+import { CalendarDays, List, Plus } from "@/components/icons";
 import { RefreshButton, UpdatedLine } from "@/components/Freshness";
 import { CALENDAR_KEYS, useAssistantEcho } from "@/hooks/useAssistantEcho";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
-import { AiButton } from "@/components/AiButton";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { calendarApi, type Occurrence } from "@/api/calendar";
 import { failureMessage } from "@/api/failure";
@@ -53,7 +53,6 @@ import { useCalendarView } from "@/stores/calendarView.store";
 import { useCalendarUndo } from "@/stores/calendarUndo.store";
 import { calendarKeys } from "@/api/keys";
 import { useRestoreEvent } from "@/screens/calendar/useCalendarMutations";
-import { goHome, useAndroidBackToHome } from "@/hooks/useBackToHome";
 
 /** "The next few days", his phrase. The assistant reads this same key. */
 const WINDOW_DAYS = 7;
@@ -101,7 +100,6 @@ export default function Calendar() {
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
-  useAndroidBackToHome();
   const queryClient = useQueryClient();
   const { view, hydrate, setView } = useCalendarView();
   const today = dayKey(new Date());
@@ -220,11 +218,10 @@ export default function Calendar() {
 
   return (
     <Screen measure>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable testID="calendar-back" onPress={goHome} accessibilityRole="button" accessibilityLabel={t("common.back")} hitSlop={8} style={{ width: 32, height: 32, justifyContent: "center" }}>
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        <Text variant="title" accessibilityRole="header" style={{ flex: 1 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.8}>
+      <AppHeader app="calendar" />
+      {/* The app's own row: which view this is, the toggle, and refresh. */}
+      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
+        <Text variant="label" tone="muted" style={{ flex: 1, fontSize: 15 }} numberOfLines={1} testID="calendar-view-title">
           {view === "agenda" ? t("calendar.title") : t("calendar.monthTitle")}
         </Text>
         {/* Alexa's list ⇄ grid toggle: the icon names where it takes you. */}
@@ -241,7 +238,6 @@ export default function Calendar() {
         {/* Quiet, unlabelled, top right — Outlook's agenda header and Mesh's
             notification header both do exactly this. */}
         <RefreshButton refreshing={isRefetching} onPress={reload} label={t("calendar.refresh")} testID="calendar-refresh" />
-        <AiButton compact />
       </View>
 
       {/* One freshness claim at a time: while a failed refresh stands over

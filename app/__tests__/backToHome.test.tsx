@@ -22,7 +22,7 @@ import Calendar from "../calendar";
 import Contacts from "../contacts";
 
 jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
+  router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) },
   useLocalSearchParams: () => ({}),
   useNavigation: () => ({ addListener: jest.fn(() => () => undefined), dispatch: jest.fn() }),
   useFocusEffect: (cb: () => void) => jest.requireActual("react").useEffect(cb, [cb]),
@@ -42,7 +42,7 @@ jest.mock("expo-screen-capture", () => ({
   allowScreenCaptureAsync: jest.fn(async () => undefined),
 }));
 
-const { router } = jest.requireMock("expo-router") as { router: Record<"push" | "back" | "replace" | "canGoBack", jest.Mock> };
+const { router } = jest.requireMock("expo-router") as { router: Record<"push" | "back" | "replace" | "dismissTo" | "canGoBack", jest.Mock> };
 let mock: MockAdapter;
 let handlers: (() => boolean | null | undefined)[];
 
@@ -53,6 +53,7 @@ beforeEach(async () => {
   await i18n.changeLanguage("en");
   router.back.mockClear();
   router.replace.mockClear();
+  router.dismissTo.mockClear();
   router.canGoBack.mockReturnValue(true);
   handlers = [];
   jest.spyOn(BackHandler, "addEventListener").mockImplementation((_name, handler) => {
@@ -77,18 +78,19 @@ afterEach(() => {
 });
 
 const SCREENS: [string, () => ReactElement, string][] = [
-  ["SafeZone", () => <SafeZone />, "safezone-back"],
-  ["Calendar", () => <Calendar />, "calendar-back"],
-  ["Contacts", () => <Contacts />, "contacts-back"],
+  // The shared header's app badge is the way Home (docs/design/app-shell/SPEC.md §C3).
+  ["SafeZone", () => <SafeZone />, "header-home"],
+  ["Calendar", () => <Calendar />, "header-home"],
+  ["Contacts", () => <Contacts />, "header-home"],
 ];
 
 describe.each(SCREENS)("%s goes back to Home", (_name, element, backId) => {
   const open = () => render(<QueryClientProvider client={testQueryClient()}>{element()}</QueryClientProvider>);
 
-  it("with Home behind, the back key pops to it", async () => {
+  it("with Home behind, the badge goes down the stack to it", async () => {
     open();
     fireEvent.press(await screen.findByTestId(backId));
-    expect(router.back).toHaveBeenCalledTimes(1);
+    expect(router.dismissTo).toHaveBeenCalledWith("/home");
     expect(router.replace).not.toHaveBeenCalled();
   });
 
@@ -97,7 +99,7 @@ describe.each(SCREENS)("%s goes back to Home", (_name, element, backId) => {
     open();
     fireEvent.press(await screen.findByTestId(backId));
     expect(router.replace).toHaveBeenCalledWith("/home");
-    expect(router.back).not.toHaveBeenCalled();
+    expect(router.dismissTo).not.toHaveBeenCalled();
   });
 
   it("Android back at this root with nothing behind goes Home instead of leaving the app", async () => {

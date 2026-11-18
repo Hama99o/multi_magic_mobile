@@ -21,6 +21,7 @@ import { financeKeys } from "@/api/keys";
 import { financeApi, formatTotals, type Recurring } from "@/api/finance";
 import { Filter, Pause, Play, Repeat } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -30,7 +31,7 @@ import { parseDay } from "@/screens/calendar/dates";
 import { ChoiceSheet } from "@/screens/calendar/ChoiceSheet";
 import { FChip, MONEY_IN, useMoney } from "@/screens/finance/parts";
 import { useRunRecurringIncome, useToggleRecurring } from "@/screens/finance/useFinanceMutations";
-import { EmptyState, Fab, ManageHeader, PillButton, repeatLabel, Segmented, sumByCurrency } from "@/screens/finance/manage/common";
+import { EmptyState, Fab, PillButton, repeatLabel, Segmented, sumByCurrency } from "@/screens/finance/manage/common";
 import { useFinanceUndo } from "@/stores/financeUndo.store";
 
 type Kind = "expense" | "income";
@@ -66,7 +67,8 @@ export default function RecurringScreen() {
 
   return (
     <Screen measure>
-      <ManageHeader testID="finance-recurring" title={t("finance.manage.recurring.title")} />
+      <AppHeader app="finance" title={t("finance.manage.recurring.title")} back />
+      <View style={{ height: metrics.space.md }} />
       <Segmented
         testID="finance-recurring-kind"
         value={kind}

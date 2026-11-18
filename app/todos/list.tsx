@@ -1,7 +1,7 @@
 /**
  * One todo list (`docs/design/todos/SPEC.md` §D.3; Amie 04/05, Todoist 06).
  *
- * The name (tap to rename), a progress bar, the open tasks in the list's own
+ * The name (in the shared header; rename from ⋯), a progress bar, the open tasks in the list's own
  * order, the done ones folded under "Done (n)", and the quick-add bar pinned
  * at the bottom. A tapped task opens its sheet. ⋯ holds the list's actions,
  * as the web's toolbar does (`GroupDrawer.tsx`).
@@ -20,8 +20,9 @@ import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { todoKeys } from "@/api/keys";
 import { todoGroupsApi, type Todo } from "@/api/todos";
-import { ArrowUpDown, ChevronDown, ChevronLeft, ChevronRight, Copy, Eraser, LayoutTemplate, ListChecks, MoreVertical, Pencil, RotateCcw, Trash2 } from "@/components/icons";
+import { ArrowUpDown, ChevronDown, ChevronRight, Copy, Eraser, LayoutTemplate, ListChecks, MoreVertical, Pencil, RotateCcw, Trash2 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -152,28 +153,9 @@ export default function TodoListScreen() {
 
   return (
     <Screen measure avoidKeyboard>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.md }}>
-        <Pressable
-          testID="todo-list-back"
-          onPress={() => (router.canGoBack() ? router.back() : router.replace("/todos"))}
-          accessibilityRole="button"
-          accessibilityLabel={t("common.back")}
-          hitSlop={8}
-          style={{ width: 32, height: 32, justifyContent: "center" }}
-        >
-          <ChevronLeft size={24} color={colors.ink} />
-        </Pressable>
-        <Pressable
-          testID="todo-list-title"
-          onPress={() => group && setRenaming(true)}
-          accessibilityRole="button"
-          accessibilityLabel={group ? t("todos.renameList", { name: group.name }) : t("todos.title")}
-          style={{ flex: 1 }}
-        >
-          <Text variant="title" accessibilityRole="header" numberOfLines={1}>
-            {group?.name ?? " "}
-          </Text>
-        </Pressable>
+      <AppHeader app="todos" title={group?.name ?? t("todos.title")} back />
+      {/* The list's own row, under the shared header: its actions. */}
+      <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
         {reordering ? (
           <Pressable testID="todo-reorder-done" onPress={() => setReordering(false)} accessibilityRole="button" accessibilityLabel={t("todos.reorderDone")} style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }}>
             <Text variant="label" style={{ color: colors.accent }}>

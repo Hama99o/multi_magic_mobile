@@ -20,12 +20,12 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearFade } from "@/screens/pages/drive/fade";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
-import { AiButton } from "@/components/AiButton";
 import { LoadFailure } from "@/components/LoadFailure";
 import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
-import { Check, ChevronLeft, Search } from "@/components/icons";
+import { Check, Search } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { SORTS, pagesApi } from "@/api/pages";
 import { FILTERS, listFilter, type Filter } from "@/screens/pages/drive/filters";
@@ -151,27 +151,22 @@ export default function Folder() {
     [spaceId, parentId, creating, t],
   );
 
+  // The folder's own row, under the shared header: where it is, and search.
+  // A selection replaces this row, never the shared header.
   const header = (
-    <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.xs, paddingVertical: metrics.space.sm, minHeight: 60 }}>
-      <IconButton icon={ChevronLeft} label={t("common.back")} onPress={() => router.back()} tone="ink" testID="pages-back" />
-      <View style={{ flex: 1, minWidth: 0 }}>
-        <Text variant="title" numberOfLines={1} accessibilityRole="header" style={{ fontSize: 22, lineHeight: 28 }}>
-          {title}
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.xs, paddingVertical: metrics.space.xs }}>
+      {trail ? (
+        <Text variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1, minWidth: 0 }} testID="pages-folder-trail">
+          {trail}
         </Text>
-        {trail ? (
-          <Text variant="caption" tone="muted" numberOfLines={1}>
-            {trail}
-          </Text>
-        ) : null}
-      </View>
+      ) : null}
       <IconButton icon={Search} label={t("pages.search")} onPress={() => router.push({ pathname: "/pages/drive", params: { view: "search" } })} testID="pages-open-search" />
-      {/* The assistant from every screen (docs/QA_FULL.md F4). */}
-      <AiButton compact />
     </View>
   );
 
   return (
     <Screen measure={false}>
+      <AppHeader app="pages" title={title || undefined} back />
       <View style={{ flex: 1 }}>
         <NodeCollection
           testID="pages-folder-list"

@@ -20,13 +20,14 @@ import { financeKeys } from "@/api/keys";
 import { financeApi, type Tag } from "@/api/finance";
 import { ChevronRight, Pencil, Tag as TagIcon, Trash2 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { LoadFailure } from "@/components/LoadFailure";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { NameDialog } from "@/screens/pages/ItemSheet";
 import { useCreateTag, useDeleteTag, useRenameTag } from "@/screens/finance/useFinanceMutations";
-import { EmptyState, Fab, ManageHeader } from "@/screens/finance/manage/common";
+import { EmptyState, Fab } from "@/screens/finance/manage/common";
 
 export default function CategoriesScreen() {
   const colors = useColors();
@@ -74,7 +75,12 @@ export default function CategoriesScreen() {
   const title = parent ? parent.name : t("finance.manage.categories.title");
   return (
     <Screen measure>
-      <ManageHeader testID="finance-categories" title={title} subtitle={parent ? t("finance.manage.categories.subcategories") : undefined} />
+      <AppHeader app="finance" title={title} back />
+      {parent ? (
+        <Text variant="caption" tone="muted" numberOfLines={1} style={{ paddingTop: metrics.space.sm }} testID="finance-categories-subtitle">
+          {t("finance.manage.categories.subcategories")}
+        </Text>
+      ) : null}
       <LoadFailure error={tags.error} loadFailed={t("finance.manage.categories.loadFailed")} hasData={Boolean(tags.data)} updatedAt={tags.dataUpdatedAt} onRetry={() => void tags.refetch()} testID="finance-categories-load-failed" />
       {failure ? (
         <Pressable testID="finance-categories-failure" onPress={() => setFailure(null)} accessibilityRole="button" accessibilityLabel={failure} accessibilityLiveRegion="polite">

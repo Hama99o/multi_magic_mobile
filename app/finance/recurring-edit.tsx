@@ -10,7 +10,7 @@
  * The server backfills: a NEW rule whose start date is in the past adds every
  * entry it missed at once, so the form says so under the date.
  */
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -29,6 +29,7 @@ import { ChoiceSheet } from "@/screens/calendar/ChoiceSheet";
 import { DayChooser, Field, TagPicker } from "@/screens/finance/parts";
 import { useDeleteRecurring, useSaveRecurring } from "@/screens/finance/useFinanceMutations";
 import { AmountBlock, repeatLabel, unitLabel } from "@/screens/finance/manage/common";
+import { APP_CURRENCY, useLastCurrency } from "@/screens/finance/lastCurrency";
 
 type Kind = "expense" | "income";
 
@@ -56,7 +57,15 @@ function Form({ kind, existing }: { kind: Kind; existing: Recurring | null }) {
   const tags = useQuery({ queryKey: financeKeys.tags(), queryFn: financeApi.tags.all });
   const [name, setName] = useState(existing?.name ?? "");
   const [amount, setAmount] = useState(existing ? String(existing.amount) : "");
-  const [currency, setCurrency] = useState<Currency>(existing?.currency ?? "eur");
+  const [currency, setCurrency] = useState<Currency>(existing?.currency ?? APP_CURRENCY);
+  // A new one starts in the currency this user used last (lastCurrency.ts), never a hard-coded one.
+  const last = useLastCurrency();
+  const currencySet = useRef(existing != null);
+  useEffect(() => {
+    if (currencySet.current || !last.ready) return;
+    currencySet.current = true;
+    setCurrency(last.currency);
+  }, [last.ready, last.currency]);
   const [frequency, setFrequency] = useState<Frequency>(existing?.frequency ?? "monthly");
   const [interval, setInterval] = useState(existing?.intervalCount ?? 1);
   const [startDate, setStartDate] = useState(existing?.startDate || todayKey());

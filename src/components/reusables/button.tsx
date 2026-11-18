@@ -30,6 +30,7 @@ import { useState } from "react";
 import { ActivityIndicator, Pressable, View, type PressableProps } from "react-native";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { Text } from "./text";
+import { useKeyboardTarget } from "@/components/keyboardTarget";
 
 export type ButtonTone = "primary" | "neutral" | "danger";
 
@@ -53,6 +54,8 @@ export function Button({
   const metrics = useMetrics();
   const [pressed, setPressed] = useState(false);
   const inert = disabled || busy;
+  // Kept above the keyboard on a form screen (`keyboardTarget.tsx`).
+  const keyboardTarget = useKeyboardTarget();
 
   const background = {
     primary: colors.accent,
@@ -62,6 +65,7 @@ export function Button({
 
   return (
     <Pressable
+      ref={keyboardTarget}
       accessibilityRole="button"
       // WRITTEN, not inherited from the label Text below. `busy` swaps that Text
       // for a spinner, so a name derived from children disappeared at exactly

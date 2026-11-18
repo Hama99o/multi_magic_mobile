@@ -42,6 +42,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { ACCOUNT_DELETION_AVAILABLE, deleteAccount } from "@/api/account";
 import { apiErrorMessage, isNetworkFailure, isUnauthorized } from "@/api/http";
+import { KeyboardTarget } from "@/components/keyboardTarget";
 
 export default function DeleteAccount() {
   const colors = useColors();
@@ -172,31 +173,33 @@ export default function DeleteAccount() {
             </Text>
           ) : null}
 
-          <Pressable
-            // Says WHICH delete. The sessions dialog is `delete-conversation-*`;
-            // the two used to share `delete-confirm` (2026-09-19).
-            testID="delete-account-confirm"
-            onPress={() => void confirm()}
-            disabled={!password || busy}
-            accessibilityRole="button"
-            accessibilityLabel={t("deleteAccount.confirm")}
-            accessibilityState={{ disabled: !password || busy }}
-            style={{
-              marginTop: metrics.space.sm,
-              minHeight: metrics.touch,
-              borderRadius: metrics.radius.md,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: !password || busy ? colors.surface : colors.danger,
-            }}
-          >
-            <Text
-              variant="label"
-              style={{ color: !password || busy ? colors.inkMuted : colors.onAccent }}
+          <KeyboardTarget>
+            <Pressable
+              // Says WHICH delete. The sessions dialog is `delete-conversation-*`;
+              // the two used to share `delete-confirm` (2026-09-19).
+              testID="delete-account-confirm"
+              onPress={() => void confirm()}
+              disabled={!password || busy}
+              accessibilityRole="button"
+              accessibilityLabel={t("deleteAccount.confirm")}
+              accessibilityState={{ disabled: !password || busy }}
+              style={{
+                marginTop: metrics.space.sm,
+                minHeight: metrics.touch,
+                borderRadius: metrics.radius.md,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: !password || busy ? colors.surface : colors.danger,
+              }}
             >
-              {busy ? t("deleteAccount.deleting") : t("deleteAccount.confirm")}
-            </Text>
-          </Pressable>
+              <Text
+                variant="label"
+                style={{ color: !password || busy ? colors.inkMuted : colors.onAccent }}
+              >
+                {busy ? t("deleteAccount.deleting") : t("deleteAccount.confirm")}
+              </Text>
+            </Pressable>
+          </KeyboardTarget>
 
           {/* The safe way out is a plain row, not a competing button. FotMob
               renders Cancel in green, which gives the safe choice more colour

@@ -39,6 +39,7 @@ import {
 import { failureMessage } from "@/api/failure";
 import { profileKeys } from "@/api/keys";
 import { SecretField } from "@/components/settings/SecretField";
+import { KeyboardTarget } from "@/components/keyboardTarget";
 
 
 export default function ChangePassword() {
@@ -177,26 +178,28 @@ export default function ChangePassword() {
         </Text>
       ) : null}
 
-      <Pressable
-        testID="password-save"
-        onPress={() => void submit()}
-        disabled={!canSubmit}
-        accessibilityRole="button"
-        accessibilityLabel={t("password.submit")}
-        accessibilityState={{ disabled: !canSubmit }}
-        style={{
-          marginTop: metrics.space.xl,
-          minHeight: metrics.touch,
-          borderRadius: metrics.radius.md,
-          alignItems: "center",
-          justifyContent: "center",
-          backgroundColor: canSubmit ? colors.accent : colors.surface,
-        }}
-      >
-        <Text variant="label" style={{ color: canSubmit ? colors.onAccent : colors.inkMuted }}>
-          {busy ? t("password.changing") : t("password.submit")}
-        </Text>
-      </Pressable>
+      <KeyboardTarget>
+        <Pressable
+          testID="password-save"
+          onPress={() => void submit()}
+          disabled={!canSubmit}
+          accessibilityRole="button"
+          accessibilityLabel={t("password.submit")}
+          accessibilityState={{ disabled: !canSubmit }}
+          style={{
+            marginTop: metrics.space.xl,
+            minHeight: metrics.touch,
+            borderRadius: metrics.radius.md,
+            alignItems: "center",
+            justifyContent: "center",
+            backgroundColor: canSubmit ? colors.accent : colors.surface,
+          }}
+        >
+          <Text variant="label" style={{ color: canSubmit ? colors.onAccent : colors.inkMuted }}>
+            {busy ? t("password.changing") : t("password.submit")}
+          </Text>
+        </Pressable>
+      </KeyboardTarget>
     </Screen>
   );
 }

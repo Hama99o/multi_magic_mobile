@@ -111,7 +111,14 @@ Device: qa_phone3, Metro 3029 serving this worktree, API = #31's branch at 1ebed
 | BB5 "Qa PARITY" | server `User#fullname` is the two parts exactly as typed (mail subjects follow); the phone builds its own name from the parts too, so it is right before #31 deploys | rspec `user_spec` + mailer specs; jest `profile`. Device: typed "Qa" / "de Parity" → account sheet "Qa de Parity" |
 | AI key lending unproven | proven on device with a fake verified key in the throwaway DB (lending never calls the provider): lend to a throwaway address with 50 → "0 crédits sur 50", revoke after an Android confirm, notice mail in the dev mail file. **Found doing it:** a loan's limit could not be changed (re-lending is a no-op on the server, nothing called `setLoanLimit`) → each loan row has "Limite", which edits that address's limit | jest `accountExtras` "changing a loan's limit" (red first). Device: 50 → 20, row "0 crédits sur 20" |
 
-Found and not fixed (outside this diff): on AI keys, with the keyboard up, "Vérifier et enregistrer" sits under the keyboard (a tap there lands on the suggestion bar). In edit mode the fixed address field looks the same as an editable one.
+### Keyboard, dark, 360/800 dp — 2026-11-18 (Hello relay)
+**The form's button under the keyboard, fixed for every scrolling form.** Under SDK 57 edge to edge, `KeyboardPadding` shrinks the scroll area and nothing scrolled: the AI keys save sat under the keyboard, and the focused field too (field at 977 in a window ending at 885). `Screen` (scroll + avoidKeyboard) now scrolls, once the lift settles and whenever the content grows with the keyboard up, the nearest registered button below the focused field into view, never pushing the field off the top; with no button below, the field itself (`src/components/keyboardTarget.tsx`). `Button` registers itself; hand-built submits are wrapped in `<KeyboardTarget>` (a hook in the screen sits above Screen's context and registered nothing, which the device showed). Tests: `keyboardTarget.test.tsx` (planted red: no reveal → red), `keyboardTargets.test.ts` (every hand-built submit on a settings screen is wrapped).
+
+Device (qa_phone3, 411 dp, French), button bottom vs keyboard top, every one VISIBLE: AI keys key → save; lending limit → Partager; profile about and birth date → Enregistrer; change email password → send; change password (first and last field) → save; API key name → create; delete account password → confirm (measured, never pressed); 2FA password → confirm. After a refusal at 360 dp the save stays above the keyboard (1491 = keyboard top).
+
+Dark at 360 and 800 dp: sessions (legacy row "Appareil inconnu"), account sheet "Qa de Parity", loan row with Limite, change-limit edit mode, the DeepSeek refusal — all fit and read. Sheet: `~/Downloads/multimagic-mobile-qa/2026-11-18-keyboard-dark-sizes.jpg` (keyboard suggestion strips blurred: the emulator's clipboard showed someone else's text).
+
+Noted, not fixed: at 360 dp the loan row truncates the address ("friend.parity…"); in edit mode the fixed address field looks like an editable one. `notes/edit.tsx` has two hand-built submits (`note-link-save`, `note-more-delete-confirm`) not wrapped — the Notes branch's files.
 
 ### Found and NOT fixed here (not this branch's code)
 - BB6 French 360 dp: "Discussions" cut to "Discussio…" in the header and apps grid: shell files, owned by the app-shell branch.
@@ -121,4 +128,5 @@ Found and not fixed (outside this diff): on AI keys, with the keyboard up, "Vér
 - The two new mails' look in a real mail client (only the dev file delivery was read).
 - A concurrent confirm of the same email code.
 - BB1 and BB2 fixes on a device.
-- The 2026-11-18 fixes on iOS (the User-Agent override is only measured on Android), in dark mode, and at 360/800 dp.
+- The 2026-11-18 fixes on iOS (the User-Agent override and the keyboard scroll are only measured on Android).
+- The keyboard check at 360 and 800 dp beyond the AI keys refusal (the per-form pass ran at 411 dp).

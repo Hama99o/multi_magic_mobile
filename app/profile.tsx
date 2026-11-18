@@ -37,6 +37,7 @@ import { profileKeys } from "@/api/keys";
 import { useProfilePhoto, useSaveProfile } from "@/hooks/useAccountMutations";
 import { LinkRow } from "@/components/settings/AccountUi";
 import { birthDateProblem } from "@/lib/birthDate";
+import { KeyboardTarget } from "@/components/keyboardTarget";
 
 
 function Field({
@@ -346,35 +347,37 @@ export default function ProfileScreen() {
             </Text>
           ) : null}
 
-          <Pressable
-            testID="profile-save"
-            onPress={() => {
-              setSaved(false);
-              save.mutate({
-                firstname: firstName.trim(),
-                lastname: lastName.trim(),
-                about: about.trim(),
-                username: username.trim(),
-                birth_date: birthDate.trim(),
-              });
-            }}
-            disabled={saveOff}
-            accessibilityRole="button"
-            accessibilityLabel={t("common.save")}
-            accessibilityState={{ disabled: saveOff }}
-            style={{
-              marginTop: metrics.space.lg,
-              minHeight: metrics.touch,
-              borderRadius: metrics.radius.md,
-              alignItems: "center",
-              justifyContent: "center",
-              backgroundColor: saveOff ? colors.surface : colors.accent,
-            }}
-          >
-            <Text variant="label" style={{ color: saveOff ? colors.inkMuted : colors.onAccent }}>
-              {save.isPending ? t("common.saving") : t("common.save")}
-            </Text>
-          </Pressable>
+          <KeyboardTarget>
+            <Pressable
+              testID="profile-save"
+              onPress={() => {
+                setSaved(false);
+                save.mutate({
+                  firstname: firstName.trim(),
+                  lastname: lastName.trim(),
+                  about: about.trim(),
+                  username: username.trim(),
+                  birth_date: birthDate.trim(),
+                });
+              }}
+              disabled={saveOff}
+              accessibilityRole="button"
+              accessibilityLabel={t("common.save")}
+              accessibilityState={{ disabled: saveOff }}
+              style={{
+                marginTop: metrics.space.lg,
+                minHeight: metrics.touch,
+                borderRadius: metrics.radius.md,
+                alignItems: "center",
+                justifyContent: "center",
+                backgroundColor: saveOff ? colors.surface : colors.accent,
+              }}
+            >
+              <Text variant="label" style={{ color: saveOff ? colors.inkMuted : colors.onAccent }}>
+                {save.isPending ? t("common.saving") : t("common.save")}
+              </Text>
+            </Pressable>
+          </KeyboardTarget>
 
           {/* ── The two rows that lead elsewhere ───────────────────────────
               TheFork puts `Change Password` inside the form as a row, which is

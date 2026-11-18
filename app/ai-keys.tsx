@@ -38,6 +38,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import { KeyboardTarget } from "@/components/keyboardTarget";
 import { KeyRefused, aiKeysApi, type AiKey, type AiKeyPayload } from "@/api/aiKeys";
 import { failureMessage } from "@/api/failure";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -398,27 +399,29 @@ export default function AiKeys() {
               </Text>
             ) : null}
 
-            <Pressable
-              testID="ai-key-save"
-              onPress={() => add.mutate()}
-              disabled={!pasted.trim() || busy}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !pasted.trim() || busy }}
-              style={{
-                minHeight: metrics.touch,
-                borderRadius: metrics.radius.md,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: !pasted.trim() || busy ? colors.surface : colors.accent,
-              }}
-            >
-              <Text
-                variant="label"
-                style={{ color: !pasted.trim() || busy ? colors.inkMuted : colors.onAccent }}
+            <KeyboardTarget>
+              <Pressable
+                testID="ai-key-save"
+                onPress={() => add.mutate()}
+                disabled={!pasted.trim() || busy}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !pasted.trim() || busy }}
+                style={{
+                  minHeight: metrics.touch,
+                  borderRadius: metrics.radius.md,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: !pasted.trim() || busy ? colors.surface : colors.accent,
+                }}
               >
-                {add.isPending ? t("aiKeys.checking") : t("aiKeys.checkAndSave")}
-              </Text>
-            </Pressable>
+                <Text
+                  variant="label"
+                  style={{ color: !pasted.trim() || busy ? colors.inkMuted : colors.onAccent }}
+                >
+                  {add.isPending ? t("aiKeys.checking") : t("aiKeys.checkAndSave")}
+                </Text>
+              </Pressable>
+            </KeyboardTarget>
 
             {replacing ? (
               <Pressable

@@ -62,8 +62,10 @@
  * `duration: 0`), which measured as a 264 dp one-frame jump in the chat.
  * `KeyboardPadding` does the same arithmetic, eased. iOS keeps KAV.
  */
-import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Platform, ScrollView, View } from "react-native";
+import { useMemo, useRef, type ReactNode } from "react";
+import { Keyboard, KeyboardAvoidingView, Platform, ScrollView, TextInput, View } from "react-native";
+import { measureIn, scrollViewTo } from "@/lib/measure";
+import { KeyboardTargetContext, scrollTargetFor, type KeyboardTargets } from "./keyboardTarget";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { KeyboardPadding } from "./KeyboardPadding";
@@ -91,6 +93,43 @@ export function Screen({
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
 
+  // ── The form's button above the keyboard (`keyboardTarget.tsx`) ──────────
+  const keyboardAware = scroll && avoidKeyboard;
+  const scrollRef = useRef<ScrollView | null>(null);
+  const contentRef = useRef<View | null>(null);
+  const scrollY = useRef(0);
+  const viewport = useRef(0);
+  const settle = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const buttons = useRef(new Set<unknown>());
+  const targets = useMemo<KeyboardTargets>(
+    () => ({
+      add: (node) => {
+        buttons.current.add(node);
+        return () => buttons.current.delete(node);
+      },
+    }),
+    [],
+  );
+  const scheduleReveal = () => {
+    if (!keyboardAware || !Keyboard.isVisible()) return;
+    // The lift is eased, so the size changes every frame: act once it settles.
+    if (settle.current) clearTimeout(settle.current);
+    settle.current = setTimeout(() => void revealButton(), 300);
+  };
+  const revealButton = async () => {
+    const container = contentRef.current;
+    const field = await measureIn(TextInput.State.currentlyFocusedInput(), container);
+    const boxes = await Promise.all([...buttons.current].map((b) => measureIn(b, container)));
+    const y = scrollTargetFor({
+      scrollY: scrollY.current,
+      viewport: viewport.current,
+      margin: metrics.space.lg,
+      field,
+      buttons: boxes.filter((b): b is NonNullable<typeof b> => b !== null),
+    });
+    if (y !== null) scrollViewTo(scrollRef.current as never, y);
+  };
+
   const inner = (
     <View
       style={{
@@ -109,11 +148,25 @@ export function Screen({
 
   const body = scroll ? (
     <ScrollView
+      ref={scrollRef}
       contentContainerStyle={{ flexGrow: 1 }}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
+      scrollEventThrottle={32}
+      onScroll={(e) => {
+        scrollY.current = e.nativeEvent.contentOffset.y;
+      }}
+      onLayout={(e) => {
+        viewport.current = e.nativeEvent.layout.height;
+        scheduleReveal();
+      }}
+      // An error line under a field pushes its button down with the keyboard
+      // already up: the viewport is unchanged, the content is not.
+      onContentSizeChange={scheduleReveal}
     >
-      {inner}
+      <View ref={contentRef} collapsable={false} style={{ flexGrow: 1 }}>
+        {inner}
+      </View>
     </ScrollView>
   ) : (
     inner
@@ -141,7 +194,11 @@ export function Screen({
         paddingBottom: insets.bottom,
       }}
     >
-      {content}
+      {keyboardAware ? (
+        <KeyboardTargetContext.Provider value={targets}>{content}</KeyboardTargetContext.Provider>
+      ) : (
+        content
+      )}
     </View>
   );
 }

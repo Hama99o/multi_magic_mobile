@@ -348,6 +348,15 @@ and `src/` only.
 
 ---
 
+**A form's submit stays above the keyboard.** Under edge to edge nothing
+scrolls a field or its button into view on its own (2026-11-18: the AI keys
+save, and its field, sat under the keyboard). On a `<Screen scroll
+avoidKeyboard>`, `Button` registers itself and a submit built from a
+`Pressable` goes inside `<KeyboardTarget>` — not a hook in the screen, which
+sits above Screen's context and registers nothing
+(`src/components/keyboardTarget.tsx`). `src/__tests__/keyboardTargets.test.ts`
+fails on an unwrapped submit on a settings screen.
+
 ## Accessibility
 
 `docs/ACCESSIBILITY.md` is the audit: what was measured, what was fixed, what

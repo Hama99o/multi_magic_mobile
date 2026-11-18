@@ -118,7 +118,13 @@ Device (qa_phone3, 411 dp, French), button bottom vs keyboard top, every one VIS
 
 Dark at 360 and 800 dp: sessions (legacy row "Appareil inconnu"), account sheet "Qa de Parity", loan row with Limite, change-limit edit mode, the DeepSeek refusal — all fit and read. Sheet: `~/Downloads/multimagic-mobile-qa/2026-11-18-keyboard-dark-sizes.jpg` (keyboard suggestion strips blurred: the emulator's clipboard showed someone else's text).
 
-Noted, not fixed: at 360 dp the loan row truncates the address ("friend.parity…"); in edit mode the fixed address field looks like an editable one. `notes/edit.tsx` has two hand-built submits (`note-link-save`, `note-more-delete-confirm`) not wrapped — the Notes branch's files.
+Follow-up the same day (Hello relay), all red first:
+- **Loan row at 360 dp:** the address has its own full-width line (up to two), the status and the two actions under it. Device: "friend.parity.long.address@example.test" shown whole. (Two lines beside the actions were tried first and still cut it — "friend.parity / .long.addre…" — so the row was stacked.)
+- **Read-only address in edit mode:** `Input` with `editable={false}` has no border, the page's ground, muted text, a lock, `accessibilityState.disabled`, and wraps instead of scrolling (one line showed only ".parity.long.address@example.test"). Device: the whole address over two lines with the lock.
+- **Keyboard at 360 dp:** the same 8 forms (AI key, lending limit, profile, change email, change password, API key name, delete account — never pressed —, 2FA): every button VISIBLE above the keyboard.
+- **`notes/edit.tsx` — left to the Notes owner, not changed here.** 13 unmerged Notes branches change that file and this branch's copy already differs from main's by 273 lines, so an edit here would conflict. For them: the editor is `<Screen avoidKeyboard>` **without `scroll`** (`app/notes/edit.tsx:756`), and the reveal only runs on a scrolling Screen, so wrapping `note-link-save` and `note-more-delete-confirm` in `<KeyboardTarget>` would change nothing there. What to check instead, on a device: whether those two buttons (in the link and "more" panels) end up under the keyboard; if they do, they need the editor's own scroll or the panel lifted.
+
+Sheet: `~/Downloads/multimagic-mobile-qa/2026-11-18-360-keyboard-loan.jpg`.
 
 ### Found and NOT fixed here (not this branch's code)
 - BB6 French 360 dp: "Discussions" cut to "Discussio…" in the header and apps grid: shell files, owned by the app-shell branch.
@@ -129,4 +135,4 @@ Noted, not fixed: at 360 dp the loan row truncates the address ("friend.parity�
 - A concurrent confirm of the same email code.
 - BB1 and BB2 fixes on a device.
 - The 2026-11-18 fixes on iOS (the User-Agent override and the keyboard scroll are only measured on Android).
-- The keyboard check at 360 and 800 dp beyond the AI keys refusal (the per-form pass ran at 411 dp).
+- The per-form keyboard check at 800 dp (it ran at 411 and 360 dp).

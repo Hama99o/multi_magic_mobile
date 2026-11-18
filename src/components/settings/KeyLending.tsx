@@ -108,31 +108,34 @@ export function KeyLending({ aiKey }: { aiKey: AiKey }) {
         </Text>
       ) : (
         loans.map((loan) => (
-          <View key={loan.email} testID={`ai-key-loan-${loan.email}`} style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
-            <View style={{ flex: 1 }}>
-              <Text numberOfLines={1}>{loan.email}</Text>
-              <Text variant="caption" tone="muted">
+          <View key={loan.email} testID={`ai-key-loan-${loan.email}`} style={{ gap: metrics.space.xs }}>
+            {/* The address on its own line, full width, up to two lines: at
+                360 dp, beside the two actions, it was cut to "friend.parity…"
+                and two similar addresses read the same (device 2026-11-18). */}
+            <Text numberOfLines={2}>{loan.email}</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
+              <Text variant="caption" tone="muted" style={{ flex: 1 }}>
                 {loan.pending
                   ? t("lending.pending")
                   : loan.monthlyCreditLimit != null
                     ? t("lending.spentOf", { spent: loan.spentThisMonth, limit: loan.monthlyCreditLimit })
                     : t("lending.spent", { spent: loan.spentThisMonth })}
               </Text>
+              <RowAction
+                testID={`ai-key-loan-limit-${loan.email}`}
+                label={t("lending.changeLimit")}
+                accessibilityLabel={t("lending.changeLimitFor", { email: loan.email })}
+                onPress={() => startEditing(loan.email, loan.monthlyCreditLimit)}
+              />
+              <RowAction
+                testID={`ai-key-loan-stop-${loan.email}`}
+                label={t("lending.stop")}
+                tone="danger"
+                disabled={stop.isPending}
+                accessibilityLabel={t("lending.stopTitle", { email: loan.email })}
+                onPress={() => confirmDestructive(t("lending.stopTitle", { email: loan.email }), t("lending.stopBody"), t("lending.stop"), () => stop.mutate(loan.email))}
+              />
             </View>
-            <RowAction
-              testID={`ai-key-loan-limit-${loan.email}`}
-              label={t("lending.changeLimit")}
-              accessibilityLabel={t("lending.changeLimitFor", { email: loan.email })}
-              onPress={() => startEditing(loan.email, loan.monthlyCreditLimit)}
-            />
-            <RowAction
-              testID={`ai-key-loan-stop-${loan.email}`}
-              label={t("lending.stop")}
-              tone="danger"
-              disabled={stop.isPending}
-              accessibilityLabel={t("lending.stopTitle", { email: loan.email })}
-              onPress={() => confirmDestructive(t("lending.stopTitle", { email: loan.email }), t("lending.stopBody"), t("lending.stop"), () => stop.mutate(loan.email))}
-            />
           </View>
         ))
       )}

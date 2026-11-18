@@ -101,6 +101,29 @@ describe("changing a loan's limit", () => {
     await waitFor(() => expect(screen.getByTestId("ai-key-lend-email-gemini").props.value).toBe(""));
   });
 
+  // Device 2026-11-18: in edit mode the fixed address looked like a field you
+  // could type in.
+  it("shows the fixed address as read-only while its limit is edited", () => {
+    wrap(<KeyLending aiKey={loaned} />);
+    // The lock is decorative (hidden from screen readers, which hear "disabled").
+    const hidden = { includeHiddenElements: true };
+    expect(screen.queryByTestId("ai-key-lend-email-gemini-locked", hidden)).toBeNull();
+    fireEvent.press(screen.getByTestId("ai-key-loan-limit-a@example.test"));
+    expect(screen.getByTestId("ai-key-lend-email-gemini-locked", hidden)).toBeTruthy();
+    expect(screen.getByTestId("ai-key-lend-email-gemini").props.accessibilityState).toEqual(
+      expect.objectContaining({ disabled: true }),
+    );
+    // Device 360 dp: one line showed only ".parity.long.address@example.test".
+    expect(screen.getByTestId("ai-key-lend-email-gemini").props.multiline).toBe(true);
+  });
+
+  // Device 2026-11-18, 360 dp: the row cut the address to "friend.parity…",
+  // and two loans to similar addresses could not be told apart.
+  it("lets a long address wrap to two lines rather than cutting it", () => {
+    wrap(<KeyLending aiKey={aiKey({ sharedWith: [{ email: "friend.parity.long@example.test", pending: false, monthlyCreditLimit: 5, spentThisMonth: 1 }] })} />);
+    expect(screen.getByText("friend.parity.long@example.test").props.numberOfLines).toBe(2);
+  });
+
   it("clears the limit when left empty, and can be abandoned", async () => {
     const set = jest.spyOn(aiKeysApi, "setLoanLimit").mockResolvedValue(payload);
     wrap(<KeyLending aiKey={loaned} />);

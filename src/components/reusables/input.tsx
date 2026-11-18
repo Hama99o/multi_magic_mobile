@@ -13,7 +13,7 @@ import { forwardRef, useState } from "react";
 import {
   Pressable, TextInput, View, type TextInputProps,
 } from "react-native";
-import { Eye, EyeOff } from "@/components/icons";
+import { Eye, EyeOff, Lock } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { Text } from "./text";
 import { useTranslation } from "react-i18next";
@@ -37,6 +37,10 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
   const { t } = useTranslation();
   const [focused, setFocused] = useState(false);
   const [revealed, setRevealed] = useState(false);
+  // Shown, not typed in (an address fixed while its limit is edited): no
+  // border, the page's ground, muted text and a lock, so it does not pass for
+  // a field (device 2026-11-18).
+  const readOnly = rest.editable === false;
 
   return (
     <View style={{ gap: metrics.space.xs }}>
@@ -48,10 +52,10 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
         style={{
           flexDirection: "row",
           alignItems: "center",
-          backgroundColor: colors.surface,
+          backgroundColor: readOnly ? colors.ground : colors.surface,
           borderRadius: metrics.radius.md,
           borderWidth: 1,
-          borderColor: error ? colors.danger : focused ? colors.accent : colors.border,
+          borderColor: readOnly ? colors.ground : error ? colors.danger : focused ? colors.accent : colors.border,
           paddingHorizontal: metrics.space.md,
           minHeight: metrics.touch,
         }}
@@ -71,9 +75,14 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
             onBlur?.(e);
           }}
           {...rest}
+          accessibilityState={{ ...rest.accessibilityState, disabled: readOnly || rest.accessibilityState?.disabled }}
+          // Wraps rather than scrolls: one line showed only the tail of a long
+          // address (".parity.long.address@example.test", 360 dp).
+          multiline={readOnly || rest.multiline}
+          scrollEnabled={readOnly ? false : rest.scrollEnabled}
           style={{
             flex: 1,
-            color: colors.ink,
+            color: readOnly ? colors.inkMuted : colors.ink,
             fontSize: 16,
             // Android centres text in a taller box unless this is cleared.
             paddingVertical: metrics.space.md,
@@ -107,6 +116,11 @@ export const Input = forwardRef<TextInput, InputProps>(function Input(
             So: the box grows instead (`alignSelf: "stretch"` is free height,
             the row is already `minHeight: touch`), and the slop that remains
             points right, at the container's padding. */}
+        {readOnly ? (
+          <View testID={rest.testID ? `${rest.testID}-locked` : undefined} importantForAccessibility="no-hide-descendants" accessibilityElementsHidden>
+            <Lock size={16} color={colors.inkMuted} />
+          </View>
+        ) : null}
         {secure ? (
           <Pressable
             accessibilityRole="button"

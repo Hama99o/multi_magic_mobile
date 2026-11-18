@@ -26,6 +26,8 @@
  * suggest why. See `lib/fingerprint.ts`.
  */
 import axios, { type AxiosError, type AxiosInstance } from "axios";
+import { Platform } from "react-native";
+import Constants from "expo-constants";
 import * as SecureStore from "expo-secure-store";
 import { API_URL } from "@/config/env";
 import { getDeviceFingerprint } from "@/lib/fingerprint";
@@ -206,13 +208,22 @@ export function sessionEndReason(authorization: string, now: number = Date.now()
   }
 }
 
+/**
+ * `MultiMagic/1.2.0 (Android 34)`. Without it React Native sends okhttp's
+ * default agent, and the server listed this app's sessions as "Unknown Browser
+ * on Unknown OS" (device QA 2026-11-17); `user_agent_parsing.rb` reads this.
+ */
+export const APP_USER_AGENT = `MultiMagic/${Constants.expoConfig?.version ?? "0"} (${
+  Platform.OS === "ios" ? "iOS" : "Android"
+} ${String(Platform.Version)})`;
+
 export const http: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   // 15s, not axios's default of none. A request with no timeout is a screen
   // that never resolves, and on this app that is indistinguishable from the
   // assistant simply thinking for a long time — which it legitimately does.
   timeout: 15000,
-  headers: { "Content-Type": "application/json" },
+  headers: { "Content-Type": "application/json", "User-Agent": APP_USER_AGENT },
 });
 
 http.interceptors.request.use(async (config) => {

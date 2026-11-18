@@ -18,6 +18,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { TOKENS } from "@/theme/tokens";
 import { useThemeStore, type ThemeChoice } from "@/stores/theme.store";
+import { useChooseTheme } from "@/hooks/useChooseTheme";
 import { useTranslation } from "react-i18next";
 
 const CHOICES: { key: ThemeChoice; labelKey: string }[] = [
@@ -83,7 +84,8 @@ export function ThemeRow() {
   const metrics = useMetrics();
   const { t } = useTranslation();
   const choice = useThemeStore((s) => s.choice);
-  const setChoice = useThemeStore((s) => s.setChoice);
+  // Saved to the account as well, as the web does (useChooseTheme.ts).
+  const setChoice = useChooseTheme();
 
   return (
     <View style={{ gap: metrics.space.sm }} testID="theme-row">

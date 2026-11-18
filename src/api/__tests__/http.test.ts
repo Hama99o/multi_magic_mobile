@@ -141,6 +141,17 @@ describe("the request interceptor", () => {
   });
 });
 
+// Device QA 2026-11-17: the app's sessions listed as "Unknown Browser on
+// Unknown OS", because React Native sent okhttp's default agent. The server
+// names the app from this (`user_agent_parsing.rb`, #31).
+describe("the app's name on every request", () => {
+  it("says it is MultiMagic, its version and its system", async () => {
+    mock.onGet("/api/v1/x").reply(200, {});
+    await http.get("/api/v1/x");
+    expect(mock.history.get[0].headers?.["User-Agent"]).toMatch(/^MultiMagic\/\d[\w.-]* \((Android|iOS) [^)]+\)$/);
+  });
+});
+
 describe("the 401 path", () => {
   it("clears the token BEFORE telling anyone, so no retry resends it", async () => {
     await setToken("Bearer stale");

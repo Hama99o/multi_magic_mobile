@@ -142,6 +142,13 @@ describe("the current user", () => {
     );
   });
 
+  // Device QA 2026-11-17: "Qa Parity" read "Qa PARITY" — the server recased
+  // `fullname`. The name is shown exactly as it was typed.
+  it("shows the name exactly as it was typed, not the server's recased one", () => {
+    const p = parseProfile(user({ firstname: "Qa", lastname: "de Parity", fullname: "Qa DE PARITY" }));
+    expect(p.fullName).toBe("Qa de Parity");
+  });
+
   it("tolerates a user with no name and no photo", () => {
     const bare = parseProfile(
       user({ firstname: null, lastname: null, fullname: null, avatar: null }),
@@ -177,11 +184,12 @@ describe("the photo", () => {
 });
 
 describe("the password rule", () => {
-  it("is six characters, and there is only one of them", () => {
-    // `config/initializers/devise.rb:185` — `config.password_length = 6..128`.
+  it("is eight characters, and there is only one of them", () => {
+    // multi_magic `config/initializers/devise.rb` — `config.password_length = 8..128`
+    // (PR #31, d4d8a0e6: the server was 6 and the web 8; one rule, the web's).
     // No uppercase, digit or symbol rule exists server-side, so the screen must
     // not render one. This is the test that would fail if somebody added
     // "must contain a number" to the UI.
-    expect(PASSWORD_MIN_LENGTH).toBe(6);
+    expect(PASSWORD_MIN_LENGTH).toBe(8);
   });
 });

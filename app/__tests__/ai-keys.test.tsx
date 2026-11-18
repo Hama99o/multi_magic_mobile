@@ -32,6 +32,7 @@ jest.mock("expo-router", () => ({
 }));
 
 /* eslint-disable import/first */
+import i18n from "@/i18n";
 import { KeyRefused, aiKeysApi, type AiKeyPayload } from "@/api/aiKeys";
 import type { BorrowedKey } from "@/api/aiKeys";
 import AiKeys from "../ai-keys";
@@ -71,26 +72,73 @@ async function pasteAndSave(key = "sk-whatever") {
 }
 
 describe("a provider refusing a key", () => {
-  it("says what the PROVIDER said, and not our sentence", async () => {
+  // Device QA 2026-11-17: a French screen showed "the server responded with
+  // status 400 for POST https://…", the HTTP library's words, in English. The
+  // server now sends a code; the screen says it in the reader's language.
+  const RAW = "the server responded with status 400 for POST https://generativelanguage.example/v1/chat";
+
+  afterEach(() => i18n.changeLanguage("en"));
+
+  it("says why in the reader's words, never the provider's raw text", async () => {
     jest.spyOn(aiKeysApi, "list").mockResolvedValue(payload());
-    jest
-      .spyOn(aiKeysApi, "add")
-      .mockRejectedValue(new KeyRefused("Incorrect API key provided: sk-what***."));
+    jest.spyOn(aiKeysApi, "add").mockRejectedValue(new KeyRefused(RAW, "invalid_key"));
 
     renderScreen();
     await pasteAndSave();
 
-    await waitFor(() =>
-      expect(screen.getByText("Incorrect API key provided: sk-what***.")).toBeTruthy(),
+    expect(await screen.findByTestId("ai-key-refused")).toHaveTextContent(
+      "OpenAI did not accept this key. Check that you copied all of it.",
     );
-    // Not the generic line. The person can act on the provider's words and
-    // cannot act on ours.
+    expect(screen.queryByText(new RegExp("status 400|https"))).toBeNull();
+    // Not the generic transport line: the advice differs.
     expect(screen.queryByTestId("ai-keys-error")).toBeNull();
+  });
+
+  it("says it in French on a French phone", async () => {
+    await i18n.changeLanguage("fr");
+    jest.spyOn(aiKeysApi, "list").mockResolvedValue(payload());
+    jest.spyOn(aiKeysApi, "add").mockRejectedValue(new KeyRefused(RAW, "no_credit"));
+
+    renderScreen();
+    await pasteAndSave();
+
+    expect(await screen.findByTestId("ai-key-refused")).toHaveTextContent(
+      "OpenAI a accepté cette clé, mais le compte associé n’a plus de crédit.",
+    );
+  });
+
+  it("gives a plain sentence for a refusal it has no code for", async () => {
+    jest.spyOn(aiKeysApi, "list").mockResolvedValue(payload());
+    jest.spyOn(aiKeysApi, "add").mockRejectedValue(new KeyRefused(RAW, "refused"));
+
+    renderScreen();
+    await pasteAndSave();
+
+    expect(await screen.findByTestId("ai-key-refused")).toHaveTextContent(
+      "OpenAI refused this key. Try again, or use another key.",
+    );
+  });
+
+  it("lists a key refused later in the reader's words, not the stored complaint", async () => {
+    jest.spyOn(aiKeysApi, "list").mockResolvedValue(
+      payload({
+        keys: [
+          { id: 9, provider: "gemini", masked: "••••4f2a", active: true, verified: false, verifiedAt: null, verificationError: RAW },
+        ],
+      }),
+    );
+
+    renderScreen();
+
+    expect(
+      await screen.findByText("Gemini refused this key the last time it was used. Replace it with a working key."),
+    ).toBeTruthy();
+    expect(screen.queryByText(RAW)).toBeNull();
   });
 
   it("KEEPS what was pasted, so a rejected key can be corrected rather than retyped", async () => {
     jest.spyOn(aiKeysApi, "list").mockResolvedValue(payload());
-    jest.spyOn(aiKeysApi, "add").mockRejectedValue(new KeyRefused("Incorrect API key."));
+    jest.spyOn(aiKeysApi, "add").mockRejectedValue(new KeyRefused("Incorrect API key.", "invalid_key"));
 
     renderScreen();
     await pasteAndSave("sk-almost-right");

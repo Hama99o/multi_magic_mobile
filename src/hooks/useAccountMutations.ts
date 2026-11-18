@@ -11,7 +11,7 @@
  * accept it first; its refusal is shown in its own words).
  */
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { profileApi, type Profile, type ProfileChanges } from "@/api/profile";
+import { profileApi, type Profile, type ProfileChanges, type ProfileImage } from "@/api/profile";
 import { aiKeysApi, type AiKeyPayload } from "@/api/aiKeys";
 import { profileKeys } from "@/api/keys";
 
@@ -31,6 +31,8 @@ export function useSaveProfile(profileId: number | null, opts: { onSaved?: (p: P
           lastName,
           fullName: [firstName, lastName].filter(Boolean).join(" ") || before.fullName,
           about: changes.about ?? before.about,
+          username: changes.username ?? before.username,
+          birthDate: changes.birth_date === undefined ? before.birthDate : changes.birth_date || null,
         });
       }
       return { before };
@@ -47,19 +49,23 @@ export function useSaveProfile(profileId: number | null, opts: { onSaved?: (p: P
 }
 
 /** The photo: the server's answer, no guess. */
-export function useProfilePhoto(profileId: number | null, opts: { onSaved?: (p: Profile) => void; onError?: (e: unknown) => void } = {}) {
+export function useProfilePhoto(
+  profileId: number | null,
+  opts: { onSaved?: (p: Profile) => void; onError?: (e: unknown) => void } = {},
+  image: ProfileImage = "photo",
+) {
   const client = useQueryClient();
   const done = (saved: Profile) => {
     client.setQueryData(profileKeys.me(), saved);
     opts.onSaved?.(saved);
   };
   const set = useMutation({
-    mutationFn: (photo: Parameters<typeof profileApi.uploadPhoto>[1]) => profileApi.uploadPhoto(profileId!, photo),
+    mutationFn: (photo: Parameters<typeof profileApi.uploadPhoto>[1]) => profileApi.uploadPhoto(profileId!, photo, image),
     onSuccess: done,
     onError: (e) => opts.onError?.(e),
   });
   const clear = useMutation({
-    mutationFn: () => profileApi.removePhoto(profileId!),
+    mutationFn: () => profileApi.removePhoto(profileId!, image),
     onSuccess: done,
     onError: (e) => opts.onError?.(e),
   });

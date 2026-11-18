@@ -32,18 +32,48 @@ import { useState } from "react";
 import { Alert, Pressable, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
+import type { TFunction } from "i18next";
 import { Check, ChevronLeft, KeyRound, Trash2 } from "@/components/icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import { KeyboardTarget } from "@/components/keyboardTarget";
 import { KeyRefused, aiKeysApi, type AiKey, type AiKeyPayload } from "@/api/aiKeys";
 import { failureMessage } from "@/api/failure";
 import { LoadFailure } from "@/components/LoadFailure";
 import { BorrowedKeyRow } from "@/components/settings/BorrowedKeyRow";
+import { AiUsagePanel } from "@/components/settings/AiUsagePanel";
+import { KeyLending } from "@/components/settings/KeyLending";
 import { MorningBriefRow } from "@/components/settings/MorningBriefRow";
 import { profileKeys } from "@/api/keys";
 import { useActivateAiKey, useRemoveAiKey } from "@/hooks/useAccountMutations";
+
+/** Brand names, which no language translates. */
+const BRANDS: Record<string, string> = { gemini: "Gemini", deepseek: "DeepSeek", openai: "OpenAI" };
+const brand = (provider: string) => BRANDS[provider] ?? provider;
+
+/** A refusal's code, worded. One key per code, spelled out so the key check
+ *  can see each one called. */
+function refusalText(code: string, provider: string, t: TFunction): string {
+  const p = { provider: brand(provider) };
+  switch (code) {
+    case "invalid_key":
+      return t("aiKeys.refusedInvalid", p);
+    case "no_credit":
+      return t("aiKeys.refusedNoCredit", p);
+    case "rate_limited":
+      return t("aiKeys.refusedRateLimited", p);
+    case "unreachable":
+      return t("aiKeys.refusedUnreachable", p);
+    case "unsupported_provider":
+      return t("aiKeys.refusedUnsupported", p);
+    case "blank_key":
+      return t("aiKeys.refusedBlank");
+    default:
+      return t("aiKeys.refusedGeneric", p);
+  }
+}
 
 export default function AiKeys() {
   const colors = useColors();
@@ -73,8 +103,9 @@ export default function AiKeys() {
 
   const onError = (e: unknown) => {
     if (e instanceof KeyRefused) {
-      // The provider's own words. Not ours.
-      setRefusal(e.message);
+      // Ours, in the reader's language, from the code: never the provider's
+      // raw text (`KeyRefused`).
+      setRefusal(e.code ? refusalText(e.code, replacing?.provider ?? provider ?? "", t) : e.message);
       return;
     }
     setFailure(failureMessage(e, t("aiKeys.failed")));
@@ -191,7 +222,7 @@ export default function AiKeys() {
 
               {key.verificationError ? (
                 <Text variant="caption" tone="danger">
-                  {key.verificationError}
+                  {t("aiKeys.rejectedLater", { provider: brand(key.provider) })}
                 </Text>
               ) : null}
 
@@ -256,6 +287,9 @@ export default function AiKeys() {
                   </Text>
                 </Pressable>
               </View>
+
+              {/* Lend it, as on the web (KeySharing.tsx). */}
+              <KeyLending aiKey={key} />
             </View>
           ))}
         </View>
@@ -278,6 +312,10 @@ export default function AiKeys() {
 
       {/* ── The morning brief, beside the keys as on the web ────────────── */}
       <MorningBriefRow />
+
+      {/* ── What it cost, by period (AiUsagePanel.tsx on the web) ───────── */}
+      {/* Only beside an answer: offline, one "could not reach" is enough. */}
+      {data ? <AiUsagePanel /> : null}
 
       {/* ── Adding or replacing one ────────────────────────────────────── */}
       <View style={{ marginTop: metrics.space.xl, gap: metrics.space.md }}>
@@ -361,27 +399,29 @@ export default function AiKeys() {
               </Text>
             ) : null}
 
-            <Pressable
-              testID="ai-key-save"
-              onPress={() => add.mutate()}
-              disabled={!pasted.trim() || busy}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: !pasted.trim() || busy }}
-              style={{
-                minHeight: metrics.touch,
-                borderRadius: metrics.radius.md,
-                alignItems: "center",
-                justifyContent: "center",
-                backgroundColor: !pasted.trim() || busy ? colors.surface : colors.accent,
-              }}
-            >
-              <Text
-                variant="label"
-                style={{ color: !pasted.trim() || busy ? colors.inkMuted : colors.onAccent }}
+            <KeyboardTarget>
+              <Pressable
+                testID="ai-key-save"
+                onPress={() => add.mutate()}
+                disabled={!pasted.trim() || busy}
+                accessibilityRole="button"
+                accessibilityState={{ disabled: !pasted.trim() || busy }}
+                style={{
+                  minHeight: metrics.touch,
+                  borderRadius: metrics.radius.md,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  backgroundColor: !pasted.trim() || busy ? colors.surface : colors.accent,
+                }}
               >
-                {add.isPending ? t("aiKeys.checking") : t("aiKeys.checkAndSave")}
-              </Text>
-            </Pressable>
+                <Text
+                  variant="label"
+                  style={{ color: !pasted.trim() || busy ? colors.inkMuted : colors.onAccent }}
+                >
+                  {add.isPending ? t("aiKeys.checking") : t("aiKeys.checkAndSave")}
+                </Text>
+              </Pressable>
+            </KeyboardTarget>
 
             {replacing ? (
               <Pressable

@@ -1,3 +1,4 @@
+import { accountFr } from "./account/fr";
 import { financeFr } from "./finance/fr";
 import { loansFr } from "./finance/loans.fr";
 import { manageFr } from "./finance/manage.fr";
@@ -380,7 +381,6 @@ export const fr: Translations = {
     about: "À propos",
     aboutPlaceholder: "Une ligne à votre sujet",
     email: "E-mail",
-    emailLocked: "C’est l’e-mail avec lequel vous vous connectez. Il ne peut pas encore être changé dans l’app.",
     changePassword: "Changer le mot de passe",
     yourAiKey: "Votre clé de fournisseur IA",
     safezonePin: "Code SafeZone",
@@ -411,6 +411,14 @@ export const fr: Translations = {
   },
 
   aiKeys: {
+    refusedInvalid: "{{provider}} n’a pas accepté cette clé. Vérifiez que vous l’avez copiée en entier.",
+    refusedNoCredit: "{{provider}} a accepté cette clé, mais le compte associé n’a plus de crédit.",
+    refusedRateLimited: "{{provider}} limite cette clé pour le moment. Réessayez dans quelques minutes.",
+    refusedUnreachable: "Impossible de joindre {{provider}}. Vérifiez votre connexion et réessayez.",
+    refusedUnsupported: "Vous ne pouvez pas ajouter de clé pour {{provider}}.",
+    refusedBlank: "Collez d’abord une clé.",
+    refusedGeneric: "{{provider}} a refusé cette clé. Réessayez, ou utilisez une autre clé.",
+    rejectedLater: "{{provider}} a refusé cette clé lors de sa dernière utilisation. Remplacez-la par une clé valide.",
     briefTitle: "Point du matin",
     briefHint:
       "Une notification à 8 h, heure locale : les événements du jour, les anniversaires de la semaine, les prêts en retard, les cartes qui expirent et toute dépense bien au-dessus de l’habitude. Rien les jours calmes.",
@@ -1905,4 +1913,6 @@ export const fr: Translations = {
       noPreview: "Pas d’aperçu pour ce type. Partagez-le pour l’ouvrir dans une autre app.",
     },
   },
+  // Security, email change, API keys, Connect Claude, followers, usage, lending: ./account/.
+  ...accountFr,
 };

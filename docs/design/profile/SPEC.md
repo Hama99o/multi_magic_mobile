@@ -120,9 +120,14 @@ because you never saw either copy.** A second field costs one line.
 ### 2.3 · NO RULE CHECKLIST — because we would be inventing the rules
 
 My BMW ticks five rules live; Origin lists them. Both look reassuring and both
-would be **wrong here**: `config/initializers/devise.rb:185` is
-`config.password_length = 6..128` and that is the **only** rule this server
+would be **wrong here**: `config/initializers/devise.rb` is
+`config.password_length = 8..128` and that is the **only** rule this server
 enforces. No uppercase requirement, no digit, no special character.
+
+*2026-11-17: this said `6..128`. The server took 6 while the web's forms asked
+for 8; decided (relayed by the supervisor session) that the server is the one
+source of truth and, where server and web disagree, the minimum is 8. The
+server moved to 8 in multi_magic PR #31 (d4d8a0e6) and the phone follows.*
 
 Rendering those five would reject passwords the server would happily accept —
 a client inventing a policy the backend does not have. **So one line states the

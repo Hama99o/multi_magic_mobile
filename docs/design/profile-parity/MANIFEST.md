@@ -136,3 +136,10 @@ Sheet: `~/Downloads/multimagic-mobile-qa/2026-11-18-360-keyboard-loan.jpg`.
 - BB1 and BB2 fixes on a device.
 - The 2026-11-18 fixes on iOS (the User-Agent override and the keyboard scroll are only measured on Android).
 - The per-form keyboard check at 800 dp (it ran at 411 and 360 dp).
+
+### For the Finance owner: the `financeApp.test.tsx` flake (found 2026-11-18, not fixed here)
+- **Test:** "the entry sheet › adds an expense: amount on the keypad, a name, a subcategory (its category comes too), today". Fails about 1 run in 2 with `--randomize`; `--seed=-1051049791` reproduces it every time. Error: `finance-entry-amount-text` expected "€12.5", received "$12.5".
+- **Cause: shared state between tests, a currency default.** `useLastCurrency` (`src/screens/finance/lastCurrency.ts`, SPEC B7) keeps the last currency in AsyncStorage under `finance_last_currency`. The jest AsyncStorage mock (`src/__tests__/setup.ts:91`) is in memory for the whole file. When "switches to an income and picks another currency" (it saves in USD) runs first, the next new entry starts in dollars. The app is right; the suite's `beforeEach` never resets that key. It showed up once in a full run because file order is usually stable.
+- **Fix (proven locally, then reverted; Finance code, and `feat/todo-finance-apps` has 2 unmerged commits on these files):** in the `beforeEach` of `financeApp.test.tsx`, add
+  `const storage = require("@react-native-async-storage/async-storage"); await (storage.default ?? storage).removeItem("finance_last_currency");`
+  (the mock exports its functions directly, so a bare `.default` is undefined). With it: the failing seed passes, and 0 of 10 random orders fail.

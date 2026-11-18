@@ -31,6 +31,9 @@ jest.mock("@/screens/notes/reminderNotifications", () => ({
     mockTap = open;
     return () => undefined;
   },
+  // Task reminders (src/screens/todos/reminders.ts): asserted in todoApp.test.
+  resyncTodoReminders: async () => undefined,
+  onTodoReminderTap: () => () => undefined,
 }));
 jest.mock("expo-router", () => ({
   // `Stack.Screen` too: the root declares the assistant as a modal.

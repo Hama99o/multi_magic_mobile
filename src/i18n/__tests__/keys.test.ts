@@ -162,10 +162,45 @@ const COMPOSED = [
   ...["credit_card", "debit_card"].map((v) => `safezone.cardTypes.${v}`),
   // A note's share roles (`NoteApp::Share` enum): t(`notes.share.roles.${role}`) (ShareSheet.tsx).
   ...["viewer", "contributor", "administrator"].map((v) => `notes.share.roles.${v}`),
+  // Todo (app/todos, src/screens/todos): the server's priority and frequency
+  // enums (`TodoApp::Todo`, `TodoApp::Template`) and the three due views.
+  ...["none", "low", "medium", "high"].map((v) => `todos.priority.${v}`),
+  ...["none", "daily", "weekly", "monthly"].map((v) => `todos.frequency.${v}`),
+  ...["daily", "weekly", "monthly"].map((v) => `todos.repeatEvery.${v}`),
+  ...["today", "upcoming", "overdue"].flatMap((v) => [`todos.views.${v}`, `todos.emptyView.${v}`]),
+  // Finance: the five tabs (app/finance/index.tsx) and the Help sheet's sections (HelpSheet.tsx).
+  ...["overview", "expenses", "income", "loans", "budgets"].map((v) => `finance.tabs.${v}`),
+  ...["overview", "expenses", "recurring", "income", "loans", "budgets", "reports", "categories"].flatMap((v) => [`finance.help.${v}.title`, `finance.help.${v}.body`]),
 ];
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
 const PLURAL = new Set([
+  "finance.ledger.entries",
+  "finance.pending.title",
+  "finance.overview.expenseCount",
+  "finance.overview.active",
+  "finance.loans.activeCount",
+  "finance.manage.recurring.count",
+  "finance.manage.recurring.everyDay",
+  "finance.manage.recurring.everyWeek",
+  "finance.manage.recurring.everyMonth",
+  "finance.manage.recurring.everyYear",
+  "finance.manage.recurring.unitDay",
+  "finance.manage.recurring.unitWeek",
+  "finance.manage.recurring.unitMonth",
+  "finance.manage.recurring.unitYear",
+  "finance.manage.categories.subCount",
+  "finance.manage.categories.deleteBody",
+  "todos.overdueCount",
+  "todos.more",
+  "todos.doneCount",
+  "todos.clearBody",
+  "todos.deleteListBody",
+  "todos.taskCount",
+  "todos.templateItemsHint",
+  "todos.repeatEvery.daily",
+  "todos.repeatEvery.weekly",
+  "todos.repeatEvery.monthly",
   "pages.trash.deleteManyTitle",
   "safezone.health.reusedAcross",
   "shareDoor.unreadableTitle",

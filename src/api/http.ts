@@ -303,7 +303,28 @@ export function apiErrorMessage(error: unknown): string | null {
     const said = record.message.filter((line): line is string => typeof line === "string" && Boolean(line.trim()) && !isPolicyText(line));
     if (said.length) return said.join("\n");
   }
-  return lines[0] ?? null;
+  if (lines[0]) return lines[0];
+  return validationHash(record as Record<string, unknown>);
+}
+
+/**
+ * RAILS' BARE VALIDATION HASH: `render json: record.errors` (finance budgets
+ * and recurring rules) answers `{ tag_id: ["has already been taken"] }`, the
+ * field and its messages with no wrapping key. Said as Rails' own
+ * `full_messages` would ("Tag has already been taken"). Only an object whose
+ * EVERY value is a list of sentences counts, so a record that happens to come
+ * back on an error is never read as one.
+ */
+function validationHash(record: Record<string, unknown>): string | null {
+  // `error` / `errors` / `message` / `status` already had their reading above.
+  if (["error", "errors", "message", "status"].some((k) => k in record)) return null;
+  const entries = Object.entries(record);
+  if (!entries.length || !entries.every(([, v]) => Array.isArray(v) && v.length > 0 && v.every((m) => typeof m === "string" && m.trim()))) return null;
+  const field = (key: string) => {
+    const words = key.replace(/_id$/, "").replace(/_/g, " ").trim();
+    return words.charAt(0).toUpperCase() + words.slice(1);
+  };
+  return entries.flatMap(([k, v]) => (v as string[]).map((m) => `${field(k)} ${m}`)).join("\n");
 }
 
 /**

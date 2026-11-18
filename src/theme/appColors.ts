@@ -7,17 +7,22 @@
  *   pink gradient), Chats pink, Notifications orange, Calendar blue, Contacts
  *   green, SafeZone purple, Conversations indigo (the one colour not in the
  *   icon: nine apps, eight squares).
+ * Todo lime and Finance gold (2026-11-16) are two more additions, like the
+ *   indigo: "no two share one" is his rule (appColors.test.ts). Lime for a ticked list, gold for money; both
+ *   clear of the icon's green, orange and yellow by hue and by lightness.
  * `tileColors` gives a tile's surface (the colour faintly over the page), its
  * solid badge and the glyph on it; appColors.test.ts checks 4.5:1 for the text
  * and 3:1 for the glyph, in both schemes.
  */
 import { CATEGORY_COLORS, TOKENS } from "./tokens";
 
-export const HOME_APPS = ["pages", "notes", "assistant", "chats", "notifications", "calendar", "contacts", "safezone", "conversations"] as const;
+export const HOME_APPS = ["pages", "notes", "assistant", "chats", "notifications", "calendar", "contacts", "safezone", "conversations", "todos", "finance"] as const;
 export type HomeApp = (typeof HOME_APPS)[number];
 
 const [BLUE, GREEN, ORANGE, PINK, PURPLE, TEAL, YELLOW, CORAL] = CATEGORY_COLORS;
 export const INDIGO = "#8b93e0";
+export const LIME = "#a7c957";
+export const GOLD = "#c9a227";
 
 export const APP_COLORS: Record<HomeApp, string> = {
   pages: TEAL,
@@ -29,6 +34,8 @@ export const APP_COLORS: Record<HomeApp, string> = {
   contacts: GREEN,
   safezone: PURPLE,
   conversations: INDIGO,
+  todos: LIME,
+  finance: GOLD,
 };
 
 /** The Assistant's badge: a gradient between two of the icon's colours. */

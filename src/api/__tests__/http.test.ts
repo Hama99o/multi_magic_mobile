@@ -416,6 +416,16 @@ describe("the server's error sentence", () => {
     expect(apiErrorMessage(refusal({ message: ["Not allowed to update? this"] }))).toBeNull();
   });
 
+  it("reads Rails' bare validation hash, as Rails' own full messages would say it", () => {
+    // `render json: record.errors, status: :unprocessable_content` (finance
+    // budgets, recurring rules): field -> messages, no wrapping key. Read as
+    // nothing, a duplicate budget said only "That did not save".
+    expect(apiErrorMessage(refusal({ tag_id: ["has already been taken"] }))).toBe("Tag has already been taken");
+    expect(apiErrorMessage(refusal({ amount: ["must be greater than 0"], start_date: ["can't be blank"] }))).toBe("Amount must be greater than 0\nStart date can't be blank");
+    // Anything else shaped like an object is still not a reason.
+    expect(apiErrorMessage(refusal({ id: 3, name: "x" }))).toBeNull();
+  });
+
   it("reads the singular `error`", () => {
     expect(apiErrorMessage(refusal({ error: "Password is incorrect" }))).toBe("Password is incorrect");
   });

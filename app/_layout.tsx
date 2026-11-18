@@ -32,7 +32,9 @@ import { OpeningAnimation } from "@/components/OpeningAnimation";
 import { ShareIntentProvider } from "@/lib/shareIntent";
 import { ShareIntentBridge } from "@/screens/pages/ShareIntentBridge";
 import { useUploads } from "@/stores/uploads.store";
-import { onReminderTap, resyncReminders } from "@/screens/notes/reminderNotifications";
+import { onReminderTap, onTodoReminderTap, resyncReminders, resyncTodoReminders } from "@/screens/notes/reminderNotifications";
+import { todoKeys } from "@/api/keys";
+import { todosApi } from "@/api/todos";
 import { NOTES_EDITOR_ENABLED } from "@/config/features";
 
 void SplashScreen.preventAutoHideAsync();
@@ -140,12 +142,24 @@ export default function RootLayout() {
    * the server's reminders; a tapped reminder opens its note.
    */
   useEffect(() => {
-    const sync = () => void resyncReminders().catch(() => undefined);
+    const sync = () => {
+      void resyncReminders().catch(() => undefined);
+      // Task reminders: the pending tasks through the cache (todoKeys.pending,
+      // the Today view's own query), then this phone's todo-* schedule.
+      void queryClient
+        .fetchQuery({ queryKey: todoKeys.pending(), queryFn: todosApi.pending })
+        .then(resyncTodoReminders)
+        .catch(() => undefined);
+    };
     if (useAuthStore.getState().status === "signedIn") sync();
     return useAuthStore.subscribe((state, previous) => {
       if (state.status === "signedIn" && previous.status !== "signedIn") sync();
     });
   }, []);
+  useEffect(
+    () => onTodoReminderTap(({ todoId, groupId }) => router.push({ pathname: "/todos/list", params: { id: String(groupId), task: String(todoId) } })),
+    [],
+  );
   useEffect(
     () => onReminderTap((noteId) => router.push({ pathname: NOTES_EDITOR_ENABLED ? "/notes/edit" : "/notes/note", params: { id: String(noteId) } })),
     [],
@@ -183,6 +197,10 @@ export default function RootLayout() {
               goes back down on Save or Cancel (Apple Invites, Saturn). */}
           <Stack.Screen name="calendar/edit" options={{ presentation: "modal" }} />
           <Stack.Screen name="contacts/edit" options={{ presentation: "modal" }} />
+          <Stack.Screen name="todos/template" options={{ presentation: "modal" }} />
+          <Stack.Screen name="finance/entry" options={{ presentation: "modal" }} />
+          <Stack.Screen name="finance/loan-edit" options={{ presentation: "modal" }} />
+          <Stack.Screen name="finance/recurring-edit" options={{ presentation: "modal" }} />
         </Stack>
         </OfflineBanner>
         {opening ? <OpeningAnimation ground={TOKENS[scheme].ground} onDone={endOpening} /> : null}

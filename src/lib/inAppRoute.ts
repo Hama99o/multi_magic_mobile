@@ -25,7 +25,8 @@
  * people, so `note`, `contact`, `calendar_event`, `conversation`, `page_space`
  * and `page_node` open those screens (audit P1 #13, 2026-11-16). The record's
  * id is read from the link's `path`, whose shape `frontend_routes.rb` owns.
- * `todos`, `expenses`, `incomes`, `loan`, the flow and table keys still return
+ * `todos` and `todo_group` open the Todo app (2026-11-16).
+ * `expenses`, `incomes`, `loan`, the flow and table keys still return
  * null: this app has no screen for them, so they open the preview sheet and
  * from there the web. **Adding a key here is a claim that this app has that
  * screen.**
@@ -54,6 +55,7 @@ const SCREENS = {
   ai: "/chat",
   notes: "/notes",
   contacts: "/contacts",
+  todos: "/todos",
 } as const satisfies Record<string, AppRoute>;
 
 /** Keys whose record is read from the path; the list screen when the path has no id. */
@@ -64,6 +66,7 @@ const BY_PATH: Record<string, AppRoute> = {
   conversation: "/chats",
   page_space: "/pages",
   page_node: "/pages",
+  todo_group: "/todos",
 };
 
 const DIGITS = /^\d+$/;
@@ -120,6 +123,13 @@ export function routeForWebPath(path: string | null | undefined, label?: string 
     if (!query.has("contact")) return "/contacts";
     const contact = id("contact");
     return contact ? { pathname: "/contacts/contact", params: { id: contact } } : null;
+  }
+  if (pathname === "/todos") {
+    if (!query.has("group")) return "/todos";
+    const group = id("group");
+    if (!group) return null;
+    const task = id("task");
+    return { pathname: "/todos/list", params: task ? { id: group, task } : { id: group } };
   }
   if (pathname === "/profile/me/api-keys") return "/ai-keys";
   if (pathname === "/ai") return "/chat";

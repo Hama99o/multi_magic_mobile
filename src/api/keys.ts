@@ -116,3 +116,53 @@ export const pagesKeys = {
   shares: <S extends number, N extends number | null>(spaceId: S, nodeId: N) => ["pages", "sharing", spaceId, nodeId, "people"] as const,
   shareLinks: <S extends number, N extends number | null>(spaceId: S, nodeId: N) => ["pages", "sharing", spaceId, nodeId, "links"] as const,
 };
+
+export const todoKeys = {
+  all: ["todos"] as const,
+  /** Every page of every search of the lists, as one prefix (a write can change any of them). */
+  lists: () => ["todos", "lists"] as const,
+  /** The lists for one search term ("" = all), paged (useInfiniteQuery). */
+  listSearch: <Q extends string>(term: Q) => ["todos", "lists", term] as const,
+  /** One list with every task (show). */
+  group: <G extends number>(groupId: G) => ["todos", "group", groupId] as const,
+  templates: () => ["todos", "templates"] as const,
+  /** Every pending task across the lists (Today / Upcoming / Overdue). */
+  pending: () => ["todos", "pending"] as const,
+  /** Every task search's results, as one prefix. */
+  taskSearches: () => ["todos", "taskSearch"] as const,
+  /** Tasks matching a search term. */
+  taskSearch: <Q extends string>(term: Q) => ["todos", "taskSearch", term] as const,
+};
+
+/**
+ * Finance. Nearly every write moves several numbers at once (a new expense
+ * changes its list, the month's totals, the charts and the budgets), so a
+ * write settles by invalidating `all`; the optimistic part names the lists
+ * it edits by their prefixes.
+ */
+export const financeKeys = {
+  all: ["finance"] as const,
+  expenseLists: () => ["finance", "expenses"] as const,
+  expenses: <Q extends string, T extends number | null, Y extends number, M extends number, O extends boolean>(search: Q, tagId: T, year: Y, month: M, oneTime: O) =>
+    ["finance", "expenses", search, tagId, year, month, oneTime] as const,
+  incomeLists: () => ["finance", "incomes"] as const,
+  incomes: <Q extends string, T extends number | null, Y extends number, M extends number>(search: Q, tagId: T, year: Y, month: M) => ["finance", "incomes", search, tagId, year, month] as const,
+  pendingIncomes: () => ["finance", "pendingIncomes"] as const,
+  /** One expense or income, for its detail and its edit form. */
+  entry: <K extends "expense" | "income", I extends number>(kind: K, entryId: I) => ["finance", "entry", kind, entryId] as const,
+  loanLists: () => ["finance", "loans"] as const,
+  loans: <P extends boolean, L extends string, Q extends string, T extends number | null>(paid: P, type: L, search: Q, tagId: T) => ["finance", "loans", paid, type, search, tagId] as const,
+  loan: <I extends number>(loanId: I) => ["finance", "loan", loanId] as const,
+  outstanding: () => ["finance", "outstanding"] as const,
+  /** The first page of a period's expenses: its count and the latest rows (Overview). */
+  expenseGlance: <Y extends number, M extends number>(year: Y, month: M) => ["finance", "expenseGlance", year, month] as const,
+  budgets: () => ["finance", "budgets"] as const,
+  recurring: <K extends "expense" | "income">(kind: K) => ["finance", "recurring", kind] as const,
+  tags: () => ["finance", "tags"] as const,
+  byCategory: <Y extends number, M extends number>(year: Y, month: M) => ["finance", "byCategory", year, month] as const,
+  bySubcategory: <T extends number, Y extends number, M extends number>(tagId: T, year: Y, month: M) => ["finance", "bySubcategory", tagId, year, month] as const,
+  overTime: <K extends string, C extends string>(kind: K, currency: C) => ["finance", "overTime", kind, currency] as const,
+  summary: <Y extends number, M extends number>(year: Y, month: M) => ["finance", "summary", year, month] as const,
+  cashFlow: <C extends string>(currency: C) => ["finance", "cashFlow", currency] as const,
+  trash: <K extends "expenses" | "incomes" | "loans">(kind: K) => ["finance", "trash", kind] as const,
+};

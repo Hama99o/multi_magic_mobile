@@ -28,7 +28,7 @@ export interface ReminderScheduler {
   /** Identifiers of what is scheduled now. */
   list(): Promise<string[]>;
   cancel(identifier: string): Promise<void>;
-  schedule(request: { identifier: string; content: { title: string; body?: string; data: { noteId: number } }; trigger: ReminderTrigger }): Promise<void>;
+  schedule(request: { identifier: string; content: { title: string; body?: string; data: { noteId: number } | { todoId: number; groupId: number } }; trigger: ReminderTrigger }): Promise<void>;
 }
 
 const PREFIX = "note-";

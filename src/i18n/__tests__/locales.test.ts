@@ -111,6 +111,13 @@ const SAME_IN_BOTH = new Set([
   "notes.grid.colors.orange",
   // The product name.
   "home.title",
+  // A task's notes: "Notes" in both, as contacts' and the Notes app's.
+  "todos.notes",
+  // Finance: "Budgets" is the word in both; a row's spoken name is "{{name}}, {{amount}}".
+  "finance.tabs.budgets",
+  "finance.overview.budgets",
+  "finance.help.budgets.title",
+  "finance.ledger.openEntry",
 ]);
 
 describe("the two locales", () => {

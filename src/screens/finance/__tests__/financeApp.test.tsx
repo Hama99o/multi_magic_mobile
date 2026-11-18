@@ -8,7 +8,7 @@
  */
 import MockAdapter from "axios-mock-adapter";
 import { Alert } from "react-native";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, within } from "@testing-library/react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 import i18n from "@/i18n";
@@ -34,6 +34,28 @@ jest.mock("expo-sharing", () => ({ isAvailableAsync: jest.fn(async () => true), 
 const router = mockedRouter as unknown as { push: jest.Mock; back: jest.Mock };
 const B = "/api/v1/my_finance_app";
 const EXIT = { timeout: 3000 };
+
+/**
+ * Wait until `ready()` is true, each pause passing inside act(); then assert
+ * with a real expect for the message.
+ *
+ * Why not waitFor(() => expect(row).toBeNull()): measured 2026-11-18, one
+ * FAILED check costs ~2 s, because Jest pretty-prints the whole matched
+ * element into its error message. So waitFor managed one or two checks in its
+ * 3 s, these tests took 2.5–5.6 s each, and under load ("searches", "deletes
+ * it, with Undo", "Discard") they ran out before the screen was checked again
+ * — "Lunch" still on screen. A boolean check is free; pausing inside act lets
+ * the mocked request's update through at once.
+ */
+async function until(ready: () => boolean, { timeout }: { timeout: number } = EXIT) {
+  const end = Date.now() + timeout;
+  while (!ready()) {
+    if (Date.now() > end) return;
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 25));
+    });
+  }
+}
 const TODAY = todayKey();
 let mock: MockAdapter;
 
@@ -105,6 +127,12 @@ beforeEach(async () => {
   router.push.mockClear();
   router.back.mockClear();
   useFinanceUndo.getState().clear();
+  // The currency last used is remembered per phone (SPEC B7) in AsyncStorage,
+  // whose jest mock lasts the whole file: after the USD income test the next
+  // entry started in dollars ("$12.5", seed -1051049791). Each test starts
+  // from no memory, i.e. euros.
+  const storage = require("@react-native-async-storage/async-storage");
+  await (storage.default ?? storage).removeItem("finance_last_currency");
   await i18n.changeLanguage("en");
 });
 afterEach(() => mock.restore());
@@ -142,7 +170,8 @@ describe("Expenses", () => {
     await act(async () => {
       await new Promise((r) => setTimeout(r, 600));
     });
-    await waitFor(() => expect(screen.queryByText("Lunch")).toBeNull(), EXIT);
+    await until(() => !screen.queryByText("Lunch"));
+    expect(screen.queryByText("Lunch")).toBeNull();
     expect(screen.getByText("Train")).toBeTruthy();
   });
 
@@ -152,12 +181,12 @@ describe("Expenses", () => {
     fireEvent.press(await screen.findByTestId("finance-expense-row-1"));
     expect(within(screen.getByTestId("finance-entry-sheet")).getByText("Lunch")).toBeTruthy();
     fireEvent.press(screen.getByTestId("finance-entry-sheet-delete"));
-    await waitFor(() => {
-      expect(screen.queryByText("Lunch")).toBeNull();
-      expect(screen.getByText("Expense deleted")).toBeTruthy();
-    }, EXIT);
+    await until(() => !screen.queryByText("Lunch") && Boolean(screen.queryByText("Expense deleted")));
+    expect(screen.queryByText("Lunch")).toBeNull();
+    expect(screen.getByText("Expense deleted")).toBeTruthy();
     fireEvent.press(screen.getByTestId("finance-undo-button"));
-    expect(await screen.findByText("Lunch")).toBeTruthy();
+    await until(() => Boolean(screen.queryByText("Lunch")));
+    expect(screen.getByText("Lunch")).toBeTruthy();
     expect(mock.history.put.some((r) => r.url === `${B}/expenses/1/restore`)).toBe(true);
   });
 
@@ -186,11 +215,11 @@ describe("Income", () => {
     await act(async () => {
       await new Promise((r) => setTimeout(r, 300));
     });
-    await waitFor(() => {
-      expect(screen.queryByTestId("finance-pending")).toBeNull();
-      expect(bodies("put", `${B}/incomes/22/confirm`)).toEqual([{ income: { amount: 880 } }]);
-    }, EXIT);
-    expect(await screen.findByText("Rent from flat")).toBeTruthy();
+    await until(() => !screen.queryByTestId("finance-pending") && bodies("put", `${B}/incomes/22/confirm`).length > 0);
+    expect(screen.queryByTestId("finance-pending")).toBeNull();
+    expect(bodies("put", `${B}/incomes/22/confirm`)).toEqual([{ income: { amount: 880 } }]);
+    await until(() => Boolean(screen.queryByText("Rent from flat")));
+    expect(screen.getByText("Rent from flat")).toBeTruthy();
   });
 
   it("Discard asks first, then deletes it for good", async () => {
@@ -200,7 +229,8 @@ describe("Income", () => {
     fireEvent.press(await screen.findByTestId("finance-pending-discard-22"));
     expect(alert.mock.calls[0][0]).toBe("Discard “Rent from flat”?");
     act(() => alert.mock.calls[0][2]!.find((b) => b.style === "destructive")!.onPress!());
-    await waitFor(() => expect(screen.queryByTestId("finance-pending")).toBeNull(), EXIT);
+    await until(() => !screen.queryByTestId("finance-pending"));
+    expect(screen.queryByTestId("finance-pending")).toBeNull();
     expect(mock.history.delete.some((r) => r.url === `${B}/incomes/22/destroy_permanently`)).toBe(true);
     alert.mockRestore();
   });
@@ -224,7 +254,8 @@ describe("the entry sheet", () => {
     fireEvent.press(await screen.findByTestId("finance-entry-tags-tag-4"));
     fireEvent.press(screen.getByTestId("finance-entry-tags-done"));
     fireEvent.press(screen.getByTestId("finance-entry-save"));
-    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    await until(() => router.back.mock.calls.length > 0);
+    expect(router.back).toHaveBeenCalled();
     expect(bodies("post", `${B}/expenses`)).toEqual([
       { expense: { item: "Lunch out", amount: 12.5, currency: "eur", spent_at: TODAY, description: null, tag_id: 3, subcategory_id: 4, label_ids: [3, 4] } },
     ]);
@@ -253,7 +284,8 @@ describe("the entry sheet", () => {
     fireEvent.press(screen.getByTestId("finance-entry-currencies-usd"));
     fireEvent.changeText(screen.getByTestId("finance-entry-name"), "Gift");
     fireEvent.press(screen.getByTestId("finance-entry-save"));
-    await waitFor(() => expect(bodies("post", `${B}/incomes`)).toHaveLength(1));
+    await until(() => bodies("post", `${B}/incomes`).length > 0);
+    expect(bodies("post", `${B}/incomes`)).toHaveLength(1);
     expect(bodies("post", `${B}/incomes`)[0].income).toMatchObject({ source: "Gift", amount: 50, currency: "usd", received_at: TODAY });
   });
 });
@@ -269,7 +301,8 @@ describe("Overview", () => {
     mock.onGet(`${B}/expenses/total_expenses_last_years_or_months`).reply(200, { labels: ["2026-11"], data: ["42.5"] });
     const onOpen = jest.fn();
     render_(<OverviewTab onOpen={onOpen} />);
-    await waitFor(() => expect(screen.getByTestId("finance-overview-spent-amount").props.accessibilityLabel).toBe("€42.50"));
+    await until(() => screen.queryByTestId("finance-overview-spent-amount")?.props.accessibilityLabel === "€42.50");
+    expect(screen.getByTestId("finance-overview-spent-amount").props.accessibilityLabel).toBe("€42.50");
     expect(screen.getByText("and $9.00")).toBeTruthy();
     expect(await screen.findByText("€150.00")).toBeTruthy();
     expect(screen.getByText("€45.00 of €50.00")).toBeTruthy();

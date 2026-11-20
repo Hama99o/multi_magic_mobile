@@ -68,3 +68,16 @@ rc16 closed every P0, every "on the web" escape hatch and the cheap P2s. What fo
 | P2 | Notes | Label colour and order, "Linked in Pages", word count, note.tsx copy/restore/delete forever | |
 | P2 | Home | Unread badge on Chats, "Conversations" vs "Chats" naming, closing history leaves you in the assistant, pull-to-refresh | |
 | F1 | Pages, Contacts | The rename dialog needs two taps on Rename right after typing with the keyboard open (rc16 QA, seen with adb typing) | Check on a real phone first |
+
+## Missing apps and the full parity audit (owner, 2026-11-20)
+Owner: "Flow, Docs, Tables… these apps are still missing [on mobile], and we check other things that are missing." The full audit with every web action, endpoint and size is `docs/MOBILE_PARITY_2026-11-20.md`, and the per-app inventories are in `docs/parity/`. It supersedes rows 41 and 42 above, and the 11-16 rows it re-verified as fixed.
+
+| Where | Missing | Size | Status |
+|---|---|---|---|
+| Flow | The whole app (projects, board, cards with 13 field types, sprints, backlog, members, columns, fields) | 28–32 d | Waiting on the owner's order |
+| Tables | The whole app (4 views, 16 field types, filters and views, forms, import and export), in 8 increments | 66–86 d | Waiting on the owner's order |
+| Doc | The PDF toolkit (Sign, Merge, Pages, Text, Convert, Compress). Needs 8 server endpoints; the phone adds a scanner | 30–37 d | Waiting on the owner's order |
+| Tasks, Finance, SafeZone (1.3.0) | **Owner-rule defect:** Reanimated `entering` and transforms on recycled list rows (11 sites, parity doc §4) | 0.75 d + device | To fix before the next release |
+| Finance | Active loans on the Overview; links to expense, income and loan; all-years and future periods; budgets newest first | ~4 d | Open |
+| Pages | Storage, ZIP, copy, versions, link notes, rich-page editing; merge `fix/media-kind-by-content` (the iOS video bug) | 12–14 d | Open |
+| Cross-cutting | Global search, remote push, universal links with in-app reset, shared text/URL → note | 8–11 d | Open |

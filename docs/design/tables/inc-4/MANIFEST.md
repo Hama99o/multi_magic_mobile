@@ -29,7 +29,7 @@ The web has each of these, so each one ships. None is dropped.
 |---|---|---|---|
 | 4b.1 | Reorder cards within a column (`KanbanBoard.tsx`, SortableJS; `records/reorder`) | a Reorder mode per column, Flow's pattern (`DragReorder.tsx`, drag or up/down), sent as `POST tables/:id/records/reorder` (`ids`) | 1–1.5 days |
 | 4b.2 | Fold a column (`KanbanBoard.tsx:151-158`, `collapsed_columns` on the view) | folding is PERSONAL (the owner's rule): kept in the layer, never a PATCH; a folded column shrinks to its chip with its count | 0.5 day |
-| 4b.3 | Choose the board's or calendar's column, and a gallery's cover, when making a view (`ViewSwitcher.tsx:9,54-61,177-192`, `NewView`) | "New view" (type + column), plus "Rename / Duplicate / Delete a view" (`views#update/duplicate/destroy`). Rename and delete change the shared view, which is the point of those commands, so they are editors' and confirmed; the personal-layer rule is about the view's QUERY. To confirm with Hello. | 1–1.5 days |
+| 4b.3 | Choose the board's or calendar's column, and a gallery's cover, when making a view (`ViewSwitcher.tsx:9,54-61,177-192`, `NewView`) | "New view" (type + column), plus "Rename / Duplicate / Delete a view" (`views#update/duplicate/destroy`). Rename, duplicate and delete behave as on the web: they change the shared view, so they are editors' only, with a confirm that says so in words; the view's QUERY stays in the personal layer (Hello, 2026-11-20). | 1–1.5 days |
 
 **Increment 4b in all: about 3 days.** It is in SPEC §F.
 

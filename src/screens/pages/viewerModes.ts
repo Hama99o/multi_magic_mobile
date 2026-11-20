@@ -5,7 +5,7 @@
 import { Platform } from "react-native";
 import type { PageNode } from "@/api/pages";
 
-export type Mode = "page" | "image" | "media" | "text" | "markdown" | "document" | "pdf" | "other";
+export type Mode = "page" | "image" | "media" | "text" | "markdown" | "sheet" | "document" | "pdf" | "other";
 
 export function modeFor(node: Pick<PageNode, "kind" | "mimeType" | "title">, os: string = Platform.OS): Mode {
   if (node.kind === "page") return "page";
@@ -13,6 +13,8 @@ export function modeFor(node: Pick<PageNode, "kind" | "mimeType" | "title">, os:
   if (mime.startsWith("image/")) return "image";
   if (mime.startsWith("video/") || mime.startsWith("audio/")) return "media";
   if (mime === "text/markdown" || mime === "text/x-markdown" || /\.md$/i.test(node.title)) return "markdown";
+  // A CSV or TSV is drawn as a table (parity #46, `csv.ts`).
+  if (mime === "text/csv" || mime === "text/tab-separated-values" || /\.(csv|tsv)$/i.test(node.title)) return "sheet";
   if (mime.startsWith("text/") || mime === "application/json") return "text";
   const document =
     mime === "application/pdf" ||

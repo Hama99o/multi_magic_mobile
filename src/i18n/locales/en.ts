@@ -1995,6 +1995,9 @@ export const en = {
       emptyPage: "This page is empty.",
       textFailed: "Could not read this file.",
       noPreview: "No preview for this type. Share it to open it in another app.",
+      sheetTruncated: "A preview: the first {{rows}} rows and {{columns}} columns. Share the file to see all of it.",
+      prevFile: "Previous file: {{title}}",
+      nextFile: "Next file: {{title}}",
     },
   },
   // Security, email change, API keys, Connect Claude, followers, usage, lending: ./account/.

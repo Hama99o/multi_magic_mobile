@@ -21,7 +21,7 @@
  * html are current, not whatever the list had.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,7 +32,14 @@ import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { LoadFailure } from "@/components/LoadFailure";
 import { AnswerMarkdown } from "@/components/chat/AnswerMarkdown";
-import { Download, MoreVertical, Pause, Pencil, Play, Star } from "@/components/icons";
+import { ChevronLeft, ChevronRight, Download, MoreVertical, Pause, Pencil, Play, Star } from "@/components/icons";
+import * as Clipboard from "expo-clipboard";
+import { nodeLink } from "@/screens/pages/links";
+import { neighbours } from "@/screens/pages/neighbours";
+import { VersionsSheet } from "@/screens/pages/VersionsSheet";
+import { LinkedNotesSheet } from "@/screens/pages/LinkedNotesSheet";
+import { TransferSheet } from "@/screens/pages/TransferSheet";
+import type { Transfer } from "@/api/transfers";
 import { familyFor } from "@/theme/fonts";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { pagesApi, type PageNode } from "@/api/pages";
@@ -46,6 +53,7 @@ import { ShareSheet, type ShareSheetTarget } from "@/screens/pages/ShareSheet";
 import { useMoveNodes, useRenameNode, useStarNodes, useTrashNodes } from "@/screens/pages/usePageMutations";
 import { HeaderButton, NodeGlyph, PagesHeader, metaLine } from "@/screens/pages/parts";
 import { modeFor, pageDocument } from "@/screens/pages/viewerModes";
+import { MAX_COLUMNS, MAX_ROWS, parseDelimited } from "@/screens/pages/csv";
 import { pagesKeys } from "@/api/keys";
 
 /**
@@ -233,6 +241,61 @@ function TextFile({ uri, markdown, node, canWrite }: { uri: string; markdown: bo
   );
 }
 
+/** Wide enough for a date or an amount; one line each, so every row is the same height. */
+const CELL_WIDTH = 132;
+const CELL_HEIGHT = 40;
+
+/**
+ * A CSV or TSV as a table (parity #46). Rows are virtualised (a FlatList of
+ * fixed-height rows inside a horizontal scroll), the first row reads as the
+ * header, and a sheet past the preview's size says so.
+ */
+function SheetFile({ uri, title }: { uri: string; title: string }) {
+  const { t } = useTranslation();
+  const colors = useColors();
+  const metrics = useMetrics();
+  const { data, error, isLoading } = useQuery({
+    queryKey: pagesKeys.text(uri),
+    queryFn: async () => {
+      const res = await fetch(uri);
+      if (!res.ok) throw new Error(String(res.status));
+      return res.text();
+    },
+  });
+  const sheet = useMemo(() => (data == null ? null : parseDelimited(data, title)), [data, title]);
+  if (isLoading) return <ActivityIndicator style={{ marginTop: 32 }} />;
+  if (error || !sheet) return <Text tone="muted">{t("pages.view.textFailed")}</Text>;
+  const columns = Math.max(1, ...sheet.rows.map((r) => r.length));
+  return (
+    <View style={{ flex: 1, gap: metrics.space.sm }} testID="pages-sheet">
+      {sheet.truncated ? (
+        <Text variant="caption" tone="muted" testID="pages-sheet-truncated">
+          {t("pages.view.sheetTruncated", { rows: MAX_ROWS, columns: MAX_COLUMNS })}
+        </Text>
+      ) : null}
+      <ScrollView horizontal>
+        <FlatList
+          data={sheet.rows}
+          keyExtractor={(_, i) => String(i)}
+          getItemLayout={(_, index) => ({ length: CELL_HEIGHT, offset: CELL_HEIGHT * index, index })}
+          initialNumToRender={30}
+          renderItem={({ item, index }) => (
+            <View style={{ flexDirection: "row", height: CELL_HEIGHT, backgroundColor: index === 0 ? colors.surface : "transparent" }}>
+              {Array.from({ length: columns }, (_, c) => (
+                <View key={c} style={{ width: CELL_WIDTH, height: CELL_HEIGHT, justifyContent: "center", paddingHorizontal: 8, borderRightWidth: 1, borderBottomWidth: 1, borderColor: colors.border }}>
+                  <Text numberOfLines={1} variant={index === 0 ? "label" : "body"} style={{ fontSize: 14 }}>
+                    {item[c] ?? ""}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+        />
+      </ScrollView>
+    </View>
+  );
+}
+
 export default function Viewer() {
   const colors = useColors();
   const metrics = useMetrics();
@@ -294,6 +357,21 @@ export default function Viewer() {
     const rows = siblings.data ?? [];
     return rows.some((n) => n.id === node.id) ? rows : [node];
   }, [siblings.data, node]);
+  // Every file beside this one, by name (the gallery's order), so previous /
+  // next steps across all of them, not only the pictures (parity #43).
+  const siblingFiles = useQuery({
+    queryKey: pagesKeys.siblings(spaceId, node?.parentId ?? null),
+    queryFn: async () => {
+      const rows: PageNode[] = [];
+      for (let page = 1; page <= 4; page += 1) {
+        const res = await pagesApi.children(spaceId, node!.parentId, page, { kind: "file", sortBy: "name", sortDir: "asc" });
+        rows.push(...res.rows);
+        if (!res.hasMore) break;
+      }
+      return rows;
+    },
+    enabled: node?.kind === "file",
+  });
   // Swiping changes what the header names and what Share sends.
   const [shown, setShown] = useState<PageNode | null>(null);
   useEffect(() => setShown(null), [nodeId]);
@@ -321,10 +399,31 @@ export default function Viewer() {
     onDone: () => setRenaming(null),
     onError: (e) => setRenameError(failureMessage(e, t("pages.actions.failed"))),
   });
+  const around = current ? neighbours(siblingFiles.data ?? [], current.id) : null;
+  const go = (to: PageNode) => router.replace({ pathname: "/pages/view", params: { spaceId: String(to.spaceId), nodeId: String(to.id), title: to.title } });
+  // This branch's item actions, in the viewer's menu too.
+  const client = useQueryClient();
+  const [versionsOf, setVersionsOf] = useState<{ node: PageNode; replace: boolean } | null>(null);
+  const [notesOf, setNotesOf] = useState<PageNode | null>(null);
+  const [copying, setCopying] = useState<PageNode[] | null>(null);
+  const [transfer, setTransfer] = useState<Transfer | null>(null);
+  const duplicate = async (n: PageNode, to?: { spaceId: number; parentId: number | null }, quiet = false) => {
+    try {
+      const out = await pagesApi.duplicate(n.spaceId, n.id, to ? { targetSpaceId: to.spaceId, parentId: to.parentId } : {});
+      if ("transfer" in out) setTransfer(out.transfer);
+      else {
+        await client.invalidateQueries({ queryKey: pagesKeys.all });
+        Alert.alert(t("pages.copy.copied", { title: n.title }));
+      }
+    } catch (e) {
+      if (!quiet) Alert.alert(failureMessage(e, t("pages.copy.failed")));
+      throw e;
+    }
+  };
   const location = [space.data?.title ?? current?.space?.title ?? "", ...(current?.ancestors ?? []).map((a) => a.title)].filter(Boolean).join(" / ");
 
   return (
-    <Screen measure={mode === "page" || mode === "text" || mode === "markdown" || mode === "other"}>
+    <Screen measure={mode === "page" || mode === "text" || mode === "markdown" || mode === "sheet" || mode === "other"}>
       <PagesHeader
         title={current?.title ?? params.title ?? ""}
         subtitle={current ? metaLine(current, t, i18n.language) : null}
@@ -387,6 +486,8 @@ export default function Viewer() {
             <Media uri={node.attachmentUrl} audio={(node.mimeType ?? "").startsWith("audio/")} node={node} />
           ) : (mode === "text" || mode === "markdown") && node.attachmentUrl ? (
             <TextFile uri={node.attachmentUrl} markdown={mode === "markdown"} node={node} canWrite={rights.canWrite} />
+          ) : mode === "sheet" && node.attachmentUrl ? (
+            <SheetFile uri={node.attachmentUrl} title={node.title} />
           ) : mode === "pdf" && node.attachmentUrl ? (
             <PdfView node={node} onShare={() => void share()} sharing={sharing} />
           ) : mode === "document" && node.attachmentUrl ? (
@@ -402,10 +503,35 @@ export default function Viewer() {
           )}
         </View>
       )}
+      {around && around.total > 1 && around.index >= 0 ? (
+        <View testID="pages-view-stepper" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingBottom: metrics.space.sm }}>
+          <HeaderButton
+            icon={ChevronLeft}
+            label={around.prev ? t("pages.view.prevFile", { title: around.prev.title }) : t("pages.view.position", { n: around.index + 1, total: around.total })}
+            onPress={() => around.prev && go(around.prev)}
+            testID="pages-view-prev"
+          />
+          <Text variant="caption" tone="muted" accessibilityLiveRegion="polite">
+            {t("pages.view.position", { n: around.index + 1, total: around.total })}
+          </Text>
+          <HeaderButton
+            icon={ChevronRight}
+            label={around.next ? t("pages.view.nextFile", { title: around.next.title }) : t("pages.view.position", { n: around.index + 1, total: around.total })}
+            onPress={() => around.next && go(around.next)}
+            testID="pages-view-next"
+          />
+        </View>
+      ) : null}
       <ActionsSheet
         node={actionsFor}
         onClose={() => setActionsFor(null)}
         onShare={() => void share()}
+        onCopyLink={(n) => void Clipboard.setStringAsync(nodeLink(n)).then(() => Alert.alert(t("pages.actions.linkCopied")))}
+        onMakeCopy={(n) => void duplicate(n).catch(() => undefined)}
+        onCopyTo={(n) => setCopying([n])}
+        onVersions={(n) => setVersionsOf({ node: n, replace: false })}
+        onReplace={(n) => setVersionsOf({ node: n, replace: true })}
+        onLinkedNotes={setNotesOf}
         onShareWith={(n) => setSharingWith({ spaceId: n.spaceId, nodeId: n.id, title: n.title })}
         onStar={(n) => starring.mutate({ nodes: [n], starred: !n.starred })}
         onRename={(n) => {
@@ -417,7 +543,23 @@ export default function Viewer() {
         onTrash={(n) => trashing.mutate([n])}
         rights={rights}
       />
-      <DetailsSheet node={detailsFor} location={location} onClose={() => setDetailsFor(null)} />
+      <DetailsSheet
+        node={detailsFor}
+        location={location}
+        onClose={() => setDetailsFor(null)}
+        onManageAccess={rights.canShare ? (n) => setSharingWith({ spaceId: n.spaceId, nodeId: n.id, title: n.title }) : undefined}
+      />
+      <VersionsSheet node={versionsOf?.node ?? null} replaceNow={versionsOf?.replace} canWrite={rights.canWrite} onClose={() => setVersionsOf(null)} />
+      <LinkedNotesSheet node={notesOf} canWrite={rights.canWrite} onClose={() => setNotesOf(null)} />
+      <MoveSheet
+        mode="copy"
+        nodes={copying}
+        onClose={() => setCopying(null)}
+        onMove={async (to) => {
+          if (copying?.[0]) await duplicate(copying[0], to, true);
+        }}
+      />
+      <TransferSheet started={transfer} onClose={() => setTransfer(null)} />
       <ShareSheet target={sharingWith} onClose={() => setSharingWith(null)} />
       <MoveSheet
         nodes={moving}

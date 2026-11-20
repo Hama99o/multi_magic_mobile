@@ -2011,6 +2011,9 @@ export const fr: Translations = {
       emptyPage: "Cette page est vide.",
       textFailed: "Impossible de lire ce fichier.",
       noPreview: "Pas d’aperçu pour ce type. Partagez-le pour l’ouvrir dans une autre app.",
+      sheetTruncated: "Un aperçu : les {{rows}} premières lignes et {{columns}} premières colonnes. Partagez le fichier pour tout voir.",
+      prevFile: "Fichier précédent : {{title}}",
+      nextFile: "Fichier suivant : {{title}}",
     },
   },
   // Security, email change, API keys, Connect Claude, followers, usage, lending: ./account/.

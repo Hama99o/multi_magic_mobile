@@ -119,6 +119,8 @@ export const pagesKeys = {
   moveFolders: <S extends number | undefined, P extends number | null>(spaceId: S, parentId: P) => ["pages", "folders", "move", spaceId, parentId] as const,
   moveStart: <N extends number>(nodeId: N) => ["pages", "moveStart", nodeId] as const,
   gallery: <S extends number, P extends number | null>(spaceId: S, parentId: P) => ["pages", "gallery", spaceId, parentId] as const,
+  /** Every file of a folder, by name, for the viewer's previous / next (parity #43). */
+  siblings: <S extends number, P extends number | null>(spaceId: S, parentId: P) => ["pages", "siblings", spaceId, parentId] as const,
   text: <U extends string>(uri: U) => ["pages", "text", uri] as const,
   /** Who a space (node null) or a node is shared with, and its links (audit #14);
    *  `sharing` is the prefix of both, invalidated after every change. */

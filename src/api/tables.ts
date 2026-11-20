@@ -25,8 +25,8 @@
  *   (`RecordPresenter::LINK_PREVIEW`); `selected_count` says how many there are.
  */
 import { http } from "./http";
-import { arr, id, obj, optStr, readable, readableRows, str } from "./parse";
-import { parseDefinitions, parseFieldValues, type FieldDefinition, type FieldValues } from "./fields";
+import { ApiShapeError, arr, id, obj, optStr, readable, readableRows, str } from "./parse";
+import { parseDefinitions, parseFieldValues, type FieldDefinition, type FieldValues, type Selection } from "./fields";
 
 const BASE = "/api/v1/table_app";
 
@@ -315,6 +315,39 @@ function parseGroups(raw: unknown): Record<string, number> | null {
   return out;
 }
 
+/**
+ * A one-link column already holds a row (`records#link` 422, `code:
+ * 'cardinality'`): the phone offers "Replace", as the web does.
+ */
+export class CardinalityError extends Error {
+  constructor(public readonly cardinality: { id: number; label: string | null }) {
+    super("cardinality");
+  }
+}
+
+function cardinalityOf(error: unknown): { id: number; label: string | null } | null {
+  const data = (error as { response?: { status?: number; data?: unknown } })?.response;
+  if (data?.status !== 422 || !data.data || typeof data.data !== "object") return null;
+  const body = data.data as Record<string, unknown>;
+  if (body.code !== "cardinality") return null;
+  const c = body.conflict && typeof body.conflict === "object" ? (body.conflict as Record<string, unknown>) : {};
+  return { id: optId(c.id) ?? 0, label: optStr(c.label) };
+}
+
+/** The selection a link made, read back from the row the server answers with. */
+function selectionIn(raw: unknown, fieldId: number, linkedId: number): Selection {
+  const r = obj(raw, "record");
+  const values = r.values && typeof r.values === "object" ? (r.values as Record<string, unknown>) : {};
+  const cell = values[String(fieldId)] as Record<string, unknown> | undefined;
+  const found = Array.isArray(cell?.selected_records)
+    ? (cell.selected_records as Record<string, unknown>[]).find((s) => optId(s.linked_record_id) === linkedId)
+    : undefined;
+  if (!found) throw new ApiShapeError("record.values.selected_records", "the new link");
+  return { selectionId: id(found.selection_id, "selection_id"), recordId: linkedId, recordType: optStr(found.linked_record_type) ?? RECORD_TYPE };
+}
+
+const valuesBody = (values: Record<number, unknown>) => ({ record: { values: Object.fromEntries(Object.entries(values)) } });
+
 export const tablesApi = {
   /** Every base the user can open. The server's default order is newest first; it is not sent. */
   async bases(sort: BaseSort = "created_at_desc"): Promise<Base[]> {
@@ -332,6 +365,49 @@ export const tablesApi = {
   async record(recordId: number): Promise<RecordRow> {
     const { data } = await http.get(`${BASE}/records/${recordId}`);
     return parseRecord(obj(data, "record response").record);
+  },
+
+  // ── Writes (increment 2), through Tables' own endpoints: TableApp::RecordWriter
+  // checks the values and the table's history logs them (`row.updated`,
+  // `link.added`); the core endpoints would skip both. ─────────────────────
+
+  async updateValues(recordId: number, values: Record<number, unknown>): Promise<RecordRow> {
+    const { data } = await http.patch(`${BASE}/records/${recordId}`, valuesBody(values));
+    return parseRecord(obj(data, "record response").record);
+  },
+
+  async createRecord(tableId: number, values: Record<number, unknown> = {}): Promise<RecordRow> {
+    const { data } = await http.post(`${BASE}/tables/${tableId}/records`, valuesBody(values));
+    return parseRecord(obj(data, "record response").record);
+  },
+
+  /** A copy right under it, cells and links included (`TableApp::RowCopy`). */
+  async duplicate(recordId: number): Promise<RecordRow> {
+    const { data } = await http.post(`${BASE}/records/${recordId}/duplicate`);
+    return parseRecord(obj(data, "record response").record);
+  },
+
+  /** To the row trash; `restore` (Undo) brings it back with its links and comments. */
+  async destroy(recordId: number): Promise<void> {
+    await http.delete(`${BASE}/records/${recordId}`);
+  },
+
+  async restore(tableId: number, ids: number[]): Promise<void> {
+    await http.post(`${BASE}/tables/${tableId}/records/restore`, { ids });
+  },
+
+  async link(recordId: number, fieldId: number, linkedId: number, opts: { replace?: boolean } = {}): Promise<Selection> {
+    try {
+      const { data } = await http.post(`${BASE}/records/${recordId}/link`, { field_id: fieldId, linked_id: linkedId, ...(opts.replace ? { replace: true } : {}) });
+      return selectionIn(obj(data, "record response").record, fieldId, linkedId);
+    } catch (error) {
+      const conflict = cardinalityOf(error);
+      throw conflict ? new CardinalityError(conflict) : error;
+    }
+  },
+
+  async unlink(recordId: number, fieldId: number, linkedId: number): Promise<void> {
+    await http.post(`${BASE}/records/${recordId}/unlink`, { field_id: fieldId, linked_id: linkedId });
   },
 
   async records(tableId: number, query: RecordsQuery, offset: number): Promise<RecordsPage> {

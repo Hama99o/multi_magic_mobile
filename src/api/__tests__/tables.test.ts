@@ -196,3 +196,46 @@ describe("recordsParams: the query the phone sends (never the view)", () => {
     expect(recordsParams({ newestFirst: true }, 0)).toEqual({ offset: 0, limit: 100, sort: "-created_at" });
   });
 });
+
+describe("writes (increment 2): through Tables' own endpoints, so its checks and history run", () => {
+  it("saves values on the row in the server's names, and reads the row back", async () => {
+    mock.onPatch(`${BASE}/records/501`).reply(200, { record: rows.records[0] });
+    const r = await tablesApi.updateValues(501, { 1: "Blue scarf", 2: "in" });
+    expect(JSON.parse(mock.history.patch[0].data)).toEqual({ record: { values: { "1": "Blue scarf", "2": "in" } } });
+    expect(r.id).toBe(501);
+  });
+
+  it("adds a row, empty or with values", async () => {
+    mock.onPost(`${BASE}/tables/10/records`).reply(201, { record: rows.records[0] });
+    await tablesApi.createRecord(10);
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ record: { values: {} } });
+  });
+
+  it("duplicates, deletes to the trash, and restores (Undo)", async () => {
+    mock.onPost(`${BASE}/records/501/duplicate`).reply(201, { record: { ...rows.records[0], id: 777 } });
+    expect((await tablesApi.duplicate(501)).id).toBe(777);
+    mock.onDelete(`${BASE}/records/501`).reply(204);
+    await tablesApi.destroy(501);
+    mock.onPost(`${BASE}/tables/10/records/restore`).reply(200, {});
+    await tablesApi.restore(10, [501]);
+    expect(JSON.parse(mock.history.post[1].data)).toEqual({ ids: [501] });
+  });
+
+  it("links and unlinks by the row's own endpoints; the new selection is read from the answer", async () => {
+    mock.onPost(`${BASE}/records/501/link`).reply(200, { record: rows.records[0] });
+    const sel = await tablesApi.link(501, 3, 901);
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ field_id: 3, linked_id: 901 });
+    expect(sel).toEqual({ selectionId: 2, recordId: 901, recordType: "TableApp::Record" });
+    mock.onPost(`${BASE}/records/501/unlink`).reply(200, { record: rows.records[0] });
+    await tablesApi.unlink(501, 3, 900);
+    expect(JSON.parse(mock.history.post[1].data)).toEqual({ field_id: 3, linked_id: 900 });
+  });
+
+  it("a one-link column already linked answers 'cardinality': the phone can offer Replace", async () => {
+    mock.onPost(`${BASE}/records/501/link`).replyOnce(422, { message: "already linked", code: "cardinality", conflict: { id: 900, label: "Kabul office" } });
+    await expect(tablesApi.link(501, 3, 901)).rejects.toMatchObject({ cardinality: { id: 900, label: "Kabul office" } });
+    mock.onPost(`${BASE}/records/501/link`).reply(200, { record: rows.records[0] });
+    await tablesApi.link(501, 3, 901, { replace: true });
+    expect(JSON.parse(mock.history.post[1].data)).toEqual({ field_id: 3, linked_id: 901, replace: true });
+  });
+});

@@ -18,7 +18,7 @@ Status per line: ☐ open · ☑ proven (evidence beside it) · ⚠ unproven (sa
 |---|---|---|---|
 | A1 | No Reanimated `entering`/`exiting`/`layout` and no transform on a recycled list cell | eslint `list-cell-animation` (fixture `eslint-fixtures/list-cell-animation.tsx`, 3 shapes); `src/__tests__/eslintRules.test.ts` | ☑ The rule was red on all 11 sites plus `app/home.tsx:66` (a ScrollView `.map`, given a written exemption), then green after `39dc088`. Two press-scales became opacity. |
 | A2 | Row height unchanged | The removed wrapper had no style; same `View` tree | ☑ read from the diff · ⚠ device not measured |
-| A3 | Swipe-to-delete keeps its `translateX` only if no offset outlives its row (Hello, 2026-11-20): rows keyed by id, reset on scroll, on new rows and on a new record | jest `swipeReset.test.tsx` (4); **device**: delete a row, scroll fast up and down, no row shows a stale offset | ☑ jest red → green, `07b49fc` · ☐ **device owed**. Without it the swipe goes and delete stays in each row's sheet |
+| A3 | Swipe-to-delete keeps its `translateX` only if no offset outlives its row (Hello, 2026-11-20): rows keyed by id, reset on scroll, on new rows and on a new record | jest `swipeReset.test.tsx` (4); **device**: delete a row, scroll fast up and down, no row shows a stale offset | ☑ jest red → green, `07b49fc` · ☑ **device, Tasks list** (2026-11-20, `qa_phone3`, Step 0's code as merged in `feat/tables` @ `64bd9b6`): a 40-task throwaway list, swipe-delete one, a half swipe released, then 2 × (3 fast flings down + 3 up); after each round every visible row had the same left edge (42 px) and width (996 px) by `uiautomator` bounds, and the deleted row was gone. Screenshots on the contact sheet. · ☐ Tasks due, Expenses, Loans: the next slot |
 | B1 | `fix/media-kind-by-content` rebased onto main, green, not pushed | Branch `fix/media-kind-rebased` (worktree `mm-media-rebase`, 3 commits on `4dd5e8f`) | ☑ 3 conflicts resolved (imports on both sides; `stored` + `pagesKeys`); typecheck and lint clean · ☐ full jest and bundle: see Gates |
 | T1 | A finished Tasks list's card says "All done" (web `GroupCard.tsx:89-97`) | jest `todoApp.test.tsx` › "says All done…" | ☑ red → green, `60ad3c1` |
 | F1 | Overview lists the active loans, five at most; a tap opens one | jest `financeApp.test.tsx` › "Overview: active loans" (2) | ☑ red → green, `2e1dfb1` |
@@ -72,7 +72,7 @@ The Step 0 bundle ran at `6019e51`. The final typecheck and lint at `6019e51` st
 
 ## Device QA
 
-☐ Not run. It waits for Hello's emulator slot (`qa_phone2`, Metro 3029, API 3001, claimed with `./qa/qa.sh claim`). Signed in as the QA account only, never the owner. Before every verdict, check that the served bundle is `ec70881` or later. After every `wm size`/`wm density` change, force-stop and relaunch the app.
+☐ Partly run (pass 1, 2026-11-20 18:10–18:32, on `qa_phone3`, the only one of ours on the box; `qa_phone2` does not exist, the docs' fix is on the owner's list): the swipe proof on Tasks passed (A3). The rest waits for the next slot. Originally planned on (`qa_phone2`, Metro 3029, API 3001, claimed with `./qa/qa.sh claim`). Signed in as the QA account only, never the owner. Before every verdict, check that the served bundle is `ec70881` or later. After every `wm size`/`wm density` change, force-stop and relaunch the app.
 
 **Order (about 40 min):**
 
@@ -104,7 +104,9 @@ QA account only (Hello, 2026-11-20).
 
 | Kind | id | Created | Deleted |
 |---|---|---|---|
-| (none yet) | | | |
+| Tasks list "[qa] Swipe proof" | 220 (and its 40 tasks) | 2026-11-20 18:20 (API, QA account) | 18:32, the list (with its tasks); a list call showed none left |
+| Tables bases "[qa] Tables device" | 1, 2, 3, 4 (failed fixture runs), 5 (the run's) | 18:13–18:19 | each deleted the same session; a list call showed none left |
+| A row added and deleted through the app in base 5 | (in base 5) | 18:30 | with base 5 |
 
 New flows to write while the device is up, so this run can be repeated without a person:
 - `28-tasks-done.yaml` (T1);

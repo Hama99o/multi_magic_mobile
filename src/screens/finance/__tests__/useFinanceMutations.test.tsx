@@ -11,7 +11,7 @@ import { http } from "@/api/http";
 import { financeKeys } from "@/api/keys";
 import type { Budget, Expense, Income, Loan, Page, Recurring } from "@/api/finance";
 import { testQueryClient } from "@/__tests__/queryClient";
-import { useConfirmIncome, useDeleteBudget, useDeleteEntry, useDeletePayment, useDiscardIncome, useToggleRecurring } from "../useFinanceMutations";
+import { useConfirmIncome, useDeleteBudget, useDeleteEntry, useDeletePayment, useDiscardIncome, useRestoreEntry, useToggleRecurring } from "../useFinanceMutations";
 
 const B = "/api/v1/my_finance_app";
 let mock: MockAdapter;
@@ -47,6 +47,48 @@ describe("delete an expense", () => {
     expect(client.getQueryData<InfiniteData<Page<Expense>>>(KEY)!.pages[0].count).toBe(1);
     g.open();
     await waitFor(() => expect(listed()).toEqual([1, 2]));
+  });
+});
+
+describe("delete, then Undo (a device pass, 2026-11-20: the header said €30 / 29 and a restored row stayed missing until a refresh)", () => {
+  const first = () => client.getQueryData<InfiniteData<Page<Expense>>>(KEY)!.pages[0];
+
+  it("the header's money total drops with the row, not only its count", async () => {
+    mock.onDelete(`${B}/expenses/1`).reply(204);
+    const { result } = renderHook(() => useDeleteEntry("expense"), { wrapper });
+    act(() => result.current.mutate(expense(1)));
+    await waitFor(() => expect(listed()).toEqual([2]));
+    expect(first().count).toBe(1);
+    expect(first().totals).toEqual({ eur: 10 });
+  });
+
+  it("a row on the SECOND page still changes the header, which reads the first", async () => {
+    client.setQueryData(KEY, { pages: [{ rows: [expense(1)], unreadable: 0, page: 1, pages: 2, count: 2, totals: { eur: 20 } }, { rows: [expense(2)], unreadable: 0, page: 2, pages: 2, count: 2, totals: { eur: 20 } }], pageParams: [1, 2] });
+    mock.onDelete(`${B}/expenses/2`).reply(204);
+    const { result } = renderHook(() => useDeleteEntry("expense"), { wrapper });
+    act(() => result.current.mutate(expense(2)));
+    await waitFor(() => expect(first().count).toBe(1));
+    expect(first().totals).toEqual({ eur: 10 });
+  });
+
+  it("Undo puts the row back where it was, with its amount, before any refetch; then asks the server again", async () => {
+    mock.onDelete(`${B}/expenses/1`).reply(204);
+    const g = gated(200, {});
+    mock.onPatch(`${B}/expenses/1/restore`).reply(g.reply);
+    mock.onPut(`${B}/expenses/1/restore`).reply(g.reply);
+    mock.onPost(`${B}/expenses/1/restore`).reply(g.reply);
+    const del = renderHook(() => useDeleteEntry("expense"), { wrapper });
+    act(() => del.result.current.mutate(expense(1)));
+    await waitFor(() => expect(listed()).toEqual([2]));
+    const undo = renderHook(() => useRestoreEntry("expense"), { wrapper });
+    const invalidate = jest.spyOn(client, "invalidateQueries");
+    act(() => undo.result.current.mutate(1));
+    // At once, while the restore request is still in flight.
+    await waitFor(() => expect(listed()).toEqual([1, 2]));
+    expect(first().count).toBe(2);
+    expect(first().totals).toEqual({ eur: 20 });
+    g.open();
+    await waitFor(() => expect(invalidate).toHaveBeenCalled());
   });
 });
 

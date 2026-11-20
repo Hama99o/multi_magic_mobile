@@ -73,7 +73,7 @@ export const financeFr = {
     noExpensesEver: "Aucune dépense pour l’instant",
     noExpensesBody: "Ajoutez ce que vous dépensez : ça s’affiche ici, jour par jour.",
     noIncome: "Aucun revenu en {{when}}",
-    noIncomeEver: "Aucun revenu pour l’instant",
+    noIncomeEver: "Pas encore de revenu",
     noIncomeBody: "Ajoutez ce qui rentre : salaire, remboursements, cadeaux.",
   },
   pending: {

@@ -87,3 +87,27 @@ from a file in the conversation or a named event, because nothing serves counts
   random value (the app already uses one).
 - Whether the usage ledger is deleted outright on account deletion rather than
   detached.
+
+## 5 · Parity gaps the phone cannot close alone (2026-11-20)
+
+Found by the parity audit (`docs/MOBILE_PARITY_2026-11-20.md`, `docs/parity/`) and the Step 0 work (`docs/design/hygiene-step0/MANIFEST.md`). Hello bundles them for Hamma9900. **OPEN**: nothing below is built on the server.
+
+### 5.1 · SafeZone: the password's strength in the masked list
+
+- **Now:** `GET /api/v1/safezone_app/passwords?masked=1` sends only `password_weak` (boolean). The web computes weak/fair/strong from the plaintext (`PasswordCard.tsx:111-117`), which the phone never holds in a list (`docs/design/safezone/SECURITY.md` §0).
+- **Ask:** add `password_strength: "weak" | "fair" | "strong"` to the masked row, computed on the server with the web's rule.
+- **Phone meanwhile:** it shows "Weak" when `password_weak` is true and nothing otherwise. It never guesses fair or strong.
+
+### 5.2 · Finance: newest first by creation for expenses, incomes and loans
+
+- **Now:** `GET /my_finance_app/{expenses,incomes,loans}` are ordered by `updated_at desc`, so editing an old record moves it to the top. No serializer sends `created_at`, and no endpoint takes a sort.
+- **Ask:**
+  - Add `created_at` to the three serializers.
+  - Add `sort=created_at` (default) | `updated_at` | `date` with a `dir`, keeping pagination stable under the chosen order.
+- **Phone meanwhile:** the server's order (`updated_at desc`), grouped by day. Budgets, recurring rules and categories are sorted newest first on the phone, by id, with their old order on a sort chip.
+
+### 5.3 · Contacts: family words as keys, not English
+
+- **Now:** `GET /contact_app/contacts/family_members` sends `family_label` as an English word built by `ContactApp::Family#label_for` (LABELS by gender, QUALIFIED "step-%s"/"half-%s"/"adoptive %s"/"%s-in-law", and "former %s"). A French phone, and the French web, show English.
+- **Ask:** send the parts instead of the sentence, `family_kind` (`parent`, `child`, … `child_in_law`), `family_qualifier` (`step`/`half`/`adoptive`/null) and `family_former` (boolean), next to `family_label` for old clients.
+- **Phone meanwhile:** `src/screens/contacts/familyLabel.ts` reads the English word back to a key over the server's whole vocabulary (55 words) and says it in the app's language. A word outside that table is shown as sent.

@@ -28,6 +28,7 @@ import { contactsKeys } from "@/api/keys";
 import { failureMessage } from "@/api/failure";
 import { ContactAvatar } from "@/screens/contacts/ContactAvatar";
 import { useSetSelf } from "@/screens/contacts/useContactMutations";
+import { familyLabel } from "@/screens/contacts/familyLabel";
 
 export default function MyFamily() {
   const colors = useColors();
@@ -96,7 +97,7 @@ export default function MyFamily() {
             </Text>
           }
           renderItem={({ item }) => {
-            const badge = item.id === selfId ? t("contacts.family.you") : item.familyLabel;
+            const badge = item.id === selfId ? t("contacts.family.you") : familyLabel(item.familyLabel, t);
             return (
               <Pressable
                 testID={`my-family-row-${item.id}`}

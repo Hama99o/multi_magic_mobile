@@ -19,7 +19,7 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
-import { Check, Folder, MoreVertical, Pencil, Share2, Trash2, Upload } from "@/components/icons";
+import { Check, Folder, HardDrive, MoreVertical, Pencil, Share2, Trash2, Upload } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { pagesApi, type SharedItem, type SortDir, type Space, type SpaceListOptions } from "@/api/pages";
 import { sortLabel } from "@/screens/pages/labels";
@@ -343,6 +343,7 @@ export default function PagesHome() {
       <BottomSheet open={menu} onClose={() => setMenu(false)} testID="pages-menu-sheet">
         <SheetRow icon={Upload} label={t("pages.uploads.title")} onPress={() => (setMenu(false), router.push("/pages/uploads"))} testID="pages-menu-uploads" />
         <SheetRow icon={Trash2} label={t("pages.places.trash")} onPress={() => (setMenu(false), router.push({ pathname: "/pages/drive", params: { view: "trash" } }))} testID="pages-menu-trash" />
+        <SheetRow icon={HardDrive} label={t("pages.storage.title")} onPress={() => (setMenu(false), router.push("/pages/storage"))} testID="pages-menu-storage" />
       </BottomSheet>
     </Screen>
   );

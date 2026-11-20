@@ -176,3 +176,8 @@ export const financeKeys = {
   cashFlow: <C extends string>(currency: C) => ["finance", "cashFlow", currency] as const,
   trash: <K extends "expenses" | "incomes" | "loans">(kind: K) => ["finance", "trash", kind] as const,
 };
+
+/** What the user stores, for the storage view in Pages (parity #6). */
+export const storageKeys = {
+  usage: () => ["storage", "usage"] as const,
+};

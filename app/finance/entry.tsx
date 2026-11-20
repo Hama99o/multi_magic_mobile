@@ -55,7 +55,8 @@ function Form({ initialKind, existing, defaultCurrency, remember }: { initialKin
   const [amount, setAmount] = useState(existing ? String(existing.amount) : "");
   const [currency, setCurrency] = useState<Currency>(existing?.currency ?? defaultCurrency);
   const [name, setName] = useState(existing ? ("item" in existing ? existing.item : existing.source) : "");
-  const [day, setDay] = useState(existing?.day ?? todayKey());
+  // An undated entry stays undated: `existing.day` is null, never today (parity F-E13).
+  const [day, setDay] = useState<string | null>(existing ? existing.day : todayKey());
   const [note, setNote] = useState(existing?.description ?? "");
   const [tagIds, setTagIds] = useState<number[]>(() =>
     existing ? [...new Set([existing.tagId, "subcategoryId" in existing ? existing.subcategoryId : null, ...existing.labelIds].filter((x): x is number => x != null))] : [],
@@ -171,7 +172,7 @@ function Form({ initialKind, existing, defaultCurrency, remember }: { initialKin
         </Field>
 
         <Field label={kind === "expense" ? t("finance.entry.spentOn") : t("finance.entry.receivedOn")}>
-          <DayChooser value={day} onChange={setDay} testID="finance-entry-day" />
+          <DayChooser value={day} onChange={setDay} onNone={() => setDay(null)} testID="finance-entry-day" />
         </Field>
 
         <Field label={t("finance.entry.note")}>

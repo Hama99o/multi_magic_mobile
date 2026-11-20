@@ -198,6 +198,38 @@ describe("Expenses", () => {
     expect(router.push).toHaveBeenCalledWith({ pathname: "/finance/entry", params: { kind: "expense", id: "2" } });
   });
 
+  it("steps into the months ahead, up to five years, for post-dated entries", async () => {
+    serve();
+    render_(<ExpensesTab />);
+    await screen.findByText("Lunch");
+    const now = new Date();
+    fireEvent.press(screen.getByTestId("finance-expense-period-next"));
+    const next = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+    await until(() => mock.history.get.some((r) => r.url === `${B}/expenses` && r.params?.month === next.getMonth() + 1));
+    expect(mock.history.get.filter((r) => r.url === `${B}/expenses`).pop()!.params).toMatchObject({ year: next.getFullYear(), month: next.getMonth() + 1 });
+    // The whole year, then on to the last year allowed: the arrow stops there.
+    fireEvent.press(screen.getByTestId("finance-expense-period-mode"));
+    for (let i = 0; i < 6; i++) fireEvent.press(screen.getByTestId("finance-expense-period-next"));
+    expect(screen.getByTestId("finance-expense-period-label")).toHaveTextContent(String(now.getFullYear() + 5));
+    expect(screen.getByTestId("finance-expense-period-next").props.accessibilityState).toMatchObject({ disabled: true });
+  });
+
+  it("All time lists every date: the server is asked with no year and no month", async () => {
+    serve();
+    render_(<ExpensesTab />);
+    await screen.findByText("Lunch");
+    fireEvent.press(screen.getByTestId("finance-expense-period-mode"));
+    fireEvent.press(screen.getByTestId("finance-expense-period-mode"));
+    expect(screen.getByTestId("finance-expense-period-label")).toHaveTextContent("All time");
+    expect(screen.queryByTestId("finance-expense-period-prev")).toBeNull();
+    await until(() => mock.history.get.some((r) => r.url === `${B}/expenses` && r.params?.year === undefined));
+    const last = mock.history.get.filter((r) => r.url === `${B}/expenses`).pop()!.params;
+    expect(last.year).toBeUndefined();
+    expect(last.month).toBeUndefined();
+    fireEvent.press(screen.getByTestId("finance-expense-period-mode"));
+    expect(screen.getByTestId("finance-expense-period-label")).not.toHaveTextContent("All time");
+  });
+
   it("a link to an expense opens the Expenses tab on that expense's sheet", async () => {
     serve();
     mock.onGet(`${B}/expenses/2`).reply(200, { expense: expense(2, { item: "Train", amount: "30.0", spent_at: "2026-11-10T00:00:00.000Z" }) });
@@ -268,6 +300,31 @@ describe("the entry sheet", () => {
       { expense: { item: "Lunch out", amount: 12.5, currency: "eur", spent_at: TODAY, description: null, tag_id: 3, subcategory_id: 4, label_ids: [3, 4] } },
     ]);
     expect(useFinanceUndo.getState().offer?.message).toBe("Expense saved");
+  });
+
+  it("an expense can have no date, as on the web: No date sends spent_at null", async () => {
+    serve();
+    mockParams.current = { kind: "expense" };
+    render_(<Entry />);
+    for (const k of ["9"]) fireEvent.press(await screen.findByTestId(`finance-entry-pad-${k}`));
+    fireEvent.changeText(screen.getByTestId("finance-entry-name"), "Old receipt");
+    fireEvent.press(screen.getByTestId("finance-entry-day-none"));
+    fireEvent.press(screen.getByTestId("finance-entry-save"));
+    await until(() => router.back.mock.calls.length > 0);
+    expect(bodies("post", `${B}/expenses`)[0].expense.spent_at).toBeNull();
+  });
+
+  it("editing an undated expense keeps it undated (it never becomes today)", async () => {
+    serve();
+    mock.onGet(`${B}/expenses/5`).reply(200, { expense: expense(5, { item: "Old receipt", spent_at: null }) });
+    mock.onPut(`${B}/expenses/5`).reply((cfg) => [200, { expense: expense(5, JSON.parse(cfg.data).expense) }]);
+    mockParams.current = { kind: "expense", id: "5" };
+    render_(<Entry />);
+    expect(await screen.findByDisplayValue("Old receipt")).toBeTruthy();
+    expect(screen.getByTestId("finance-entry-day-none").props.accessibilityState).toMatchObject({ selected: true });
+    fireEvent.press(screen.getByTestId("finance-entry-save"));
+    await until(() => router.back.mock.calls.length > 0);
+    expect(bodies("put", `${B}/expenses/5`)[0].expense.spent_at).toBeNull();
   });
 
   it("will not save without an amount and a name", async () => {

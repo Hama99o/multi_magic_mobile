@@ -114,7 +114,7 @@ export function Ledger({ kind, header, openId }: { kind: Kind; header?: ReactNod
   const restore = useRestoreEntry(kind, { onError: () => setFailure(t("finance.ledger.failed")) });
   const exportX = useMutation({
     mutationFn: async () => {
-      const label = month ? `${year}-${String(month).padStart(2, "0")}` : String(year);
+      const label = !year ? "all" : month ? `${year}-${String(month).padStart(2, "0")}` : String(year);
       const uri = await financeApi.expenses.export({ page: 1, ...filters }, `expenses-${label}`);
       if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
     },
@@ -151,7 +151,7 @@ export function Ledger({ kind, header, openId }: { kind: Kind; header?: ReactNod
         ListHeaderComponent={
           <View style={{ gap: metrics.space.md, paddingBottom: metrics.space.sm }}>
             {header}
-            <PeriodSwitcher year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m); }} testID={`finance-${kind}-period`} />
+            <PeriodSwitcher allowAll year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m); }} testID={`finance-${kind}-period`} />
             <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, paddingHorizontal: metrics.space.md }}>
               <Search size={18} color={colors.inkMuted} />
               <TextInput testID={`finance-${kind}-search`} value={typed} onChangeText={setTyped} placeholder={t("finance.ledger.search")} placeholderTextColor={colors.inkMuted} returnKeyType="search" accessibilityLabel={t("finance.ledger.search")} style={{ flex: 1, minHeight: 44, color: colors.ink, fontSize: 16 }} />
@@ -372,7 +372,7 @@ function Empty({ kind, filtered, year, month }: { kind: Kind; filtered: boolean;
         {filtered ? <Filter size={36} color={colors.ink} /> : kind === "expense" ? <Receipt size={36} color={colors.ink} /> : <Wallet size={36} color={colors.ink} />}
       </View>
       <Text variant="title" style={{ fontSize: 20, textAlign: "center" }}>
-        {filtered ? t("finance.ledger.noMatch") : kind === "expense" ? t("finance.ledger.noExpenses", { when }) : t("finance.ledger.noIncome", { when })}
+        {filtered ? t("finance.ledger.noMatch") : !year ? (kind === "expense" ? t("finance.ledger.noExpensesEver") : t("finance.ledger.noIncomeEver")) : kind === "expense" ? t("finance.ledger.noExpenses", { when }) : t("finance.ledger.noIncome", { when })}
       </Text>
       {filtered ? null : (
         <Text tone="muted" style={{ textAlign: "center" }}>

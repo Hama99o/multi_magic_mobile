@@ -18,8 +18,9 @@ export const financeFr = {
     currencies: { title: "Plusieurs devises", body: "Chaque entrée garde sa devise. Les totaux sont montrés par devise et jamais additionnés." },
   },
   tabs: { overview: "Aperçu", expenses: "Dépenses", income: "Revenus", loans: "Prêts", budgets: "Budgets" },
-  period: { previous: "Précédent", next: "Suivant", showYear: "Voir l’année entière", showMonth: "Voir un mois", year: "Année", month: "Mois" },
-  day: { today: "Aujourd’hui", yesterday: "Hier", pick: "Choisir un jour" },
+  period: { previous: "Précédent", next: "Suivant", showYear: "Voir l’année entière", showMonth: "Voir un mois", showAll: "Voir toutes les périodes", year: "Année", month: "Mois", all: "Tout", allTime: "Depuis toujours" },
+  day: { today: "Aujourd’hui", yesterday: "Hier", pick: "Choisir un jour", none: "Sans date" },
+  sort: { newest: "Plus récents d’abord", oldest: "Plus anciens d’abord", nextDue: "Prochaine échéance", az: "A–Z", a11y: "Tri : {{order}}. Touchez pour {{next}}" },
   entry: {
     deleteDigit: "Effacer un chiffre",
     decimal: "Virgule",
@@ -69,8 +70,10 @@ export const financeFr = {
     addIncome: "Ajouter un revenu",
     noMatch: "Rien ne correspond",
     noExpenses: "Rien dépensé en {{when}}",
+    noExpensesEver: "Aucune dépense pour l’instant",
     noExpensesBody: "Ajoutez ce que vous dépensez : ça s’affiche ici, jour par jour.",
     noIncome: "Aucun revenu en {{when}}",
+    noIncomeEver: "Aucun revenu pour l’instant",
     noIncomeBody: "Ajoutez ce qui rentre : salaire, remboursements, cadeaux.",
   },
   pending: {

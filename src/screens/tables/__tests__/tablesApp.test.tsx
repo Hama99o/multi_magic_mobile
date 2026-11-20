@@ -717,3 +717,70 @@ describe("select rows, then edit or delete them together (increment 5)", () => {
     expect(screen.queryByTestId("tables-bulk-bar")).toBeNull();
   });
 });
+
+describe("comments and history (increment 5)", () => {
+  // Rendered here so a missing screen fails red.
+  const Activity = jest.requireActual<typeof import("../../../../app/tables/activity")>("../../../../app/tables/activity").default;
+  const comment = (id: number, body: string, mine = true) => ({ id, body, edited_at: null, created_at: "2026-11-20T10:00:00Z", user: { id: mine ? 1 : 2, name: mine ? "QA" : "Omar" }, mine, can_delete: mine, files: [] });
+  beforeEach(() => {
+    mockParams.current = { table: "10", record: "501" };
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody());
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }]), role: "editor" }] });
+    mock.onGet(`${B}/bases/3/members`).reply(200, { owner: { id: 1, name: "QA", email: "qa@example.test" }, members: [{ id: 5, role: "editor", pending: false, email: "o@example.test", name: "Omar", user_id: 42, invited_at: null }] });
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it("lists the row's comments and sends one with a mention, by the person's ACCOUNT id", async () => {
+    mock.onGet(`${B}/tables/10/comments`).reply(200, { comments: [comment(9, "First look")], next_before: null });
+    mock.onPost(`${B}/tables/10/comments`).reply(201, { comment: comment(10, "x") });
+    renderScreen(<Activity />);
+    expect(await screen.findByText("First look")).toBeTruthy();
+    expect(mock.history.get.find((r) => r.url === `${B}/tables/10/comments`)?.params).toEqual({ record_id: 501 });
+    fireEvent.changeText(screen.getByTestId("tables-comment-input"), "Can you check @Om");
+    fireEvent.press(await screen.findByTestId("tables-mention-42"));
+    fireEvent.press(screen.getByTestId("tables-comment-send"));
+    await waitFor(() => expect(mock.history.post.length).toBe(1));
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ comment: { body: "Can you check @Omar", record_id: 501, mention_ids: [42] } });
+  });
+
+  it("edits and deletes one's own comment from a long press", async () => {
+    mock.onGet(`${B}/tables/10/comments`).reply(200, { comments: [comment(9, "Typo here")], next_before: null });
+    mock.onPatch(`${B}/comments/9`).reply(200, { comment: comment(9, "Fixed") });
+    mock.onDelete(`${B}/comments/9`).reply(204);
+    jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => buttons?.find((b) => b.text === "Delete")?.onPress?.());
+    renderScreen(<Activity />);
+    fireEvent(await screen.findByTestId("tables-comment-0"), "longPress");
+    fireEvent.press(await screen.findByText("Edit"));
+    fireEvent.changeText(screen.getByTestId("tables-comment-input"), "Fixed");
+    fireEvent.press(screen.getByTestId("tables-comment-send"));
+    await waitFor(() => expect(JSON.parse(mock.history.patch[0].data)).toEqual({ comment: { body: "Fixed" } }));
+    fireEvent(screen.getByTestId("tables-comment-0"), "longPress");
+    fireEvent.press(await screen.findByText("Delete"));
+    await waitFor(() => expect(mock.history.delete.map((r) => r.url)).toEqual([`${B}/comments/9`]));
+  });
+
+  it("someone else's comment offers nothing to change", async () => {
+    mock.onGet(`${B}/tables/10/comments`).reply(200, { comments: [comment(9, "Theirs", false)], next_before: null });
+    renderScreen(<Activity />);
+    fireEvent(await screen.findByTestId("tables-comment-0"), "longPress");
+    expect(screen.queryByText("Edit")).toBeNull();
+  });
+
+  it("the table's history reads in words, filters by kind, and restores a deleted column", async () => {
+    mockParams.current = { table: "10", tab: "history" };
+    mock.onGet(`${B}/tables/10/activities`).reply((config) => [
+      200,
+      (config.params as { kind?: string }).kind === "columns"
+        ? { activities: [{ id: 2, action: "column.deleted", source: "app", details: { column: "Price" }, subject_type: "field_definition", subject_id: 77, user: { id: 1, name: "QA" }, created_at: "2026-11-20T10:00:00Z", updated_at: "x", restorable: true }], next_before: null }
+        : { activities: [{ id: 1, action: "row.updated", source: "assistant", details: { fields: ["Status"] }, subject_type: "record", subject_id: 501, user: { id: 1, name: "QA" }, created_at: "2026-11-20T10:00:00Z", updated_at: "x", restorable: false }], next_before: null },
+    ]);
+    mock.onPost(`${B}/fields/77/restore`).reply(200, {});
+    renderScreen(<Activity />);
+    expect(await screen.findByText("QA changed a row (Status)")).toBeTruthy();
+    expect(screen.getByTestId("tables-history-0-source").props.children).toBe("Assistant");
+    fireEvent.press(screen.getByTestId("tables-history-kind-columns"));
+    expect(await screen.findByText('QA deleted the column "Price"')).toBeTruthy();
+    fireEvent.press(screen.getByTestId("tables-history-0-restore"));
+    await waitFor(() => expect(mock.history.post.map((r) => r.url)).toEqual([`${B}/fields/77/restore`]));
+  });
+});

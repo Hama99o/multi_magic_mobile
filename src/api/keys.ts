@@ -221,6 +221,12 @@ export const tablesKeys = {
   bases: <S extends string>(sort: S) => ["tables", "bases", sort] as const,
   baseLists: () => ["tables", "bases"] as const,
   table: <T extends number>(tableId: T) => ["tables", "table", tableId] as const,
+  /** A table's comments, or one row's (`recordId` 0 = the table's own), paged by cursor. */
+  comments: <T extends number, R extends number>(tableId: T, recordId: R) => ["tables", "comments", tableId, recordId] as const,
+  /** Every history list of one table, as one prefix. */
+  historyAll: <T extends number>(tableId: T) => ["tables", "history", tableId] as const,
+  history: <T extends number, R extends number, K extends string>(tableId: T, recordId: R, kind: K) => ["tables", "history", tableId, recordId, kind] as const,
+  members: <B extends number>(baseId: B) => ["tables", "members", baseId] as const,
   /** What a delete would take with it (`tables#impact`), read when the delete sheet opens. */
   impact: <T extends number>(tableId: T) => ["tables", "impact", tableId] as const,
   rows: <T extends number>(tableId: T) => ["tables", "rows", tableId] as const,

@@ -40,7 +40,7 @@ import { calendarable, columnValue, kanbanable, kanbanColumns, monthFilters, row
 import { scalar } from "@/components/fields/display";
 import { todayKey } from "@/screens/calendar/dates";
 import type { FieldDefinition } from "@/api/fields";
-import { ArrowRightLeft, Trash2 } from "@/components/icons";
+import { ArrowRightLeft, MessageSquareText, Trash2 } from "@/components/icons";
 import { FilterSortSheet } from "@/screens/tables/FilterSortSheet";
 import { FieldsSheet } from "@/screens/tables/FieldsSheet";
 import { SaveViewSheet } from "@/screens/tables/SaveViewSheet";
@@ -251,6 +251,7 @@ export default function TableScreen() {
   const menu: SheetAction[] = [
     { key: "ask", label: t("tables.ask"), icon: Sparkles, onPress: () => ask(t("tables.askQuestion", { table: table.data?.name ?? "", base: base?.name ?? "" })) },
     { key: "fields", label: t("tables.fieldsSheet.title"), icon: Columns3, onPress: () => setTimeout(() => setSheet("fields"), 320) },
+    { key: "activity", label: t("tables.activity.open"), icon: MessageSquareText, onPress: () => router.push({ pathname: "/tables/activity", params: { table: String(tableId) } }) },
     ...(personal && editable ? [{ key: "save", label: t("tables.saveView.title"), hint: t("tables.saveView.hint"), icon: Save, onPress: () => setTimeout(() => setSheet("save"), 320) }] : []),
     ...(personal ? [{ key: "reset", label: t("tables.backToShared"), hint: t("tables.backToSharedHint"), icon: RotateCcw, onPress: reset }] : []),
     // The owner, 2026-11-20: a table and a base can be deleted from the phone, by typing the name.

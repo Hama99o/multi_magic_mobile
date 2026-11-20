@@ -408,6 +408,8 @@ export interface BaseMember {
   pending: boolean;
   email: string;
   name: string | null;
+  /** The account behind it (null while the invitation is pending): what a mention names. */
+  userId: number | null;
 }
 
 function parseComment(raw: unknown): TableComment {
@@ -446,7 +448,7 @@ function parseHistory(raw: unknown): HistoryItem {
 
 function parseMember(raw: unknown): BaseMember {
   const m = obj(raw, "member");
-  return { id: id(m.id, "member.id"), role: m.role === "editor" ? "editor" : "viewer", pending: m.pending === true, email: optStr(m.email) ?? "", name: optStr(m.name) };
+  return { id: id(m.id, "member.id"), role: m.role === "editor" ? "editor" : "viewer", pending: m.pending === true, email: optStr(m.email) ?? "", name: optStr(m.name), userId: optId(m.user_id) };
 }
 
 export const tablesApi = {
@@ -598,6 +600,11 @@ export const tablesApi = {
     const { data } = await http.get(`${BASE}/tables/${tableId}/activities`, { params });
     const body = obj(data, "activities response");
     return { items: readable(arr(body.activities, "activities"), parseHistory), nextBefore: optId(body.next_before) };
+  },
+
+  /** A deleted column back from the 30-day trash (history's Restore; editors and owners). */
+  async restoreField(fieldId: number): Promise<void> {
+    await http.post(`${BASE}/fields/${fieldId}/restore`);
   },
 
   async members(baseId: number): Promise<{ owner: { id: number; name: string; email: string }; members: BaseMember[] }> {

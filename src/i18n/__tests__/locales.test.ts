@@ -81,6 +81,11 @@ const SAME_IN_BOTH = new Set([
   "tables.sortDir.text.desc",
   "tables.sortDir.number.asc",
   "tables.sortDir.number.desc",
+  // "Assistant", "Import(s)" and "Table" are French words too.
+  "tables.history.sources.assistant",
+  "tables.history.sources.import",
+  "tables.history.kinds.table",
+  "tables.history.kinds.imports",
   "pages.searchChips.type",
   // "Pause" is the French word too (a player button).
   "pages.view.pause",

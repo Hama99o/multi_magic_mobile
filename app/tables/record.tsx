@@ -26,7 +26,7 @@ import { tablesApi, type RecordRow, type RecordsPage, type RelationGroup } from 
 import { absoluteUrl } from "@/api/conversations";
 import { failureMessage } from "@/api/failure";
 import type { FieldDefinition, RecordOption } from "@/api/fields";
-import { ChevronLeft, ChevronRight, Copy, CopyPlus, Ellipsis, ExternalLink, FileText, Mail, MessageCircle, Pencil, Phone, Sparkles, Trash2 } from "@/components/icons";
+import { ChevronLeft, ChevronRight, Copy, CopyPlus, Ellipsis, ExternalLink, FileText, Mail, MessageCircle, MessageSquareText, Pencil, Phone, Sparkles, Trash2 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
@@ -204,6 +204,18 @@ export default function RecordScreen() {
               </View>
             ),
           )}
+          <Pressable
+            testID="tables-record-activity"
+            onPress={() => router.push({ pathname: "/tables/activity", params: { table: String(tableId), record: String(recordId) } })}
+            accessibilityRole="button"
+            accessibilityLabel={t("tables.activity.rowOpen")}
+            style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, minHeight: metrics.touch, marginTop: metrics.space.md }}
+          >
+            <MessageSquareText size={18} color={colors.accent} />
+            <Text tone="accent" variant="label">
+              {t("tables.activity.rowOpen")}
+            </Text>
+          </Pressable>
           <Pressable
             testID="tables-record-ask"
             onPress={() => ask(t("tables.askRowQuestion", { row: titleText, table: table.data?.name ?? "" }))}

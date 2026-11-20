@@ -27,5 +27,11 @@ describe("the typed name must be the name EXACTLY (the owner, 2026-11-20)", () =
     expect(nameMatches("Clients reguliers", "Clients réguliers")).toBe(false);
     expect(nameMatches("QA  table", "QA table")).toBe(false);
     expect(nameMatches("", "")).toBe(false);
+    // multi-magic-83's demo bases on :3020, which its server refuses the same way (422).
+    expect(nameMatches("Budget 2027", "Budget  2027")).toBe(false);
+    expect(nameMatches("Budget  2027", "Budget  2027")).toBe(true);
+    expect(nameMatches("Ete", "Été")).toBe(false);
+    expect(nameMatches("été", "Été")).toBe(false);
+    expect(nameMatches("Été", "Été")).toBe(true);
   });
 });

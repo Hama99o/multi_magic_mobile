@@ -147,7 +147,7 @@ export const docFr: typeof docEn = {
     discardTitle: "Abandonner cette signature ?",
     discardBody: "Ce que vous avez dessiné ou tapé ici sera perdu.",
     discard: "Abandonner",
-    keep: "Continuer",
+    keep: "Continuer à modifier",
     colors: { ink: "Encre", blue: "Bleu", royal: "Indigo", red: "Rouge", green: "Vert" },
     backgrounds: { white: "Blanc", cream: "Crème", paper: "Papier", transparent: "Transparent" },
     swatch: "{{name}}, sélectionné",

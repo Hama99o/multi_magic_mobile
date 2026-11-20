@@ -13,7 +13,7 @@
  * one's files. 25 a page.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Alert, Pressable, ScrollView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -43,6 +43,9 @@ import { useUploads } from "@/stores/uploads.store";
 import { pagesKeys } from "@/api/keys";
 import { useCreateFolder } from "@/screens/pages/usePageMutations";
 import { useSpaceRights } from "@/screens/pages/permissions";
+import { TransferSheet } from "@/screens/pages/TransferSheet";
+import { pickZip } from "@/screens/pages/transferFiles";
+import { transfersApi, type Transfer } from "@/api/transfers";
 
 function Chip({ label, selected, onPress, testID }: { label: string; selected: boolean; onPress: () => void; testID: string }) {
   const colors = useColors();
@@ -151,6 +154,19 @@ export default function Folder() {
     },
     [enqueue, destination, t],
   );
+
+  // Import a ZIP here (parity #25): its folders and files land in this folder.
+  const [importing, setImporting] = useState<Transfer | null>(null);
+  const importZip = useCallback(async () => {
+    try {
+      const zip = await pickZip();
+      if (zip === "not-zip") return Alert.alert(t("pages.copy.notZip"));
+      if (!zip) return;
+      setImporting(await transfersApi.importZip(zip, { spaceId, parentNodeId: parentId }));
+    } catch (e) {
+      Alert.alert(failureMessage(e, t("pages.actions.failed")));
+    }
+  }, [spaceId, parentId, t]);
 
   const creating = useCreateFolder();
   const createFolder = useCallback(
@@ -278,7 +294,9 @@ export default function Folder() {
         onMedia={() => void add(pickMedia)}
         onFiles={() => void add(pickDocuments)}
         onCamera={() => void add(takePhotoOrVideo)}
+        onImportZip={rights.canWrite ? () => void importZip() : undefined}
       />
+      <TransferSheet started={importing} onClose={() => setImporting(null)} />
       <NameDialog
         open={naming}
         title={t("pages.new.folder")}

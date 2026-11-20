@@ -20,6 +20,11 @@ import { CheckCheck, Download, FolderInput, Star, Trash2 } from "@/components/ic
 import * as Clipboard from "expo-clipboard";
 import { router } from "expo-router";
 import { nodeLink } from "../links";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagesKeys } from "@/api/keys";
+import { pagesApi } from "@/api/pages";
+import { transfersApi, type Transfer } from "@/api/transfers";
+import { TransferSheet } from "../TransferSheet";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import type { PageNode } from "@/api/pages";
 import { failureMessage } from "@/api/failure";
@@ -127,6 +132,40 @@ export function NodeCollection({
       try {
         await Clipboard.setStringAsync(nodeLink(node));
         Alert.alert(t("pages.actions.linkCopied"));
+      } catch (e) {
+        Alert.alert(failureMessage(e, t("pages.actions.failed")));
+      }
+    },
+    [t],
+  );
+
+  // Make a copy / Copy to (parity #33, #34) and a folder as a ZIP (#28). A
+  // small copy is made at once; a big one, and every ZIP, is a transfer the
+  // sheet follows to its end.
+  const client = useQueryClient();
+  const [copying, setCopying] = useState<PageNode[] | null>(null);
+  const [transfer, setTransfer] = useState<Transfer | null>(null);
+  const duplicate = useCallback(
+    async (node: PageNode, to?: { spaceId: number; parentId: number | null }, opts: { quiet?: boolean } = {}) => {
+      try {
+        const out = await pagesApi.duplicate(node.spaceId, node.id, to ? { targetSpaceId: to.spaceId, parentId: to.parentId } : {});
+        if ("transfer" in out) setTransfer(out.transfer);
+        else {
+          await client.invalidateQueries({ queryKey: pagesKeys.all });
+          Alert.alert(t("pages.copy.copied", { title: node.title }));
+        }
+      } catch (e) {
+        // From Copy to, the picker says it (and stays open to try again).
+        if (!opts.quiet) Alert.alert(failureMessage(e, t("pages.copy.failed")));
+        throw e;
+      }
+    },
+    [client, t],
+  );
+  const downloadZip = useCallback(
+    async (node: PageNode) => {
+      try {
+        setTransfer(await transfersApi.exportNode(node.spaceId, node.id));
       } catch (e) {
         Alert.alert(failureMessage(e, t("pages.actions.failed")));
       }
@@ -386,6 +425,9 @@ export function NodeCollection({
         onDetails={setDetailsFor}
         onTrash={(n) => trash([n])}
         onCopyLink={(n) => void copyLink(n)}
+        onMakeCopy={(n) => void duplicate(n).catch(() => undefined)}
+        onCopyTo={(n) => setCopying([n])}
+        onDownloadZip={(n) => void downloadZip(n)}
         onShowLocation={showSpace ? showLocation : undefined}
         rights={actionsFor ? rightsOf(actionsFor) : null}
       />
@@ -431,6 +473,15 @@ export function NodeCollection({
       ) : null}
 
       <MoveSheet nodes={moving} onClose={() => setMoving(null)} onMove={move} />
+      <MoveSheet
+        mode="copy"
+        nodes={copying}
+        onClose={() => setCopying(null)}
+        onMove={async (to) => {
+          if (copying?.[0]) await duplicate(copying[0], to, { quiet: true });
+        }}
+      />
+      <TransferSheet started={transfer} onClose={() => setTransfer(null)} />
       <NameDialog
         open={renaming != null}
         title={t("pages.actions.rename")}

@@ -31,6 +31,7 @@
 import { File, Paths } from "expo-file-system";
 import { http } from "./http";
 import { absoluteUrl } from "./conversations";
+import { parseTransfer, type Transfer } from "./transfers";
 import { ApiShapeError, arr, bool, id, num, obj, optStr, readableRows, str } from "./parse";
 
 export type NodeKind = "folder" | "page" | "file";
@@ -392,6 +393,20 @@ export const pagesApi = {
   },
 
   /** With the page's html and the breadcrumb chain. */
+  /**
+   * Make a copy (here) or Copy to (another place), parity #33/#34. A small
+   * item comes back copied; a big folder comes back as a transfer that runs
+   * in the background (`transfers.ts`).
+   */
+  duplicate: async (spaceId: number, nodeId: number, to: { targetSpaceId?: number; parentId?: number | null } = {}): Promise<{ node: PageNode } | { transfer: Transfer }> => {
+    const body: Record<string, unknown> = {};
+    if (to.targetSpaceId !== undefined) body.target_space_id = to.targetSpaceId;
+    if (to.parentId !== undefined) body.parent_id = to.parentId;
+    const res = await http.post(`/api/v1/page_app/spaces/${spaceId}/nodes/${nodeId}/duplicate`, body);
+    const data = obj(res.data, "duplicate");
+    if (data.transfer) return { transfer: parseTransfer(data.transfer) };
+    return { node: parseNode(data.node) };
+  },
   node: async (spaceId: number, nodeId: number): Promise<PageNode> => {
     const res = await http.get(`/api/v1/page_app/spaces/${spaceId}/nodes/${nodeId}`);
     return parseNode(obj(res.data, "node").node);

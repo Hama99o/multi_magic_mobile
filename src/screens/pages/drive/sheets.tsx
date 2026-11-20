@@ -19,7 +19,7 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FILL } from "@/theme/fill";
-import { Camera, Plus, ChevronRight, Download, File, Folder, FolderInput, FolderPlus, Images, Info, Link2, MapPin, Pencil, Star, StarOff, Trash2, Users, type LucideIcon } from "@/components/icons";
+import { Camera, Plus, ChevronRight, Download, File, Folder, FolderInput, FolderPlus, Images, Info, Link2, MapPin, Copy, FileStack, FileArchive, Pencil, Star, StarOff, Trash2, Users, type LucideIcon } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -106,6 +106,7 @@ export function NewSheet({
   onFiles,
   onCamera,
   onSpace,
+  onImportZip,
 }: {
   open: boolean;
   onClose: () => void;
@@ -116,6 +117,8 @@ export function NewSheet({
   onMedia: () => void;
   onFiles: () => void;
   onCamera: () => void;
+  /** A ZIP unpacked here, its folders kept (parity #25). */
+  onImportZip?: () => void;
 }) {
   const { t } = useTranslation();
   // Close first, act once the sheet has slid away: started at once, the
@@ -132,6 +135,7 @@ export function NewSheet({
       <SheetRow icon={Images} label={t("pages.new.media")} onPress={run(onMedia)} testID="pages-new-media" />
       <SheetRow icon={File} label={t("pages.new.files")} onPress={run(onFiles)} testID="pages-new-files" />
       <SheetRow icon={Camera} label={t("pages.new.camera")} onPress={run(onCamera)} testID="pages-new-camera" />
+      {onImportZip ? <SheetRow icon={FileArchive} label={t("pages.copy.importZip")} onPress={run(onImportZip)} testID="pages-new-import-zip" /> : null}
     </BottomSheet>
   );
 }
@@ -150,6 +154,9 @@ export function ActionsSheet({
   onTrash,
   onCopyLink,
   onShowLocation,
+  onMakeCopy,
+  onCopyTo,
+  onDownloadZip,
   rights,
 }: {
   node: PageNode | null;
@@ -166,6 +173,12 @@ export function ActionsSheet({
   onCopyLink?: (node: PageNode) => void;
   /** Drive-wide views only (Recent, Starred, Search): open the folder it is in (parity #36). */
   onShowLocation?: (node: PageNode) => void;
+  /** Make a copy beside it (parity #33), needs write. */
+  onMakeCopy?: (node: PageNode) => void;
+  /** Copy to another place (parity #34), offered to anyone who can see it (the web's rule). */
+  onCopyTo?: (node: PageNode) => void;
+  /** A folder as a ZIP (parity #28). */
+  onDownloadZip?: (node: PageNode) => void;
   /** Null (unknown) offers nothing that writes. */
   rights: Rights | null;
 }) {
@@ -198,6 +211,9 @@ export function ActionsSheet({
         ) : null}
         {canWrite ? <SheetRow icon={Pencil} label={t("pages.actions.rename")} onPress={run(onRename)} testID="pages-action-rename" /> : null}
         {canMove ? <SheetRow icon={FolderInput} label={t("pages.actions.move")} onPress={run(onMove)} testID="pages-action-move" /> : null}
+        {canWrite && onMakeCopy ? <SheetRow icon={Copy} label={t("pages.copy.makeCopy")} onPress={run(onMakeCopy)} testID="pages-action-make-copy" /> : null}
+        {onCopyTo ? <SheetRow icon={FileStack} label={t("pages.copy.copyTo")} onPress={run(onCopyTo)} testID="pages-action-copy-to" /> : null}
+        {node.kind === "folder" && onDownloadZip ? <SheetRow icon={FileArchive} label={t("pages.copy.downloadZip")} onPress={run(onDownloadZip)} testID="pages-action-download-zip" /> : null}
         {onShowLocation ? <SheetRow icon={MapPin} label={t("pages.actions.showLocation")} onPress={run(onShowLocation)} testID="pages-action-location" /> : null}
         <SheetRow icon={Info} label={t("pages.actions.details")} onPress={run(onDetails)} testID="pages-action-details" />
         {canMove ? <SheetRow icon={Trash2} label={t("pages.actions.trash")} danger onPress={run(onTrash)} testID="pages-action-trash" /> : null}
@@ -309,10 +325,13 @@ export function MoveSheet({
   nodes,
   onClose,
   onMove,
+  mode = "move",
 }: {
   nodes: PageNode[] | null;
   onClose: () => void;
   onMove: (to: { spaceId: number; parentId: number | null; label: string }) => Promise<void>;
+  /** "copy": the same picker for Copy to (parity #34); the folder it is in is a fine place for a copy. */
+  mode?: "move" | "copy";
 }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -366,20 +385,22 @@ export function MoveSheet({
       await onMove({ spaceId: place.space.id, parentId, label: [place.space.title, ...place.path.map((p) => p.title)].join(" / ") });
       onClose();
     } catch {
-      Alert.alert(t("pages.actions.moveFailed"));
+      Alert.alert(mode === "copy" ? t("pages.copy.failed") : t("pages.actions.moveFailed"));
     } finally {
       setBusy(false);
     }
-  }, [place, parentId, onMove, onClose, t]);
+  }, [place, parentId, onMove, onClose, t, mode]);
 
   if (!nodes) return null;
   const here = place ? (place.path.at(-1)?.title ?? place.space.title) : null;
   // Where they already are is not a move (Drive greys the button).
-  const alreadyThere = place != null && nodes.every((n) => n.spaceId === place.space.id && n.parentId === parentId);
+  const alreadyThere = mode === "move" && place != null && nodes.every((n) => n.spaceId === place.space.id && n.parentId === parentId);
   return (
     <BottomSheet open onClose={onClose} testID="pages-move-sheet">
       <View style={{ paddingHorizontal: metrics.space.xl, gap: metrics.space.xs, paddingBottom: metrics.space.sm }}>
-        <Text variant="label">{nodes.length === 1 ? t("pages.move.titleOne", { title: nodes[0].title }) : t("pages.move.titleMany", { count: nodes.length })}</Text>
+        <Text variant="label">
+          {mode === "copy" ? t("pages.copy.titleOne", { title: nodes[0].title }) : nodes.length === 1 ? t("pages.move.titleOne", { title: nodes[0].title }) : t("pages.move.titleMany", { count: nodes.length })}
+        </Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false}>
           <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.xs }}>
             <Pressable onPress={() => setPlace(null)} accessibilityRole="button" accessibilityLabel={t("pages.save.allSpaces")} hitSlop={8} testID="pages-move-crumb-root">
@@ -445,7 +466,7 @@ export function MoveSheet({
         )}
       />
       <View style={{ paddingHorizontal: metrics.space.xl, paddingTop: metrics.space.md }}>
-        <Button label={here ? t("pages.move.here", { place: here }) : t("pages.save.pickPlace")} disabled={!place || alreadyThere} busy={busy} onPress={() => void confirm()} testID="pages-move-here" />
+        <Button label={here ? (mode === "copy" ? t("pages.copy.here", { place: here }) : t("pages.move.here", { place: here })) : t("pages.save.pickPlace")} disabled={!place || alreadyThere} busy={busy} onPress={() => void confirm()} testID="pages-move-here" />
       </View>
     </BottomSheet>
   );

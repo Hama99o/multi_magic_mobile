@@ -125,6 +125,8 @@ export const pagesKeys = {
   sharing: <S extends number, N extends number | null>(spaceId: S, nodeId: N) => ["pages", "sharing", spaceId, nodeId] as const,
   shares: <S extends number, N extends number | null>(spaceId: S, nodeId: N) => ["pages", "sharing", spaceId, nodeId, "people"] as const,
   shareLinks: <S extends number, N extends number | null>(spaceId: S, nodeId: N) => ["pages", "sharing", spaceId, nodeId, "links"] as const,
+  /** One background export, import or copy, followed until it finishes. */
+  transfer: <I extends number>(transferId: I) => ["pages", "transfer", transferId] as const,
 };
 
 export const todoKeys = {

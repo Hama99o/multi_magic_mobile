@@ -181,7 +181,7 @@ notes, versions, share links, storage, zip export.
 | 1 | Share-sheet import, multi-select, destination picker with today's folder, persistent background queue, browse, search, sort, type filter, viewer, trash restore, export via share sheet | **built** |
 | 1.1 | **Rule Zero done 2026-11-06:** Google Photos (`mobbin.com/screens/0f6bb976-efc8-4094-9d80-578e456c6f44`) is 3 square columns, 2 dp gaps, duration on the tile; Snapchat's camera roll (`…/0573366a-c36b-485a-9832-567a4f337ac5`) puts it bottom-left on a dark tint; CapCut (`…/43d12104-5be2-4862-b623-862eb5760f1b`) bottom-right. **Decided:** a list/grid toggle in the folder header, the grid 3 columns of square `thumbnail_url` tiles, folders and non-media files as glyph tiles with the name under them. **Durations in the folder grid need the server:** `node_serializer.rb` sends no `duration` (ActiveStorage keeps it in blob metadata only when the video analyzer ran), so that is a `multi_magic` change and his "oui"; the SAVE SHEET can show them, because the picker and the share extension both hand the duration over for local files. From the supervisor's read of the device screenshots (2026-11-06): a **grid view** (2–3 columns) for photo/video folders, Google Photos/Drive style; a **video frame + duration** in the save sheet's strip (today a glyph; images already show); an **edge fade** on the type chips (they clip "Documents" at 411 dp); a **progress pill** on the Pages header while uploads run (today: a count badge on the upload glyph and the banner on home and folder). Rule Zero applies to the grid. | not started |
 | 2 | Rename, move, copy, make a copy, star, trash, delete forever (opened and cancelled in flows), replace file, details, versions, multi-select actions | **built** (§6.1) |
-| 3 | Page editing, markdown editing | **built** (§6.1): the notes engine, not tentap; links, images and code blocks still disabled |
+| 3 | Page editing, markdown editing | **built** (§6.1): the notes engine and its whole toolbar, not tentap |
 | 4 | Share with people, share links with expiry, redeem, note links | **built**: note links in §6.1 |
 | 5 | Zip export / import with live progress, storage view | **built** (§6.1): polled every second, no socket |
 | follow-up | **Android uploads that survive the app being swiped away** (WorkManager or a foreground service). Today an Android upload runs while the process lives and is re-queued at the next launch | not started |
@@ -212,6 +212,7 @@ reuses a sheet this app already has. Rule Zero's receipt is §1 and §6 phase 1.
 | 43 | Previous / next across every file | `neighbours.ts`, the viewer's bar | M6 |
 | 46 | CSV / TSV preview | `csv.ts` (200 rows, 20 columns), `viewerModes.ts` `"sheet"` | M6 |
 | 22, 50 | New page, edit a page | `app/pages/edit.tsx`, `pageEditor.ts`, `pagesApi.createPage/savePage` | M7 |
+| 50 | Links, images, code blocks in a page | `PageEditorSheets.tsx`; the note screen's calls (`setLink`, `imagesApi.upload` + `imageNode`, `blockEdits.ts`) | M8 |
 
 **How a page saves:** as the web does, `PATCH {node:{content:{html}}}`, one
 second after the last change and at once on blur, back or leaving. The HTML
@@ -220,15 +221,29 @@ change that cannot become valid HTML is not sent, and the screen says so. A
 page over `EDIT_SIZE_LIMIT`, or one the engine refuses, opens read-only with
 the reason shown.
 
-**Still open, on purpose:**
-- **#46, XLSX:** needs a parser library, and `node_modules` is shared by every
-  worktree on this box. An `.xlsx` file still goes to the system viewer.
-- **#50, links, images and code blocks in a page:** these keys are shown but
-  disabled (`unsupported` in `pageEditor.ts`). The note screen's own flows for
-  them are not shared yet.
-- **#24, upload a folder:** iOS has no folder picker. Import ZIP covers it.
-- **Server:** a big merge or a custom compress OOMs a 2 GB local box. That is a
-  `multi_magic` fix (multi-magic-83), not a phone fix.
+**A page's toolbar is the note's toolbar** (`forPage` in `pageEditor.ts`).
+Only the two note-record keys are left out: the note colour, and the note's ⋮
+menu (labels, reminder, lock, archive). A page has none of those. No native
+editor change was needed: everything else already runs through engine B in
+JavaScript.
+
+**Still open, sized (2026-11-20):**
+- **#46, XLSX preview, about half a day.** It needs a parser (SheetJS, about
+  1 MB minified, from its own CDN tarball; the npm `xlsx` package stopped at
+  0.18.5). Its first sheet would feed the CSV table that already exists
+  (`csv.ts` limits: 200 rows, 20 columns). **Blocker: a decision, not code.**
+  `node_modules` is one symlinked tree shared by every worktree on this box,
+  so adding a dependency changes every sibling's install. Until then an
+  `.xlsx` file goes to the system viewer.
+- **#24, upload a folder, about a day.** No new dependency:
+  `Directory.pickDirectoryAsync` is in the installed `expo-file-system`
+  57.0.7, natively on both iOS and Android. The work: walk the tree, create
+  each folder through `pagesApi`, and queue the files into the existing
+  uploads store under their folder. **Unknown until a device run:** whether a
+  picked folder's URIs (Android SAF `content://`, iOS security-scoped) still
+  read after a restart, which matters because the queue survives restarts.
+- **Server:** a big merge or a custom compress runs out of memory on a 2 GB
+  local box. That is a `multi_magic` fix (multi-magic-83), not a phone fix.
 
 **Not yet measured:** device QA, `ours/` at 360, 411 and 800 dp, and the
 contact sheet. The status above stays `IN PROGRESS` until those exist.

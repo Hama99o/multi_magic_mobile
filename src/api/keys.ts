@@ -211,6 +211,21 @@ export const flowKeys = {
 };
 
 /**
+ * Tables (`src/api/tables.ts`). `records` is keyed by the EFFECTIVE query
+ * (the shared view with the person's layer over it, SPEC C1), so a personal
+ * filter is its own cache entry and switching back is instant. `rows(tableId)`
+ * is the prefix of every query of one table, for a write to refetch them all.
+ */
+export const tablesKeys = {
+  all: ["tables"] as const,
+  bases: <S extends string>(sort: S) => ["tables", "bases", sort] as const,
+  baseLists: () => ["tables", "bases"] as const,
+  table: <T extends number>(tableId: T) => ["tables", "table", tableId] as const,
+  rows: <T extends number>(tableId: T) => ["tables", "rows", tableId] as const,
+  records: <T extends number, Q extends string>(tableId: T, query: Q) => ["tables", "rows", tableId, query] as const,
+};
+
+/**
  * Custom fields (`src/api/fields.ts`), shared by Flow and Tables: keyed by the
  * OWNER (a project, a table), never by app.
  */

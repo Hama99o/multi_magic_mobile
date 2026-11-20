@@ -60,6 +60,18 @@ const SAME_IN_BOTH = new Set([
   "flow.sprints.namePlaceholder",
   "fields.types.date",
   "fields.recordClasses.sprint",
+  // Tables (2026-11-20): "Tables", "table(s)" and "Kanban" are French words
+  // too (the web's French keeps them); "A–Z", "WhatsApp", "+3" and "3 / 25"
+  // are letters, a name and numbers.
+  "tables.title",
+  "tables.baseSort.name_asc",
+  "tables.tableCount_one",
+  "tables.tableCount_other",
+  "tables.viewTypes.kanban",
+  "tables.position",
+  "tables.whatsapp",
+  "fields.more_one",
+  "fields.more_other",
   "pages.searchChips.type",
   // "Pause" is the French word too (a player button).
   "pages.view.pause",

@@ -184,6 +184,10 @@ const COMPOSED = [
   // t(`fields.recordClasses.${key}`) over RECORD_CLASS_KEY.
   ...["text", "rich_text", "integer", "decimal", "boolean", "date", "datetime", "single_select", "multi_select", "single_record", "multi_record", "attachment", "attachments", "long_text", "phone", "email", "url", "created_time", "last_modified_time", "lookup", "rollup"].map((v) => `fields.types.${v}`),
   ...["user", "tag", "card", "sprint", "record"].map((v) => `fields.recordClasses.${v}`),
+  // Tables (app/tables): t(`tables.baseSort.${s}`) over BASE_SORTS and
+  // t(`tables.viewTypes.${v}`) over VIEW_TYPES (api/tables.ts).
+  ...["created_at_desc", "updated_at_desc", "name_asc"].map((v) => `tables.baseSort.${v}`),
+  ...["grid", "kanban", "calendar", "gallery"].map((v) => `tables.viewTypes.${v}`),
   // Finance: the five tabs (app/finance/index.tsx) and the Help sheet's sections (HelpSheet.tsx).
   ...["overview", "expenses", "income", "loans", "budgets"].map((v) => `finance.tabs.${v}`),
   ...["overview", "expenses", "recurring", "income", "loans", "budgets", "reports", "categories"].flatMap((v) => [`finance.help.${v}.title`, `finance.help.${v}.body`]),
@@ -191,6 +195,9 @@ const COMPOSED = [
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
 const PLURAL = new Set([
+  "fields.more",
+  "tables.rowCount",
+  "tables.tableCount",
   "shell.chatsWaiting",
   "shell.notificationsUnread",
   "finance.ledger.entries",

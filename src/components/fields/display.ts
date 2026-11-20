@@ -71,7 +71,9 @@ export function displayValue(field: FieldDefinition, value: FieldValue | undefin
     case "rich_text":
       return htmlToPlainText(String(v), " · ") || null;
     case "integer":
-    case "decimal": {
+    case "decimal":
+    // A rollup is a number the server computed (count, sum, average, min, max).
+    case "rollup": {
       const n = Number(v);
       return Number.isFinite(n) ? n.toLocaleString(language) : String(v);
     }

@@ -10,19 +10,19 @@ Status per line: ☐ open · ☑ proven (evidence beside it) · ⚠ unproven (sa
 
 | # | Criterion | Check | Status |
 |---|---|---|---|
-| B1 | Bases list: colour square, name, description, table count; newest first (the server's default since 9c's change; before the deploy, the server's `updated_at desc`); search; a sort chip offering Newest · Recently changed · A–Z | jest `tablesApi.test.ts` (parse, sort param), `tablesApp.test.tsx` › bases | ☐ |
-| B2 | Empty, loading and error states on the bases list | `tablesApp.test.tsx` › states (`LoadFailure`, skeleton, empty sentence) | ☐ |
-| T1 | Table screen: header (base name), a table chip strip, the table's description line, a row count ("1,204 rows" / "42 of 1,204") | `tablesApp.test.tsx` › table | ☐ |
-| T2 | Rows as a fixed-height card list: title plus at most 3 fields (label above value), select chips, attachment thumbnail plus "+N", link chips; row-colour bar | `RecordCard.test.tsx`; eslint `list-cell-animation` | ☐ |
-| T3 | Paging at 100, rows de-duplicated by id; "Loading more…"; a failed page shows Retry and keeps the rows already shown | `tablesApp.test.tsx` › paging | ☐ |
-| T4 | View switch (the shared views), gallery as one column with a cover | `tablesApp.test.tsx` › views | ☐ |
-| T5 | Quick search (debounced, server `search`). It belongs to the personal layer and never writes the view | `tablesApp.test.tsx` › search; `personalView.test.ts` | ☐ |
-| T6 | Newest first by default when the view has no sort (`sort=-created_at`; C3); "Table order" one tap away | `personalView.test.ts`, `tablesApi.test.ts` | ☐ |
-| R1 | Record screen: title, then every field with its label above and its value (e2's `FieldRow`, `editable={false}`); "Empty" for a blank; prev/next "3 / 25" | `tablesApp.test.tsx` › record | ☐ |
-| R2 | Phone, email and url act (call/WhatsApp, mail, open); a link chip opens the linked row | `tablesApp.test.tsx` › record actions | ☐ |
-| R3 | Roles: a viewer sees no write control (there are none in increment 1); the role is parsed and kept for increment 2 | `tablesApi.test.ts` | ☐ |
-| E1 | Entry points: the app switcher (`registry.ts` key `tables`); links `table_app_table` and `table_app_record` open in the app (`inAppRoute.ts`); "Ask about this table" opens the assistant with scope `tables` | `inAppRoute.test.ts`, `registry` test, `tablesApp.test.tsx` | ☐ |
-| E2 | en and fr, every string through `t()` | `keys.test`, `locales.test` before every commit that touches a locale | ☐ |
+| B1 | Bases list: colour square, name, description, table count; newest first (the server's default since 9c's change; before the deploy, the server's `updated_at desc`); search; a sort chip offering Newest · Recently changed · A–Z | jest `tablesApi.test.ts` (parse, sort param), `tablesApp.test.tsx` › bases | ☑ `tables.test.ts` (sort param), `tablesApp.test.tsx` › bases (server order, nothing sent for newest, the chip sends `name_asc`, accent-blind search) |
+| B2 | Empty, loading and error states on the bases list | `tablesApp.test.tsx` › states (`LoadFailure`, skeleton, empty sentence) | ☑ `tablesApp.test.tsx` › a failed load is not "no bases"; empty state; skeleton · ⚠ device |
+| T1 | Table screen: header (base name), a table chip strip, the table's description line, a row count ("1,204 rows" / "42 of 1,204") | `tablesApp.test.tsx` › table | ☑ `tablesApp.test.tsx` › cards (count line, description, table strip) |
+| T2 | Rows as a fixed-height card list: title plus at most 3 fields (label above value), select chips, attachment thumbnail plus "+N", link chips; row-colour bar | `RecordCard.test.tsx`; eslint `list-cell-animation` | ☑ `tablesApp.test.tsx` › cards (label + chip + link title); fixed height via `getItemLayout` (`RecordCard.cardLayout`); eslint clean · ⚠ device |
+| T3 | Paging at 100, rows de-duplicated by id; "Loading more…"; a failed page shows Retry and keeps the rows already shown | `tablesApp.test.tsx` › paging | ☑ `tablesApp.test.tsx` › next page, no row twice, Retry keeps rows |
+| T4 | View switch (the shared views), gallery as one column with a cover | `tablesApp.test.tsx` › views | ☑ view switch (setParams only); gallery cover in `RecordCard` · ⚠ gallery not seen on a device |
+| T5 | Quick search (debounced, server `search`). It belongs to the personal layer and never writes the view | `tablesApp.test.tsx` › search; `personalView.test.ts` | ☑ search is a request parameter; every screen test fails on any `PATCH …/views/` (planted: red) |
+| T6 | Newest first by default when the view has no sort (`sort=-created_at`; C3); "Table order" one tap away | `personalView.test.ts`, `tablesApi.test.ts` | ☑ `personalView.test.ts`, `tablesApp.test.tsx` (`sort=-created_at`; a sorted view keeps its sort; Table order drops it) (planted: red) |
+| R1 | Record screen: title, then every field with its label above and its value (e2's `FieldRow`, `editable={false}`); "Empty" for a blank; prev/next "3 / 25" | `tablesApp.test.tsx` › record | ☑ `tablesApp.test.tsx` › a row (title, every column) |
+| R2 | Phone, email and url act (call/WhatsApp, mail, open); a link chip opens the linked row | `tablesApp.test.tsx` › record actions | ☑ `tablesApp.test.tsx` › tel:, wa.me, linked row · ⚠ file open not tested |
+| R3 | Roles: a viewer sees no write control (there are none in increment 1); the role is parsed and kept for increment 2 | `tablesApi.test.ts` | ☑ `tables.test.ts` › an unknown role reads as a viewer |
+| E1 | Entry points: the app switcher (`registry.ts` key `tables`); links `table_app_table` and `table_app_record` open in the app (`inAppRoute.ts`); "Ask about this table" opens the assistant with scope `tables` | `inAppRoute.test.ts`, `registry` test, `tablesApp.test.tsx` | ☑ `inAppRoute.test.ts` (tables links), `appShell.test.tsx` (registry), Ask in the ⋯ sheet and on the row |
+| E2 | en and fr, every string through `t()` | `keys.test`, `locales.test` before every commit that touches a locale | ☑ `keys.test`, `locales.test` green |
 
 ## MUST NOT
 
@@ -37,9 +37,9 @@ Status per line: ☐ open · ☑ proven (evidence beside it) · ⚠ unproven (sa
 |---|---|
 | Dark and light | ☐ device |
 | 360, 411, 800 dp | ☐ device |
-| Offline / slow network: rows already shown stay, Retry | ☐ |
-| Recycled cells: fixed height, `getItemLayout` | ☐ |
-| Newest first | ☐ T6, B1 |
+| Offline / slow network: rows already shown stay, Retry | ☑ T3 (a failed page) · ⚠ device |
+| Recycled cells: fixed height, `getItemLayout` | ☑ code; ⚠ device |
+| Newest first | ☑ T6, B1 (server param deploy pending; an older server ignores it) |
 | A table with 0 rows; a table with 20k rows (paging only) | ☐ |
 
 ## Gates
@@ -48,8 +48,8 @@ Every heavy command runs under `flock /data/box-heavy.lock`, starting at ≥ 5 G
 
 | Gate | Status |
 |---|---|
-| typecheck | ☐ |
-| lint | ☐ |
-| jest (full) | ☐ (read `Test Suites:`, not only `Tests:`) |
-| bundle | ☐ |
+| typecheck | ☑ clean (lowest 11 GB) |
+| lint | ☑ clean |
+| jest (full) | ☑ 267 suites, 3,496 tests |
+| bundle | ☑ exported |
 | device (qa_phone2, 360/411/800, light/dark, en/fr) | ☐ after Step 0's device QA |

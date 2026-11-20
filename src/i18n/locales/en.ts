@@ -1,6 +1,7 @@
 import { accountEn } from "./account/en";
 import { financeEn } from "./finance/en";
 import { flowEn, fieldsEn } from "./flow/en";
+import { tablesEn } from "./tables/en";
 import { loansEn } from "./finance/loans.en";
 import { manageEn } from "./finance/manage.en";
 /**
@@ -1379,6 +1380,7 @@ export const en = {
     todosBody: "Lists and what is due",
     financeBody: "Spending, income, loans and budgets",
     flowBody: "Project boards, cards and sprints",
+    tablesBody: "Bases of rows and columns",
     safezoneBody: "Passwords, cards and IDs, behind your PIN",
     calendarBody: "What's next",
     conversationsBody: "Your past questions",
@@ -1485,6 +1487,7 @@ export const en = {
   },
   finance: { ...financeEn, loans: loansEn, manage: manageEn },
   flow: flowEn,
+  tables: tablesEn,
   fields: fieldsEn,
   richText: {
     done: "Done",

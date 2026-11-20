@@ -1,6 +1,6 @@
 # Tables: the fifth full app (2026-11-20)
 
-**Status: `SPECIFIED`**, approved by Hello on 2026-11-20 (§G): decided, not built. Nothing under `app/tables/` or `src/screens/tables/` exists yet. The board row (`README.md`) is added with increment 1: `qa/board_check.py` fails every `SPECIFIED` row, with UNDER when its file exists, PATH when it does not, and WISH when it names none.
+**Status: `IN PROGRESS`**: approved by Hello on 2026-11-20 (§G). Increment 1 (browse) is built: `app/tables/{index,table,record}.tsx`, `src/api/tables.ts`, `src/screens/tables/`, with its checklist in `inc-1/MANIFEST.md`. Outstanding: its device pass, then increments 2–9.
 
 The owner, 2026-11-20 (relayed by Hello): the order is **Flow → Tables → Doc**, "attack". This session takes Tables. Session `multi-magic-mobile-e2` builds Flow, including the shared Core field editors, which Tables reuses.
 

@@ -7,7 +7,7 @@
  *   pink gradient), Chats pink, Notifications orange, Calendar blue, Contacts
  *   green, SafeZone purple, Conversations indigo (the one colour not in the
  *   icon: nine apps, eight squares).
- * Flow mint (2026-11-20) is the third addition after them.
+ * Flow mint (2026-11-20) is the third addition after them, Tables azure the fourth.
  * Todo lime and Finance gold (2026-11-16) are two more additions, like the
  *   indigo: "no two share one" is his rule (appColors.test.ts). Lime for a ticked list, gold for money; both
  *   clear of the icon's green, orange and yellow by hue and by lightness.
@@ -17,7 +17,7 @@
  */
 import { CATEGORY_COLORS, TOKENS } from "./tokens";
 
-export const HOME_APPS = ["pages", "notes", "assistant", "chats", "notifications", "calendar", "contacts", "safezone", "conversations", "todos", "finance", "flow"] as const;
+export const HOME_APPS = ["pages", "notes", "assistant", "chats", "notifications", "calendar", "contacts", "safezone", "conversations", "todos", "finance", "flow", "tables"] as const;
 export type HomeApp = (typeof HOME_APPS)[number];
 
 const [BLUE, GREEN, ORANGE, PINK, PURPLE, TEAL, YELLOW, CORAL] = CATEGORY_COLORS;
@@ -26,6 +26,8 @@ export const LIME = "#a7c957";
 export const GOLD = "#c9a227";
 /** Flow (2026-11-20): mint, a board of columns; clear of the icon's teal and green by hue. */
 export const MINT = "#3ecf9a";
+/** Tables (2026-11-20): azure, rows and columns; darker and bluer than the icon's sky blue. */
+export const AZURE = "#3d7fd9";
 
 export const APP_COLORS: Record<HomeApp, string> = {
   pages: TEAL,
@@ -40,6 +42,7 @@ export const APP_COLORS: Record<HomeApp, string> = {
   todos: LIME,
   finance: GOLD,
   flow: MINT,
+  tables: AZURE,
 };
 
 /** The Assistant's badge: a gradient between two of the icon's colours. */

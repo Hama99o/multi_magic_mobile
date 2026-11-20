@@ -328,6 +328,12 @@ export const tablesApi = {
     return parseTable(obj(data, "table response").table);
   },
 
+  /** One row, fresh (`records#show`): a link from elsewhere, or the record page. */
+  async record(recordId: number): Promise<RecordRow> {
+    const { data } = await http.get(`${BASE}/records/${recordId}`);
+    return parseRecord(obj(data, "record response").record);
+  },
+
   async records(tableId: number, query: RecordsQuery, offset: number): Promise<RecordsPage> {
     const { data } = await http.get(`${BASE}/tables/${tableId}/records`, { params: recordsParams(query, offset) });
     const body = obj(data, "records response");

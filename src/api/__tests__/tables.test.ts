@@ -85,7 +85,7 @@ const table = {
     fields: [
       field(1, "Name", "text"),
       field(2, "Status", "single_select", { options: [{ value: "in", label: "In stock", color: "green" }] }),
-      field(3, "Supplier", "multi_record", { linked_table_id: 12 }),
+      field(3, "Supplier", "multi_record", { table_id: 12 }),
       field(4, "Photos", "attachments"),
       field(5, "Added", "created_time"),
       field(6, "Cells", "a_type_from_the_future"),
@@ -155,6 +155,11 @@ describe("records", () => {
     expect(r.linkLabels).toEqual({ 900: "Kabul office" });
     expect(r.linkCounts).toEqual({ 3: 2 });
     expect(page).toMatchObject({ offset: 0, hasMore: true, totalCount: 1204, tableTotal: 1300, groups: null });
+  });
+
+  it("reads one row on its own", async () => {
+    mock.onGet(`${BASE}/records/501`).reply(200, { record: rows.records[0] });
+    expect(await tablesApi.record(501)).toMatchObject({ id: 501, linkLabels: { 900: "Kabul office" } });
   });
 
   it("a later page carries no counts", async () => {

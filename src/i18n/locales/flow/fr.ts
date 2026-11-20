@@ -319,6 +319,9 @@ export const flowFr = {
 };
 
 export const fieldsFr = {
+  yes: "Oui",
+  more_one: "+{{count}}",
+  more_other: "+{{count}}",
   empty: "Vide",
   required: "Obligatoire",
   requiredError: "Ce champ est obligatoire.",

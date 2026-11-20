@@ -52,3 +52,21 @@ Under `flock /data/box-heavy.lock`, ≥ 5 GB to start, killed under 3 GB, Jest o
 | jest (full) | ☑ 268 suites, 3,511 tests (lowest 11 GB) |
 | bundle | ☑ exported to `/data/mm-bundle-check-e9` |
 | device | ☐ after Step 0 and increment 1's device pass |
+
+## Device pass 1 (2026-11-20, 18:10–18:32, `qa_phone3`, the 1.2.0 dev build running `feat/tables` @ `64bd9b6` through Metro 3029, QA account)
+
+Contact sheet: MultiMagic Pages, space MultiMagic / 2026-11-20 / "Step 0 + Tables device pass (QA account)" (node 2561); local `~/Downloads/multimagic-qa/2026-11-20-step0-tables.jpg`. Fixture: one throwaway base "[qa] Tables device" made through the API (`tables_fixture.py`), deleted after; a list call showed none left.
+
+| Seen on the device | Verdict |
+|---|---|
+| Bases list (colour square, "2 tables · 27 rows", Newest / Recently changed / A–Z) at 411 and 360 dp | ☑ |
+| Table: chip strip, view pill, cards (label over value), count, FAB, at 411 / 360 / 800 dp, dark at 411 | ☑ |
+| Row page: "1 / 25", prev/next, Status chip, Phone with Call + WhatsApp, the Office link, Ask about this row | ☑ |
+| Phone editor with the keypad up: the sheet sits above it; Save reached the server, and the table's history logged `row.updated (Phone)`, so the write went through `records#update`, not core | ☑ |
+| One-link column: picking Herat raised the Replace alert; Replace linked Herat on the server | ☑ · the alert named "#0": **bug, fixed in `168f989`** |
+| + → the new row opens; ⋯ → Delete → confirm → back → "Row deleted · Undo" (360 dp) | ☑ |
+| Newest first | **NOT MEASURED**: the local API (multi_magic master `e9adf512`) lacks 9c's sort, so it sent the table order while the chip said "Newest first": **bug, fixed in `168f989`** (the chip shows only when the rows prove it) |
+| The view's name at 360 dp (icon only) and 411 dp ("G…") | **bug, fixed in `168f989`** |
+| A linked row shown twice on the row page | **bug, fixed in `168f989`** |
+| Kanban, calendar, filter sheet, fields sheet, French | ☐ not run: the next slot |
+| The fixes above on a device | ☐ the next slot |

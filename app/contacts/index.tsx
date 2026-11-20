@@ -245,9 +245,8 @@ function ContactsList({ pane = false, openId = null, onOpen }: { pane?: boolean;
   const soon = !searching && !selecting ? (birthdays.data ?? []).slice(0, 10) : [];
 
   return (
-    <ListFrame pane={pane}>
-      {/* The shared header on a phone; in the split it spans both panes, above. */}
-      {pane ? null : <AppHeader app="contacts" />}
+    // The shared header on a phone; in the split it spans both panes, above.
+    <ListFrame pane={pane} header={pane ? undefined : <AppHeader app="contacts" />}>
       {/* The app's own row: ⋮. In select mode it says how many, and X leaves the mode. */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
         {selecting ? (
@@ -522,8 +521,14 @@ function ContactsList({ pane = false, openId = null, onOpen }: { pane?: boolean;
 }
 
 /** The phone's full screen, or the split's left pane. */
-function ListFrame({ pane, children }: { pane: boolean; children: ReactNode }) {
-  return pane ? <View style={{ flex: 1 }}>{children}</View> : <Screen measure>{children}</Screen>;
+function ListFrame({ pane, header, children }: { pane: boolean; header?: ReactNode; children: ReactNode }) {
+  return pane ? (
+    <View style={{ flex: 1 }}>{children}</View>
+  ) : (
+    <Screen measure header={header}>
+      {children}
+    </Screen>
+  );
 }
 
 /**
@@ -540,8 +545,7 @@ export default function ContactsScreen() {
 
   if (!split) return <ContactsList />;
   return (
-    <Screen measure={false}>
-      <AppHeader app="contacts" />
+    <Screen measure={false} header={<AppHeader app="contacts" />}>
       <View style={{ flex: 1, flexDirection: "row" }}>
         <View style={{ width: paneWidth, paddingRight: metrics.space.lg, borderRightWidth: 1, borderRightColor: colors.border }}>
           <ContactsList pane openId={openId} onOpen={setOpenId} />

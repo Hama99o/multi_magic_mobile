@@ -66,8 +66,7 @@ export default function RecurringScreen() {
   const open = (r: Recurring | null) => router.push({ pathname: "/finance/recurring-edit", params: r ? { kind, id: String(r.id) } : { kind } });
 
   return (
-    <Screen measure>
-      <AppHeader app="finance" title={t("finance.manage.recurring.title")} back />
+    <Screen measure header={<AppHeader app="finance" title={t("finance.manage.recurring.title")} back />}>
       <View style={{ height: metrics.space.md }} />
       <Segmented
         testID="finance-recurring-kind"

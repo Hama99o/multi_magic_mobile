@@ -44,3 +44,17 @@ Filled during the device block (360 / 411 / 800 dp, light and dark, en and fr).
 | M7 | Priority sheet offers "None" and "Clear", which do the same | Two answers to one question | Drop "Clear" where the options have a "none" | Device | OPEN |
 | M8 | Back from a card opened by a link goes to the Assistant, not to the card's board | A notification about a card leads to a dead end after one Back | When a card is the first screen, Back opens its board | Device | OPEN |
 | M9 | Field edits (priority, story points) write no history; only create, move and comment show | "Who changed the priority?" has no answer, on web or phone | Server: write a history entry from `core/field_values/batch_update` for a Flow card | Device: history after setting High and 5 | OPEN (server, to confirm in code) |
+
+## Measured on the demo stack (:3020, multi-magic-83), 2026-11-20 21:50–22:07
+
+The three items the first block could not reach, on qa_phone3 with the
+bundle confirmed to be mm-flow (served bundle grepped for its path and
+`10.0.2.2:3020`):
+
+| What | Result | Evidence |
+|---|---|---|
+| Paging, 268 cards (owner) | The board follows every page by itself; "All cards" offered (this server pages); column counts 45/45/45/45/44/44 equal the database's | `ours/411-light-fr-demo-bigboard.png`, a read-only count per column |
+| Viewer (lea.noname, no username) | No add (+) and no column ⋯; board menu = People + Ask only; card fields read-only ("—"); card menu = Open the board + Ask; People shows owner, member and "You" with Leave, no invite or remove; her comment is signed "Léa Bernard", never an email; she deletes her own comment | `ours/411-light-*-viewer-*.png`; the `[qa]` comment deleted (0 left) |
+| Backlog with data | Grouped by column with counts; no inline add for a viewer | `ours/411-light-en-viewer-backlog-open.png` |
+
+Small, OPEN: the backlog's collapsed project row shows no card count; People opens 320 ms after the menu closes (deliberate, to let the menu's Modal go), which reads as a lag.

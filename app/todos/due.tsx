@@ -25,6 +25,7 @@ import { APP_COLORS } from "@/theme/appColors";
 import { formatDay, todayKey } from "@/screens/calendar/dates";
 import { DUE_VIEWS, dueLabel, dueSections, type DueView } from "@/screens/todos/due";
 import { TaskRow } from "@/screens/todos/TaskRow";
+import { SwipeResetScope, useSwipeResetToken } from "@/components/swipeReset";
 import { TaskSheet } from "@/screens/todos/TaskSheet";
 import { useDeleteTask, useToggleTask, useUndoDeleteTask, useUpdateTask } from "@/screens/todos/useTodoMutations";
 import { useTodoUndo } from "@/stores/todoUndo.store";
@@ -70,6 +71,8 @@ export default function DueScreen() {
   }));
   const opened = openId == null ? null : (tasks.find((x) => x.id === openId) ?? null);
 
+  // A half-swiped row goes back to 0 on scroll and on new data (src/components/swipeReset.tsx).
+  const [swipeToken, resetSwipes] = useSwipeResetToken(sections.flatMap((s) => s.data.map((x) => x.id)).join());
   return (
     <Screen measure>
       <AppHeader app="todos" title={t(`todos.views.${view}`)} back />
@@ -97,7 +100,9 @@ export default function DueScreen() {
       <LoadFailure error={pending.error} loadFailed={t("todos.loadFailed")} hasData={Boolean(pending.data)} updatedAt={pending.dataUpdatedAt} onRetry={() => void pending.refetch()} testID="todo-due-load-failed" />
       {pending.isPending && !pending.error ? <RowsSkeleton rows={6} testID="todo-due-loading" /> : null}
 
+      <SwipeResetScope token={swipeToken}>
       <SectionList
+        onScrollBeginDrag={resetSwipes}
         testID="todo-due-list"
         sections={pending.data ? sections : []}
         keyExtractor={(x) => String(x.id)}
@@ -121,6 +126,7 @@ export default function DueScreen() {
         ListEmptyComponent={pending.data ? <Empty view={view} /> : null}
         contentContainerStyle={{ paddingBottom: metrics.space.xl }}
       />
+      </SwipeResetScope>
 
       {opened ? <DueSheet todo={opened} listName={listName(opened.todoGroupId)} today={today} onClose={() => setOpenId(null)} /> : null}
       <UndoToast offer={offer} onDone={clearOffer} testID="todo-due-undo" />

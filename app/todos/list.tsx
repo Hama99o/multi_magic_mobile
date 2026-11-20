@@ -33,6 +33,7 @@ import { ActionSheet } from "@/screens/contacts/ActionSheet";
 import { NameDialog } from "@/screens/pages/ItemSheet";
 import { todayKey } from "@/screens/calendar/dates";
 import { TaskRow } from "@/screens/todos/TaskRow";
+import { SwipeResetScope, useSwipeResetToken } from "@/components/swipeReset";
 import { TaskSheet } from "@/screens/todos/TaskSheet";
 import { QuickAdd } from "@/screens/todos/QuickAdd";
 import { DragList } from "@/screens/todos/DragList";
@@ -151,6 +152,8 @@ export default function TodoListScreen() {
   const opened = openId == null ? null : (todos.find((x) => x.id === openId) ?? null);
   const openIndex = opened ? todos.indexOf(opened) : -1;
 
+  // A half-swiped row goes back to 0 on scroll and on new data (src/components/swipeReset.tsx).
+  const [swipeToken, resetSwipes] = useSwipeResetToken(items.map((x) => (x.kind === "task" ? x.todo.id : x.kind)).join());
   return (
     <Screen measure avoidKeyboard>
       <AppHeader app="todos" title={group?.name ?? t("todos.title")} back />
@@ -194,7 +197,9 @@ export default function TodoListScreen() {
           <DragList todos={todos.filter((x) => !x.completed)} onDragging={setDragging} onReorder={(order) => reorder.mutate([...order, ...done.map((x) => x.id)])} />
         </Animated.ScrollView>
       ) : (
+        <SwipeResetScope token={swipeToken}>
         <FlatList
+          onScrollBeginDrag={resetSwipes}
           testID="todo-tasks"
           // NO layout animation on the rows, on purpose. Per-row `layout` /
           // `exiting` left a ghost gap and the Done header over a task, and
@@ -241,6 +246,7 @@ export default function TodoListScreen() {
             );
           }}
         />
+        </SwipeResetScope>
       )}
 
       {group && !reordering ? <QuickAdd today={today} autoFocus={todos.length === 0} onAdd={(input) => add.mutate(input)} /> : null}

@@ -31,6 +31,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { FILL } from "@/theme/fill";
 import { parseDay, todayKey, addDays } from "@/screens/calendar/dates";
 import { useFinanceUndo } from "@/stores/financeUndo.store";
+import { SwipeResetScope, useSwipeReset, useSwipeResetToken } from "@/components/swipeReset";
 import { chartColor, FChip, FINANCE, HeroAmount, MONEY_IN, PeriodSwitcher, TagPicker, useMoney } from "./parts";
 import { useDeleteEntry, useRestoreEntry } from "./useFinanceMutations";
 
@@ -136,9 +137,13 @@ export function Ledger({ kind, header, openId }: { kind: Kind; header?: ReactNod
     return parseDay(key).toLocaleDateString(i18n.language, { weekday: "short", day: "numeric", month: "short", ...(key.slice(0, 4) === today.slice(0, 4) ? {} : { year: "numeric" }) });
   };
 
+  // A half-swiped row goes back to 0 on scroll and on new data (src/components/swipeReset.tsx).
+  const [swipeToken, resetSwipes] = useSwipeResetToken(rows.map((r) => r.id).join());
   return (
     <View style={{ flex: 1 }}>
+      <SwipeResetScope token={swipeToken}>
       <SectionList
+        onScrollBeginDrag={resetSwipes}
         testID={`finance-${kind}-list`}
         sections={list.data ? sections : []}
         keyExtractor={(r) => String(r.id)}
@@ -210,6 +215,7 @@ export function Ledger({ kind, header, openId }: { kind: Kind; header?: ReactNod
         ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: metrics.space.md }} /> : null}
         contentContainerStyle={{ paddingBottom: 96 }}
       />
+      </SwipeResetScope>
 
       <Pressable
         testID={`finance-${kind}-add`}
@@ -244,6 +250,7 @@ function EntryRow({ entry, kind, tags, onOpen, onDelete }: { entry: Entry; kind:
   const money = useMoney();
   const dx = useRef(new RNAnimated.Value(0)).current;
   const [swiping, setSwiping] = useState(false);
+  useSwipeReset(dx, entry.id, () => setSwiping(false));
   const onDeleteRef = useRef(onDelete);
   onDeleteRef.current = onDelete;
   const pan = useRef(

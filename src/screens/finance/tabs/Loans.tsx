@@ -22,6 +22,7 @@ import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
+import { SwipeResetScope, useSwipeReset, useSwipeResetToken } from "@/components/swipeReset";
 import { financeApi, formatMoney, formatTotals, type Loan, type LoanType, type Totals } from "@/api/finance";
 import { CircleCheck, HandCoins, Plus, Search, Trash2, X } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
@@ -174,9 +175,13 @@ export function LoansTab() {
     </View>
   );
 
+  // A half-swiped row goes back to 0 on scroll and on new data (src/components/swipeReset.tsx).
+  const [swipeToken, resetSwipes] = useSwipeResetToken(rows.map((r) => r.id).join());
   return (
     <View testID="finance-tab-loans" style={{ flex: 1 }}>
+      <SwipeResetScope token={swipeToken}>
       <FlatList
+        onScrollBeginDrag={resetSwipes}
         testID="finance-loans-list"
         // NO layout animation on the rows (Todo QA 2026-11-16: `layout` /
         // `exiting` / `itemLayoutAnimation` overlapped rows on the device).
@@ -207,6 +212,7 @@ export function LoansTab() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 96 }}
       />
+      </SwipeResetScope>
 
       <Pressable
         testID="finance-loans-new"
@@ -268,6 +274,7 @@ function LoanRow({ loan, onDelete }: { loan: Loan; onDelete: () => void }) {
   const dueLabel = useDueLabel();
   const dx = useRef(new Animated.Value(0)).current;
   const [swiping, setSwiping] = useState(false);
+  useSwipeReset(dx, loan.id, () => setSwiping(false));
   const passed = useRef(false);
   const onDeleteRef = useRef(onDelete);
   onDeleteRef.current = onDelete;

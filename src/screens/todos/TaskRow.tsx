@@ -12,6 +12,7 @@
  * Delete in the task sheet), so nothing needs the gesture.
  */
 import { useEffect, useRef, useState } from "react";
+import { useSwipeReset } from "@/components/swipeReset";
 import { Animated, PanResponder, Pressable, View } from "react-native";
 import Reanimated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
@@ -103,6 +104,7 @@ export function TaskRow({
   const { t, i18n } = useTranslation();
   const dx = useRef(new Animated.Value(0)).current;
   const [side, setSide] = useState<"done" | "delete" | null>(null);
+  useSwipeReset(dx, todo.id, () => setSide(null));
   const passed = useRef(false);
 
   const pan = useRef(

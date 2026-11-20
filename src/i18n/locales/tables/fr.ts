@@ -200,6 +200,7 @@ export const tablesFr = {
     baseAction: "Supprimer toute la base…",
     tableTitle: "Supprimer cette table",
     baseTitle: "Supprimer cette base",
+    noUndo: "Impossible d’annuler : il n’y a pas de corbeille pour cela.",
     typeTheName: "Pour la supprimer, tapez son nom exactement comme écrit ici :",
     copyName: "Copier le nom",
     inputLabel: "Tapez {{name}} pour supprimer",

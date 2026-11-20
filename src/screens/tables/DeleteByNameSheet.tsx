@@ -60,6 +60,9 @@ export function DeleteByNameSheet({
             {consequence}
           </Text>
         ) : null}
+        <Text tone="danger" variant="label">
+          {t("tables.remove.noUndo")}
+        </Text>
         <Text>{t("tables.remove.typeTheName")}</Text>
         <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, padding: metrics.space.sm, borderRadius: metrics.radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
           <Text testID={`tables-delete-${kind}-name`} selectable variant="label" style={{ flex: 1 }}>

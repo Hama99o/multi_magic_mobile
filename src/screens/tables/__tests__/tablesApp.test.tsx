@@ -658,6 +658,6 @@ describe("delete a table or a base by its exact name (the owner, 2026-11-20)", (
     fireEvent.changeText(input, "Shop");
     fireEvent.press(screen.getByTestId("tables-delete-base-confirm"));
     await waitFor(() => expect(mock.history.delete.length).toBe(1));
-    expect(mock.history.delete[0].params).toEqual({ confirm_name: "Shop" });
+    expect(JSON.parse(mock.history.delete[0].data)).toEqual({ confirm_name: "Shop" });
   });
 });

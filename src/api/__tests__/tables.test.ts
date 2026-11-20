@@ -322,6 +322,7 @@ describe("deleting a table or a base (the owner, 2026-11-20)", () => {
     await tablesApi.deleteTable(10);
     mock.onDelete(`${BASE}/bases/3`).reply(204);
     await tablesApi.deleteBase(3, "Shop ");
-    expect(mock.history.delete[1].params).toEqual({ confirm_name: "Shop " });
+    expect(JSON.parse(mock.history.delete[1].data)).toEqual({ confirm_name: "Shop " });
+    expect(mock.history.delete[1].params).toBeUndefined();
   });
 });

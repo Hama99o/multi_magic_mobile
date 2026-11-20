@@ -537,7 +537,8 @@ export const tablesApi = {
 
   /** The owner only (`BasePolicy#destroy?`); the server checks the name too. The typed text is sent as typed. */
   async deleteBase(baseId: number, typedName: string): Promise<void> {
-    await http.delete(`${BASE}/bases/${baseId}`, { params: { confirm_name: typedName } });
+    // In the JSON body, as the server's contract says (multi-magic-83, 936729af compares it exactly).
+    await http.delete(`${BASE}/bases/${baseId}`, { data: { confirm_name: typedName } });
   },
 
   // ── Collaborate (increment 5) ─────────────────────────────────────────

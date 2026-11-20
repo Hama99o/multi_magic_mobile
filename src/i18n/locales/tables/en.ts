@@ -201,6 +201,7 @@ export const tablesEn = {
     baseAction: "Delete the whole base…",
     tableTitle: "Delete this table",
     baseTitle: "Delete this base",
+    noUndo: "This cannot be undone: there is no trash for it.",
     typeTheName: "To delete it, type its name exactly as it is written here:",
     copyName: "Copy the name",
     inputLabel: "Type {{name}} to delete",

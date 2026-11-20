@@ -1,6 +1,6 @@
 import type { FieldDefinition } from "@/api/fields";
 import type { RecordRow } from "@/api/tables";
-import { columnValue, dayOf, EMPTY_COLUMN, kanbanColumns, monthFilters, monthRange, rowsByDay } from "../boardViews";
+import { columnValue, dayOf, EMPTY_COLUMN, kanbanColumns, monthFilters, monthRange, newViewReady, rowsByDay, viewColumnChoices } from "../boardViews";
 
 const status = { id: 2, fieldType: "single_select", config: { options: [{ value: "todo", label: "To do", color: "#3b82f6" }, { value: "done", label: "Done", color: null }], min: null, max: null, allowCreate: false, scope: null, raw: {} } } as unknown as FieldDefinition;
 const due = { id: 6, fieldType: "date" } as unknown as FieldDefinition;
@@ -43,5 +43,25 @@ describe("calendar", () => {
     expect(days.get("2026-11-20")?.map((r) => r.id)).toEqual([1, 2]);
     expect(days.get("2026-11-21")?.map((r) => r.id)).toEqual([4]);
     expect(dayOf(rows[2], due)).toBeNull();
+  });
+});
+
+describe("a new view's own column (4b; the web's ViewSwitcher NewView)", () => {
+  const f = (id: number, fieldType: string) => ({ id, fieldType, name: `F${id}` }) as unknown as FieldDefinition;
+  const fields = [f(1, "text"), f(2, "single_select"), f(3, "date"), f(4, "datetime"), f(5, "attachments"), f(6, "multi_select")];
+
+  it("a kanban is built on a single choice, a calendar on a date, a gallery on files, a grid on nothing", () => {
+    expect(viewColumnChoices("kanban", fields).map((x) => x.id)).toEqual([2]);
+    expect(viewColumnChoices("calendar", fields).map((x) => x.id)).toEqual([3, 4]);
+    expect(viewColumnChoices("gallery", fields).map((x) => x.id)).toEqual([5]);
+    expect(viewColumnChoices("grid", fields)).toEqual([]);
+  });
+
+  it("a kanban or a calendar waits for its column; a grid and a gallery (cover optional) do not", () => {
+    expect(newViewReady("kanban", null)).toBe(false);
+    expect(newViewReady("calendar", null)).toBe(false);
+    expect(newViewReady("kanban", 2)).toBe(true);
+    expect(newViewReady("grid", null)).toBe(true);
+    expect(newViewReady("gallery", null)).toBe(true);
   });
 });

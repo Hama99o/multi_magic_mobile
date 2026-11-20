@@ -496,8 +496,29 @@ export const tablesApi = {
     if (c.hiddenFieldIds !== undefined) config.hidden_field_ids = c.hiddenFieldIds;
     if (c.fieldOrder !== undefined) config.field_order = c.fieldOrder;
     if (c.rowColorFieldId !== undefined) config.row_color_field_id = c.rowColorFieldId;
+    // A board's own column (the web's ViewSwitcher NewView): the kanban's select, the calendar's date, the gallery's cover.
+    if (c.kanbanFieldId !== undefined) config.kanban_field_id = c.kanbanFieldId;
+    if (c.calendarFieldId !== undefined) config.calendar_field_id = c.calendarFieldId;
+    if (c.coverFieldId !== undefined) config.cover_field_id = c.coverFieldId;
     const { data } = await http.post(`${BASE}/tables/${tableId}/views`, { from_view_id: input.fromViewId, view: { name: input.name, view_type: input.viewType, config } });
     return parseView(obj(data, "view response").view);
+  },
+
+  /** A new name; the server makes it unique ("Kabul (2)"), so the returned name is the one to show. Editors only. */
+  async renameView(viewId: number, name: string): Promise<View> {
+    const { data } = await http.patch(`${BASE}/views/${viewId}`, { view: { name } });
+    return parseView(obj(data, "view response").view);
+  },
+
+  /** A copy with the same type and settings, named "<name> (copie)" by the server. Editors only. */
+  async duplicateView(viewId: number): Promise<View> {
+    const { data } = await http.post(`${BASE}/views/${viewId}/duplicate`);
+    return parseView(obj(data, "view response").view);
+  },
+
+  /** Gone for everyone; the server keeps a table's last view (422). Editors only. */
+  async deleteView(viewId: number): Promise<void> {
+    await http.delete(`${BASE}/views/${viewId}`);
   },
 
   async relations(recordId: number): Promise<RelationGroup[]> {

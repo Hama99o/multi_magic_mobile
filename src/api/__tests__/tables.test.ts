@@ -270,6 +270,38 @@ describe("Save as a new view: the one view write, a NEW view", () => {
   });
 });
 
+describe("manage views (4b; the web's ViewSwitcher): editors make, rename, duplicate and delete", () => {
+  const view = (id: number, name: string, view_type = "grid") => ({ view: { id, table_id: 10, name, view_type, position: 3, config: {} } });
+
+  it("a new kanban, calendar or gallery view carries its own column, posted from the view on screen", async () => {
+    mock.onPost(`${BASE}/tables/10/views`).reply(201, view(73, "Board", "kanban"));
+    await tablesApi.createView(10, { name: "Board", viewType: "kanban", fromViewId: 70, config: { kanbanFieldId: 5 } });
+    await tablesApi.createView(10, { name: "Dates", viewType: "calendar", fromViewId: 70, config: { calendarFieldId: 6 } });
+    await tablesApi.createView(10, { name: "Photos", viewType: "gallery", fromViewId: 70, config: { coverFieldId: null } });
+    expect(mock.history.post.map((r) => JSON.parse(r.data))).toEqual([
+      { from_view_id: 70, view: { name: "Board", view_type: "kanban", config: { kanban_field_id: 5 } } },
+      { from_view_id: 70, view: { name: "Dates", view_type: "calendar", config: { calendar_field_id: 6 } } },
+      { from_view_id: 70, view: { name: "Photos", view_type: "gallery", config: { cover_field_id: null } } },
+    ]);
+  });
+
+  it("rename sends the NAME and nothing else (SPEC C1: the phone never writes a view's settings)", async () => {
+    mock.onPatch(`${BASE}/views/70`).reply(200, view(70, "Kabul (2)"));
+    const v = await tablesApi.renameView(70, "Kabul");
+    expect(JSON.parse(mock.history.patch[0].data)).toEqual({ view: { name: "Kabul" } });
+    expect(v.name).toBe("Kabul (2)"); // the server's unique name is the one shown
+  });
+
+  it("duplicate posts to the view; delete deletes it; the server's refusal of the last view reaches the caller", async () => {
+    mock.onPost(`${BASE}/views/70/duplicate`).reply(201, view(74, "Kabul (copie)"));
+    expect((await tablesApi.duplicateView(70)).id).toBe(74);
+    mock.onDelete(`${BASE}/views/74`).reply(204);
+    await tablesApi.deleteView(74);
+    mock.onDelete(`${BASE}/views/70`).reply(422, { message: "A table keeps at least one view." });
+    await expect(tablesApi.deleteView(70)).rejects.toMatchObject({ response: { status: 422 } });
+  });
+});
+
 describe("collaborate (increment 5)", () => {
   it("bulk-sets one column on the chosen rows (rows by id, values by field id), and bulk-deletes to the trash", async () => {
     mock.onPost(`${BASE}/tables/10/records/bulk_write`).reply(200, { result: { created: 0, updated: 2, ids: [501, 502] }, records: [] });

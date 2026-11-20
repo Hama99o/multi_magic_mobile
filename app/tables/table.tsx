@@ -46,6 +46,7 @@ import type { LucideIcon } from "lucide-react-native";
 import { FilterSortSheet } from "@/screens/tables/FilterSortSheet";
 import { FieldsSheet } from "@/screens/tables/FieldsSheet";
 import { SaveViewSheet } from "@/screens/tables/SaveViewSheet";
+import { ViewsSheet } from "@/screens/tables/ViewsSheet";
 import { DeleteByNameSheet } from "@/screens/tables/DeleteByNameSheet";
 import { BulkEditSheet } from "@/screens/tables/BulkEditSheet";
 import { ShareSheet } from "@/screens/tables/ShareSheet";
@@ -247,13 +248,6 @@ export default function TableScreen() {
 
   const switchTable = (id: number) => router.setParams({ id: String(id), view: undefined });
 
-  const viewActions: SheetAction[] = (table.data?.views ?? []).map((v) => ({
-    key: String(v.id),
-    label: v.name,
-    hint: t(`tables.viewTypes.${v.viewType}`),
-    icon: VIEW_ICONS[v.viewType],
-    onPress: () => router.setParams({ view: String(v.id) }),
-  }));
   const menu: SheetAction[] = [
     { key: "ask", label: t("tables.ask"), icon: Sparkles, onPress: () => ask(t("tables.askQuestion", { table: table.data?.name ?? "", base: base?.name ?? "" })) },
     { key: "fields", label: t("tables.fieldsSheet.title"), icon: Columns3, onPress: () => setTimeout(() => setSheet("fields"), 320) },
@@ -671,7 +665,21 @@ export default function TableScreen() {
       {sheet === "deleteBase" && base ? (
         <DeleteByNameSheet kind="base" name={base.name} consequence={t("tables.remove.baseImpact", { count: base.tables.length, rows: base.rowCount })} busy={deleting} error={deleteError} onDelete={(typed) => void removeBase(typed)} onClose={() => setSheet(null)} />
       ) : null}
-      <ActionSheet open={sheet === "views"} title={t("tables.views")} actions={viewActions} onClose={() => setSheet(null)} testID="tables-views" />
+      {sheet === "views" && table.data ? (
+        <ViewsSheet
+          tableId={tableId}
+          views={table.data.views}
+          currentId={view?.id ?? null}
+          fields={fields}
+          editable={editable}
+          icons={VIEW_ICONS}
+          onOpenView={(id) => {
+            setSheet(null);
+            router.setParams({ view: String(id) });
+          }}
+          onClose={() => setSheet(null)}
+        />
+      ) : null}
       <ActionSheet open={sheet === "menu"} title={table.data?.name ?? ""} actions={menu} onClose={() => setSheet(null)} testID="tables-options" />
     </Screen>
   );

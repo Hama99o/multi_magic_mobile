@@ -80,3 +80,14 @@ export function rowsByDay(rows: RecordRow[], field: FieldDefinition): Map<string
 /** Columns a kanban can use: single selects. Columns a calendar can use: dates. */
 export const kanbanable = (fields: FieldDefinition[]) => fields.filter((f) => f.fieldType === "single_select");
 export const calendarable = (fields: FieldDefinition[]) => fields.filter((f) => f.fieldType === "date" || f.fieldType === "datetime" || f.fieldType === "created_time");
+
+/** The columns a new view of this type can be built on (the web's ViewSwitcher): none for a grid; a gallery's cover is optional. */
+export function viewColumnChoices(viewType: "grid" | "kanban" | "calendar" | "gallery", fields: FieldDefinition[]): FieldDefinition[] {
+  if (viewType === "kanban") return kanbanable(fields);
+  if (viewType === "calendar") return calendarable(fields);
+  if (viewType === "gallery") return fields.filter((f) => f.fieldType === "attachments" || f.fieldType === "attachment");
+  return [];
+}
+
+/** A kanban needs its select and a calendar its date before it can be made; a grid and a gallery are ready with a name. */
+export const newViewReady = (viewType: "grid" | "kanban" | "calendar" | "gallery", columnId: number | null) => (viewType !== "kanban" && viewType !== "calendar") || columnId !== null;

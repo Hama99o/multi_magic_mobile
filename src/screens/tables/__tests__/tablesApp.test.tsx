@@ -102,8 +102,11 @@ beforeEach(async () => {
   await i18n.changeLanguage("en");
 });
 afterEach(() => {
-  // The owner's rule (SPEC C1): no screen here writes a view, ever.
-  expect(mock.history.patch.filter((r) => r.url?.includes("/views/"))).toEqual([]);
+  // The owner's rule (SPEC C1): no screen here writes a view's SETTINGS, ever. The one PATCH
+  // to a view is an editor's deliberate rename on the views sheet (4b, Hello 2026-11-20), and
+  // it carries the name and nothing else.
+  const viewWrites = mock.history.patch.filter((r) => r.url?.includes("/views/")).map((r) => JSON.parse(String(r.data)));
+  expect(viewWrites.filter((b) => JSON.stringify(Object.keys(b.view ?? {})) !== '["name"]' || Object.keys(b).length !== 1)).toEqual([]);
   mock.restore();
 });
 
@@ -586,6 +589,90 @@ describe("a personal field order (the owner, 2026-11-20)", () => {
     fireEvent.press(await screen.findByTestId("tables-save-view-save"));
     await waitFor(() => expect(mock.history.post.length).toBe(1));
     expect(JSON.parse(mock.history.post[0].data).view.config.field_order).toEqual([1, 3, 2, 4, 5]);
+  });
+});
+
+describe("manage the table's views (4b; the web's ViewSwitcher)", () => {
+  const made = (id: number, name: string, view_type = "grid", config: Record<string, unknown> = {}) => ({ view: view(id, name, view_type, config) });
+  const asRole = (role: string) => mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }]), role }] });
+  beforeEach(() => {
+    mockParams.current = { id: "10", base: "3" };
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody());
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+  });
+  afterEach(() => jest.restoreAllMocks());
+  const openViews = async () => {
+    renderScreen(<TableScreen />);
+    await screen.findByText("Blue scarf");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    fireEvent.press(screen.getByTestId("tables-view-switch"));
+    return screen.findByTestId("tables-views-open-70");
+  };
+
+  it("a new KANBAN view is posted from the view on screen with its select column, then opens", async () => {
+    asRole("editor");
+    mock.onPost(`${B}/tables/10/views`).reply(201, made(80, "By status", "kanban", { kanban_field_id: 2 }));
+    await openViews();
+    fireEvent.press(screen.getByTestId("tables-views-new"));
+    fireEvent.changeText(await screen.findByTestId("tables-views-name"), "By status");
+    fireEvent.press(screen.getByTestId("tables-views-type-kanban"));
+    expect(screen.getByTestId("tables-views-column-2").props.accessibilityState.selected).toBe(true); // the only select, chosen for them
+    fireEvent.press(screen.getByTestId("tables-views-save"));
+    await waitFor(() => expect(mock.history.post).toHaveLength(1));
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ from_view_id: 70, view: { name: "By status", view_type: "kanban", config: { kanban_field_id: 2 } } });
+    await waitFor(() => expect(router.setParams).toHaveBeenCalledWith({ view: "80" }));
+  });
+
+  it("a calendar cannot be made on a table with no date column: it says why and Create stays off", async () => {
+    asRole("editor");
+    await openViews();
+    fireEvent.press(screen.getByTestId("tables-views-new"));
+    fireEvent.changeText(await screen.findByTestId("tables-views-name"), "Dates");
+    fireEvent.press(screen.getByTestId("tables-views-type-calendar"));
+    expect(screen.getByTestId("tables-views-no-column")).toBeTruthy();
+    expect(screen.getByTestId("tables-views-save").props.accessibilityState.disabled).toBe(true);
+  });
+
+  it("rename sends the name alone; duplicate opens the copy; delete asks, then opens another view", async () => {
+    asRole("editor");
+    mock.onPatch(`${B}/views/70`).reply(200, made(70, "Everything"));
+    mock.onPost(`${B}/views/70/duplicate`).reply(201, made(81, "Grid (copie)"));
+    mock.onDelete(`${B}/views/70`).reply(204);
+    const alert = jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => buttons?.find((b) => b.style === "destructive")?.onPress?.());
+    await openViews();
+    fireEvent.press(screen.getByTestId("tables-views-manage-70"));
+    fireEvent.press(screen.getByTestId("tables-views-rename-70"));
+    fireEvent.changeText(await screen.findByTestId("tables-views-name"), "Everything");
+    fireEvent.press(screen.getByTestId("tables-views-save"));
+    await waitFor(() => expect(mock.history.patch.map((r) => JSON.parse(r.data))).toEqual([{ view: { name: "Everything" } }]));
+
+    fireEvent.press(await screen.findByTestId("tables-views-manage-70"));
+    fireEvent.press(screen.getByTestId("tables-views-duplicate-70"));
+    await waitFor(() => expect(router.setParams).toHaveBeenCalledWith({ view: "81" }));
+
+    fireEvent.press(screen.getByTestId("tables-view-switch"));
+    fireEvent.press(await screen.findByTestId("tables-views-manage-70"));
+    fireEvent.press(screen.getByTestId("tables-views-delete-70"));
+    expect(alert.mock.calls[0][0]).toBe('Delete the view "Grid"?');
+    expect(alert.mock.calls[0][1]).toBe("It is gone for everyone on the base. The rows stay.");
+    await waitFor(() => expect(mock.history.delete.map((r) => r.url)).toEqual([`${B}/views/70`]));
+    await waitFor(() => expect(router.setParams).toHaveBeenLastCalledWith({ view: "71" }));
+  });
+
+  it("a viewer switches views and manages nothing", async () => {
+    asRole("viewer");
+    await openViews();
+    expect(screen.queryByTestId("tables-views-new")).toBeNull();
+    expect(screen.queryByTestId("tables-views-manage-70")).toBeNull();
+  });
+
+  it("the last view offers no delete (the server keeps one)", async () => {
+    asRole("editor");
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody([view(70, "Grid", "grid")]));
+    await openViews();
+    fireEvent.press(screen.getByTestId("tables-views-manage-70"));
+    expect(screen.getByTestId("tables-views-rename-70")).toBeTruthy();
+    expect(screen.queryByTestId("tables-views-delete-70")).toBeNull();
   });
 });
 

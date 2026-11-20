@@ -199,6 +199,8 @@ const COMPOSED = [
   // activity.tsx: the history kinds (HISTORY_KINDS + "all") and the two badged sources.
   ...["all", "rows", "columns", "imports", "links", "sharing", "table"].map((v) => `tables.history.kinds.${v}`),
   ...["assistant", "import"].map((v) => `tables.history.sources.${v}`),
+  // A new view's column label and empty note, by type (`ViewsSheet.tsx`).
+  ...["kanban", "calendar", "gallery"].flatMap((v) => [`tables.viewsSheet.column.${v}`, `tables.viewsSheet.noColumn.${v}`]),
   // A refused comment file (`commentFiles.ts` CommentFileRefusal["why"]), t(`tables.activity.refused.${why}`).
   ...["type", "size", "count"].map((v) => `tables.activity.refused.${v}`),
   // t(`tables.find.${q.key}`) over the date filter's quick days (FilterSortSheet.tsx DateValue).

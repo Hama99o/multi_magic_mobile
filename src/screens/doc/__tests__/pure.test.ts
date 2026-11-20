@@ -3,20 +3,25 @@
  * an upload (files.ts), the stroke maths of a drawn signature (strokes.ts),
  * a placement's ratios (Placement.tsx), the fonts' saved values (fonts.ts).
  */
-jest.mock("expo-file-system", () => ({ Directory: class {}, File: class {}, Paths: { cache: "file:///cache" } }));
-
 import { DOC_MAX_FILE_BYTES } from "@/api/doc";
 import { checkMerge, checkOne, convertTargets, kindOf, mimeFor, needsServerPreview } from "../files";
 import { fitStrokes, hasInk, nextPoint, pathFor } from "../strokes";
 import { placeAt, resize, toPlacements, turn, MAX_WIDTH, MIN_WIDTH } from "../Placement";
 import { SIGNATURE_FONTS, fontFor } from "../fonts";
 
+import { entriesFor, moveSelected, remove, rotate, splitName, toServer } from "../pageOps";
+import { moveItem } from "../files";
+
+import { parseTarget } from "../files";
+
+jest.mock("expo-file-system", () => ({ Directory: class {}, File: class {}, Paths: { cache: "file:///cache" } }));
+
 const f = (name: string, mimeType: string | null = null, size: number | null = 100) => ({ uri: `file:///${name}`, name, mimeType, size });
 
 describe("what Doc takes", () => {
   it("knows a PDF and every image a phone holds, by type or by name", () => {
     expect(kindOf(f("a.pdf"))).toBe("pdf");
-    for (const name of ["a.heic", "a.HEIF", "a.avif", "a.webp", "a.tiff", "a.tif", "a.jp2", "a.bmp", "a.svg", "a.ico", "a.jpeg", "a.png", "a.gif"]) expect([name, kindOf(f(name))]).toEqual([name, "image"]);
+    for (const name of ["a.heic", "a.HEIF", "a.avif", "a.webp", "a.tiff", "a.tif", "a.jp2", "a.bmp", "a.ico", "a.jpeg", "a.png", "a.gif"]) expect([name, kindOf(f(name))]).toEqual([name, "image"]);
     expect(kindOf(f("scan", "image/heic"))).toBe("image"); // no extension, a type
     expect(kindOf(f("notes.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))).toBe("other");
     expect(mimeFor(f("IMG.HEIC", "application/octet-stream"))).toBe("image/heic");
@@ -28,7 +33,7 @@ describe("what Doc takes", () => {
     expect(needsServerPreview(f("a.webp", "image/webp"))).toBe(false);
     expect(needsServerPreview(f("a.tiff", "image/tiff"))).toBe(true);
     expect(needsServerPreview(f("a.bmp", "image/bmp"))).toBe(true);
-    expect(needsServerPreview(f("a.svg", "image/svg+xml"))).toBe(true);
+    expect(kindOf(f("a.svg", "image/svg+xml"))).toBe("other"); // refused by the server on purpose
     expect(needsServerPreview(f("a.pdf", "application/pdf"))).toBe(false);
   });
 
@@ -36,6 +41,7 @@ describe("what Doc takes", () => {
     expect(checkOne(f("a.pdf", null, DOC_MAX_FILE_BYTES + 1), "any")).toEqual({ reason: "too_large", name: "a.pdf" });
     expect(checkOne(f("a.jpg"), "pdf")).toEqual({ reason: "not_pdf", name: "a.jpg" });
     expect(checkOne(f("a.mov", "video/quicktime"), "any")).toEqual({ reason: "unreadable_image", name: "a.mov" });
+    expect(checkOne(f("a.pdf", null, 0), "pdf")).toEqual({ reason: "empty", name: "a.pdf" });
     expect(checkOne(f("a.pdf"), "pdf")).toBeNull();
     expect(checkOne(f("a.pdf", null, null), "any")).toBeNull(); // an unknown size is the server's to judge
   });
@@ -108,9 +114,6 @@ describe("typed signature fonts", () => {
   });
 });
 
-import { entriesFor, moveSelected, remove, rotate, splitName, toServer } from "../pageOps";
-import { moveItem } from "../files";
-
 describe("page edits (web PagesDoc)", () => {
   const four = entriesFor(4);
   const keys = (...k: string[]) => new Set(k);
@@ -147,8 +150,6 @@ describe("page edits (web PagesDoc)", () => {
     expect(moveItem(list, 0, -1)).toBe(list);
   });
 });
-
-import { parseTarget } from "../files";
 
 it("a compress target reads a French comma and stays inside the server's 0.1–49 MB", () => {
   expect(parseTarget("1,5")).toBe(1.5);

@@ -2,17 +2,19 @@
  * COMPRESS (SPEC §C.10; web `CompressDoc.tsx`).
  *
  * Basic, Strong, or a target in MB (0.1–49, the server's clamp). Every change
- * re-runs the compression as a preview, cancelling the one before (800 ms
+ * re-runs the compression as a preview (a query), cancelling the one before (800 ms
  * after typing a target), so the new size is known BEFORE saving, and Save
  * hands over that same file — no second request. The server never returns a
  * bigger file; "already as small as it gets" and "could not reach the target"
  * are said rather than hidden.
  */
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { docKeys } from "@/api/keys";
 import { ScrollView, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Image as ExpoImage } from "expo-image";
-import { docApi, type CompressMode, type DocFile, type DocResult } from "@/api/doc";
+import { docApi, type Compressed, type CompressMode, type DocError, type DocFile, type DocResult, type Progress } from "@/api/doc";
 import { Shrink } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { AppHeader } from "@/components/shell/AppHeader";
@@ -22,7 +24,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { formatBytes } from "@/screens/pages/parts";
 import { kindOf, parseTarget } from "@/screens/doc/files";
 import { Chip, SectionLabel } from "@/screens/doc/controls";
-import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake } from "@/screens/doc/ui";
+import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useIntake } from "@/screens/doc/ui";
 
 const DEBOUNCE_MS = 800;
 const MB = 1024 * 1024;
@@ -35,13 +37,12 @@ export default function CompressScreen() {
   const [mode, setMode] = useState<CompressMode>("basic");
   const [targetText, setTargetText] = useState("");
   const [target, setTarget] = useState<number | null>(null);
-  const [outcome, setOutcome] = useState<{ result: DocResult; originalSize: number; compressedSize: number; mode: CompressMode; target: number | null } | null>(null);
   const [results, setResults] = useState<DocResult[] | null>(null);
-  const task = useDocTask();
+  const [progress, setProgress] = useState<Progress | null>(null);
+  const [stopped, setStopped] = useState(false);
   const intake = useIntake("any", false, (files) => {
     setFile(files[0]);
-    setOutcome(null);
-    task.clearError();
+    setStopped(false);
   });
 
   useEffect(() => {
@@ -49,17 +50,25 @@ export default function CompressScreen() {
     return () => clearTimeout(id);
   }, [targetText]);
 
-  // The preview: every file, mode or target change compresses again.
-  const run = task.run;
-  const generation = useRef(0);
-  useEffect(() => {
-    if (!file || (mode === "custom" && target === null)) return;
-    const mine = ++generation.current;
-    setOutcome(null);
-    void run((opts) => docApi.compress(file, mode, target ?? undefined, opts)).then((out) => {
-      if (out && mine === generation.current) setOutcome({ ...out, mode, target });
-    });
-  }, [file, mode, target, run]);
+  // The preview: a query per (file, mode, target), so a change supersedes the
+  // one before and React Query cancels it (its signal reaches the request),
+  // and going back to an earlier mode shows that answer without asking again.
+  const client = useQueryClient();
+  const key = docKeys.compress(file?.uri ?? "", mode, target ?? 0);
+  const preview = useQuery<Compressed, DocError>({
+    queryKey: key,
+    queryFn: ({ signal }) => docApi.compress(file as DocFile, mode, target ?? undefined, { signal, onProgress: setProgress }),
+    enabled: Boolean(file) && !stopped && (mode !== "custom" || target !== null),
+    staleTime: Infinity,
+    gcTime: 10 * 60_000,
+    retry: false,
+  });
+  const outcome = preview.data ? { ...preview.data, mode, target } : null;
+  const busy = { busy: preview.isFetching, progress, step: null, error: null, cancel: () => {
+    setStopped(true);
+    void client.cancelQueries({ queryKey: key });
+  } };
+  const previewError = preview.error && preview.error.reason !== "cancelled" ? preview.error : null;
 
   const reduced = outcome && outcome.originalSize > 0 ? Math.round((1 - outcome.compressedSize / outcome.originalSize) * 100) : 0;
   const noReduction = outcome !== null && outcome.compressedSize >= outcome.originalSize;
@@ -85,7 +94,10 @@ export default function CompressScreen() {
             <View accessibilityRole="radiogroup" style={{ gap: metrics.space.sm }} testID="doc-compress-modes">
               {modes.map((m) => (
                 <View key={m.key} style={{ gap: 2 }}>
-                  <Chip testID={`doc-compress-${m.key}`} label={m.title} selected={mode === m.key} onPress={() => setMode(m.key)} />
+                  <Chip testID={`doc-compress-${m.key}`} label={m.title} selected={mode === m.key} onPress={() => {
+                      setMode(m.key);
+                      setStopped(false);
+                    }} />
                   <Text variant="caption" tone="muted" style={{ paddingHorizontal: metrics.space.lg }}>
                     {m.sub}
                   </Text>
@@ -98,7 +110,10 @@ export default function CompressScreen() {
                 <TextInput
                   testID="doc-compress-target"
                   value={targetText}
-                  onChangeText={setTargetText}
+                  onChangeText={(v) => {
+                    setTargetText(v);
+                    setStopped(false);
+                  }}
                   keyboardType="decimal-pad"
                   placeholder="1.5"
                   placeholderTextColor={colors.inkMuted}
@@ -111,8 +126,8 @@ export default function CompressScreen() {
                 </Text>
               </View>
             ) : null}
-            <BusyCard task={task} label={t("doc.compress.previewing")} />
-            <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} />
+            <BusyCard task={busy} label={t("doc.compress.previewing")} />
+            <ErrorLine error={previewError} name={file.name} />
             {outcome ? (
               <View testID="doc-compress-outcome" style={{ gap: metrics.space.sm }}>
                 <View style={{ flexDirection: "row", gap: metrics.space.sm }}>

@@ -285,7 +285,13 @@ export interface Thumb {
   uri: string;
 }
 
-export function parseThumbnails(raw: unknown): { pageCount: number; truncated: boolean; pages: Thumb[] } {
+export interface Thumbnails {
+  pageCount: number;
+  truncated: boolean;
+  pages: Thumb[];
+}
+
+export function parseThumbnails(raw: unknown): Thumbnails {
   const o = obj(raw, "thumbnails");
   return {
     pageCount: num(o.page_count, "page_count"),
@@ -399,6 +405,12 @@ export interface PageEntry {
 
 export type CompressMode = "basic" | "strong" | "custom";
 
+export interface Compressed {
+  result: DocResult;
+  originalSize: number;
+  compressedSize: number;
+}
+
 /* ───────────────────────────── the API ──────────────────────────────────── */
 
 export const docApi = {
@@ -422,7 +434,7 @@ export const docApi = {
       await postFile(
         "pdf/pages",
         form({ file, pages: JSON.stringify(entries.map((e) => ({ source: e.source, rotation: e.rotation ?? 0 }))), ...(split ? { split: "true" } : {}) }),
-        `${baseName(file.name)}-${split ? "pages.zip" : "edited.pdf"}`,
+        `${baseName(file.name)}-${split ? "pages" : "edited"}.${split ? "zip" : "pdf"}`,
         opts,
       )
     ).result,
@@ -461,7 +473,7 @@ export const docApi = {
   },
 
   /** G9: compress, bytes back with both sizes in headers. Never bigger than the original. */
-  compress: async (file: DocFile, mode: CompressMode, targetMb?: number, opts?: CallOptions): Promise<{ result: DocResult; originalSize: number; compressedSize: number }> => {
+  compress: async (file: DocFile, mode: CompressMode, targetMb?: number, opts?: CallOptions): Promise<Compressed> => {
     const { result, headers } = await postFile(
       "compress",
       form({ file, mode, raw: "1", ...(mode === "custom" && targetMb ? { target_mb: String(targetMb) } : {}) }),

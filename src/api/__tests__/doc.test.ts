@@ -8,6 +8,9 @@
  */
 import MockAdapter from "axios-mock-adapter";
 
+import { docApi, DocError, dispositionName, docError, safeName, utf8 } from "../doc";
+import { http } from "../http";
+
 const written: { uri: string; bytes: Uint8Array }[] = [];
 jest.mock("expo-file-system", () => {
   class Directory {
@@ -31,9 +34,6 @@ jest.mock("expo-file-system", () => {
   }
   return { Directory, File, Paths: { cache: "file:///cache" } };
 });
-
-import { docApi, DocError, dispositionName, docError, safeName, utf8 } from "../doc";
-import { http } from "../http";
 
 const pdf = { uri: "file:///cache/Contract.pdf", name: "Contract.pdf", mimeType: "application/pdf", size: 1200 };
 const photo = { uri: "file:///cache/IMG_1.heic", name: "IMG_1.heic", mimeType: "image/heic", size: 3000 };

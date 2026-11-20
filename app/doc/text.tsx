@@ -124,7 +124,11 @@ export default function TextEditorScreen() {
 
   const contentWidth = Math.min(windowWidth, metrics.maxMeasure) - metrics.space.lg * 2;
   const shownWidth = Math.max(200, contentWidth * zoom);
-  const aspect = geometry ? geometry.height / geometry.width : 1.414;
+  // `pdf/text` gives a page's geometry UNturned, while poppler draws it turned
+  // (measured: a /Rotate 90 page is 595×842 there, 842×595 in inspect). A
+  // turned page is read-only, so its picture takes inspect's shape, unmarked.
+  const shown = inspect.data?.sizes[page];
+  const aspect = rotated && shown ? shown.height / shown.width : geometry ? geometry.height / geometry.width : 1.414;
   const scale = geometry ? shownWidth / geometry.width : 1;
 
   const start = (run: TextRun) => {
@@ -205,16 +209,16 @@ export default function TextEditorScreen() {
 
                 <ScrollView horizontal scrollEnabled={zoom > 1} showsHorizontalScrollIndicator={zoom > 1} contentContainerStyle={{ minWidth: contentWidth, justifyContent: "center" }}>
                   <PdfPage file={file} page={page} width={shownWidth} aspect={aspect} testID="doc-text-page">
-                    {outlines.map((o, i) => (
+                    {rotated ? null : outlines.map((o, i) => (
                       <Mark key={`o${i}`} box={boxOn(geometry, o)} size={{ width: shownWidth, height: shownWidth * aspect }} style={MARK.picture} label={t("doc.text.why")} onPress={() => setWhy("whyPicture")} />
                     ))}
-                    {unreadable.map((r) => (
+                    {rotated ? null : unreadable.map((r) => (
                       <Mark key={keyOf(r)} box={boxOn(geometry, r)} size={{ width: shownWidth, height: shownWidth * aspect }} style={MARK.unreadable} label={t("doc.text.why")} onPress={() => setWhy("whyUnreadable")} />
                     ))}
-                    {invisible.map((r) => (
+                    {rotated ? null : invisible.map((r) => (
                       <Mark key={keyOf(r)} box={boxOn(geometry, r)} size={{ width: shownWidth, height: shownWidth * aspect }} style={MARK.invisible} label={t("doc.text.why")} onPress={() => setWhy("whyInvisible")} />
                     ))}
-                    {editable.map((r) => {
+                    {(rotated ? [] : editable).map((r) => {
                       const draft = drafts[keyOf(r)];
                       const changed = isChanged(r, draft);
                       return (

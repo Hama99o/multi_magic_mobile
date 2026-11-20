@@ -16,7 +16,7 @@ import { docKeys } from "@/api/keys";
 import { ActivityIndicator, PixelRatio, Pressable, View } from "react-native";
 import { Image as ExpoImage } from "expo-image";
 import { useTranslation } from "react-i18next";
-import { docApi, DocError, type DocFile, type PdfInspection } from "@/api/doc";
+import { docApi, DocError, type DocFile, type PdfInspection, type Thumbnails } from "@/api/doc";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 
@@ -58,7 +58,7 @@ export function usePageImage(file: DocFile | null, page: number, widthDp: number
 }
 
 export function useThumbnails(file: DocFile | null, width = 200) {
-  return useQuery<Awaited<ReturnType<typeof docApi.thumbnails>>, DocError>({
+  return useQuery<Thumbnails, DocError>({
     queryKey: docKeys.thumbs(file?.uri ?? "", width),
     queryFn: ({ signal }) => docApi.thumbnails(file as DocFile, width, { signal }),
     enabled: Boolean(file),

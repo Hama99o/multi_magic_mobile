@@ -15,8 +15,12 @@ import { DOC_MAX_FILE_BYTES, DOC_MAX_MERGE_BYTES, DOC_MAX_MERGE_FILES, type DocF
 
 export type DocKind = "pdf" | "image" | "other";
 
-/** Every image extension the server decodes (libvips + poppler). */
-export const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif", "avif", "tif", "tiff", "jp2", "j2k", "jpf", "jpx", "svg", "ico"] as const;
+/**
+ * Every image extension the server decodes (libvips + poppler). Not SVG: the
+ * server refuses it on purpose (Active Storage blocks the untrusted loader,
+ * multi_magic feat/mobile-server-gaps), so the phone says so before sending.
+ */
+export const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif", "avif", "tif", "tiff", "jp2", "j2k", "jpf", "jpx", "ico"] as const;
 
 /** What the phone's own image views draw without the server's help. */
 const NATIVE_DRAWABLE = ["jpg", "jpeg", "png", "webp", "gif", "heic", "heif", "avif"];
@@ -57,6 +61,7 @@ export function mimeFor(file: { name: string; mimeType: string | null }): string
 export function kindOf(file: { name: string; mimeType: string | null }): DocKind {
   const mime = mimeFor(file);
   if (mime === "application/pdf") return "pdf";
+  if (mime === "image/svg+xml" || extensionOf(file.name) === "svg") return "other";
   if (mime.startsWith("image/")) return "image";
   if ((IMAGE_EXTENSIONS as readonly string[]).includes(extensionOf(file.name))) return "image";
   return "other";
@@ -80,6 +85,8 @@ export type Refusal = { reason: DocReason; name?: string };
 /** What a tool would refuse, said before anything is sent. */
 export function checkOne(file: DocFile, accept: "pdf" | "image" | "any"): Refusal | null {
   const kind = kindOf(file);
+  // Zero bytes: the server would call it "not a PDF" (measured on :3020); it is empty.
+  if (file.size === 0) return { reason: "empty", name: file.name };
   if (kind === "other") return { reason: "unreadable_image", name: file.name };
   if (accept === "pdf" && kind !== "pdf") return { reason: "not_pdf", name: file.name };
   if (accept === "image" && kind !== "image") return { reason: "unreadable_image", name: file.name };

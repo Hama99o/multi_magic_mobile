@@ -98,7 +98,6 @@ export const docEn = {
     pageFailed: "This page could not be shown.",
     retry: "Try again",
     signature: "Signature on page {{n}}",
-    selected: "Selected",
   },
   signatures: {
     title: "Signatures",
@@ -111,8 +110,6 @@ export const docEn = {
     cancel: "Cancel",
     active: "Active",
     loadFailed: "Your signatures could not be loaded.",
-    unreadable_one: "{{count}} signature could not be read.",
-    unreadable_other: "{{count}} signatures could not be read.",
     defaultName: "Signature {{n}}",
   },
   creator: {

@@ -175,6 +175,23 @@ const COMPOSED = [
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
 const PLURAL = new Set([
+  "doc.file.pages",
+  "doc.merge.count",
+  "doc.merge.totalPages",
+  "doc.pages.count",
+  "doc.pages.extract",
+  "doc.result.savedFiles",
+  "doc.result.savedGallery",
+  "doc.sign.placed",
+  "doc.text.changes",
+  "doc.text.legendEditable",
+  "doc.text.legendInvisible",
+  "doc.text.legendPicture",
+  "doc.text.legendUnreadable",
+  "doc.text.saved",
+  "doc.text.savedShared",
+  "doc.text.savedWithSubstitute",
+  "doc.text.someRejected",
   "shell.chatsWaiting",
   "shell.notificationsUnread",
   "finance.ledger.entries",

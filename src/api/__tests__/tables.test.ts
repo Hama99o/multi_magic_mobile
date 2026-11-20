@@ -237,8 +237,9 @@ describe("writes (increment 2): through Tables' own endpoints, so its checks and
   });
 
   it("a one-link column already linked answers 'cardinality': the phone can offer Replace", async () => {
-    mock.onPost(`${BASE}/records/501/link`).replyOnce(422, { message: "already linked", code: "cardinality", conflict: { id: 900, label: "Kabul office" } });
-    await expect(tablesApi.link(501, 3, 901)).rejects.toMatchObject({ cardinality: { id: 900, label: "Kabul office" } });
+    // The server's own shape (`Links#link!`), not a guess: it once read as "#0" on a device.
+    mock.onPost(`${BASE}/records/501/link`).replyOnce(422, { message: "Office already links to Kabul office", code: "cardinality", conflict: { field_id: 3, record_id: 501, linked_id: 900 } });
+    await expect(tablesApi.link(501, 3, 901)).rejects.toMatchObject({ cardinality: { id: 900, label: null } });
     mock.onPost(`${BASE}/records/501/link`).reply(200, { record: rows.records[0] });
     await tablesApi.link(501, 3, 901, { replace: true });
     expect(JSON.parse(mock.history.post[1].data)).toEqual({ field_id: 3, linked_id: 901, replace: true });

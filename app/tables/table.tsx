@@ -10,7 +10,7 @@
  * picks another SHARED view; it changes nothing for anybody.
  */
 import { useEffect, useMemo, useState } from "react";
-import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, TextInput, View } from "react-native";
+import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, TextInput, useWindowDimensions, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -32,7 +32,7 @@ import { ActionSheet, type SheetAction } from "@/screens/contacts/ActionSheet";
 import { EmptyState } from "@/screens/flow/parts";
 import { useAsk } from "@/screens/flow/useAsk";
 import { cardLayout, RecordCard } from "@/screens/tables/RecordCard";
-import { CARD_LINES, canEditRows, countLine, mergePages, TABLES_COLOR, titleField } from "@/screens/tables/logic";
+import { CARD_LINES, canEditRows, countLine, mergePages, newestProven, TABLES_COLOR, titleField } from "@/screens/tables/logic";
 import { useCreateRow, useMoveRow } from "@/screens/tables/useRowWrites";
 import { KanbanView } from "@/screens/tables/KanbanView";
 import { CalendarView } from "@/screens/tables/CalendarView";
@@ -142,7 +142,15 @@ export default function TableScreen() {
   const byDay = useMemo(() => (calendarField ? rowsByDay(rows, calendarField) : new Map<string, RecordRow[]>()), [calendarField, rows]);
   const [moving, setMoving] = useState<{ row: RecordRow; column: KanbanColumn } | null>(null);
   const personal = view ? differsFromShared(view, layer) : false;
-  const unsorted = query ? query.sorts.length === 0 : false;
+  // Say "Newest first" only when the first page proves it: an older server
+  // ignores `sort=-created_at` and sends the table's order (seen on a device,
+  // 2026-11-20). Unproven, the screen shows the order and claims nothing.
+  const newestShown = Boolean(query?.newestFirst && firstPage && newestProven(firstPage.rows));
+  const showOrderChip = newestShown || layer.newestFirst === false;
+  // On a phone narrower than this the order chip is an icon, so the view's
+  // NAME keeps its room (at 360 dp it shrank to an icon, at 411 to "G…").
+  const { width: screenWidth } = useWindowDimensions();
+  const compactToolbar = screenWidth < 420;
   const count = countLine(firstPage, t, i18n.language);
 
   const editable = canEditRows(base?.role);
@@ -257,7 +265,7 @@ export default function TableScreen() {
             onPress={() => setSheet("views")}
             accessibilityRole="button"
             accessibilityLabel={t("tables.viewSwitch", { view: view.name })}
-            style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexShrink: 1 }}
+            style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36, minWidth: 96, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexShrink: 1 }}
           >
             {gallery ? <LayoutGrid size={16} color={colors.ink} /> : <Table2 size={16} color={colors.ink} />}
             <Text variant="label" numberOfLines={1} style={{ flexShrink: 1 }}>
@@ -265,7 +273,7 @@ export default function TableScreen() {
             </Text>
             <ChevronDown size={16} color={colors.inkMuted} />
           </Pressable>
-          {unsorted || layer.newestFirst === false ? (
+          {showOrderChip ? (
             <Pressable
               testID="tables-order"
               onPress={() => change({ newestFirst: query?.newestFirst ? false : undefined })}
@@ -275,9 +283,11 @@ export default function TableScreen() {
               style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, borderWidth: 1, borderColor: layer.newestFirst === false ? colors.accent : colors.border, backgroundColor: layer.newestFirst === false ? `${colors.accent}22` : colors.surface }}
             >
               <ArrowUpDown size={16} color={colors.ink} />
-              <Text variant="label" numberOfLines={1}>
-                {query?.newestFirst ? t("tables.order.newest") : t("tables.order.table")}
-              </Text>
+              {compactToolbar ? null : (
+                <Text variant="label" numberOfLines={1}>
+                  {query?.newestFirst ? t("tables.order.newest") : t("tables.order.table")}
+                </Text>
+              )}
             </Pressable>
           ) : null}
           <View style={{ flex: 1 }} />

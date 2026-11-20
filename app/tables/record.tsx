@@ -26,15 +26,16 @@ import { tablesApi, type RecordRow, type RecordsPage, type RelationGroup } from 
 import { absoluteUrl } from "@/api/conversations";
 import { failureMessage } from "@/api/failure";
 import type { FieldDefinition, RecordOption } from "@/api/fields";
-import { ChevronLeft, ChevronRight, Copy, CopyPlus, Ellipsis, ExternalLink, FileText, Mail, MessageCircle, Phone, Sparkles, Trash2 } from "@/components/icons";
+import { ChevronLeft, ChevronRight, Copy, CopyPlus, Ellipsis, ExternalLink, FileText, Mail, MessageCircle, Pencil, Phone, Sparkles, Trash2 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { LoadFailure } from "@/components/LoadFailure";
-import { FieldRow } from "@/components/fields/FieldRow";
+import { FieldIcon, FieldRow, RecordPickerSheet } from "@/components/fields/FieldRow";
 import { displayValue, linkedRecords, scalar } from "@/components/fields/display";
-import { useFieldWrites } from "@/components/fields/useFieldWrites";
+import { useFieldWrites, type FieldWrites } from "@/components/fields/useFieldWrites";
+import type { KnownRecords } from "@/components/fields/display";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useAsk } from "@/screens/flow/useAsk";
 import { useMe } from "@/hooks/useMe";
@@ -90,7 +91,9 @@ export default function RecordScreen() {
   const writes = useFieldWrites(target, (error) => {
     if (error instanceof RowLinkConflict) {
       // The web's answer to a full one-link column: replace what is there.
-      Alert.alert(t("tables.replaceTitle"), t("tables.replaceBody", { row: error.cardinality.label ?? `#${error.cardinality.id}` }), [
+      // The server sends the linked row's id only; its title is on this page already.
+      const there = error.cardinality.label ?? row?.linkLabels[error.cardinality.id] ?? `#${error.cardinality.id}`;
+      Alert.alert(t("tables.replaceTitle"), t("tables.replaceBody", { row: there }), [
         { text: t("fields.cancel"), style: "cancel" },
         {
           text: t("tables.replace"),
@@ -191,12 +194,16 @@ export default function RecordScreen() {
           <Text variant="title" testID="tables-record-title" style={{ marginVertical: metrics.space.sm }}>
             {titleText}
           </Text>
-          {fields.map((f) => (
-            <View key={f.id}>
-              <FieldRow field={f} value={row.values[f.id]} editable={editable} writes={writes} known={known} testID={`tables-field-${f.id}`} onError={setFailure} />
-              <ValueActions field={f} row={row} known={known} group={relations.data?.find((g) => g.fieldId === f.id)} />
-            </View>
-          ))}
+          {fields.map((f) =>
+            isTableLink(f) ? (
+              <LinkFieldRow key={f.id} field={f} row={row} known={known} editable={editable} writes={writes} group={relations.data?.find((g) => g.fieldId === f.id)} />
+            ) : (
+              <View key={f.id}>
+                <FieldRow field={f} value={row.values[f.id]} editable={editable} writes={writes} known={known} testID={`tables-field-${f.id}`} onError={setFailure} />
+                <ValueActions field={f} row={row} />
+              </View>
+            ),
+          )}
           <Pressable
             testID="tables-record-ask"
             onPress={() => ask(t("tables.askRowQuestion", { row: titleText, table: table.data?.name ?? "" }))}
@@ -228,7 +235,70 @@ function NavButton({ testID, label, disabled, onPress, icon }: { testID: string;
 }
 
 /** What a value can do, under its row: the read-only page's actions (R2). */
-function ValueActions({ field, row, known, group }: { field: FieldDefinition; row: RecordRow; known: () => RecordOption[]; group?: RelationGroup }) {
+const isTableLink = (field: FieldDefinition) => (field.fieldType === "single_record" || field.fieldType === "multi_record") && field.recordClass === "TableApp::Record";
+
+/**
+ * A link to rows of a table, as ONE row (the device pass of 2026-11-20 saw
+ * each linked row twice: the shared row's chip, then an action under it).
+ * Here the chips are the links themselves, each opening its row, and an
+ * editor's pencil opens the shared picker.
+ */
+function LinkFieldRow({ field, row, known, editable, writes, group }: { field: FieldDefinition; row: RecordRow; known: KnownRecords; editable: boolean; writes: FieldWrites; group?: RelationGroup }) {
+  const colors = useColors();
+  const metrics = useMetrics();
+  const { t } = useTranslation();
+  const [picking, setPicking] = useState(false);
+  const value = row.values[field.id];
+  const linkedTable = group?.table?.id ?? Number(field.config.raw.table_id);
+  // The whole list once the relations call answers; the page's first 12 until then.
+  const links = group ? group.rows.map((r) => ({ id: r.id, label: r.title ?? t("tables.untitled") })) : linkedRecords(field, value, known);
+  return (
+    <View style={{ paddingVertical: metrics.space.xs, gap: metrics.space.xs }}>
+      <Pressable
+        testID={`tables-field-${field.id}`}
+        onPress={editable ? () => setPicking(true) : undefined}
+        disabled={!editable}
+        accessibilityRole={editable ? "button" : undefined}
+        accessibilityLabel={`${field.name}: ${links.map((l) => l.label).join(", ") || t("fields.empty")}`}
+        accessibilityHint={editable ? t("fields.editHint") : undefined}
+        style={{ flexDirection: "row", alignItems: "center", minHeight: metrics.touch, gap: metrics.space.md }}
+      >
+        <FieldIcon field={field} size={18} color={colors.inkMuted} />
+        <Text variant="label" tone="muted" numberOfLines={2} style={{ flex: 1, fontWeight: "500" }}>
+          {field.name}
+        </Text>
+        {editable ? <Pencil size={18} color={colors.accent} /> : null}
+      </Pressable>
+      {links.length ? (
+        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: metrics.space.xs, paddingLeft: 30 }}>
+          {links.map((l, i) => (
+            <Pressable
+              key={l.id}
+              testID={`tables-field-${field.id}-link-${i}`}
+              disabled={!Number.isFinite(linkedTable) || linkedTable <= 0}
+              onPress={() => router.push({ pathname: "/tables/record", params: { table: String(linkedTable), id: String(l.id) } })}
+              accessibilityRole="link"
+              accessibilityLabel={t("tables.openLinked", { row: l.label })}
+              style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, borderWidth: 1, borderColor: colors.border, maxWidth: "100%" }}
+            >
+              <Text variant="label" tone="accent" numberOfLines={1} style={{ flexShrink: 1 }}>
+                {l.label}
+              </Text>
+              <ChevronRight size={14} color={colors.accent} />
+            </Pressable>
+          ))}
+        </View>
+      ) : (
+        <Text tone="muted" style={{ paddingLeft: 30 }}>
+          {editable ? t("fields.empty") : "—"}
+        </Text>
+      )}
+      {picking ? <RecordPickerSheet field={field} value={value} writes={writes} known={known} onClose={() => setPicking(false)} testID={`tables-field-${field.id}-sheet`} /> : null}
+    </View>
+  );
+}
+
+function ValueActions({ field, row }: { field: FieldDefinition; row: RecordRow }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -242,13 +312,9 @@ function ValueActions({ field, row, known, group }: { field: FieldDefinition; ro
   if (field.fieldType === "email" && text) buttons.push({ key: "mail", label: t("fields.writeEmail"), icon: Mail, onPress: () => void Linking.openURL(`mailto:${text}`) });
   if (field.fieldType === "url" && text) buttons.push({ key: "open", label: t("fields.openLink"), icon: ExternalLink, onPress: () => void Linking.openURL(/^https?:\/\//i.test(text) ? text : `https://${text}`) });
 
-  const linkedTable = group?.table?.id ?? Number(field.config.raw.table_id);
-  const isTableLink = (field.fieldType === "single_record" || field.fieldType === "multi_record") && field.recordClass === "TableApp::Record";
-  // The whole list once the relations call answers; the page's first 12 until then.
-  const links = !isTableLink ? [] : group ? group.rows.map((r) => ({ id: r.id, label: r.title ?? t("tables.untitled"), color: null })) : linkedRecords(field, value, known);
   const files = value?.kind === "files" ? value.files : [];
 
-  if (!buttons.length && !links.length && !files.length) return null;
+  if (!buttons.length && !files.length) return null;
   return (
     <View style={{ flexDirection: "row", flexWrap: "wrap", gap: metrics.space.xs, paddingLeft: 30, paddingBottom: metrics.space.xs }}>
       {buttons.map((b) => (
@@ -257,22 +323,6 @@ function ValueActions({ field, row, known, group }: { field: FieldDefinition; ro
           <Text variant="label" tone="accent">
             {b.label}
           </Text>
-        </Pressable>
-      ))}
-      {links.map((l, i) => (
-        <Pressable
-          key={l.id}
-          testID={`tables-field-${field.id}-link-${i}`}
-          disabled={!Number.isFinite(linkedTable) || linkedTable <= 0}
-          onPress={() => router.push({ pathname: "/tables/record", params: { table: String(linkedTable), id: String(l.id) } })}
-          accessibilityRole="link"
-          accessibilityLabel={t("tables.openLinked", { row: l.label })}
-          style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, borderWidth: 1, borderColor: colors.border, maxWidth: "100%" }}
-        >
-          <Text variant="label" tone="accent" numberOfLines={1} style={{ flexShrink: 1 }}>
-            {l.label}
-          </Text>
-          <ChevronRight size={14} color={colors.accent} />
         </Pressable>
       ))}
       {files.map((f, i) => (

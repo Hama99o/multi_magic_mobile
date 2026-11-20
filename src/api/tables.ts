@@ -349,8 +349,11 @@ function cardinalityOf(error: unknown): { id: number; label: string | null } | n
   if (data?.status !== 422 || !data.data || typeof data.data !== "object") return null;
   const body = data.data as Record<string, unknown>;
   if (body.code !== "cardinality") return null;
+  // `Links#link!`: `{ field_id, record_id, linked_id }`. No title: the
+  // server puts it in its sentence only, so the screen names the row from
+  // what it already holds (first seen on a device as "#0", 2026-11-20).
   const c = body.conflict && typeof body.conflict === "object" ? (body.conflict as Record<string, unknown>) : {};
-  return { id: optId(c.id) ?? 0, label: optStr(c.label) };
+  return { id: optId(c.linked_id) ?? optId(c.id) ?? 0, label: optStr(c.label) };
 }
 
 /** The selection a link made, read back from the row the server answers with. */

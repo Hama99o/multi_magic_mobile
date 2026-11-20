@@ -78,8 +78,9 @@ const tableBody = (views = [view(70, "Grid", "grid", { row_height: "tall" }), vi
   },
 });
 
+// A higher id is a newer row, as on the server.
 const row = (id: number, name: string, extra: Record<string, unknown> = {}) => ({
-  id, position: id, created_at: "2026-11-19T09:00:00Z", updated_at: "2026-11-19T09:30:00Z",
+  id, position: id, created_at: new Date(Date.UTC(2026, 10, 19, 9, 0, id % 60)).toISOString(), updated_at: "2026-11-19T09:30:00Z",
   values: { "1": { scalar_value: name }, ...extra },
 });
 const scarf = row(501, "Blue scarf", {
@@ -167,13 +168,29 @@ describe("a table (T1–T6)", () => {
   });
 
   it("'Table order' is personal: the next query drops newest first, and the phone says so", async () => {
-    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([row(503, "Grey coat"), row(502, "Red hat"), scarf]));
     renderScreen(<TableScreen />);
     await screen.findByText("Blue scarf");
     fireEvent.press(screen.getByTestId("tables-order"));
     await waitFor(() => expect(recordCalls().some((p) => p.sort === undefined)).toBe(true));
     expect(screen.getByTestId("tables-personal-note")).toBeTruthy();
     expect(screen.getByTestId("tables-personal-dot")).toBeTruthy();
+  });
+
+  it("an older server that ignores the sort: the rows come oldest first, and the phone claims nothing", async () => {
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf, row(502, "Red hat")]));
+    renderScreen(<TableScreen />);
+    await screen.findByText("Red hat");
+    expect(recordCalls()[0].sort).toBe("-created_at");
+    expect(screen.queryByTestId("tables-order")).toBeNull();
+    expect(screen.queryByText("Newest first")).toBeNull();
+  });
+
+  it("a server that sorts: newest first is proven by the rows, and said", async () => {
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([row(502, "Red hat"), scarf]));
+    renderScreen(<TableScreen />);
+    await screen.findByText("Red hat");
+    expect(await screen.findByText("Newest first")).toBeTruthy();
   });
 
   it("search goes to the server as a parameter, never into the view", async () => {
@@ -439,7 +456,7 @@ describe("find and personal views (increment 3)", () => {
   });
 
   it("'Save as a new view' makes a NEW view from this one, says who sees it, and opens it", async () => {
-    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([row(503, "Grey coat"), scarf]));
     mock.onPost(`${B}/tables/10/views`).reply(201, { view: view(72, "Mine", "grid") });
     renderScreen(<TableScreen />);
     await screen.findByText("Blue scarf");

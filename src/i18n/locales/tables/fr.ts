@@ -161,13 +161,7 @@ export const tablesFr = {
     noUndated: "Toutes les lignes ont une date.",
   },
   history: {
-    title: "Historique",
     someone: "Quelqu’un",
-    nothing: "Rien pour l’instant",
-    older: "Voir les plus anciens",
-    loadFailed: "Impossible de charger l’historique.",
-    kinds: { all: "Tout", rows: "Lignes", columns: "Colonnes", imports: "Imports", links: "Liens", sharing: "Partage", table: "Table" },
-    sources: { assistant: "Assistant", import: "Import" },
     lines: {
       row_created: "{{who}} a ajouté une ligne",
       row_updated: "{{who}} a modifié une ligne ({{fields}})",

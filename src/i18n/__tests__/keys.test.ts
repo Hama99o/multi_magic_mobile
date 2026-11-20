@@ -192,6 +192,9 @@ const COMPOSED = [
   // over directionSet (screens/tables/filters.ts).
   ...["contains", "not_contains", "is", "is_not", "gt", "gte", "lt", "lte", "empty", "not_empty", "before", "after", "on_or_before", "on_or_after", "any_of", "all_of", "none_of"].map((v) => `tables.ops.${v}`),
   ...["text", "number", "date", "boolean", "option"].flatMap((v) => [`tables.sortDir.${v}.asc`, `tables.sortDir.${v}.desc`]),
+  // history.ts: t(lineKey(action)) over HISTORY_ACTIONS, and the roles a share line names.
+  ...["row_created", "row_updated", "rows_deleted", "rows_restored", "rows_written", "rows_updated", "column_added", "column_updated", "column_deleted", "column_restored", "columns_reordered", "link_added", "link_removed", "share_added", "share_changed", "share_removed", "view_created", "view_renamed", "view_deleted", "table_renamed", "table_duplicated", "import_done", "import_failed", "import_cancelled"].map((v) => `tables.history.lines.${v}`),
+  ...["editor", "viewer"].map((v) => `tables.share.roles.${v}`),
   // t(`tables.find.${q.key}`) over the date filter's quick days (FilterSortSheet.tsx DateValue).
   ...["yesterday", "today", "tomorrow"].map((v) => `tables.find.${v}`),
   // Finance: the five tabs (app/finance/index.tsx) and the Help sheet's sections (HelpSheet.tsx).
@@ -205,6 +208,9 @@ const PLURAL = new Set([
   "tables.rowCount",
   "tables.tableCount",
   "tables.find.showCount",
+  "tables.history.lines.rows_deleted",
+  "tables.history.lines.rows_restored",
+  "tables.history.lines.rows_updated",
   "shell.chatsWaiting",
   "shell.notificationsUnread",
   "finance.ledger.entries",

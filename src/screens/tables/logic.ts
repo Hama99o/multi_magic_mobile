@@ -58,3 +58,16 @@ export function positionOf(rows: RecordRow[], recordId: number): { index: number
 
 /** Who may add, change and delete rows: the owner and editors (`TableApp::BasePolicy#edit_records?`). Unknown = no. */
 export const canEditRows = (role: BaseRole | undefined) => role === "owner" || role === "editor";
+
+/**
+ * Did the server really sort newest first? (Hello, 2026-11-20, after a device
+ * pass against an older server that ignored `sort=-created_at` while the chip
+ * said "Newest first".) Proven only by the page itself: at least two rows, and
+ * none created after the one above it. Anything less and the screen claims
+ * nothing.
+ */
+export function newestProven(rows: RecordRow[]): boolean {
+  if (rows.length < 2) return false;
+  for (let i = 1; i < rows.length; i++) if (rows[i].createdAt > rows[i - 1].createdAt) return false;
+  return rows[0].createdAt > rows[rows.length - 1].createdAt;
+}

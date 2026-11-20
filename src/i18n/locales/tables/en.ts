@@ -162,13 +162,7 @@ export const tablesEn = {
     noUndated: "Every row has a date.",
   },
   history: {
-    title: "History",
     someone: "Someone",
-    nothing: "Nothing yet",
-    older: "Show older",
-    loadFailed: "Could not load the history.",
-    kinds: { all: "All", rows: "Rows", columns: "Columns", imports: "Imports", links: "Links", sharing: "Sharing", table: "Table" },
-    sources: { assistant: "Assistant", import: "Import" },
     lines: {
       row_created: "{{who}} added a row",
       row_updated: "{{who}} changed a row ({{fields}})",

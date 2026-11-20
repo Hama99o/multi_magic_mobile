@@ -188,6 +188,10 @@ const COMPOSED = [
   // t(`tables.viewTypes.${v}`) over VIEW_TYPES (api/tables.ts).
   ...["created_at_desc", "updated_at_desc", "name_asc"].map((v) => `tables.baseSort.${v}`),
   ...["grid", "kanban", "calendar", "gallery"].map((v) => `tables.viewTypes.${v}`),
+  // t(`tables.ops.${op}`) over ALL_OPERATORS and t(`tables.sortDir.${set}.${dir}`)
+  // over directionSet (screens/tables/filters.ts).
+  ...["contains", "not_contains", "is", "is_not", "gt", "gte", "lt", "lte", "empty", "not_empty", "before", "after", "on_or_before", "on_or_after", "any_of", "all_of", "none_of"].map((v) => `tables.ops.${v}`),
+  ...["text", "number", "date", "boolean", "option"].flatMap((v) => [`tables.sortDir.${v}.asc`, `tables.sortDir.${v}.desc`]),
   // Finance: the five tabs (app/finance/index.tsx) and the Help sheet's sections (HelpSheet.tsx).
   ...["overview", "expenses", "income", "loans", "budgets"].map((v) => `finance.tabs.${v}`),
   ...["overview", "expenses", "recurring", "income", "loans", "budgets", "reports", "categories"].flatMap((v) => [`finance.help.${v}.title`, `finance.help.${v}.body`]),
@@ -198,6 +202,7 @@ const PLURAL = new Set([
   "fields.more",
   "tables.rowCount",
   "tables.tableCount",
+  "tables.find.showCount",
   "shell.chatsWaiting",
   "shell.notificationsUnread",
   "finance.ledger.entries",

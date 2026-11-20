@@ -72,6 +72,15 @@ const SAME_IN_BOTH = new Set([
   "tables.whatsapp",
   "fields.more_one",
   "fields.more_other",
+  // Signs and letters (the web's French keeps them): >, ≥, <, ≤, A → Z, 1 → 9.
+  "tables.ops.gt",
+  "tables.ops.gte",
+  "tables.ops.lt",
+  "tables.ops.lte",
+  "tables.sortDir.text.asc",
+  "tables.sortDir.text.desc",
+  "tables.sortDir.number.asc",
+  "tables.sortDir.number.desc",
   "pages.searchChips.type",
   // "Pause" is the French word too (a player button).
   "pages.view.pause",

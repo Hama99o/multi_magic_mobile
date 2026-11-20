@@ -162,6 +162,11 @@ describe("records", () => {
     expect(await tablesApi.record(501)).toMatchObject({ id: 501, linkLabels: { 900: "Kabul office" } });
   });
 
+  it("reads each group's size, the rows with no value as \"\"", async () => {
+    mock.onGet(`${BASE}/tables/10/records`).reply(200, { records: [], meta: { offset: 0, limit: 100, has_more: false, total_count: 9, table_total: 9, groups: [{ value: "in", count: 7 }, { value: null, count: 2 }] } });
+    expect((await tablesApi.records(10, { groupBy: 2 }, 0)).groups).toEqual({ in: 7, "": 2 });
+  });
+
   it("a later page carries no counts", async () => {
     mock.onGet(`${BASE}/tables/10/records`).reply(200, { records: [], meta: { offset: 100, limit: 100, has_more: false } });
     expect(await tablesApi.records(10, {}, 100)).toMatchObject({ totalCount: null, tableTotal: null, hasMore: false });
@@ -251,5 +256,15 @@ describe("relations: every linked row per link column, past the 12 a page carrie
     const groups = await tablesApi.relations(501);
     expect(groups[0]).toEqual({ fieldId: 3, fieldName: "Supplier", table: { id: 12, name: "Offices", baseId: 3 }, rows: [{ id: 900, title: "Kabul office" }, { id: 901, title: null }] });
     expect(groups[1].table).toBeNull();
+  });
+});
+
+describe("Save as a new view: the one view write, a NEW view", () => {
+  it("posts from the view on screen with the person's choices, in the server's names", async () => {
+    mock.onPost(`${BASE}/tables/10/views`).reply(201, { view: { id: 72, table_id: 10, name: "Mine", view_type: "grid", position: 2, config: {} } });
+    const v = await tablesApi.createView(10, { name: "Mine", viewType: "grid", fromViewId: 70, config: { filters: [{ fieldId: 2, op: "any_of", value: ["in"] }], sorts: [], groupByFieldId: null, hiddenFieldIds: [4] } });
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ from_view_id: 70, view: { name: "Mine", view_type: "grid", config: { filters: [{ field_id: 2, op: "any_of", value: ["in"] }], sorts: [], group_by_field_id: null, hidden_field_ids: [4] } } });
+    expect(v.id).toBe(72);
+    expect(mock.history.patch).toHaveLength(0);
   });
 });

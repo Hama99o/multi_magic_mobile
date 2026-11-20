@@ -13,11 +13,11 @@ import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tablesKeys } from "@/api/keys";
 import { tablesApi, type RecordRow } from "@/api/tables";
 import type { RecordOption } from "@/api/fields";
-import { ArrowUpDown, ChevronDown, Ellipsis, LayoutGrid, Plus, RotateCcw, Search, Sparkles, Table2, X } from "@/components/icons";
+import { ArrowUpDown, ChevronDown, ChevronRight, Columns3, Ellipsis, LayoutGrid, Plus, RotateCcw, Save, Search, SlidersHorizontal, Sparkles, Table2, X } from "@/components/icons";
 import { UndoToast } from "@/components/UndoToast";
 import { failureMessage } from "@/api/failure";
 import { Screen } from "@/components/ScreenContainer";
@@ -34,6 +34,11 @@ import { useAsk } from "@/screens/flow/useAsk";
 import { cardLayout, RecordCard } from "@/screens/tables/RecordCard";
 import { CARD_LINES, canEditRows, countLine, mergePages, TABLES_COLOR, titleField } from "@/screens/tables/logic";
 import { useCreateRow } from "@/screens/tables/useRowWrites";
+import { FilterSortSheet } from "@/screens/tables/FilterSortSheet";
+import { FieldsSheet } from "@/screens/tables/FieldsSheet";
+import { SaveViewSheet } from "@/screens/tables/SaveViewSheet";
+import { GROUP_HEADER, layoutOf, listItems, type ListItem } from "@/screens/tables/grouping";
+import { colorHex } from "@/screens/flow/logic";
 import { useTablesUndo } from "@/stores/tablesUndo.store";
 import { cardFields, CARD_FIELDS, differsFromShared, effectiveQuery } from "@/screens/tables/personalView";
 import { usePersonalLayer } from "@/screens/tables/usePersonalLayer";
@@ -62,7 +67,11 @@ export default function TableScreen() {
 
   const [searching, setSearching] = useState(false);
   const [typed, setTyped] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<"views" | "menu" | null>(null);
+  const [sheet, setSheet] = useState<"views" | "menu" | "find" | "fields" | "save" | null>(null);
+  const [folded, setFolded] = useState<Set<string>>(() => new Set());
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const client = useQueryClient();
   useEffect(() => {
     if (typed === null) return;
     const id = setTimeout(() => change({ search: typed.trim() || undefined }), SEARCH_DELAY_MS);
@@ -93,8 +102,13 @@ export default function TableScreen() {
   const shownFields = view && table.data ? cardFields(fields, table.data.primaryFieldId, view, layer).slice(0, Math.min(CARD_FIELDS, CARD_LINES[view.config.rowHeight])) : [];
   const gallery = view?.viewType === "gallery";
   const coverField = gallery ? (fields.find((f) => f.id === view?.config.coverFieldId) ?? fields.find((f) => f.fieldType === "attachments" || f.fieldType === "attachment") ?? null) : null;
-  const colorField = fields.find((f) => f.id === view?.config.rowColorFieldId) ?? null;
+  const colorFieldId = layer.rowColorFieldId === undefined ? (view?.config.rowColorFieldId ?? null) : layer.rowColorFieldId;
+  const colorField = fields.find((f) => f.id === colorFieldId) ?? null;
+  const groupField = fields.find((f) => f.id === query?.groupBy) ?? null;
   const itemHeight = cardLayout(shownFields.length, Boolean(coverField));
+  const items = useMemo(() => listItems(rows, groupField, firstPage?.groups ?? null, folded), [rows, groupField, firstPage?.groups, folded]);
+  const layout = useMemo(() => layoutOf(items, itemHeight), [items, itemHeight]);
+  const finding = Boolean(query && (query.filters.length || query.groupBy || layer.sorts !== undefined));
   const personal = view ? differsFromShared(view, layer) : false;
   const unsorted = query ? query.sorts.length === 0 : false;
   const count = countLine(firstPage, t, i18n.language);
@@ -124,8 +138,41 @@ export default function TableScreen() {
   }));
   const menu: SheetAction[] = [
     { key: "ask", label: t("tables.ask"), icon: Sparkles, onPress: () => ask(t("tables.askQuestion", { table: table.data?.name ?? "", base: base?.name ?? "" })) },
+    { key: "fields", label: t("tables.fieldsSheet.title"), icon: Columns3, onPress: () => setTimeout(() => setSheet("fields"), 320) },
+    ...(personal && editable ? [{ key: "save", label: t("tables.saveView.title"), hint: t("tables.saveView.hint"), icon: Save, onPress: () => setTimeout(() => setSheet("save"), 320) }] : []),
     ...(personal ? [{ key: "reset", label: t("tables.backToShared"), hint: t("tables.backToSharedHint"), icon: RotateCcw, onPress: reset }] : []),
   ];
+
+  const saveView = async (name: string) => {
+    if (!view || !query) return;
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const made = await tablesApi.createView(tableId, {
+        name,
+        viewType: view.viewType,
+        fromViewId: view.id,
+        config: { search: query.search, match: query.match, filters: query.filters, sorts: query.sorts, groupByFieldId: query.groupBy, hiddenFieldIds: layer.hiddenFieldIds ?? view.config.hiddenFieldIds, rowColorFieldId: colorFieldId },
+      });
+      await client.invalidateQueries({ queryKey: tablesKeys.table(tableId) });
+      // The person's choices are now that view's own; the view they came from goes back to shared.
+      reset();
+      setSheet(null);
+      router.setParams({ view: String(made.id) });
+    } catch (e) {
+      setSaveError(failureMessage(e, t("tables.saveView.failed")));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const toggleFold = (key: string) =>
+    setFolded((f) => {
+      const next = new Set(f);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
+    });
 
   return (
     <Screen measure>
@@ -191,6 +238,15 @@ export default function TableScreen() {
             </Pressable>
           ) : null}
           <View style={{ flex: 1 }} />
+          <Pressable
+            testID="tables-find-open"
+            onPress={() => setSheet("find")}
+            accessibilityRole="button"
+            accessibilityLabel={finding ? t("tables.find.openActive") : t("tables.find.open")}
+            style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
+          >
+            <SlidersHorizontal size={22} color={finding ? colors.accent : colors.ink} />
+          </Pressable>
           <Pressable
             testID="tables-search-toggle"
             onPress={() => {
@@ -258,16 +314,33 @@ export default function TableScreen() {
 
       <FlatList
         testID="tables-rows"
-        data={rows}
-        keyExtractor={(r) => String(r.id)}
-        getItemLayout={(_, index) => ({ length: itemHeight, offset: itemHeight * index, index })}
-        renderItem={({ item, index }) => <RecordCard row={item} index={index} title={title} fields={shownFields} colorField={colorField} coverField={coverField} known={known} height={itemHeight} onPress={() => openRow(item)} />}
+        data={items}
+        keyExtractor={(item) => (item.kind === "header" ? `h:${item.key}` : String(item.row.id))}
+        getItemLayout={(_, index) => ({ ...(layout[index] ?? { length: itemHeight, offset: itemHeight * index }), index })}
+        renderItem={({ item }) =>
+          item.kind === "header" ? (
+            <GroupHeader item={item} onPress={() => toggleFold(item.key)} />
+          ) : (
+            <RecordCard row={item.row} index={item.index} title={title} fields={shownFields} colorField={colorField} coverField={coverField} known={known} height={itemHeight} onPress={() => openRow(item.row)} />
+          )
+        }
         ListEmptyComponent={
           (table.isPending || records.isPending) && !table.error && !records.error ? (
             <RowsSkeleton rows={5} testID="tables-rows-loading" />
           ) : records.data ? (
             query?.search || query?.filters.length ? (
-              <EmptyState testID="tables-rows-no-match" icon={Search} title={t("tables.rowsNoMatch")} />
+              <EmptyState
+                testID="tables-rows-no-match"
+                icon={Search}
+                title={t("tables.rowsNoMatch")}
+                action={
+                  <Pressable testID="tables-clear-filters" onPress={() => change({ filters: [], search: undefined })} accessibilityRole="button" accessibilityLabel={t("tables.clearFilters")} style={{ minHeight: 44, justifyContent: "center", paddingHorizontal: metrics.space.md }}>
+                    <Text tone="accent" variant="label">
+                      {t("tables.clearFilters")}
+                    </Text>
+                  </Pressable>
+                }
+              />
             ) : (
               <EmptyState testID="tables-rows-empty" icon={Table2} title={t("tables.rowsEmptyTitle")} body={t("tables.rowsEmptyBody", { fields: fields.map((f) => f.name).slice(0, 4).join(", ") })} />
             )
@@ -312,8 +385,61 @@ export default function TableScreen() {
       ) : null}
       <UndoToast offer={offer} onDone={clearOffer} testID="tables-toast" bottom={editable ? 72 : 0} />
 
+      {view && table.data ? (
+        <>
+          <FilterSortSheet
+            open={sheet === "find"}
+            tableId={tableId}
+            fields={fields}
+            search={query?.search ?? ""}
+            initial={{ filters: layer.filters ?? view.config.filters, match: query?.match ?? "and", sorts: query?.sorts ?? [], groupBy: query?.groupBy ?? null }}
+            onApply={(d) => change({ filters: d.filters, match: d.match, sorts: d.sorts, groupBy: d.groupBy })}
+            onClose={() => setSheet(null)}
+          />
+          <FieldsSheet
+            open={sheet === "fields"}
+            fields={fields}
+            primaryFieldId={table.data.primaryFieldId}
+            hidden={layer.hiddenFieldIds ?? view.config.hiddenFieldIds}
+            onCards={shownFields.map((f) => f.id)}
+            colorFieldId={colorFieldId}
+            onChange={change}
+            onClose={() => setSheet(null)}
+          />
+          {sheet === "save" ? <SaveViewSheet open suggested={t("tables.saveView.suggested", { view: view.name })} busy={saving} error={saveError} onSave={(name) => void saveView(name)} onClose={() => setSheet(null)} /> : null}
+        </>
+      ) : null}
       <ActionSheet open={sheet === "views"} title={t("tables.views")} actions={viewActions} onClose={() => setSheet(null)} testID="tables-views" />
       <ActionSheet open={sheet === "menu"} title={table.data?.name ?? ""} actions={menu} onClose={() => setSheet(null)} testID="tables-options" />
     </Screen>
+  );
+}
+
+function GroupHeader({ item, onPress }: { item: Extract<ListItem, { kind: "header" }>; onPress: () => void }) {
+  const colors = useColors();
+  const metrics = useMetrics();
+  const { t } = useTranslation();
+  const hex = colorHex(item.color) ?? colors.inkMuted;
+  const label = item.label ?? t("tables.noValue");
+  return (
+    <Pressable
+      testID={`tables-group-${item.key || "none"}`}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityState={{ expanded: !item.folded }}
+      accessibilityLabel={item.count === null ? label : t("tables.groupLabel", { group: label, count: item.count })}
+      style={{ height: GROUP_HEADER, flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}
+    >
+      {item.folded ? <ChevronRight size={18} color={colors.inkMuted} /> : <ChevronDown size={18} color={colors.inkMuted} />}
+      <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: hex }} />
+      <Text variant="label" numberOfLines={1} style={{ flexShrink: 1 }}>
+        {label}
+      </Text>
+      {item.count !== null ? (
+        <Text tone="muted" variant="caption">
+          {item.count.toLocaleString()}
+        </Text>
+      ) : null}
+    </Pressable>
   );
 }

@@ -317,10 +317,19 @@ export function recordsParams(query: RecordsQuery, offset: number): Record<strin
   return params;
 }
 
+/**
+ * `meta.groups`: `[{ value, count }]` in the column's option order, the rows
+ * with no value last as `value: null` (`RecordQuery#group_counts`). Keyed
+ * here by value, "" for none.
+ */
 function parseGroups(raw: unknown): Record<string, number> | null {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  if (!Array.isArray(raw)) return null;
   const out: Record<string, number> = {};
-  for (const [key, value] of Object.entries(raw as Record<string, unknown>)) if (typeof value === "number") out[key] = value;
+  for (const g of raw) {
+    if (!g || typeof g !== "object") continue;
+    const { value, count } = g as Record<string, unknown>;
+    if (typeof count === "number") out[value === null || value === undefined ? "" : String(value)] = count;
+  }
   return out;
 }
 
@@ -374,6 +383,34 @@ export const tablesApi = {
   async record(recordId: number): Promise<RecordRow> {
     const { data } = await http.get(`${BASE}/records/${recordId}`);
     return parseRecord(obj(data, "record response").record);
+  },
+
+  /** How many rows a query keeps, for the sheet's "Show 42" (one row asked, the count read). */
+  async count(tableId: number, query: RecordsQuery): Promise<number> {
+    const { data } = await http.get(`${BASE}/tables/${tableId}/records`, { params: { ...recordsParams(query, 0), limit: 1 } });
+    const meta = obj(data, "records response").meta;
+    const total = meta && typeof meta === "object" ? (meta as Record<string, unknown>).total_count : null;
+    return typeof total === "number" ? total : 0;
+  },
+
+  /**
+   * "Save as a new view…": the ONE place the phone writes a view, and it is a
+   * NEW one, made on purpose and named by the person (SPEC C1). It starts from
+   * the view on screen (`from_view_id`) with the person's layer over it, so a
+   * colour, a width or a kanban column the phone does not edit is kept.
+   */
+  async createView(tableId: number, input: { name: string; viewType: ViewType; fromViewId: number; config: Partial<ViewConfig> }): Promise<View> {
+    const c = input.config;
+    const config: Record<string, unknown> = {};
+    if (c.search !== undefined) config.search = c.search;
+    if (c.match !== undefined) config.match = c.match;
+    if (c.filters !== undefined) config.filters = c.filters.map((f) => ({ field_id: f.fieldId, op: f.op, value: f.value }));
+    if (c.sorts !== undefined) config.sorts = c.sorts.map((s) => ({ field_id: s.fieldId, direction: s.direction }));
+    if (c.groupByFieldId !== undefined) config.group_by_field_id = c.groupByFieldId;
+    if (c.hiddenFieldIds !== undefined) config.hidden_field_ids = c.hiddenFieldIds;
+    if (c.rowColorFieldId !== undefined) config.row_color_field_id = c.rowColorFieldId;
+    const { data } = await http.post(`${BASE}/tables/${tableId}/views`, { from_view_id: input.fromViewId, view: { name: input.name, view_type: input.viewType, config } });
+    return parseView(obj(data, "view response").view);
   },
 
   async relations(recordId: number): Promise<RelationGroup[]> {

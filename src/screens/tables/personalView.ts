@@ -13,6 +13,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { FieldDefinition } from "@/api/fields";
 import type { FilterCondition, RecordsQuery, SortRule, View } from "@/api/tables";
+import { isComplete } from "./filters";
 
 export interface PersonalLayer {
   search?: string;
@@ -23,6 +24,8 @@ export interface PersonalLayer {
   hiddenFieldIds?: number[];
   /** The fields a card shows under its title, in order (Airtable's "Customize cards"). */
   cardFieldIds?: number[];
+  /** Colour the cards by this single select (the view's `row_color_field_id`); null for none. */
+  rowColorFieldId?: number | null;
   /** Newest first by the row's own creation time (C3). Absent: on for a view with no sort. */
   newestFirst?: boolean;
 }
@@ -37,7 +40,8 @@ export function effectiveQuery(view: View, layer: PersonalLayer): Required<Omit<
   const sorts = sortsOf(view, layer);
   return {
     search: layer.search ?? view.config.search,
-    filters: layer.filters ?? view.config.filters,
+    // A condition still being filled in waits; the web leaves it out too.
+    filters: (layer.filters ?? view.config.filters).filter(isComplete),
     match: layer.match ?? view.config.match,
     sorts,
     groupBy: layer.groupBy === undefined ? view.config.groupByFieldId : layer.groupBy,
@@ -59,6 +63,7 @@ export function differsFromShared(view: View, layer: PersonalLayer): boolean {
   if (layer.groupBy !== undefined && layer.groupBy !== c.groupByFieldId) return true;
   if (layer.hiddenFieldIds !== undefined && !same([...layer.hiddenFieldIds].sort(), [...c.hiddenFieldIds].sort())) return true;
   if (layer.cardFieldIds !== undefined) return true;
+  if (layer.rowColorFieldId !== undefined && layer.rowColorFieldId !== c.rowColorFieldId) return true;
   return layer.newestFirst === false && sortsOf(view, layer).length === 0;
 }
 

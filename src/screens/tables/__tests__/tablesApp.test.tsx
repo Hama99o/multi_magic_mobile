@@ -372,3 +372,78 @@ describe("editing rows (increment 2)", () => {
     expect(screen.queryByTestId("tables-add-row")).toBeNull();
   });
 });
+
+describe("find and personal views (increment 3)", () => {
+  beforeEach(() => {
+    mockParams.current = { id: "10", base: "3" };
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }], { "10": 2 }), role: "editor" }] });
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody());
+  });
+
+  it("a filter from the sheet becomes the query, the button says how many, and the view is never written", async () => {
+    mock.onGet(`${B}/tables/10/records`).reply((config) => {
+      const p = config.params as Record<string, unknown>;
+      if (p.limit === 1) return [200, page([], { total_count: 1, table_total: 2 })];
+      return [200, p.filters ? page([scarf], { total_count: 1, table_total: 2 }) : page([scarf, row(502, "Red hat")])];
+    });
+    renderScreen(<TableScreen />);
+    await screen.findByText("Red hat");
+    fireEvent.press(screen.getByTestId("tables-find-open"));
+    fireEvent.press(await screen.findByTestId("tables-filter-add"));
+    fireEvent.press(screen.getByTestId("tables-filter-pick-2"));
+    fireEvent.press(screen.getByTestId("tables-filter-0-value-in"));
+    await waitFor(() => expect(screen.getByTestId("tables-find-apply")).toHaveTextContent("Show 1 row"), { timeout: 3000 });
+    fireEvent.press(screen.getByTestId("tables-find-apply"));
+    await waitFor(() => expect(screen.queryByText("Red hat")).toBeNull());
+    const last = recordCalls().filter((p) => p.limit === 100).pop();
+    expect(last?.filters).toBe(JSON.stringify([{ field_id: 2, op: "any_of", value: ["in"] }]));
+    expect(screen.getByTestId("tables-personal-note")).toBeTruthy();
+  });
+
+  it("grouping draws a header per group with the server's counts, and a header folds its rows", async () => {
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody([view(70, "Grid", "grid", { group_by_field_id: 2, row_height: "short" })]));
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf, row(503, "Grey coat")], { total_count: 2, table_total: 2, groups: [{ value: "in", count: 1 }, { value: null, count: 1 }] }));
+    renderScreen(<TableScreen />);
+    expect(await screen.findByTestId("tables-group-in")).toBeTruthy();
+    expect(screen.getByTestId("tables-group-none")).toBeTruthy();
+    expect(recordCalls()[0].group_by).toBe(2);
+    fireEvent.press(screen.getByTestId("tables-group-in"));
+    expect(screen.queryByText("Blue scarf")).toBeNull();
+    expect(screen.getByText("Grey coat")).toBeTruthy();
+  });
+
+  it("no match offers to clear the filters", async () => {
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody([view(70, "Grid", "grid", { filters: [{ field_id: 2, op: "any_of", value: ["out"] }] })]));
+    mock.onGet(`${B}/tables/10/records`).reply((config) => [200, (config.params as Record<string, unknown>).filters ? page([]) : page([scarf])]);
+    renderScreen(<TableScreen />);
+    fireEvent.press(await screen.findByTestId("tables-clear-filters"));
+    expect(await screen.findByText("Blue scarf")).toBeTruthy();
+  });
+
+  it("'Save as a new view' makes a NEW view from this one, says who sees it, and opens it", async () => {
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+    mock.onPost(`${B}/tables/10/views`).reply(201, { view: view(72, "Mine", "grid") });
+    renderScreen(<TableScreen />);
+    await screen.findByText("Blue scarf");
+    fireEvent.press(screen.getByTestId("tables-order"));
+    await screen.findByTestId("tables-personal-note");
+    fireEvent.press(screen.getByTestId("tables-menu"));
+    fireEvent.press(await screen.findByText("Save as a new view…"));
+    expect(await screen.findByText(/everyone on this base sees/)).toBeTruthy();
+    fireEvent.changeText(screen.getByTestId("tables-save-view-name"), "Mine");
+    fireEvent.press(screen.getByTestId("tables-save-view-save"));
+    await waitFor(() => expect(router.setParams).toHaveBeenCalledWith({ view: "72" }));
+    expect(JSON.parse(mock.history.post[0].data)).toMatchObject({ from_view_id: 70, view: { name: "Mine", view_type: "grid" } });
+  });
+
+  it("hiding a field takes it off the cards, for this person only", async () => {
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+    renderScreen(<TableScreen />);
+    const card = await screen.findByTestId("tables-card-0");
+    expect(within(card).getByText("Status")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("tables-menu"));
+    fireEvent.press(await screen.findByText("Fields and cards"));
+    fireEvent(await screen.findByTestId("tables-fields-2-shown"), "valueChange", false);
+    await waitFor(() => expect(within(screen.getByTestId("tables-card-0")).queryByText("Status")).toBeNull());
+  });
+});

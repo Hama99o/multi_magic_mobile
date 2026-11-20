@@ -59,6 +59,11 @@ describe("effectiveQuery", () => {
   });
 });
 
+it("a condition still being filled in stays out of the query", () => {
+  const q = effectiveQuery(view(), { filters: [{ fieldId: 2, op: "any_of", value: [] }, { fieldId: 3, op: "empty", value: null }] });
+  expect(q.filters).toEqual([{ fieldId: 3, op: "empty", value: null }]);
+});
+
 describe("differsFromShared: the tint on the toolbar", () => {
   it("nothing chosen, or newest first by default, is the shared view", () => {
     expect(differsFromShared(view(), {})).toBe(false);

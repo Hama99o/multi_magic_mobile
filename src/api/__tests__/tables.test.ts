@@ -268,3 +268,44 @@ describe("Save as a new view: the one view write, a NEW view", () => {
     expect(mock.history.patch).toHaveLength(0);
   });
 });
+
+describe("collaborate (increment 5)", () => {
+  it("bulk-sets one column on the chosen rows (rows by id, values by field id), and bulk-deletes to the trash", async () => {
+    mock.onPost(`${BASE}/tables/10/records/bulk_write`).reply(200, { result: { created: 0, updated: 2, ids: [501, 502] }, records: [] });
+    await tablesApi.bulkSet(10, [501, 502], 2, "out");
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ rows: [{ id: 501, values: { "2": "out" } }, { id: 502, values: { "2": "out" } }] });
+    mock.onPost(`${BASE}/tables/10/records/bulk_destroy`).reply(200, { deleted: 2, ids: [501, 502] });
+    expect(await tablesApi.bulkDestroy(10, [501, 502])).toEqual([501, 502]);
+  });
+
+  it("reads comments newest first with a cursor, and posts one with its mentions", async () => {
+    mock.onGet(`${BASE}/tables/10/comments`, { params: { record_id: 501 } }).reply(200, {
+      comments: [{ id: 9, body: "Checked @QA", edited_at: null, created_at: "2026-11-20T10:00:00Z", user: { id: 1, name: "QA" }, mine: true, can_delete: true, files: [] }],
+      next_before: 9,
+    });
+    const page1 = await tablesApi.comments(10, { recordId: 501 });
+    expect(page1).toEqual({ comments: [{ id: 9, body: "Checked @QA", editedAt: null, createdAt: "2026-11-20T10:00:00Z", author: { id: 1, name: "QA" }, mine: true, canDelete: true, files: [] }], nextBefore: 9 });
+    mock.onPost(`${BASE}/tables/10/comments`).reply(201, { comment: { id: 10, body: "Hi", edited_at: null, created_at: "x", user: { id: 1, name: "QA" }, mine: true, can_delete: true, files: [] } });
+    await tablesApi.addComment(10, { body: "Hi", recordId: 501, mentionIds: [2] });
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ comment: { body: "Hi", record_id: 501, mention_ids: [2] } });
+  });
+
+  it("reads the history with its filters and cursor", async () => {
+    mock.onGet(`${BASE}/tables/10/activities`, { params: { kind: "rows", before: 50 } }).reply(200, {
+      activities: [{ id: 49, action: "row.updated", source: "assistant", details: { fields: ["Status"] }, subject_type: "record", subject_id: 501, user: { id: 1, name: "QA" }, created_at: "c", updated_at: "u", restorable: false }],
+      next_before: null,
+    });
+    const h = await tablesApi.history(10, { kind: "rows", before: 50 });
+    expect(h.items[0]).toMatchObject({ id: 49, action: "row.updated", source: "assistant", details: { fields: ["Status"] }, subjectId: 501, who: "QA", restorable: false });
+    expect(h.nextBefore).toBeNull();
+  });
+
+  it("reads the base's people, and shares by email with a role", async () => {
+    mock.onGet(`${BASE}/bases/3/members`).reply(200, { owner: { id: 1, name: "QA", email: "qa@example.test" }, members: [{ id: 5, role: "viewer", pending: true, email: "friend@example.test", name: null, user_id: null, invited_at: "t" }] });
+    const people = await tablesApi.members(3);
+    expect(people.members[0]).toMatchObject({ id: 5, role: "viewer", pending: true, email: "friend@example.test" });
+    mock.onPost(`${BASE}/bases/3/members`).reply(201, { member: { id: 6, role: "editor", pending: false, email: "e@example.test", name: "E", user_id: 7, invited_at: null }, state: "added" });
+    await tablesApi.share(3, "e@example.test", "editor");
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ email: "e@example.test", role: "editor" });
+  });
+});

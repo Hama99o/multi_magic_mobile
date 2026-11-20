@@ -25,6 +25,7 @@
  *   (`RecordPresenter::LINK_PREVIEW`); `selected_count` says how many there are.
  */
 import { http } from "./http";
+import { absoluteUrl } from "./conversations";
 import { ApiShapeError, arr, id, obj, optStr, readable, readableRows, str } from "./parse";
 import { parseDefinitions, parseFieldValues, type FieldDefinition, type FieldValues, type Selection } from "./fields";
 
@@ -366,6 +367,85 @@ function selectionIn(raw: unknown, fieldId: number, linkedId: number): Selection
 
 const valuesBody = (values: Record<number, unknown>) => ({ record: { values: Object.fromEntries(Object.entries(values)) } });
 
+
+// ── Collaborate (increment 5) ────────────────────────────────────────────
+
+export interface TableComment {
+  id: number;
+  body: string;
+  editedAt: string | null;
+  createdAt: string;
+  author: { id: number; name: string } | null;
+  mine: boolean;
+  canDelete: boolean;
+  files: { id: number; filename: string; contentType: string | null; byteSize: number; url: string | null }[];
+}
+
+export interface HistoryItem {
+  id: number;
+  /** `row.updated`, `column.deleted`… (`TableApp::Activity::KINDS`). */
+  action: string;
+  /** `app`, `assistant` or `import`: who did it, the web's badge. */
+  source: string | null;
+  details: Record<string, unknown>;
+  subjectType: string | null;
+  subjectId: number | null;
+  who: string | null;
+  at: string;
+  /** A deleted column still in the trash. */
+  restorable: boolean;
+}
+
+export const HISTORY_KINDS = ["rows", "columns", "imports", "links", "sharing", "table"] as const;
+export type HistoryKind = (typeof HISTORY_KINDS)[number];
+
+export interface BaseMember {
+  id: number;
+  role: "editor" | "viewer";
+  pending: boolean;
+  email: string;
+  name: string | null;
+}
+
+function parseComment(raw: unknown): TableComment {
+  const c = obj(raw, "comment");
+  const u = c.user && typeof c.user === "object" ? (c.user as Record<string, unknown>) : null;
+  return {
+    id: id(c.id, "comment.id"),
+    body: optStr(c.body) ?? "",
+    editedAt: optStr(c.edited_at),
+    createdAt: str(c.created_at, "comment.created_at"),
+    author: u ? { id: id(u.id, "comment.user.id"), name: optStr(u.name) ?? "" } : null,
+    mine: c.mine === true,
+    canDelete: c.can_delete === true,
+    files: readable(Array.isArray(c.files) ? c.files : [], (f) => {
+      const x = obj(f, "comment.file");
+      return { id: id(x.id, "file.id"), filename: optStr(x.filename) ?? "", contentType: optStr(x.content_type), byteSize: typeof x.byte_size === "number" ? x.byte_size : 0, url: absoluteUrl(optStr(x.url)) };
+    }),
+  };
+}
+
+function parseHistory(raw: unknown): HistoryItem {
+  const a = obj(raw, "activity");
+  const u = a.user && typeof a.user === "object" ? (a.user as Record<string, unknown>) : null;
+  return {
+    id: id(a.id, "activity.id"),
+    action: str(a.action, "activity.action"),
+    source: optStr(a.source),
+    details: a.details && typeof a.details === "object" && !Array.isArray(a.details) ? (a.details as Record<string, unknown>) : {},
+    subjectType: optStr(a.subject_type),
+    subjectId: optId(a.subject_id),
+    who: u ? (optStr(u.name) ?? null) : null,
+    at: str(a.created_at, "activity.created_at"),
+    restorable: a.restorable === true,
+  };
+}
+
+function parseMember(raw: unknown): BaseMember {
+  const m = obj(raw, "member");
+  return { id: id(m.id, "member.id"), role: m.role === "editor" ? "editor" : "viewer", pending: m.pending === true, email: optStr(m.email) ?? "", name: optStr(m.name) };
+}
+
 export const tablesApi = {
   /** Every base the user can open. The server's default order is newest first; it is not sent. */
   async bases(sort: BaseSort = "created_at_desc"): Promise<Base[]> {
@@ -429,6 +509,87 @@ export const tablesApi = {
         }),
       };
     });
+  },
+
+  // ── Collaborate (increment 5) ─────────────────────────────────────────
+
+  /** One column set on many rows (the web's bulk edit, one Undo there; `BulkWriter`). */
+  async bulkSet(tableId: number, ids: number[], fieldId: number, value: unknown): Promise<void> {
+    await http.post(`${BASE}/tables/${tableId}/records/bulk_write`, { rows: ids.map((rid) => ({ id: rid, values: { [String(fieldId)]: value } })) });
+  },
+
+  /** Many rows to the trash at once; `restore` with the ids brings them back. */
+  async bulkDestroy(tableId: number, ids: number[]): Promise<number[]> {
+    const { data } = await http.post(`${BASE}/tables/${tableId}/records/bulk_destroy`, { ids });
+    const got = obj(data, "bulk_destroy response").ids;
+    return Array.isArray(got) ? got.filter((x): x is number => typeof x === "number") : ids;
+  },
+
+  /** A table's comments, or one row's, newest first, 50 a page by an id cursor. */
+  async comments(tableId: number, opts: { recordId?: number; before?: number } = {}): Promise<{ comments: TableComment[]; nextBefore: number | null }> {
+    const params: Record<string, number> = {};
+    if (opts.recordId) params.record_id = opts.recordId;
+    if (opts.before) params.before = opts.before;
+    const { data } = await http.get(`${BASE}/tables/${tableId}/comments`, { params });
+    const body = obj(data, "comments response");
+    return { comments: readable(arr(body.comments, "comments"), parseComment), nextBefore: optId(body.next_before) };
+  },
+
+  /** A comment; @mentions ring those people's bell (the server sends no email). */
+  async addComment(tableId: number, input: { body: string; recordId?: number; mentionIds?: number[] }): Promise<TableComment> {
+    const comment: Record<string, unknown> = { body: input.body };
+    if (input.recordId) comment.record_id = input.recordId;
+    if (input.mentionIds?.length) comment.mention_ids = input.mentionIds;
+    const { data } = await http.post(`${BASE}/tables/${tableId}/comments`, { comment });
+    return parseComment(obj(data, "comment response").comment);
+  },
+
+  async editComment(commentId: number, body: string): Promise<TableComment> {
+    const { data } = await http.patch(`${BASE}/comments/${commentId}`, { comment: { body } });
+    return parseComment(obj(data, "comment response").comment);
+  },
+
+  async deleteComment(commentId: number): Promise<void> {
+    await http.delete(`${BASE}/comments/${commentId}`);
+  },
+
+  /** The table's history, or one row's, newest first, 50 a page; `kind` and `userId` filter. */
+  async history(tableId: number, opts: { recordId?: number; kind?: HistoryKind; userId?: number; before?: number } = {}): Promise<{ items: HistoryItem[]; nextBefore: number | null }> {
+    const params: Record<string, string | number> = {};
+    if (opts.recordId) params.record_id = opts.recordId;
+    if (opts.kind) params.kind = opts.kind;
+    if (opts.userId) params.user_id = opts.userId;
+    if (opts.before) params.before = opts.before;
+    const { data } = await http.get(`${BASE}/tables/${tableId}/activities`, { params });
+    const body = obj(data, "activities response");
+    return { items: readable(arr(body.activities, "activities"), parseHistory), nextBefore: optId(body.next_before) };
+  },
+
+  async members(baseId: number): Promise<{ owner: { id: number; name: string; email: string }; members: BaseMember[] }> {
+    const { data } = await http.get(`${BASE}/bases/${baseId}/members`);
+    const body = obj(data, "members response");
+    const o = obj(body.owner, "members.owner");
+    return { owner: { id: id(o.id, "owner.id"), name: optStr(o.name) ?? "", email: optStr(o.email) ?? "" }, members: readable(arr(body.members, "members"), parseMember) };
+  },
+
+  /** Shares the base; an address with no account gets an invitation EMAIL (a message to a real person). */
+  async share(baseId: number, email: string, role: "editor" | "viewer"): Promise<BaseMember> {
+    const { data } = await http.post(`${BASE}/bases/${baseId}/members`, { email, role });
+    return parseMember(obj(data, "member response").member);
+  },
+
+  async setRole(baseId: number, memberId: number, role: "editor" | "viewer"): Promise<BaseMember> {
+    const { data } = await http.patch(`${BASE}/bases/${baseId}/members/${memberId}`, { role });
+    return parseMember(obj(data, "member response").member);
+  },
+
+  async removeMember(baseId: number, memberId: number): Promise<void> {
+    await http.delete(`${BASE}/bases/${baseId}/members/${memberId}`);
+  },
+
+  async resendInvite(baseId: number, memberId: number): Promise<BaseMember> {
+    const { data } = await http.post(`${BASE}/bases/${baseId}/members/${memberId}/resend`);
+    return parseMember(obj(data, "member response").member);
   },
 
   // ── Writes (increment 2), through Tables' own endpoints: TableApp::RecordWriter

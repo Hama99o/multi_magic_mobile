@@ -61,39 +61,42 @@ function shiftFirst<T>(pages: Page<T>[], row: Money, sign: 1 | -1): Page<T>[] {
   return [{ ...head, count: Math.max(0, head.count + sign), totals }, ...rest];
 }
 
-/** Where a deleted row sat, by list, so an Undo puts it back in place before the server answers. */
-const removedAt = new Map<string, { row: Money; places: { key: QueryKey; page: number; index: number }[] }>();
+/**
+ * Where a deleted row sat, so an Undo puts it back in place before the server
+ * answers: remembered against the list's data as the delete left it. If a
+ * refetch has replaced that data since, the row goes back on top (these lists
+ * are newest first) and the refetch after the Undo puts it in its exact place.
+ */
+const placeIn = new WeakMap<object, { page: number; index: number }>();
+const removedRows = new Map<string, Money>();
 const removedKey = (prefix: QueryKey, rowId: number) => `${JSON.stringify(prefix)}#${rowId}`;
 
 /** Take one row out of every page of every list under `prefix`, with its count and its amount. */
 function dropRow(client: QueryClient, prefix: QueryKey, row: Money) {
-  const places: { key: QueryKey; page: number; index: number }[] = [];
-  for (const [key, data] of client.getQueriesData<InfiniteData<Page<{ id: number }>>>({ queryKey: prefix })) {
-    data?.pages?.forEach((p, page) => {
-      const index = p.rows.findIndex((r) => r.id === row.id);
-      if (index !== -1) places.push({ key, page, index });
-    });
-  }
-  removedAt.set(removedKey(prefix, row.id), { row, places });
+  removedRows.set(removedKey(prefix, row.id), row);
   client.setQueriesData<InfiniteData<Page<{ id: number }>>>({ queryKey: prefix }, (data) => {
-    if (!data?.pages || !data.pages.some((p) => p.rows.some((r) => r.id === row.id))) return data;
-    const pages = data.pages.map((p) => (p.rows.some((r) => r.id === row.id) ? { ...p, rows: p.rows.filter((r) => r.id !== row.id) } : p));
-    return { ...data, pages: shiftFirst(pages, row, -1) };
+    if (!data?.pages) return data;
+    const page = data.pages.findIndex((p) => p.rows.some((r) => r.id === row.id));
+    if (page === -1) return data;
+    const index = data.pages[page].rows.findIndex((r) => r.id === row.id);
+    const pages = data.pages.map((p, i) => (i === page ? { ...p, rows: p.rows.filter((r) => r.id !== row.id) } : p));
+    const next = { ...data, pages: shiftFirst(pages, row, -1) };
+    placeIn.set(next, { page, index });
+    return next;
   });
 }
 
 /** Undo: the row back where it was in every list it left, with its count and amount. The server's refetch follows. */
 function putBack(client: QueryClient, prefix: QueryKey, rowId: number) {
-  const was = removedAt.get(removedKey(prefix, rowId));
-  if (!was) return;
-  removedAt.delete(removedKey(prefix, rowId));
-  for (const place of was.places) {
-    client.setQueryData<InfiniteData<Page<{ id: number }>>>(place.key, (data) => {
-      if (!data?.pages?.[place.page] || data.pages.some((p) => p.rows.some((r) => r.id === rowId))) return data;
-      const pages = data.pages.map((p, i) => (i === place.page ? { ...p, rows: [...p.rows.slice(0, place.index), was.row as { id: number }, ...p.rows.slice(place.index)] } : p));
-      return { ...data, pages: shiftFirst(pages, was.row, 1) };
-    });
-  }
+  const row = removedRows.get(removedKey(prefix, rowId));
+  if (!row) return;
+  removedRows.delete(removedKey(prefix, rowId));
+  client.setQueriesData<InfiniteData<Page<{ id: number }>>>({ queryKey: prefix }, (data) => {
+    if (!data?.pages?.length || data.pages.some((p) => p.rows.some((r) => r.id === rowId))) return data;
+    const at = placeIn.get(data) ?? { page: 0, index: 0 };
+    const pages = data.pages.map((p, i) => (i === at.page ? { ...p, rows: [...p.rows.slice(0, at.index), row as { id: number }, ...p.rows.slice(at.index)] } : p));
+    return { ...data, pages: shiftFirst(pages, row, 1) };
+  });
 }
 
 /** Delete to the trash (soft), out of its lists at once. */

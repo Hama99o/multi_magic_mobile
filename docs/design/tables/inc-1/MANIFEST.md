@@ -39,7 +39,7 @@ Status per line: ☐ open · ☑ proven (evidence beside it) · ⚠ unproven (sa
 | 360, 411, 800 dp | ☐ device |
 | Offline / slow network: rows already shown stay, Retry | ☑ T3 (a failed page) · ⚠ device |
 | Recycled cells: fixed height, `getItemLayout` | ☑ code; ⚠ device |
-| Newest first | ☑ T6, B1 (server param deploy pending; an older server ignores it) |
+| Newest first | ☑ T6, B1 (server param live since `9730a4f7`; an older server ignores it) |
 | A table with 0 rows; a table with 20k rows (paging only) | ☐ |
 
 ## Gates

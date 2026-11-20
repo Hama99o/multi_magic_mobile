@@ -114,7 +114,7 @@ Found by the parity audit (`docs/MOBILE_PARITY_2026-11-20.md`, `docs/parity/`) a
 
 ## 6 · Tables: newest first (2026-11-20)
 
-From the Tables spec (`docs/design/tables/SPEC.md` C3), approved by Hello on 2026-11-20. **BUILT, NOT DEPLOYED:** `multi_magic` branch `feat/flow-rest-paging` @ `8358b961` (by multi-magic-9c). CI is running, then Hello merges and deploys. Both changes are backward compatible. The phone may use these params only once the deploy has landed; before that it keeps the fallbacks below.
+From the Tables spec (`docs/design/tables/SPEC.md` C3), approved by Hello on 2026-11-20. **DEPLOYED** (multi_magic `9730a4f7`, live about 15:45 on 2026-11-20, per Hello; built by multi-magic-9c). Both changes are backward compatible. The fallbacks below are kept for an older server, which ignores the parameter.
 
 ### 6.1 · Rows by their own creation time
 

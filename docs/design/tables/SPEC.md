@@ -69,7 +69,7 @@ The full web inventory, every feature with its web `file:line`, is [`docs/parity
 - **Row colour** (the view's colour-by setting) is a 4 dp bar on the card's leading edge, as the web phone already does.
 - **Height is fixed per view**, computed from the number of card lines (1–4, the web's row height). It is measured once, so `getItemLayout` holds and a recycled cell never changes size. **No Reanimated on cells** (the owner's rule, `.eslintrc.js` `list-cell-animation`).
 
-**C3. Newest first (server change built 2026-11-20, `API_ASKS.md` §6, deploy pending).**
+**C3. Newest first (server change live since 2026-11-20, `API_ASKS.md` §6).**
 - **Rows:** when the view has **no sort of its own**, the personal layer starts on **Newest first**, sending `sort=-created_at`: the row's own creation time, no column needed. **"Table order"** is one tap away and drops it. With `group_by`, the groups come first and newest first applies inside each.
 - **Before that deploy lands:** where the table has a `created_time` field, the phone sorts by it. Otherwise the view's order stays, and a created row **opens at once** and is **pinned at the top** until the next refresh.
 - **The new row always opens at once** (the web's `reveal`), whatever the order.
@@ -188,7 +188,7 @@ Each increment ships on its own: en+fr, light+dark, 360/411/800 dp, its flows ru
 ## G · Decided by Hello, 2026-11-20
 
 1. **C1:** the whole personal layer: filter, sort, group, hidden fields and card lines. "That's the spirit of the owner's rule."
-2. **C3:** as written. The two server asks were built by multi-magic-9c on `feat/flow-rest-paging` @ `8358b961` (`docs/API_ASKS.md` §6). Deploy pending.
+2. **C3:** as written. The two server asks were built by multi-magic-9c on `feat/flow-rest-paging` @ `8358b961` (`docs/API_ASKS.md` §6). Deployed (`9730a4f7`).
 3. **Design and increments:** approved. **Forms (8), relations (2) and AI (1, "Ask about this table"; import through chat in 7) stay in the plan.** They are the owner's vision for Tables.
 4. **Order:** increment 1 starts when e2's field layer is committed and gated. Step 0's device QA takes priority over increment 1 the moment the emulator is free.
 5. **Still to decide when increments 7 and 8 come:** parity decisions (c) and (d), with defaults: public form in the browser; a server import preview.

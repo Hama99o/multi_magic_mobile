@@ -100,6 +100,7 @@ export const financeEn = {
     net: "Net",
     toReceive: "To receive",
     toPay: "To pay",
+    activeLoans: "Active loans",
     active_one: "{{count}} active",
     active_other: "{{count}} active",
     budgets: "Budgets",

@@ -52,7 +52,8 @@ export function totalOf(rows: { amount: number; currency: Currency }[]): Totals 
   return rows.reduce<Totals>((t, r) => ({ ...t, [r.currency]: Math.round(((t[r.currency] ?? 0) + r.amount) * 100) / 100 }), {});
 }
 
-export function Ledger({ kind, header }: { kind: Kind; header?: ReactNode }) {
+/** `openId`: a link to one entry (`app/finance/index.tsx` `?entry=`) opens its sheet once it has loaded. */
+export function Ledger({ kind, header, openId }: { kind: Kind; header?: ReactNode; openId?: number }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
@@ -65,6 +66,13 @@ export function Ledger({ kind, header }: { kind: Kind; header?: ReactNode }) {
   const [oneTime, setOneTime] = useState(false);
   const [picking, setPicking] = useState(false);
   const [openRow, setOpenRow] = useState<Entry | null>(null);
+  const [linkClosed, setLinkClosed] = useState(false);
+  const linked = useQuery({
+    queryKey: financeKeys.entry(kind, openId ?? 0),
+    queryFn: (): Promise<Entry> => (kind === "expense" ? financeApi.expenses.show(openId!) : financeApi.incomes.show(openId!)),
+    enabled: openId != null,
+  });
+  const sheetRow = openRow ?? (!linkClosed && openId != null ? (linked.data ?? null) : null);
   const [failure, setFailure] = useState<string | null>(null);
   const offer = useFinanceUndo((s) => s.offer);
   const offerUndo = useFinanceUndo((s) => s.offerUndo);
@@ -115,6 +123,7 @@ export function Ledger({ kind, header }: { kind: Kind; header?: ReactNode }) {
   const tagName = tags.data?.find((x) => x.id === tagId)?.name;
   const del = (row: Entry) => {
     setOpenRow(null);
+    setLinkClosed(true);
     remove.mutate(row);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
     offerUndo(kind === "expense" ? t("finance.ledger.expenseDeleted") : t("finance.ledger.incomeDeleted"), () => restore.mutate(row.id));
@@ -213,7 +222,15 @@ export function Ledger({ kind, header }: { kind: Kind; header?: ReactNode }) {
       </Pressable>
 
       <TagPicker open={picking} tags={tags.data ?? []} selected={tagId ? [tagId] : []} single onChange={(ids) => setTagId(ids[0] ?? null)} onClose={() => setPicking(false)} testID={`finance-${kind}-filter-picker`} />
-      <EntrySheet entry={openRow} kind={kind} onClose={() => setOpenRow(null)} onDelete={del} />
+      <EntrySheet
+        entry={sheetRow}
+        kind={kind}
+        onClose={() => {
+          setOpenRow(null);
+          setLinkClosed(true);
+        }}
+        onDelete={del}
+      />
       <UndoToast offer={offer} onDone={clearOffer} testID="finance-undo" bottom={64} />
     </View>
   );

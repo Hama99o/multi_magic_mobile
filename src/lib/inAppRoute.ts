@@ -25,10 +25,11 @@
  * people, so `note`, `contact`, `calendar_event`, `conversation`, `page_space`
  * and `page_node` open those screens (audit P1 #13, 2026-11-16). The record's
  * id is read from the link's `path`, whose shape `frontend_routes.rb` owns.
- * `todos` and `todo_group` open the Todo app (2026-11-16).
- * `expenses`, `incomes`, `loan`, the flow and table keys still return
- * null: this app has no screen for them, so they open the preview sheet and
- * from there the web. **Adding a key here is a claim that this app has that
+ * `todos` and `todo_group` open the Todo app (2026-11-16). `expense`,
+ * `income`, `expenses`, `incomes` and `loan` open Finance (2026-11-20, parity
+ * F-X3): an expense or income on its tab with its sheet open, a loan on its
+ * own screen. The flow and table keys still return null: this app has no
+ * screen for them, so they open the preview sheet and from there the web. **Adding a key here is a claim that this app has that
  * screen.**
  *
  * `routeForWebPath` is the same table read by PATH alone, for what carries no
@@ -67,6 +68,11 @@ const BY_PATH: Record<string, AppRoute> = {
   page_space: "/pages",
   page_node: "/pages",
   todo_group: "/todos",
+  expense: "/finance",
+  expenses: "/finance",
+  income: "/finance",
+  incomes: "/finance",
+  loan: "/finance",
 };
 
 const DIGITS = /^\d+$/;
@@ -130,6 +136,19 @@ export function routeForWebPath(path: string | null | undefined, label?: string 
     if (!group) return null;
     const task = id("task");
     return { pathname: "/todos/list", params: task ? { id: group, task } : { id: group } };
+  }
+  if (pathname === "/finance" || pathname === "/finance/dashboard") return "/finance";
+  const ledger = pathname === "/finance/expenses" ? ("expenses" as const) : pathname === "/finance/income" ? ("income" as const) : null;
+  if (ledger) {
+    const param = ledger === "expenses" ? "expense" : "income";
+    if (!query.has(param)) return { pathname: "/finance", params: { tab: ledger } };
+    const entry = id(param);
+    return entry ? { pathname: "/finance", params: { tab: ledger, entry } } : null;
+  }
+  if (pathname === "/finance/loans") {
+    if (!query.has("loan")) return { pathname: "/finance", params: { tab: "loans" } };
+    const loan = id("loan");
+    return loan ? { pathname: "/finance/loan", params: { id: loan } } : null;
   }
   if (pathname === "/profile/me/api-keys") return "/ai-keys";
   if (pathname === "/ai") return "/chat";

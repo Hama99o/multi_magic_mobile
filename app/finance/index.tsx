@@ -29,7 +29,10 @@ export default function FinanceScreen() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ tab?: string }>();
+  // `entry` opens one expense or income on its sheet: a link from search, a
+  // notification or the assistant (`src/lib/inAppRoute.ts`, parity F-X3).
+  const params = useLocalSearchParams<{ tab?: string; entry?: string }>();
+  const entryId = params.entry && /^\d+$/.test(params.entry) ? Number(params.entry) : undefined;
   const [tab, setTab] = useState<FinanceTab>(FINANCE_TABS.find((x) => x === params.tab) ?? "overview");
   const [menu, setMenu] = useState(false);
   const [help, setHelp] = useState(false);
@@ -76,8 +79,8 @@ export default function FinanceScreen() {
 
       <View style={{ flex: 1 }}>
         {tab === "overview" ? <OverviewTab onOpen={setTab} /> : null}
-        {tab === "expenses" ? <ExpensesTab /> : null}
-        {tab === "income" ? <IncomeTab /> : null}
+        {tab === "expenses" ? <ExpensesTab openId={entryId} /> : null}
+        {tab === "income" ? <IncomeTab openId={entryId} /> : null}
         {tab === "loans" ? <LoansTab /> : null}
         {tab === "budgets" ? <BudgetsTab /> : null}
       </View>

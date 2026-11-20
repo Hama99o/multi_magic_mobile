@@ -164,6 +164,8 @@ export const financeKeys = {
   loans: <P extends boolean, L extends string, Q extends string, T extends number | null>(paid: P, type: L, search: Q, tagId: T) => ["finance", "loans", paid, type, search, tagId] as const,
   loan: <I extends number>(loanId: I) => ["finance", "loan", loanId] as const,
   outstanding: () => ["finance", "outstanding"] as const,
+  /** The Overview's active-loans card: page 1 of unpaid loans, not the Loans tab's infinite list. */
+  activeLoans: () => ["finance", "activeLoans"] as const,
   /** The first page of a period's expenses: its count and the latest rows (Overview). */
   expenseGlance: <Y extends number, M extends number>(year: Y, month: M) => ["finance", "expenseGlance", year, month] as const,
   budgets: () => ["finance", "budgets"] as const,

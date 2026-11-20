@@ -198,6 +198,14 @@ describe("Expenses", () => {
     expect(router.push).toHaveBeenCalledWith({ pathname: "/finance/entry", params: { kind: "expense", id: "2" } });
   });
 
+  it("a link to an expense opens the Expenses tab on that expense's sheet", async () => {
+    serve();
+    mock.onGet(`${B}/expenses/2`).reply(200, { expense: expense(2, { item: "Train", amount: "30.0", spent_at: "2026-11-10T00:00:00.000Z" }) });
+    render_(<ExpensesTab openId={2} />);
+    await until(() => Boolean(screen.queryByTestId("finance-entry-sheet")));
+    expect(within(screen.getByTestId("finance-entry-sheet")).getByText("Train")).toBeTruthy();
+  });
+
   it("with nothing spent, says so for the month", async () => {
     serve().expenses.length = 0;
     render_(<ExpensesTab />);
@@ -309,6 +317,44 @@ describe("Overview", () => {
     expect(screen.getByText("€2,400.00")).toBeTruthy();
     fireEvent.press(screen.getByTestId("finance-overview-receive"));
     expect(onOpen).toHaveBeenCalledWith("loans");
+  });
+});
+
+describe("Overview: active loans (the web's dashboard card)", () => {
+  it("lists the unpaid loans, five at most, each with who, which way, what is left of what, and opens one", async () => {
+    serve();
+    mock.onGet(`${B}/expenses/pie_chart_data_by_tag`).reply(200, { chart_data: [], total_spend: {} });
+    mock.onGet(`${B}/reports/summary`).reply(200, { totals: { expenses: {}, incomes: {}, net: {} }, by_tag: [] });
+    mock.onGet(`${B}/budgets`).reply(200, { budgets: [] });
+    mock.onGet(`${B}/reports/cash_flow`).reply(200, { currency: "eur", labels: [], expenses: [], incomes: [] });
+    mock.onGet(`${B}/expenses/total_expenses_last_years_or_months`).reply(200, { labels: [], data: [] });
+    const loans = Array.from({ length: 6 }, (_, i) => ({ id: i + 1, contact_name: `Person ${i + 1}`, loan_type: i === 1 ? "taken" : "given", status: "unpaid", amount: "200.0", currency: "eur", total_paid: "50.0", remaining_amount: "150.0", due_date: i === 0 ? "2026-12-24" : null, loan_payments: [] }));
+    mock.onGet(`${B}/loans`).reply(200, { loans, meta: { pagy: { page: 1, pages: 1 } } });
+    render_(<OverviewTab onOpen={jest.fn()} />);
+    await until(() => Boolean(screen.queryByTestId("finance-overview-loan-1")));
+    const card = screen.getByTestId("finance-overview-loans");
+    expect(within(card).getAllByTestId(/^finance-overview-loan-\d+$/)).toHaveLength(5);
+    expect(within(card).queryByText("Person 6")).toBeNull();
+    const first = within(card).getByTestId("finance-overview-loan-1");
+    expect(within(first).getByText("Person 1")).toBeTruthy();
+    expect(within(first).getByText(/^Lent/)).toBeTruthy();
+    expect(within(first).getByText("€150.00 of €200.00")).toBeTruthy();
+    expect(within(within(card).getByTestId("finance-overview-loan-2")).getByText(/^Borrowed/)).toBeTruthy();
+    fireEvent.press(first);
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/finance/loan", params: { id: "1" } });
+  });
+
+  it("shows no card when nothing is owed either way", async () => {
+    serve();
+    mock.onGet(`${B}/expenses/pie_chart_data_by_tag`).reply(200, { chart_data: [], total_spend: {} });
+    mock.onGet(`${B}/reports/summary`).reply(200, { totals: { expenses: {}, incomes: {}, net: {} }, by_tag: [] });
+    mock.onGet(`${B}/budgets`).reply(200, { budgets: [] });
+    mock.onGet(`${B}/reports/cash_flow`).reply(200, { currency: "eur", labels: [], expenses: [], incomes: [] });
+    mock.onGet(`${B}/expenses/total_expenses_last_years_or_months`).reply(200, { labels: [], data: [] });
+    mock.onGet(`${B}/loans`).reply(200, { loans: [], meta: { pagy: { page: 1, pages: 1 } } });
+    render_(<OverviewTab onOpen={jest.fn()} />);
+    await until(() => Boolean(screen.queryByTestId("finance-overview-budgets-empty")));
+    expect(screen.queryByTestId("finance-overview-loans")).toBeNull();
   });
 });
 

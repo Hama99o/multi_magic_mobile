@@ -95,6 +95,7 @@ export const financeFr = {
     net: "Solde",
     toReceive: "À recevoir",
     toPay: "À payer",
+    activeLoans: "Prêts en cours",
     active_one: "{{count}} en cours",
     active_other: "{{count}} en cours",
     budgets: "Budgets",

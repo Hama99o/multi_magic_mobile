@@ -20,8 +20,8 @@ import { Ledger } from "../Ledger";
 import { FINANCE, MONEY_IN } from "../parts";
 import { useConfirmIncome, useDiscardIncome } from "../useFinanceMutations";
 
-export function IncomeTab() {
-  return <Ledger kind="income" header={<PendingSection />} />;
+export function IncomeTab({ openId }: { openId?: number } = {}) {
+  return <Ledger kind="income" header={<PendingSection />} openId={openId} />;
 }
 
 function PendingSection() {

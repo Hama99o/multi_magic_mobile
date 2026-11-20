@@ -15,3 +15,17 @@ describe("newestProven: the chip says Newest first only when the rows show it", 
     expect(newestProven([row(1, "2026-11-20T10:01:00Z"), row(2, "2026-11-20T10:01:00Z")])).toBe(false);
   });
 });
+
+describe("the typed name must be the name EXACTLY (the owner, 2026-11-20)", () => {
+  // Imported here so the test fails red while `nameMatches` does not exist.
+  const { nameMatches } = jest.requireActual<typeof import("../logic")>("../logic");
+  it("only the exact text unlocks: case, spaces and accents count; nothing is trimmed or folded", () => {
+    expect(nameMatches("QA table", "QA table")).toBe(true);
+    expect(nameMatches("qa table", "QA table")).toBe(false);
+    expect(nameMatches("QA table ", "QA table")).toBe(false);
+    expect(nameMatches(" QA table", "QA table")).toBe(false);
+    expect(nameMatches("Clients reguliers", "Clients réguliers")).toBe(false);
+    expect(nameMatches("QA  table", "QA table")).toBe(false);
+    expect(nameMatches("", "")).toBe(false);
+  });
+});

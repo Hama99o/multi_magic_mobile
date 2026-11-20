@@ -514,6 +514,32 @@ export const tablesApi = {
     });
   },
 
+  // ── Deleting (the owner, 2026-11-20; parity increment 6 brought forward) ──
+
+  /** What a table's delete takes: its rows and columns, and other tables' link columns pointing here. */
+  async tableImpact(tableId: number): Promise<{ rows: number; fields: number; linksFrom: { table: string; field: string; links: number }[] }> {
+    const { data } = await http.get(`${BASE}/tables/${tableId}/impact`);
+    const b = obj(data, "impact response");
+    return {
+      rows: typeof b.rows === "number" ? b.rows : 0,
+      fields: typeof b.fields === "number" ? b.fields : 0,
+      linksFrom: readable(Array.isArray(b.links_from) ? b.links_from : [], (raw) => {
+        const l = obj(raw, "impact.link");
+        return { table: optStr(l.table) ?? "", field: optStr(l.field) ?? "", links: typeof l.links === "number" ? l.links : 0 };
+      }),
+    };
+  },
+
+  /** Owners and editors (`TablePolicy#destroy?` = manage). Rows, views and the links pointing here go with it. */
+  async deleteTable(tableId: number): Promise<void> {
+    await http.delete(`${BASE}/tables/${tableId}`);
+  },
+
+  /** The owner only (`BasePolicy#destroy?`); the server checks the name too. The typed text is sent as typed. */
+  async deleteBase(baseId: number, typedName: string): Promise<void> {
+    await http.delete(`${BASE}/bases/${baseId}`, { params: { confirm_name: typedName } });
+  },
+
   // ── Collaborate (increment 5) ─────────────────────────────────────────
 
   /** One column set on many rows (the web's bulk edit, one Undo there; `BulkWriter`). */

@@ -40,10 +40,11 @@ import { calendarable, columnValue, kanbanable, kanbanColumns, monthFilters, row
 import { scalar } from "@/components/fields/display";
 import { todayKey } from "@/screens/calendar/dates";
 import type { FieldDefinition } from "@/api/fields";
-import { ArrowRightLeft } from "@/components/icons";
+import { ArrowRightLeft, Trash2 } from "@/components/icons";
 import { FilterSortSheet } from "@/screens/tables/FilterSortSheet";
 import { FieldsSheet } from "@/screens/tables/FieldsSheet";
 import { SaveViewSheet } from "@/screens/tables/SaveViewSheet";
+import { DeleteByNameSheet } from "@/screens/tables/DeleteByNameSheet";
 import { GROUP_HEADER, layoutOf, listItems, type ListItem } from "@/screens/tables/grouping";
 import { colorHex } from "@/screens/flow/logic";
 import { useTablesUndo } from "@/stores/tablesUndo.store";
@@ -90,7 +91,9 @@ export default function TableScreen() {
 
   const [searching, setSearching] = useState(false);
   const [typed, setTyped] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<"views" | "menu" | "find" | "fields" | "save" | null>(null);
+  const [sheet, setSheet] = useState<"views" | "menu" | "find" | "fields" | "save" | "deleteTable" | "deleteBase" | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [folded, setFolded] = useState<Set<string>>(() => new Set());
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -192,7 +195,54 @@ export default function TableScreen() {
     { key: "fields", label: t("tables.fieldsSheet.title"), icon: Columns3, onPress: () => setTimeout(() => setSheet("fields"), 320) },
     ...(personal && editable ? [{ key: "save", label: t("tables.saveView.title"), hint: t("tables.saveView.hint"), icon: Save, onPress: () => setTimeout(() => setSheet("save"), 320) }] : []),
     ...(personal ? [{ key: "reset", label: t("tables.backToShared"), hint: t("tables.backToSharedHint"), icon: RotateCcw, onPress: reset }] : []),
+    // The owner, 2026-11-20: a table and a base can be deleted from the phone, by typing the name.
+    ...(editable ? [{ key: "deleteTable", label: t("tables.remove.tableAction"), icon: Trash2, danger: true, onPress: () => setTimeout(() => setSheet("deleteTable"), 320) }] : []),
+    ...(base?.role === "owner" ? [{ key: "deleteBase", label: t("tables.remove.baseAction"), icon: Trash2, danger: true, onPress: () => setTimeout(() => setSheet("deleteBase"), 320) }] : []),
   ];
+
+  const impact = useQuery({ queryKey: tablesKeys.impact(tableId), queryFn: () => tablesApi.tableImpact(tableId), enabled: sheet === "deleteTable" });
+  const impactLine = impact.data
+    ? [
+        t("tables.remove.tableImpact", { rows: impact.data.rows, fields: impact.data.fields, count: impact.data.rows }),
+        ...impact.data.linksFrom.map((l) => t("tables.remove.linksFrom", { field: l.field, table: l.table, count: l.links })),
+      ].join(" ")
+    : null;
+  const removeTable = async () => {
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await tablesApi.deleteTable(tableId);
+      setSheet(null);
+      offerUndo(t("tables.remove.tableDone", { name: table.data?.name ?? "" }));
+      await client.invalidateQueries({ queryKey: tablesKeys.baseLists() });
+      client.removeQueries({ queryKey: tablesKeys.table(tableId) });
+      client.removeQueries({ queryKey: tablesKeys.rows(tableId) });
+      // Stay in the base on its next table; none left, back to the bases.
+      const next = base?.tables.find((tb) => tb.id !== tableId);
+      if (next) router.setParams({ id: String(next.id), view: undefined });
+      else router.back();
+    } catch (e) {
+      setDeleteError(failureMessage(e, t("tables.remove.failed")));
+    } finally {
+      setDeleting(false);
+    }
+  };
+  const removeBase = async (typed: string) => {
+    if (!base) return;
+    setDeleting(true);
+    setDeleteError(null);
+    try {
+      await tablesApi.deleteBase(base.id, typed);
+      setSheet(null);
+      offerUndo(t("tables.remove.baseDone", { name: base.name }));
+      await client.invalidateQueries({ queryKey: tablesKeys.baseLists() });
+      router.back();
+    } catch (e) {
+      setDeleteError(failureMessage(e, t("tables.remove.failed")));
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   const saveView = async (name: string) => {
     if (!view || !query) return;
@@ -512,6 +562,12 @@ export default function TableScreen() {
         onClose={() => setMoving(null)}
         testID="tables-kanban-move"
       />
+      {sheet === "deleteTable" && table.data ? (
+        <DeleteByNameSheet kind="table" name={table.data.name} consequence={impactLine} busy={deleting} error={deleteError} onDelete={() => void removeTable()} onClose={() => setSheet(null)} />
+      ) : null}
+      {sheet === "deleteBase" && base ? (
+        <DeleteByNameSheet kind="base" name={base.name} consequence={t("tables.remove.baseImpact", { count: base.tables.length, rows: base.rowCount })} busy={deleting} error={deleteError} onDelete={(typed) => void removeBase(typed)} onClose={() => setSheet(null)} />
+      ) : null}
       <ActionSheet open={sheet === "views"} title={t("tables.views")} actions={viewActions} onClose={() => setSheet(null)} testID="tables-views" />
       <ActionSheet open={sheet === "menu"} title={table.data?.name ?? ""} actions={menu} onClose={() => setSheet(null)} testID="tables-options" />
     </Screen>

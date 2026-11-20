@@ -310,3 +310,18 @@ describe("collaborate (increment 5)", () => {
     expect(JSON.parse(mock.history.post[0].data)).toEqual({ email: "e@example.test", role: "editor" });
   });
 });
+
+describe("deleting a table or a base (the owner, 2026-11-20)", () => {
+  it("reads what a table's delete takes with it", async () => {
+    mock.onGet(`${BASE}/tables/10/impact`).reply(200, { rows: 25, fields: 4, links_from: [{ table: "Offices", field: "Items", links: 1 }] });
+    expect(await tablesApi.tableImpact(10)).toEqual({ rows: 25, fields: 4, linksFrom: [{ table: "Offices", field: "Items", links: 1 }] });
+  });
+
+  it("deletes a table, and a base with the exact name typed, untouched", async () => {
+    mock.onDelete(`${BASE}/tables/10`).reply(204);
+    await tablesApi.deleteTable(10);
+    mock.onDelete(`${BASE}/bases/3`).reply(204);
+    await tablesApi.deleteBase(3, "Shop ");
+    expect(mock.history.delete[1].params).toEqual({ confirm_name: "Shop " });
+  });
+});

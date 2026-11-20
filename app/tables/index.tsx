@@ -11,10 +11,15 @@ import { useMemo, useState } from "react";
 import { FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { failureMessage } from "@/api/failure";
+import { ActionSheet } from "@/screens/contacts/ActionSheet";
+import { DeleteByNameSheet } from "@/screens/tables/DeleteByNameSheet";
+import { UndoToast } from "@/components/UndoToast";
+import { useTablesUndo } from "@/stores/tablesUndo.store";
 import { tablesKeys } from "@/api/keys";
 import { BASE_SORTS, tablesApi, type Base, type BaseSort } from "@/api/tables";
-import { Search, Table2, X } from "@/components/icons";
+import { Search, Table2, Trash2, X } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
@@ -34,6 +39,28 @@ export default function TablesScreen() {
   const [term, setTerm] = useState("");
 
   const bases = useQuery({ queryKey: tablesKeys.bases(sort), queryFn: () => tablesApi.bases(sort) });
+  const client = useQueryClient();
+  const [menuFor, setMenuFor] = useState<Base | null>(null);
+  const [deletingBase, setDeletingBase] = useState<Base | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const offer = useTablesUndo((s) => s.offer);
+  const offerUndo = useTablesUndo((s) => s.offerUndo);
+  const clearOffer = useTablesUndo((s) => s.clear);
+  const removeBase = async (b: Base, typed: string) => {
+    setBusy(true);
+    setError(null);
+    try {
+      await tablesApi.deleteBase(b.id, typed);
+      setDeletingBase(null);
+      offerUndo(t("tables.remove.baseDone", { name: b.name }));
+      await client.invalidateQueries({ queryKey: tablesKeys.baseLists() });
+    } catch (e) {
+      setError(failureMessage(e, t("tables.remove.failed")));
+    } finally {
+      setBusy(false);
+    }
+  };
   const shown = useMemo(() => (bases.data ?? []).filter((b) => baseMatches(b, term)), [bases.data, term]);
 
   return (
@@ -95,17 +122,28 @@ export default function TablesScreen() {
             )
           ) : null
         }
-        renderItem={({ item, index }) => <BaseRow base={item} index={index} />}
+        renderItem={({ item, index }) => <BaseRow base={item} index={index} onMenu={item.role === "owner" ? () => setMenuFor(item) : undefined} />}
         ItemSeparatorComponent={() => <View style={{ height: metrics.space.sm }} />}
         refreshControl={<RefreshControl refreshing={bases.isRefetching} onRefresh={() => void bases.refetch()} tintColor={colors.inkMuted} />}
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: metrics.space.xl }}
       />
+      <ActionSheet
+        open={menuFor !== null}
+        title={menuFor?.name ?? ""}
+        actions={menuFor ? [{ key: "delete", label: t("tables.remove.baseAction"), icon: Trash2, danger: true, onPress: () => { const b = menuFor; setTimeout(() => setDeletingBase(b), 320); } }] : []}
+        onClose={() => setMenuFor(null)}
+        testID="tables-base-menu"
+      />
+      {deletingBase ? (
+        <DeleteByNameSheet kind="base" name={deletingBase.name} consequence={t("tables.remove.baseImpact", { count: deletingBase.tables.length, rows: deletingBase.rowCount })} busy={busy} error={error} onDelete={(typed) => void removeBase(deletingBase, typed)} onClose={() => { setDeletingBase(null); setError(null); }} />
+      ) : null}
+      <UndoToast offer={offer} onDone={clearOffer} testID="tables-bases-toast" />
     </Screen>
   );
 }
 
-function BaseRow({ base, index }: { base: Base; index: number }) {
+function BaseRow({ base, index, onMenu }: { base: Base; index: number; onMenu?: () => void }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
@@ -115,8 +153,11 @@ function BaseRow({ base, index }: { base: Base; index: number }) {
   return (
     <Pressable
       testID={`tables-base-${index}`}
-      disabled={!first}
       onPress={() => first && router.push({ pathname: "/tables/table", params: { id: String(first.id), base: String(base.id) } })}
+      onLongPress={onMenu}
+      accessibilityHint={onMenu ? t("tables.baseMenuHint") : undefined}
+      accessibilityActions={onMenu ? [{ name: "longpress", label: t("tables.remove.baseAction") }] : undefined}
+      onAccessibilityAction={(e) => e.nativeEvent.actionName === "longpress" && onMenu?.()}
       onPressIn={() => setPressed(true)}
       onPressOut={() => setPressed(false)}
       accessibilityRole="button"

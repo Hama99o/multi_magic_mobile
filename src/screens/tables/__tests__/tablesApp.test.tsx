@@ -588,3 +588,76 @@ describe("a personal field order (the owner, 2026-11-20)", () => {
     expect(JSON.parse(mock.history.post[0].data).view.config.field_order).toEqual([1, 3, 2, 4, 5]);
   });
 });
+
+describe("delete a table or a base by its exact name (the owner, 2026-11-20)", () => {
+  const qaTable = () => {
+    const b = tableBody();
+    b.table.name = "QA table";
+    return b;
+  };
+  beforeEach(() => {
+    mockParams.current = { id: "10", base: "3" };
+    mock.onGet(`${B}/tables/10`).reply(200, qaTable());
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+    mock.onGet(`${B}/tables/10/impact`).reply(200, { rows: 25, fields: 4, links_from: [{ table: "Offices", field: "Items", links: 1 }] });
+    useTablesUndo.getState().clear();
+  });
+
+  const openDelete = async () => {
+    renderScreen(<TableScreen />);
+    await screen.findByText("Blue scarf");
+    fireEvent.press(screen.getByTestId("tables-menu"));
+    fireEvent.press(await screen.findByText("Delete this table…"));
+    return screen.findByTestId("tables-delete-table-input");
+  };
+
+  it("refuses 'qa table' and 'QA table ' (case and a trailing space count); says what goes with it", async () => {
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "QA table", position: 0 }, { id: 11, name: "Orders", position: 1 }]), role: "editor" }] });
+    const input = await openDelete();
+    expect(await screen.findByText(/25 rows and 4 columns are deleted/)).toBeTruthy();
+    expect(screen.getByText(/The column “Items” of “Offices” goes too/)).toBeTruthy();
+    for (const wrong of ["qa table", "QA table ", " QA table", "QA  table"]) {
+      fireEvent.changeText(input, wrong);
+      expect(screen.getByTestId("tables-delete-table-confirm").props.accessibilityState?.disabled).toBe(true);
+      fireEvent.press(screen.getByTestId("tables-delete-table-confirm"));
+    }
+    expect(mock.history.delete).toHaveLength(0);
+  });
+
+  it("the exact name deletes it, says so, and moves to the base's next table", async () => {
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "QA table", position: 0 }, { id: 11, name: "Orders", position: 1 }]), role: "editor" }] });
+    mock.onDelete(`${B}/tables/10`).reply(204);
+    const input = await openDelete();
+    fireEvent.changeText(input, "QA table");
+    fireEvent.press(screen.getByTestId("tables-delete-table-confirm"));
+    await waitFor(() => expect(mock.history.delete.map((r) => r.url)).toEqual([`${B}/tables/10`]));
+    await waitFor(() => expect(useTablesUndo.getState().offer?.message).toBe("Table “QA table” deleted"));
+    expect(router.setParams).toHaveBeenCalledWith({ id: "11", view: undefined });
+  });
+
+  it("a viewer has no delete; only the base's owner may delete the base", async () => {
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "QA table", position: 0 }]), role: "viewer" }] });
+    renderScreen(<TableScreen />);
+    await screen.findByText("Blue scarf");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    fireEvent.press(screen.getByTestId("tables-menu"));
+    await screen.findByText("Ask about this table");
+    expect(screen.queryByText("Delete this table…")).toBeNull();
+    expect(screen.queryByText("Delete the whole base…")).toBeNull();
+  });
+
+  it("the owner deletes a base from the bases list by its exact name, sent as typed", async () => {
+    mock.onGet(`${B}/bases`).reply(200, { bases: [base(3, "Shop", [{ id: 10, name: "QA table", position: 0 }])] });
+    mock.onDelete(`${B}/bases/3`).reply(204);
+    renderScreen(<Bases />);
+    fireEvent(await screen.findByTestId("tables-base-0"), "longPress");
+    fireEvent.press(await screen.findByText("Delete the whole base…"));
+    const input = await screen.findByTestId("tables-delete-base-input");
+    fireEvent.changeText(input, "shop");
+    expect(screen.getByTestId("tables-delete-base-confirm").props.accessibilityState?.disabled).toBe(true);
+    fireEvent.changeText(input, "Shop");
+    fireEvent.press(screen.getByTestId("tables-delete-base-confirm"));
+    await waitFor(() => expect(mock.history.delete.length).toBe(1));
+    expect(mock.history.delete[0].params).toEqual({ confirm_name: "Shop" });
+  });
+});

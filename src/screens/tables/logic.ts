@@ -71,3 +71,12 @@ export function newestProven(rows: RecordRow[]): boolean {
   for (let i = 1; i < rows.length; i++) if (rows[i].createdAt > rows[i - 1].createdAt) return false;
   return rows[0].createdAt > rows[rows.length - 1].createdAt;
 }
+
+/**
+ * Type-the-name before a delete (the owner, 2026-11-20): the text must be the
+ * name EXACTLY. No trim, no case-folding, no accent-folding; an empty name
+ * never matches. Stricter than the server's own base check, which trims.
+ */
+export function nameMatches(typed: string, name: string): boolean {
+  return name.length > 0 && typed === name;
+}

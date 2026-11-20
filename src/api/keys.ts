@@ -221,6 +221,8 @@ export const tablesKeys = {
   bases: <S extends string>(sort: S) => ["tables", "bases", sort] as const,
   baseLists: () => ["tables", "bases"] as const,
   table: <T extends number>(tableId: T) => ["tables", "table", tableId] as const,
+  /** What a delete would take with it (`tables#impact`), read when the delete sheet opens. */
+  impact: <T extends number>(tableId: T) => ["tables", "impact", tableId] as const,
   rows: <T extends number>(tableId: T) => ["tables", "rows", tableId] as const,
   records: <T extends number, Q extends string>(tableId: T, query: Q) => ["tables", "rows", tableId, query] as const,
   /** The calendar's "No date" rows: ONE page, not infinite, so a key of its own shape. */

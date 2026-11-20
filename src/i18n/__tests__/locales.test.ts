@@ -39,6 +39,8 @@ const FRENCH = flatten(fr);
 const SAME_IN_BOTH = new Set([
   // Pages' "Pages" filter chip: the web's French is "Pages" too.
   "pages.types.pages",
+  // "Versions" is the French word too (the web's French).
+  "pages.versions.menu",
   // Storage: app names French keeps ("Pages", "Notes", "Contacts", "Assistant"), and a line that is only its values.
   "pages.storage.apps.page_app",
   "pages.storage.apps.notes",

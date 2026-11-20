@@ -57,6 +57,10 @@ appId: ${APP_ID}
     when:
       visible: "This is the developer menu"
     commands:
+      # lint: anchored-ok — Expo Go's own developer-menu button, whose whole
+      # node is "Continue" (native, English-only, not an app string). The app's
+      # French "Continuer à modifier" contains it, which is what the linter
+      # sees; a `.*` here would match that too, so it stays exact.
       - tapOn: "Continue"
 
 # AND THE DEV CLIENT'S MENU, which is a different menu with different words.

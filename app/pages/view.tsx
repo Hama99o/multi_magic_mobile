@@ -21,10 +21,10 @@
  * html are current, not whatever the list had.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { WebView } from "react-native-webview";
 import { Screen } from "@/components/ScreenContainer";
@@ -32,7 +32,8 @@ import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { LoadFailure } from "@/components/LoadFailure";
 import { AnswerMarkdown } from "@/components/chat/AnswerMarkdown";
-import { Download, MoreVertical, Pause, Play, Star } from "@/components/icons";
+import { Download, MoreVertical, Pause, Pencil, Play, Star } from "@/components/icons";
+import { familyFor } from "@/theme/fonts";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { pagesApi, type PageNode } from "@/api/pages";
 import { ImageGallery } from "@/screens/pages/ImageGallery";
@@ -147,8 +148,18 @@ export function clock(seconds: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
 }
 
-function TextFile({ uri, markdown }: { uri: string; markdown: boolean }) {
+/**
+ * A text or Markdown file, and its edit (parity #49; web `NodeViewer`
+ * `updateMarkdown`): whoever can write gets Edit; Save sends the new text
+ * as the file's new content, the old one kept as a version by the server.
+ */
+function TextFile({ uri, markdown, node, canWrite }: { uri: string; markdown: boolean; node: PageNode; canWrite: boolean }) {
   const { t } = useTranslation();
+  const colors = useColors();
+  const metrics = useMetrics();
+  const client = useQueryClient();
+  const [draft, setDraft] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const { data, error, isLoading } = useQuery({
     queryKey: pagesKeys.text(uri),
     queryFn: async () => {
@@ -159,7 +170,67 @@ function TextFile({ uri, markdown }: { uri: string; markdown: boolean }) {
   });
   if (isLoading) return <ActivityIndicator style={{ marginTop: 32 }} />;
   if (error || data == null) return <Text tone="muted">{t("pages.view.textFailed")}</Text>;
-  return <ScrollView>{markdown ? <AnswerMarkdown content={data} /> : <Text selectable>{data}</Text>}</ScrollView>;
+
+  const save = async () => {
+    if (draft == null) return;
+    setSaving(true);
+    try {
+      await pagesApi.updateText(node.spaceId, node.id, draft, node.title);
+      setDraft(null);
+      await client.invalidateQueries({ queryKey: pagesKeys.all });
+    } catch (e) {
+      Alert.alert(failureMessage(e, t("pages.edit.saveFailed")));
+    } finally {
+      setSaving(false);
+    }
+  };
+  const cancel = () =>
+    draft === data
+      ? setDraft(null)
+      : Alert.alert(t("pages.edit.discardTitle"), t("pages.edit.discardBody"), [
+          { text: t("pages.edit.keep"), style: "cancel" },
+          { text: t("pages.edit.discard"), style: "destructive", onPress: () => setDraft(null) },
+        ]);
+
+  if (draft != null) {
+    return (
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, gap: metrics.space.sm }}>
+        <TextInput
+          testID="pages-text-editor"
+          value={draft}
+          onChangeText={setDraft}
+          multiline
+          autoFocus
+          textAlignVertical="top"
+          accessibilityLabel={t("pages.edit.field", { title: node.title })}
+          style={{ flex: 1, minHeight: 240, padding: metrics.space.md, borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, color: colors.ink, backgroundColor: colors.surface, fontFamily: familyFor("mono"), fontSize: 15 }}
+        />
+        <View style={{ flexDirection: "row", gap: metrics.space.sm }}>
+          <View style={{ flex: 1 }}>
+            <Button tone="neutral" label={t("pages.edit.cancel")} onPress={cancel} testID="pages-text-cancel" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button label={t("pages.edit.save")} busy={saving} disabled={draft === data} onPress={() => void save()} testID="pages-text-save" />
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
+  return (
+    <View style={{ flex: 1, gap: metrics.space.sm }}>
+      {canWrite ? (
+        <View style={{ alignItems: "flex-end" }}>
+          <Pressable onPress={() => setDraft(data)} accessibilityRole="button" accessibilityLabel={t("pages.edit.edit")} style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: metrics.touch, paddingHorizontal: metrics.space.sm }} testID="pages-text-edit">
+            <Pencil size={18} color={colors.accent} />
+            <Text variant="label" tone="accent">
+              {t("pages.edit.edit")}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+      <ScrollView>{markdown ? <AnswerMarkdown content={data} /> : <Text selectable>{data}</Text>}</ScrollView>
+    </View>
+  );
 }
 
 export default function Viewer() {
@@ -315,7 +386,7 @@ export default function Viewer() {
           ) : mode === "media" && node.attachmentUrl ? (
             <Media uri={node.attachmentUrl} audio={(node.mimeType ?? "").startsWith("audio/")} node={node} />
           ) : (mode === "text" || mode === "markdown") && node.attachmentUrl ? (
-            <TextFile uri={node.attachmentUrl} markdown={mode === "markdown"} />
+            <TextFile uri={node.attachmentUrl} markdown={mode === "markdown"} node={node} canWrite={rights.canWrite} />
           ) : mode === "pdf" && node.attachmentUrl ? (
             <PdfView node={node} onShare={() => void share()} sharing={sharing} />
           ) : mode === "document" && node.attachmentUrl ? (

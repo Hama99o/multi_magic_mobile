@@ -127,6 +127,8 @@ export const pagesKeys = {
   shareLinks: <S extends number, N extends number | null>(spaceId: S, nodeId: N) => ["pages", "sharing", spaceId, nodeId, "links"] as const,
   /** One background export, import or copy, followed until it finishes. */
   transfer: <I extends number>(transferId: I) => ["pages", "transfer", transferId] as const,
+  /** A file's earlier versions (parity #39). */
+  versions: <S extends number, N extends number>(spaceId: S, nodeId: N) => ["pages", "versions", spaceId, nodeId] as const,
 };
 
 export const todoKeys = {

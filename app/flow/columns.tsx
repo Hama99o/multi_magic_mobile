@@ -62,8 +62,7 @@ export default function ColumnsScreen() {
   };
 
   return (
-    <Screen measure>
-      <AppHeader app="flow" back title={t("flow.columns.title")} />
+    <Screen measure header={<AppHeader app="flow" back title={t("flow.columns.title")} />}>
       {project.data ? (
         <Text tone="muted" variant="caption" numberOfLines={1} style={{ marginBottom: metrics.space.xs }}>
           {project.data.title}

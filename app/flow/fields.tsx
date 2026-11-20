@@ -60,8 +60,7 @@ export default function FieldsScreen() {
     ]);
 
   return (
-    <Screen measure>
-      <AppHeader app="flow" back title={t("flow.fields.title")} />
+    <Screen measure header={<AppHeader app="flow" back title={t("flow.fields.title")} />}>
       {project.data ? (
         <Text tone="muted" variant="caption" numberOfLines={1} style={{ marginBottom: metrics.space.md }}>
           {project.data.title}

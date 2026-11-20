@@ -60,10 +60,7 @@ export default function FlowScreen() {
   };
 
   return (
-    <Screen measure={false}>
-      <AppHeader app="flow" />
-      {/* The header spans the window (see `app/flow/card.tsx`); the list keeps the 640 dp column. */}
-      <View style={{ flex: 1, width: "100%", maxWidth: metrics.maxMeasure, alignSelf: "center" }}>
+    <Screen header={<AppHeader app="flow" />}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
         <View style={{ flex: 1 }}>
           <Segmented
@@ -132,7 +129,6 @@ export default function FlowScreen() {
           onCreated={(p) => router.push({ pathname: "/flow/board", params: { id: String(p.id) } })}
         />
       ) : null}
-      </View>
     </Screen>
   );
 }

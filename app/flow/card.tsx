@@ -51,8 +51,7 @@ export default function CardScreen() {
   const { t } = useTranslation();
   if (!Number.isInteger(projectId) || projectId <= 0 || !Number.isInteger(cardId) || cardId <= 0) {
     return (
-      <Screen measure>
-        <AppHeader app="flow" back />
+      <Screen measure header={<AppHeader app="flow" back />}>
         <EmptyState testID="flow-card-bad-link" icon={Kanban} title={t("flow.card.notFound")} />
       </Screen>
     );
@@ -191,28 +190,21 @@ function CardView({ projectId, cardId }: { projectId: number; cardId: number }) 
 
   if (card.isPending && !c) {
     return (
-      <Screen measure>
-        <AppHeader app="flow" back title={parts?.project.title} />
+      <Screen measure header={<AppHeader app="flow" back title={parts?.project.title} />}>
         <RowsSkeleton rows={6} testID="flow-card-loading" />
       </Screen>
     );
   }
   if (!c) {
     return (
-      <Screen measure>
-        <AppHeader app="flow" back title={parts?.project.title} />
+      <Screen measure header={<AppHeader app="flow" back title={parts?.project.title} />}>
         <LoadFailure error={card.error} loadFailed={t("flow.card.loadFailed")} hasData={false} updatedAt={0} onRetry={() => void card.refetch()} testID="flow-card-failed" />
       </Screen>
     );
   }
 
   return (
-    <Screen measure={false} avoidKeyboard>
-      <AppHeader app="flow" back title={parts?.project.title ?? t("flow.title")} />
-      {/* The header spans the window; the card reads in the 640 dp column. In
-          a measured Screen the tablet header's labelled buttons left the title
-          a few dp (device, 800 dp, 2026-11-20). */}
-      <View style={{ flex: 1, width: "100%", maxWidth: metrics.maxMeasure, alignSelf: "center" }}>
+    <Screen measure avoidKeyboard header={<AppHeader app="flow" back title={parts?.project.title ?? t("flow.title")} />}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: metrics.space.xl }} testID="flow-card">
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: metrics.space.sm, marginTop: metrics.space.xs }}>
           {editingTitle ? (
@@ -388,7 +380,6 @@ function CardView({ projectId, cardId }: { projectId: number; cardId: number }) 
           ))}
         </BottomSheet>
       ) : null}
-      </View>
     </Screen>
   );
 }

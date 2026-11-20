@@ -791,6 +791,15 @@ describe("comments and history (increment 5)", () => {
     await waitFor(() => expect(screen.queryByTestId("tables-comment-files")).toBeNull());
   });
 
+  it("a comment of files only draws no empty text line (device pass 3, 2026-11-20)", async () => {
+    mock.onGet(`${B}/tables/10/comments`).reply(200, { comments: [{ ...comment(9, ""), files: [{ id: 3, filename: "shop.jpg", content_type: "image/jpeg", byte_size: 10, url: "https://example.test/shop.jpg" }] }], next_before: null });
+    renderScreen(<Activity />);
+    const row = await screen.findByTestId("tables-comment-0");
+    const texts = within(row).UNSAFE_queryAllByType(jest.requireActual("react-native").Text);
+    expect(texts.filter((n) => n.props.children === "").length).toBe(0);
+    expect(within(row).getByText("shop.jpg")).toBeTruthy();
+  });
+
   it("someone else's comment offers nothing to change", async () => {
     mock.onGet(`${B}/tables/10/comments`).reply(200, { comments: [comment(9, "Theirs", false)], next_before: null });
     renderScreen(<Activity />);

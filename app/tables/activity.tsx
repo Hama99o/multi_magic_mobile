@@ -170,7 +170,7 @@ function Comments({ tableId, recordId, baseId }: { tableId: number; recordId?: n
                   {item.editedAt ? ` · ${t("tables.activity.edited")}` : ""}
                 </Text>
               </Text>
-              <Text>{item.body}</Text>
+              {item.body ? <Text>{item.body}</Text> : null}
               {item.files.map((f, i) => (
                 <Pressable key={f.id} testID={`tables-comment-${index}-file-${i}`} disabled={!f.url} onPress={() => f.url && void Linking.openURL(f.url)} accessibilityRole="link" accessibilityLabel={t("tables.activity.openFile", { name: f.filename })} style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.xs, minHeight: 32 }}>
                   {f.contentType?.startsWith("image/") ? <ImageIcon size={16} color={colors.accent} /> : <FileText size={16} color={colors.accent} />}

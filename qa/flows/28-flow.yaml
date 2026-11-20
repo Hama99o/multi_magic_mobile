@@ -1,0 +1,122 @@
+# FLOW, the main path (2026-11-20, docs/design/flow/SPEC.md §QA).
+#
+# Arrives as a user does: Home's Flow tile. Creates ONE project,
+# "[qa] Flow board", adds a card to its second column, opens the card, sets
+# its priority, comments, moves it with "Move to…", and DELETES the project
+# at the end (its own record, made by this run; the brief: "delete what you
+# create"). It never touches a project it did not make.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: the Home tile; the projects list; create project (title + colour);
+# the board's pager and column chips; quick add; the card screen; a select
+# field (priority); a comment; Move to…; delete project with its confirm.
+# CANNOT TELL YOU: drag in Reorder mode (maestro cannot hold a grip), the
+# record picker's server search, attachments (system picker), members by
+# email (an email would go out), a viewer's board (needs a second account).
+appId: ${APP_ID}
+tags:
+  - flow
+  - writes
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-flow"
+- extendedWaitUntil:
+    visible:
+      id: "flow-tabs"
+    timeout: 60000
+- takeScreenshot: flow-01-projects
+- tapOn:
+    id: "flow-new-project"
+- extendedWaitUntil:
+    visible:
+      id: "flow-project-sheet"
+    timeout: 10000
+- tapOn:
+    id: "flow-project-title"
+- inputText: "[qa] Flow board"
+- tapOn:
+    id: "flow-project-color-green"
+- takeScreenshot: flow-02-new-project
+- tapOn:
+    id: "flow-project-save"
+# A new project opens on its board, seeded by the server with six columns.
+- extendedWaitUntil:
+    visible:
+      id: "flow-board-pager"
+    timeout: 60000
+- assertVisible:
+    id: "flow-chip-1"
+- takeScreenshot: flow-03-board
+- tapOn:
+    id: "flow-chip-1"
+- tapOn:
+    id: "flow-column-1-add"
+- tapOn:
+    id: "flow-quick-add-input"
+- inputText: "[qa] First card"
+- tapOn:
+    id: "flow-quick-add-submit"
+- extendedWaitUntil:
+    visible: "\\[qa\\] First card.*"
+    timeout: 20000
+- tapOn:
+    id: "flow-quick-add-cancel"
+- takeScreenshot: flow-04-card-added
+- tapOn: "\\[qa\\] First card.*"
+- extendedWaitUntil:
+    visible:
+      id: "flow-card"
+    timeout: 30000
+- tapOn:
+    id: "flow-field-priority"
+- tapOn:
+    id: "flow-field-priority-sheet-high"
+- assertVisible:
+    id: "flow-field-priority"
+- takeScreenshot: flow-05-card
+- tapOn:
+    id: "flow-comment-input"
+- inputText: "[qa] A comment"
+- tapOn:
+    id: "flow-comment-send"
+- extendedWaitUntil:
+    visible: "\\[qa\\] A comment"
+    timeout: 20000
+- tapOn:
+    id: "flow-card-menu-button"
+- tapOn: "Move to…"
+- extendedWaitUntil:
+    visible:
+      id: "flow-move"
+    timeout: 10000
+- tapOn:
+    id: "flow-move-column-5"
+- tapOn:
+    id: "flow-move-confirm"
+- assertVisible:
+    id: "flow-card-column"
+- takeScreenshot: flow-06-moved
+- back
+- extendedWaitUntil:
+    visible:
+      id: "flow-board-pager"
+    timeout: 20000
+# Clean up: the project goes, with its confirm naming it.
+- back
+- extendedWaitUntil:
+    visible:
+      id: "flow-tabs"
+    timeout: 20000
+- longPressOn: "\\[qa\\] Flow board.*"
+- tapOn: "Delete project"
+- extendedWaitUntil:
+    visible: "Delete “\\[qa\\] Flow board”\\?"
+    timeout: 10000
+# The alert's button node reads "Delete" (Android draws it in capitals).
+- tapOn: "Delete"
+- extendedWaitUntil:
+    notVisible: "\\[qa\\] Flow board.*"
+    timeout: 20000

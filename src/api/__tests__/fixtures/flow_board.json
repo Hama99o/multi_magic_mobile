@@ -1,0 +1,63 @@
+{
+  "project": {
+    "id": 7,
+    "title": "Launch",
+    "description": "The spring launch",
+    "color": "#3b82f6",
+    "icon": null,
+    "created_at": "2026-11-01T10:00:00.000Z",
+    "updated_at": "2026-11-19T10:00:00.000Z",
+    "owner": { "id": 1, "name": "Owner Person" },
+    "members_count": 2,
+    "sprints_count": 1,
+    "cards_count": 3
+  },
+  "sprints": [
+    { "id": 30, "title": "Sprint 1", "goal": "Ship it", "start_date": "2026-11-16", "end_date": "2026-11-27", "status": "active", "flow_app_project_id": 7, "created_at": "2026-11-15T10:00:00.000Z", "updated_at": "2026-11-15T10:00:00.000Z", "cards_count": 0 }
+  ],
+  "columns": [
+    { "id": 11, "title": "To Do", "color": "#3B82F6", "position": 1, "is_final": false, "flow_app_project_id": 7, "created_at": "", "updated_at": "" },
+    { "id": 10, "title": "Backlog", "color": null, "position": 0, "is_final": false, "flow_app_project_id": 7, "created_at": "", "updated_at": "" },
+    { "id": 15, "title": "Done", "color": "#10B981", "position": 5, "is_final": true, "flow_app_project_id": 7, "created_at": "", "updated_at": "" }
+  ],
+  "field_definitions": [
+    { "id": 101, "name": "Priority", "key": "priority", "field_type": "single_select", "record_class": null, "core_tag_category_id": null, "position": 1, "required": false, "config": { "options": [ { "value": "none", "label": "None", "color": "#6b7280" }, { "value": "low", "label": "Low", "color": "#3b82f6" }, { "value": "medium", "label": "Medium", "color": "#eab308" }, { "value": "high", "label": "High", "color": "#f97316" }, { "value": "critical", "label": "Critical", "color": "#ef4444" } ] }, "owner_type": "FlowApp::Project", "owner_id": 7 },
+    { "id": 102, "name": "Story Points", "key": "story_points", "field_type": "integer", "record_class": null, "core_tag_category_id": null, "position": 2, "required": false, "config": { "min": 0, "max": 999 }, "owner_type": "FlowApp::Project", "owner_id": 7 },
+    { "id": 103, "name": "Labels", "key": "labels", "field_type": "multi_record", "record_class": "Core::Tag", "core_tag_category_id": 50, "position": 3, "required": false, "config": { "allow_create": true }, "owner_type": "FlowApp::Project", "owner_id": 7 },
+    { "id": 104, "name": "Assignees", "key": "assignees", "field_type": "multi_record", "record_class": "User", "core_tag_category_id": null, "position": 4, "required": false, "config": { "scope": "project_members" }, "owner_type": "FlowApp::Project", "owner_id": 7 },
+    { "id": 105, "name": "Senior Reviewer", "key": "reviewer", "field_type": "single_record", "record_class": "User", "core_tag_category_id": null, "position": 5, "required": false, "config": { "scope": "project_members" }, "owner_type": "FlowApp::Project", "owner_id": 7 },
+    { "id": 106, "name": "Due Date", "key": "due_date", "field_type": "date", "record_class": null, "core_tag_category_id": null, "position": 6, "required": false, "config": {}, "owner_type": "FlowApp::Project", "owner_id": 7 },
+    { "id": 107, "name": "Spec", "key": "spec", "field_type": "attachments", "record_class": null, "core_tag_category_id": null, "position": 7, "required": false, "config": {}, "owner_type": "FlowApp::Project", "owner_id": 7 },
+    { "id": 108, "name": "Future", "key": "future", "field_type": "hologram", "record_class": null, "core_tag_category_id": null, "position": 8, "required": false, "config": {}, "owner_type": "FlowApp::Project", "owner_id": 7 }
+  ],
+  "tags_by_category": {
+    "50": [
+      { "id": 501, "label": "Frontend", "color": "#3b82f6", "position": 0, "core_tag_category_id": 50 },
+      { "id": 503, "label": "Bug", "color": "#ef4444", "position": 2, "core_tag_category_id": 50 }
+    ]
+  },
+  "project_members": [ { "id": 1, "name": "Owner Person" }, { "id": 2, "name": "Member Person" } ],
+  "cards": [
+    {
+      "id": 900, "title": "Write the brief", "description": "<p>Hello</p>", "position": 1, "due_date": null,
+      "flow_app_project_id": 7, "flow_app_column_id": 11, "flow_app_sprint_id": null,
+      "created_at": "2026-11-18T10:00:00.000Z", "updated_at": "2026-11-18T10:00:00.000Z",
+      "creator": { "id": 1, "name": "Owner Person" }, "comments_count": 2,
+      "field_values": {
+        "101": { "scalar_value": "high" },
+        "102": { "scalar_value": 5 },
+        "103": { "selected_ids": [503], "selected_records": [ { "selection_id": 7001, "linked_record_id": 503, "linked_record_type": "Core::Tag" } ] },
+        "104": { "selected_ids": [2], "selected_records": [ { "selection_id": 7002, "linked_record_id": 2, "linked_record_type": "User" } ] },
+        "105": { "selected_ids": [], "selected_records": [] },
+        "106": { "scalar_value": "2026-11-25" },
+        "107": { "attachments": [ { "id": 801, "filename": "spec.pdf", "content_type": "application/pdf", "byte_size": 2048, "url": "/rails/active_storage/blobs/redirect/abc/spec.pdf" } ] }
+      }
+    },
+    {
+      "id": 901, "title": "Second", "description": null, "position": 2, "due_date": "2026-11-20",
+      "flow_app_project_id": 7, "flow_app_column_id": 11, "flow_app_sprint_id": null,
+      "created_at": "", "updated_at": "", "creator": { "id": 2, "name": "Member Person" }, "comments_count": 0, "field_values": {}
+    },
+    { "id": "broken", "title": "Unreadable" }
+  ]
+}

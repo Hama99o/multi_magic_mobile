@@ -176,3 +176,44 @@ export const financeKeys = {
   cashFlow: <C extends string>(currency: C) => ["finance", "cashFlow", currency] as const,
   trash: <K extends "expenses" | "incomes" | "loans">(kind: K) => ["finance", "trash", kind] as const,
 };
+
+/**
+ * Flow (`src/api/flow.ts`). The board is ONE answer per project and sprint
+ * (an id, "backlog" or "all"), so a card write edits the board(s)
+ * holding it in place and then refetches `boards(projectId)`, the prefix of
+ * every sprint's board of that project.
+ */
+export const flowKeys = {
+  all: ["flow"] as const,
+  /** Every page of every search of the projects, as one prefix. */
+  projectLists: () => ["flow", "projects"] as const,
+  projects: <Q extends string>(term: Q) => ["flow", "projects", term] as const,
+  project: <P extends number>(projectId: P) => ["flow", "project", projectId] as const,
+  boards: <P extends number>(projectId: P) => ["flow", "board", projectId] as const,
+  /** One sprint scope's board (an id, "backlog" or "all"), paged (useInfiniteQuery). */
+  board: <P extends number, S extends number | string>(projectId: P, scope: S) => ["flow", "board", projectId, scope] as const,
+  /** Everything about one card: the card, then its comments, history and notes under it. */
+  cardAll: <P extends number, C extends number>(projectId: P, cardId: C) => ["flow", "card", projectId, cardId] as const,
+  card: <P extends number, C extends number>(projectId: P, cardId: C) => ["flow", "card", projectId, cardId, "card"] as const,
+  comments: <P extends number, C extends number>(projectId: P, cardId: C) => ["flow", "card", projectId, cardId, "comments"] as const,
+  history: <P extends number, C extends number>(projectId: P, cardId: C) => ["flow", "card", projectId, cardId, "history"] as const,
+  noteLinks: <P extends number, C extends number>(projectId: P, cardId: C) => ["flow", "card", projectId, cardId, "notes"] as const,
+  members: <P extends number>(projectId: P) => ["flow", "members", projectId] as const,
+  columns: <P extends number>(projectId: P) => ["flow", "columns", projectId] as const,
+  /** The notes a card can link, searched. */
+  noteSearch: <Q extends string>(term: Q) => ["flow", "noteSearch", term] as const,
+  /** People to add to a board, searched. */
+  peopleSearch: <Q extends string>(term: Q) => ["flow", "peopleSearch", term] as const,
+};
+
+/**
+ * Custom fields (`src/api/fields.ts`), shared by Flow and Tables: keyed by the
+ * OWNER (a project, a table), never by app.
+ */
+export const fieldKeys = {
+  all: ["fields"] as const,
+  definitions: <T extends string, O extends number>(ownerType: T, ownerId: O) => ["fields", "definitions", ownerType, ownerId] as const,
+  tagCategories: <T extends string, O extends number>(ownerType: T, ownerId: O) => ["fields", "tagCategories", ownerType, ownerId] as const,
+  /** A record field's choices for a search term, paged. */
+  options: <D extends number, Q extends string>(definitionId: D, term: Q) => ["fields", "options", definitionId, term] as const,
+};

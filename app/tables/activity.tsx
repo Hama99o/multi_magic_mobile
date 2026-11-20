@@ -29,7 +29,7 @@ import { relativeTime } from "@/lib/relativeTime";
 import { ActionSheet } from "@/screens/contacts/ActionSheet";
 import { Segmented } from "@/screens/flow/parts";
 import { canEditRows } from "@/screens/tables/logic";
-import { historyLine } from "@/screens/tables/history";
+import { historyDays, historyLine } from "@/screens/tables/history";
 import { addMention, mentionQuery, mentionsIn } from "@/screens/tables/mentions";
 import { addCommentFiles, type CommentFile } from "@/screens/tables/commentFiles";
 import { pickPhotos } from "@/screens/contacts/documents";
@@ -282,7 +282,7 @@ function Comments({ tableId, recordId, baseId }: { tableId: number; recordId?: n
 function History({ tableId, recordId, baseId, canRestore }: { tableId: number; recordId?: number; baseId?: number; canRestore: boolean }) {
   const colors = useColors();
   const metrics = useMetrics();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const client = useQueryClient();
   const [kind, setKind] = useState<HistoryKind | "all">("all");
   // By person (the web's `HistoryFeed.tsx` picker, the server's `user_id`): offered once the base has two people.
@@ -296,7 +296,12 @@ function History({ tableId, recordId, baseId, canRestore }: { tableId: number; r
     queryFn: ({ pageParam }) => tablesApi.history(tableId, { recordId, kind: kind === "all" ? undefined : kind, userId: person || undefined, before: pageParam || undefined }),
     getNextPageParam: (last) => last.nextBefore ?? undefined,
   });
-  const items = history.data?.pages.flatMap((p) => p.items) ?? [];
+  const items = useMemo(() => history.data?.pages.flatMap((p) => p.items) ?? [], [history.data]);
+  // Under "Today", "Yesterday" or the date (the web's HistoryFeed.tsx). A line keeps its own number in its testID.
+  const entries = useMemo(() => {
+    let n = 0;
+    return historyDays(items, t, i18n.language).map((e) => (e.kind === "line" ? { ...e, n: n++ } : { ...e, n: -1 }));
+  }, [items, t, i18n.language]);
   const restore = (fieldId: number) =>
     void tablesApi
       .restoreField(fieldId)
@@ -336,9 +341,18 @@ function History({ tableId, recordId, baseId, canRestore }: { tableId: number; r
       <LoadFailure error={history.error} loadFailed={t("tables.history.loadFailed")} hasData={Boolean(history.data)} updatedAt={history.dataUpdatedAt} onRetry={() => void history.refetch()} testID="tables-history-failed" />
       <FlatList
         testID="tables-history"
-        data={items}
-        keyExtractor={(h) => String(h.id)}
-        renderItem={({ item, index }) => (
+        data={entries}
+        keyExtractor={(e) => e.key}
+        renderItem={({ item: entry }) => {
+          if (entry.kind === "day")
+            return (
+              <Text variant="caption" tone="muted" accessibilityRole="header" testID={`tables-history-day-${entry.key}`} style={{ paddingTop: metrics.space.md, paddingBottom: metrics.space.xs, fontWeight: "600" }}>
+                {entry.label}
+              </Text>
+            );
+          const item = entry.item;
+          const index = entry.n;
+          return (
           <View testID={`tables-history-${index}`} style={{ paddingVertical: metrics.space.sm, gap: 2, borderBottomWidth: 1, borderBottomColor: colors.border }}>
             <Text>{historyLine(item, t)}</Text>
             <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
@@ -359,7 +373,8 @@ function History({ tableId, recordId, baseId, canRestore }: { tableId: number; r
               ) : null}
             </View>
           </View>
-        )}
+          );
+        }}
         ListEmptyComponent={history.isPending ? <RowsSkeleton rows={4} testID="tables-history-loading" /> : history.data ? <Text tone="muted" testID="tables-history-empty">{t("tables.history.nothing")}</Text> : null}
         ListFooterComponent={
           history.hasNextPage ? (

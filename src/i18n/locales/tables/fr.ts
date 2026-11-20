@@ -164,6 +164,8 @@ export const tablesFr = {
     title: "Historique",
     nothing: "Rien pour l’instant",
     older: "Voir les plus anciens",
+    today: "Aujourd’hui",
+    yesterday: "Hier",
     person: "Les modifications de qui",
     everyone: "Tout le monde",
     byPerson: "Modifications de {{name}}",

@@ -165,6 +165,8 @@ export const tablesEn = {
     title: "History",
     nothing: "Nothing yet",
     older: "Show older",
+    today: "Today",
+    yesterday: "Yesterday",
     person: "Whose changes",
     everyone: "Everyone",
     byPerson: "Changes by {{name}}",

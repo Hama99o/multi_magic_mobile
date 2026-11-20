@@ -44,3 +44,29 @@ export function historyLine(item: HistoryItem, t: T): string {
     role: d.role === "editor" || d.role === "viewer" ? t(`tables.share.roles.${d.role}`) : str(d.role),
   });
 }
+
+export type HistoryEntry = { kind: "day"; key: string; label: string } | { kind: "line"; key: string; item: HistoryItem };
+
+/**
+ * The lines under "Today", "Yesterday" or the date, as the web groups them
+ * (`HistoryFeed.tsx`, weekday + day + month in the reader's language). Days
+ * are the phone's own calendar days; the list stays newest first.
+ */
+export function historyDays(items: HistoryItem[], t: T, language: string, now: Date = new Date()): HistoryEntry[] {
+  const dayOf = (d: Date) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+  const today = dayOf(now);
+  const yesterday = dayOf(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+  const fmt = new Intl.DateTimeFormat(language, { weekday: "long", day: "numeric", month: "long" });
+  const out: HistoryEntry[] = [];
+  let last: string | null = null;
+  for (const item of items) {
+    const at = new Date(item.at);
+    const day = dayOf(at);
+    if (day !== last) {
+      out.push({ kind: "day", key: `day-${day}`, label: day === today ? t("tables.history.today") : day === yesterday ? t("tables.history.yesterday") : fmt.format(at) });
+      last = day;
+    }
+    out.push({ kind: "line", key: String(item.id), item });
+  }
+  return out;
+}

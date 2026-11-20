@@ -19,7 +19,7 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FILL } from "@/theme/fill";
-import { Camera, Plus, ChevronRight, Download, File, Folder, FolderInput, FolderPlus, Images, Info, Pencil, Star, StarOff, Trash2, Users, type LucideIcon } from "@/components/icons";
+import { Camera, Plus, ChevronRight, Download, File, Folder, FolderInput, FolderPlus, Images, Info, Link2, MapPin, Pencil, Star, StarOff, Trash2, Users, type LucideIcon } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -148,6 +148,8 @@ export function ActionsSheet({
   onMove,
   onDetails,
   onTrash,
+  onCopyLink,
+  onShowLocation,
   rights,
 }: {
   node: PageNode | null;
@@ -160,6 +162,10 @@ export function ActionsSheet({
   onMove: (node: PageNode) => void;
   onDetails: (node: PageNode) => void;
   onTrash: (node: PageNode) => void;
+  /** The web's link to the item, on the clipboard (parity #30). */
+  onCopyLink?: (node: PageNode) => void;
+  /** Drive-wide views only (Recent, Starred, Search): open the folder it is in (parity #36). */
+  onShowLocation?: (node: PageNode) => void;
   /** Null (unknown) offers nothing that writes. */
   rights: Rights | null;
 }) {
@@ -181,6 +187,7 @@ export function ActionsSheet({
           <SheetRow icon={Download} label={t("pages.actions.share")} onPress={run(onShare)} testID="pages-action-share" />
         ) : null}
         {canShare && onShareWith ? <SheetRow icon={Users} label={t("pages.actions.shareWith")} onPress={run(onShareWith)} testID="pages-action-share-with" /> : null}
+        {onCopyLink ? <SheetRow icon={Link2} label={t("pages.actions.copyLink")} onPress={run(onCopyLink)} testID="pages-action-copy-link" /> : null}
         {canWrite ? (
           <SheetRow
             icon={node.starred ? StarOff : Star}
@@ -191,6 +198,7 @@ export function ActionsSheet({
         ) : null}
         {canWrite ? <SheetRow icon={Pencil} label={t("pages.actions.rename")} onPress={run(onRename)} testID="pages-action-rename" /> : null}
         {canMove ? <SheetRow icon={FolderInput} label={t("pages.actions.move")} onPress={run(onMove)} testID="pages-action-move" /> : null}
+        {onShowLocation ? <SheetRow icon={MapPin} label={t("pages.actions.showLocation")} onPress={run(onShowLocation)} testID="pages-action-location" /> : null}
         <SheetRow icon={Info} label={t("pages.actions.details")} onPress={run(onDetails)} testID="pages-action-details" />
         {canMove ? <SheetRow icon={Trash2} label={t("pages.actions.trash")} danger onPress={run(onTrash)} testID="pages-action-trash" /> : null}
       </ScrollView>
@@ -230,7 +238,12 @@ function familyLabel(family: FileFamily, t: (k: string) => string): string {
 /** "Nov 6, 2026, 3:45 PM" / "6 nov. 2026, 15:45": Drive's details, no seconds. */
 const DATE_STYLE: Intl.DateTimeFormatOptions = { dateStyle: "medium", timeStyle: "short" };
 
-export function DetailsSheet({ node, location, onClose }: { node: PageNode | null; location: string; onClose: () => void }) {
+/**
+ * Details (parity #38): the web's rows, plus "Deleted" for an item in the
+ * trash and "Manage access" for whoever may share it (the web's link to
+ * the share dialog).
+ */
+export function DetailsSheet({ node, location, onClose, onManageAccess }: { node: PageNode | null; location: string; onClose: () => void; onManageAccess?: (node: PageNode) => void }) {
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
   if (!node) return null;
@@ -242,6 +255,7 @@ export function DetailsSheet({ node, location, onClose }: { node: PageNode | nul
     [t("pages.details.owner"), node.ownerName ?? ""],
     [t("pages.details.modified"), `${new Date(node.updatedAt).toLocaleString(i18n.language, DATE_STYLE)} (${relativeTime(node.updatedAt)})`],
     ...(node.createdAt ? ([[t("pages.details.created"), new Date(node.createdAt).toLocaleString(i18n.language, DATE_STYLE)]] as [string, string][]) : []),
+    ...(node.deletedAt ? ([[t("pages.details.deleted"), new Date(node.deletedAt).toLocaleString(i18n.language, DATE_STYLE)]] as [string, string][]) : []),
   ];
   return (
     <BottomSheet open onClose={onClose} testID="pages-details-sheet">
@@ -255,6 +269,17 @@ export function DetailsSheet({ node, location, onClose }: { node: PageNode | nul
             <Text selectable>{value}</Text>
           </View>
         ))}
+        {onManageAccess && !node.deletedAt ? (
+          <Button
+            tone="neutral"
+            label={t("pages.details.manageAccess")}
+            onPress={() => {
+              onClose();
+              onManageAccess(node);
+            }}
+            testID="pages-details-manage-access"
+          />
+        ) : null}
       </ScrollView>
     </BottomSheet>
   );

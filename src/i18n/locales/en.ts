@@ -1694,8 +1694,13 @@ export const en = {
       details: "Details",
       trash: "Move to trash",
       failed: "That did not work. Try again.",
+      copyLink: "Copy link",
+      linkCopied: "Link copied",
+      showLocation: "Show location",
+      selectAll: "Select all",
     },
-    details: { type: "Type", size: "Size", contains: "Contains", location: "Location", owner: "Owner", modified: "Modified", created: "Created" },
+    details: { type: "Type", size: "Size", contains: "Contains", location: "Location", owner: "Owner", modified: "Modified", created: "Created", deleted: "Deleted", manageAccess: "Manage access" },
+    path: { open: "Open {{name}}", label: "Where this folder is" },
     family: { folder: "Folder", page: "Page", pdf: "PDF", doc: "Document", sheet: "Spreadsheet", slides: "Presentation", image: "Image", video: "Video", audio: "Audio", archive: "Archive", other: "File" },
     move: {
       titleOne: "Move “{{title}}”",
@@ -1770,6 +1775,7 @@ export const en = {
     },
     types: {
       folders: "Folders",
+      pages: "Pages",
       all: "All",
       image: "Images",
       pdf: "PDFs",

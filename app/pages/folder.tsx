@@ -16,7 +16,8 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
+import { crumbsFor } from "@/screens/pages/links";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearFade } from "@/screens/pages/drive/fade";
 import { Screen } from "@/components/ScreenContainer";
@@ -81,8 +82,25 @@ export default function Folder() {
   const params = useLocalSearchParams<{ spaceId: string; parentId?: string; title?: string; trail?: string }>();
   const spaceId = Number(params.spaceId);
   const parentId = params.parentId ? Number(params.parentId) : null;
-  const title = params.title ?? "";
+  // The folder's own record (its path, and its name when it was opened by
+  // id alone, from "Show location") and the space's (its name, for the root
+  // crumb). Both are cached: the rights already read the space.
+  const folderNode = useQuery({
+    queryKey: pagesKeys.node(spaceId, parentId ?? -1),
+    queryFn: () => pagesApi.node(spaceId, parentId as number),
+    enabled: Number.isFinite(spaceId) && parentId != null,
+  });
+  const spaceQuery = useQuery({ queryKey: pagesKeys.space(spaceId), queryFn: () => pagesApi.space(spaceId), enabled: Number.isFinite(spaceId) });
+  const title = params.title || folderNode.data?.title || (parentId == null ? (spaceQuery.data?.title ?? "") : "");
   const trail = params.trail ?? "";
+  // A tappable path (parity #8): every crumb opens the folder it names.
+  const crumbs = useMemo(
+    () =>
+      spaceQuery.data && (parentId == null || folderNode.data)
+        ? crumbsFor({ spaceId, spaceTitle: spaceQuery.data.title }, folderNode.data?.ancestors ?? [], folderNode.data ? { id: folderNode.data.id, title: folderNode.data.title } : null)
+        : null,
+    [spaceQuery.data, folderNode.data, parentId, spaceId],
+  );
 
   // Kept across folders and restarts (audit P2, 2026-11-16), like the view.
   const sortBy = useFolderSort((s) => s.sortBy);
@@ -155,7 +173,41 @@ export default function Folder() {
   // A selection replaces this row, never the shared header.
   const header = (
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.xs, paddingVertical: metrics.space.xs }}>
-      {trail ? (
+      {crumbs && crumbs.length > 1 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ alignItems: "center" }} accessibilityLabel={t("pages.path.label")} testID="pages-folder-path">
+          {crumbs.map((c, i) => (
+            <View key={c.key} style={{ flexDirection: "row", alignItems: "center" }}>
+              {i > 0 ? (
+                <Text variant="caption" tone="muted" style={{ paddingHorizontal: 2 }}>
+                  {"/"}
+                </Text>
+              ) : null}
+              {c.target ? (
+                <Pressable
+                  onPress={() => {
+                    const to = c.target;
+                    if (!to) return;
+                    router.push({ pathname: "/pages/folder", params: to.parentId == null ? { spaceId: String(to.spaceId), title: to.title } : { spaceId: String(to.spaceId), parentId: String(to.parentId), title: to.title, trail: to.trail } });
+                  }}
+                  accessibilityRole="link"
+                  accessibilityLabel={t("pages.path.open", { name: c.label })}
+                  hitSlop={8}
+                  style={{ minHeight: 40, justifyContent: "center", paddingHorizontal: 4 }}
+                  testID={`pages-crumb-${c.key}`}
+                >
+                  <Text variant="caption" tone="accent" numberOfLines={1} style={{ maxWidth: 160 }}>
+                    {c.label}
+                  </Text>
+                </Pressable>
+              ) : (
+                <Text variant="caption" tone="muted" numberOfLines={1} style={{ maxWidth: 160, paddingHorizontal: 4 }}>
+                  {c.label}
+                </Text>
+              )}
+            </View>
+          ))}
+        </ScrollView>
+      ) : trail ? (
         <Text variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1, minWidth: 0 }} testID="pages-folder-trail">
           {trail}
         </Text>

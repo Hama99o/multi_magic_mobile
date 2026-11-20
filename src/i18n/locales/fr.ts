@@ -1710,8 +1710,13 @@ export const fr: Translations = {
       details: "Détails",
       trash: "Placer dans la corbeille",
       failed: "Cela n’a pas fonctionné. Réessayez.",
+      copyLink: "Copier le lien",
+      linkCopied: "Lien copié",
+      showLocation: "Afficher l’emplacement",
+      selectAll: "Tout sélectionner",
     },
-    details: { type: "Type de fichier", size: "Taille", contains: "Contient", location: "Emplacement", owner: "Propriétaire", modified: "Modifié", created: "Créé" },
+    details: { type: "Type de fichier", size: "Taille", contains: "Contient", location: "Emplacement", owner: "Propriétaire", modified: "Modifié", created: "Créé", deleted: "Supprimé", manageAccess: "Gérer les accès" },
+    path: { open: "Ouvrir {{name}}", label: "Emplacement de ce dossier" },
     family: { folder: "Dossier", page: "Page", pdf: "PDF", doc: "Document texte", sheet: "Feuille de calcul", slides: "Présentation", image: "Image", video: "Vidéo", audio: "Audio", archive: "Archive", other: "Fichier" },
     move: {
       titleOne: "Déplacer « {{title}} »",
@@ -1786,6 +1791,7 @@ export const fr: Translations = {
     },
     types: {
       folders: "Dossiers",
+      pages: "Pages",
       all: "Tout",
       image: "Images",
       pdf: "PDF",

@@ -16,7 +16,10 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, t
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
 import { Text } from "@/components/reusables/text";
 import { useTranslation } from "react-i18next";
-import { Download, FolderInput, Star, Trash2 } from "@/components/icons";
+import { CheckCheck, Download, FolderInput, Star, Trash2 } from "@/components/icons";
+import * as Clipboard from "expo-clipboard";
+import { router } from "expo-router";
+import { nodeLink } from "../links";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import type { PageNode } from "@/api/pages";
 import { failureMessage } from "@/api/failure";
@@ -112,6 +115,33 @@ export function NodeCollection({
   }, []);
 
   const press = useCallback((node: PageNode) => (selecting ? toggle(node) : onOpen(node)), [selecting, toggle, onOpen]);
+
+  // Select all (parity #18): everything loaded so far, as the web selects
+  // what it shows. A second tap, with all already chosen, clears.
+  const allChosen = nodes.length > 0 && nodes.every((n) => selected.has(n.id));
+  const selectAll = useCallback(() => setSelected(allChosen ? new Set() : new Set(nodes.map((n) => n.id))), [allChosen, nodes]);
+
+  // Copy link (parity #30): the web's URL, so it opens on a laptop.
+  const copyLink = useCallback(
+    async (node: PageNode) => {
+      try {
+        await Clipboard.setStringAsync(nodeLink(node));
+        Alert.alert(t("pages.actions.linkCopied"));
+      } catch (e) {
+        Alert.alert(failureMessage(e, t("pages.actions.failed")));
+      }
+    },
+    [t],
+  );
+
+  // Show location (parity #36), in the drive-wide views: the folder it is in,
+  // or the space's root. The folder screen fetches its own name and path.
+  const showLocation = useCallback((node: PageNode) => {
+    router.push({
+      pathname: "/pages/folder",
+      params: node.parentId == null ? { spaceId: String(node.spaceId), title: node.space?.title ?? "" } : { spaceId: String(node.spaceId), parentId: String(node.parentId) },
+    });
+  }, []);
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -263,6 +293,7 @@ export function NodeCollection({
     <View style={{ flex: 1 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)} testID={`${testID}-root`}>
       {selecting ? (
         <SelectionBar count={selected.size} onClose={() => setSelected(new Set())}>
+          <IconButton icon={CheckCheck} label={t("pages.actions.selectAll")} onPress={selectAll} tone="ink" testID="pages-select-all" />
           <IconButton
             icon={Download}
             label={t("pages.download.title")}
@@ -354,9 +385,16 @@ export function NodeCollection({
         onMove={(n) => setMoving([n])}
         onDetails={setDetailsFor}
         onTrash={(n) => trash([n])}
+        onCopyLink={(n) => void copyLink(n)}
+        onShowLocation={showSpace ? showLocation : undefined}
         rights={actionsFor ? rightsOf(actionsFor) : null}
       />
-      <DetailsSheet node={detailsFor} location={detailsFor ? locationOf(detailsFor) : ""} onClose={() => setDetailsFor(null)} />
+      <DetailsSheet
+        node={detailsFor}
+        location={detailsFor ? locationOf(detailsFor) : ""}
+        onClose={() => setDetailsFor(null)}
+        onManageAccess={detailsFor && rightsOf(detailsFor).canShare ? (n) => setSharingWith({ spaceId: n.spaceId, nodeId: n.id, title: n.title }) : undefined}
+      />
       <ShareSheet target={sharingWith} onClose={() => setSharingWith(null)} />
       {trashed ? (
         <View

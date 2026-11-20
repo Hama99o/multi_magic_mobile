@@ -37,6 +37,8 @@ const FRENCH = flatten(fr);
  * because it was checked, not because it looked foreign.
  */
 const SAME_IN_BOTH = new Set([
+  // Pages' "Pages" filter chip: the web's French is "Pages" too.
+  "pages.types.pages",
   "pages.searchChips.type",
   // "Pause" is the French word too (a player button).
   "pages.view.pause",

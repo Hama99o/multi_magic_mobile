@@ -256,6 +256,14 @@ function ListRow({ group, today }: { group: TodoGroup; today: string }) {
               {group.todosCount === 0 ? t("todos.noTasksYet") : t("todos.progress", { done: group.completedCount, total: group.todosCount })}
             </Text>
           </View>
+          {group.todosCount > 0 && group.completedCount === group.todosCount ? (
+            // The web's card says "All done" once every task is ticked (`GroupCard.tsx:89-97`).
+            <View testID={`todos-list-${group.id}-done`} style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: metrics.radius.pill, backgroundColor: `${colors.accent}1f` }}>
+              <Text variant="caption" style={{ color: colors.accent }}>
+                {t("todos.allDoneTitle")}
+              </Text>
+            </View>
+          ) : null}
           {group.overdueCount > 0 ? (
             <View testID={`todos-list-${group.id}-overdue`} style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: metrics.radius.pill, backgroundColor: `${colors.danger}1f` }}>
               <Text variant="caption" tone="danger">

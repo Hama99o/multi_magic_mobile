@@ -184,6 +184,20 @@ describe("the Todo home", () => {
   });
 });
 
+describe("a finished list's card", () => {
+  beforeEach(() => {
+    mock.onGet(`${B}/todo_groups`).reply(200, { todo_groups: [group({ id: 6, name: "[qa] Packed", todos_count: 2, completed_count: 2, pending_count: 0, preview_todos: [] }), group()], meta: { pagy: { page: 1, pages: 1 } } });
+    mock.onGet(`${B}/todos`, { params: { completed: false } }).reply(200, { todos: [] });
+  });
+
+  it("says All done, as the web's card does, and only on the list whose every task is ticked", async () => {
+    renderScreen(<Todos />);
+    expect(await screen.findByText("[qa] Packed")).toBeTruthy();
+    expect(screen.getByTestId("todos-list-6-done")).toHaveTextContent("All done");
+    expect(screen.queryByTestId("todos-list-4-done")).toBeNull();
+  });
+});
+
 describe("a list", () => {
   beforeEach(() => {
     mockParams.current = { id: "4" };

@@ -578,6 +578,11 @@ export const tablesApi = {
   },
 
   /** Many rows to the trash at once; `restore` with the ids brings them back. */
+  /** These rows in this order, in the positions they already held (the web's kanban reorder). Editors only. */
+  async reorderRecords(tableId: number, ids: number[]): Promise<void> {
+    await http.post(`${BASE}/tables/${tableId}/records/reorder`, { ids });
+  },
+
   async bulkDestroy(tableId: number, ids: number[]): Promise<number[]> {
     const { data } = await http.post(`${BASE}/tables/${tableId}/records/bulk_destroy`, { ids });
     const got = obj(data, "bulk_destroy response").ids;

@@ -33,6 +33,11 @@ export interface PersonalLayer {
   rowColorFieldId?: number | null;
   /** Newest first by the row's own creation time (C3). Absent: on for a view with no sort. */
   newestFirst?: boolean;
+  /**
+   * Kanban columns folded away, by column key (4b). Kept on the device like the rest, but NOT a
+   * difference from the shared view: a fold changes what is drawn, never which rows or how they read.
+   */
+  foldedColumns?: string[];
 }
 
 /** At most this many fields under a card's title (SPEC C2). */

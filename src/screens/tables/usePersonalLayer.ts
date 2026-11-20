@@ -36,10 +36,13 @@ export function usePersonalLayer(userId: number | undefined, view: View | undefi
     [userId, viewId],
   );
 
-  /** "Back to the shared view": the layer goes, on this phone too. */
+  /** "Back to the shared view": the layer goes, on this phone too, except folded kanban columns (a fold is not a difference, `PersonalLayer.foldedColumns`). */
   const reset = useCallback(() => {
-    setLayer({});
-    if (userId !== undefined && viewId !== undefined) void writeLayer(userId, viewId, {});
+    setLayer((current) => {
+      const kept: PersonalLayer = current.foldedColumns?.length ? { foldedColumns: current.foldedColumns } : {};
+      if (userId !== undefined && viewId !== undefined) void writeLayer(userId, viewId, kept);
+      return kept;
+    });
   }, [userId, viewId]);
 
   // Until the stored layer is read, the shared view (no flash of the wrong rows: the

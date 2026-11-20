@@ -172,6 +172,14 @@ export const tablesEn = {
     failed: "The view could not be saved.",
   },
   kanban: {
+    fold: "Fold {{column}}",
+    foldedHint: "Folded. Tap to unfold it and go there.",
+    within: {
+      top: "Move to the top of this column",
+      up: "Move up",
+      down: "Move down",
+    },
+    reorderFailed: "The card could not be moved.",
     empty: "No value",
     column: "{{column}}, {{count}} cards",
     noCards: "No card here.",

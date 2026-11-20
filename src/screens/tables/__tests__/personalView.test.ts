@@ -5,9 +5,11 @@
  * shared view. And newest first by default where the view has no sort (C3).
  */
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { act, renderHook, waitFor } from "@testing-library/react-native";
 import type { FieldDefinition } from "@/api/fields";
 import type { View } from "@/api/tables";
 import { cardFields, differsFromShared, effectiveQuery, layerKey, moveField, orderedFields, readLayer, visibleFields, writeLayer } from "../personalView";
+import { usePersonalLayer } from "../usePersonalLayer";
 
 const view = (config: Partial<View["config"]> = {}): View => ({
   id: 70,
@@ -79,6 +81,10 @@ describe("differsFromShared: the tint on the toolbar", () => {
     expect(differsFromShared(view({ groupByFieldId: 2 }), { groupBy: 2 })).toBe(false);
     expect(differsFromShared(view(), { search: "  " })).toBe(false);
   });
+
+  it("a folded kanban column is not a difference (4b): it changes what is drawn, never which rows", () => {
+    expect(differsFromShared(view(), { foldedColumns: ["in"] })).toBe(false);
+  });
 });
 
 describe("which fields show", () => {
@@ -124,6 +130,20 @@ describe("storage: on this device, per person and per view", () => {
     expect(await readLayer(7, 70)).toEqual({ search: "scarf", newestFirst: false });
     await AsyncStorage.setItem(layerKey(7, 71), "{not json");
     expect(await readLayer(7, 71)).toEqual({});
+  });
+
+  it("folded kanban columns are kept like the rest of the layer (4b)", async () => {
+    await writeLayer(7, 73, { foldedColumns: ["in", ""] });
+    expect(await readLayer(7, 73)).toEqual({ foldedColumns: ["in", ""] });
+  });
+
+  it("'Back to the shared view' drops the differences and keeps the folds (a fold is not one)", async () => {
+    const { result } = renderHook(() => usePersonalLayer(7, view()));
+    await waitFor(() => expect(result.current.ready).toBe(true));
+    act(() => result.current.change({ search: "scarf", foldedColumns: ["out"] }));
+    act(() => result.current.reset());
+    expect(result.current.layer).toEqual({ foldedColumns: ["out"] });
+    await waitFor(async () => expect(await readLayer(7, view().id)).toEqual({ foldedColumns: ["out"] }));
   });
 
   it("writing an empty layer removes it ('Back to the shared view')", async () => {

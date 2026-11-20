@@ -171,6 +171,14 @@ export const tablesFr = {
     failed: "La vue n’a pas pu être enregistrée.",
   },
   kanban: {
+    fold: "Replier {{column}}",
+    foldedHint: "Repliée. Touchez pour la déplier et y aller.",
+    within: {
+      top: "Mettre en haut de cette colonne",
+      up: "Monter",
+      down: "Descendre",
+    },
+    reorderFailed: "La carte n’a pas pu être déplacée.",
     empty: "Sans valeur",
     column: "{{column}}, {{count}} cartes",
     noCards: "Aucune carte ici.",

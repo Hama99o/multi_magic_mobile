@@ -525,6 +525,54 @@ describe("kanban and calendar (increment 4)", () => {
     expect(JSON.parse(mock.history.patch[1].data)).toEqual({ record: { values: { "2": "in" } } });
   });
 
+  it("4b: with newest first (a sort) the long press offers no reorder, only other columns", async () => {
+    mockParams.current = { id: "10", base: "3", view: "73" };
+    const inStock = { "2": { scalar_value: "in" } };
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([row(503, "Grey coat", inStock), row(502, "Red hat", inStock), scarf], { groups: [{ value: "in", count: 3 }] }));
+    mock.onPost(`${B}/tables/10/records/reorder`).reply(200, { ids: [502, 503, 501] });
+    renderScreen(<TableScreen />);
+    // Newest first is a sort: the sheet offers no reorder, as the web reorders only a board with no sort.
+    fireEvent(await screen.findByTestId("tables-kanban-0-card-0"), "longPress");
+    const sheet = await screen.findByTestId("tables-kanban-move");
+    expect(within(sheet).queryByText("Move down")).toBeNull();
+    expect(within(sheet).getByText("Sold out")).toBeTruthy(); // moving to another column still works
+  });
+
+  it("4b: Table order on, the first card moves down, and the top one offers no Move up", async () => {
+    mockParams.current = { id: "10", base: "3", view: "73" };
+    const inStock = { "2": { scalar_value: "in" } };
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([row(503, "Grey coat", inStock), row(502, "Red hat", inStock), scarf], { groups: [{ value: "in", count: 3 }] }));
+    mock.onPost(`${B}/tables/10/records/reorder`).reply(200, { ids: [502, 503, 501] });
+    renderScreen(<TableScreen />);
+    await screen.findByTestId("tables-kanban-0-card-0");
+    fireEvent.press(await screen.findByTestId("tables-order"));
+    await waitFor(() => expect(recordCalls().some((p) => p.sort === undefined)).toBe(true));
+    fireEvent(await screen.findByTestId("tables-kanban-0-card-0"), "longPress");
+    const sheet = await screen.findByTestId("tables-kanban-move");
+    expect(within(sheet).queryByText("Move up")).toBeNull();
+    expect(within(sheet).queryByText("Move to the top of this column")).toBeNull();
+    fireEvent.press(within(sheet).getByText("Move down"));
+    await waitFor(() => expect(mock.history.post.filter((r) => r.url === `${B}/tables/10/records/reorder`)).toHaveLength(1));
+    expect(JSON.parse(mock.history.post.find((r) => r.url === `${B}/tables/10/records/reorder`)!.data)).toEqual({ ids: [502, 503, 501] });
+  });
+
+  it("4b: a folded column leaves the pages, stays as a dimmed chip, writes no view, and its chip brings it back", async () => {
+    mockParams.current = { id: "10", base: "3", view: "73" };
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf, row(502, "Red hat", { "2": { scalar_value: "out" } })], { groups: [{ value: "in", count: 1 }, { value: "out", count: 1 }] }));
+    renderScreen(<TableScreen />);
+    await screen.findByText("Red hat");
+    fireEvent.press(screen.getByTestId("tables-kanban-fold-0"));
+    await waitFor(() => expect(screen.queryByText("Blue scarf")).toBeNull());
+    expect(screen.getByTestId("tables-kanban-chip-0").props.accessibilityHint).toBe("Folded. Tap to unfold it and go there.");
+    // Kept on the phone: this suite has no signed-in user, so the layer lives for the visit only
+    // (usePersonalLayer); the stored round trip is personalView.test.ts's.
+    expect(mock.history.patch).toHaveLength(0); // personal: no view is written
+    expect(screen.queryByTestId("tables-personal-note")).toBeNull(); // and a fold is not a difference from the shared view
+    fireEvent.press(screen.getByTestId("tables-kanban-chip-0"));
+    expect(await screen.findByText("Blue scarf")).toBeTruthy();
+    expect(screen.getByTestId("tables-kanban-chip-0").props.accessibilityHint).toBeUndefined();
+  });
+
   it("+ at a column's foot adds a row already in that column", async () => {
     mockParams.current = { id: "10", base: "3", view: "73" };
     mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));

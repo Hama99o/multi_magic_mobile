@@ -1,6 +1,6 @@
 import type { FieldDefinition } from "@/api/fields";
 import type { RecordRow } from "@/api/tables";
-import { columnValue, dayOf, EMPTY_COLUMN, kanbanColumns, monthFilters, monthRange, newViewReady, rowsByDay, viewColumnChoices } from "../boardViews";
+import { columnValue, dayOf, EMPTY_COLUMN, kanbanColumns, monthFilters, monthRange, moveWithin, newViewReady, rowsByDay, toggleFolded, viewColumnChoices } from "../boardViews";
 
 const status = { id: 2, fieldType: "single_select", config: { options: [{ value: "todo", label: "To do", color: "#3b82f6" }, { value: "done", label: "Done", color: null }], min: null, max: null, allowCreate: false, scope: null, raw: {} } } as unknown as FieldDefinition;
 const due = { id: 6, fieldType: "date" } as unknown as FieldDefinition;
@@ -63,5 +63,26 @@ describe("a new view's own column (4b; the web's ViewSwitcher NewView)", () => {
     expect(newViewReady("kanban", 2)).toBe(true);
     expect(newViewReady("grid", null)).toBe(true);
     expect(newViewReady("gallery", null)).toBe(true);
+  });
+});
+
+describe("moving a card within its column (4b; records#reorder)", () => {
+  it("up, down and to the top, as the column's ids in their new order", () => {
+    expect(moveWithin([1, 2, 3], 2, "up")).toEqual([2, 1, 3]);
+    expect(moveWithin([1, 2, 3], 2, "down")).toEqual([1, 3, 2]);
+    expect(moveWithin([1, 2, 3], 3, "top")).toEqual([3, 1, 2]);
+  });
+
+  it("nothing to send when the card is already there, or not in the column", () => {
+    expect(moveWithin([1, 2, 3], 1, "up")).toBeNull();
+    expect(moveWithin([1, 2, 3], 1, "top")).toBeNull();
+    expect(moveWithin([1, 2, 3], 3, "down")).toBeNull();
+    expect(moveWithin([1, 2, 3], 9, "down")).toBeNull();
+  });
+
+  it("folding toggles one column's key and keeps the others", () => {
+    expect(toggleFolded(undefined, "in")).toEqual(["in"]);
+    expect(toggleFolded(["in", "out"], "in")).toEqual(["out"]);
+    expect(toggleFolded(["out"], "")).toEqual(["out", ""]); // the No value column has the empty key
   });
 });

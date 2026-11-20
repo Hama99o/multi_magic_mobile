@@ -36,11 +36,11 @@ import { CARD_LINES, canEditRows, countLine, mergePages, newestProven, TABLES_CO
 import { useCreateRow, useMoveRow } from "@/screens/tables/useRowWrites";
 import { KanbanView } from "@/screens/tables/KanbanView";
 import { CalendarView } from "@/screens/tables/CalendarView";
-import { calendarable, columnValue, kanbanable, kanbanColumns, monthFilters, rowsByDay, type KanbanColumn } from "@/screens/tables/boardViews";
+import { calendarable, columnValue, kanbanable, kanbanColumns, monthFilters, moveWithin, rowsByDay, toggleFolded, type KanbanColumn, type MoveWithin } from "@/screens/tables/boardViews";
 import { scalar } from "@/components/fields/display";
 import { todayKey } from "@/screens/calendar/dates";
 import type { FieldDefinition } from "@/api/fields";
-import { ArrowRightLeft, CalendarDays, Kanban, MessageSquareText, Trash2, Users } from "@/components/icons";
+import { ArrowDown, ArrowRightLeft, ArrowUp, CalendarDays, Kanban, MessageSquareText, Trash2, Users } from "@/components/icons";
 import type { ViewType } from "@/api/tables";
 import type { LucideIcon } from "lucide-react-native";
 import { FilterSortSheet } from "@/screens/tables/FilterSortSheet";
@@ -192,6 +192,17 @@ export default function TableScreen() {
   });
   const offerUndo = useTablesUndo((s) => s.offerUndo);
   const moveTo = (row: RecordRow, field: FieldDefinition, key: string) => move.mutate({ row, field, value: columnValue(key), before: scalar(row.values[field.id]) ?? null });
+  // Within a column (4b): only in the table's own order, as the web reorders only a board with no sort;
+  // the column keeps its positions and they are re-dealt (`records#reorder`).
+  const inTableOrder = Boolean(query && query.sorts.length === 0 && !query.newestFirst);
+  const reorder = (column: KanbanColumn, row: RecordRow, to: MoveWithin) => {
+    const ids = moveWithin(column.rows.map((r) => r.id), row.id, to);
+    if (!ids) return;
+    void tablesApi
+      .reorderRecords(tableId, ids)
+      .then(() => client.invalidateQueries({ queryKey: tablesKeys.records(tableId, queryKey) }))
+      .catch((e: unknown) => Alert.alert(failureMessage(e, t("tables.kanban.reorderFailed"))));
+  };
 
   const toggleSelect = (row: RecordRow) =>
     setSelected((cur) => {
@@ -493,6 +504,8 @@ export default function TableScreen() {
           onEndReached={() => {
             if (records.hasNextPage && !records.isFetchingNextPage && !records.error) void records.fetchNextPage();
           }}
+          folded={layer.foldedColumns}
+          onToggleFold={(key) => change({ foldedColumns: toggleFolded(layer.foldedColumns, key) })}
         />
       ) : calendarField ? (
         <CalendarView
@@ -653,9 +666,16 @@ export default function TableScreen() {
         open={moving !== null}
         title={t("tables.kanban.moveTo")}
         subtitle={moving ? t("tables.kanban.moving", { column: moving.column.label ?? t("tables.kanban.empty") }) : undefined}
-        actions={columns
-          .filter((c) => c.key !== moving?.column.key)
-          .map((c) => ({ key: c.key || "empty", label: c.label ?? t("tables.kanban.empty"), icon: ArrowRightLeft, onPress: () => moving && kanbanField && moveTo(moving.row, kanbanField, c.key) }))}
+        actions={[
+          ...(moving && inTableOrder
+            ? (["top", "up", "down"] as const)
+                .filter((to) => moveWithin(moving.column.rows.map((r) => r.id), moving.row.id, to) !== null)
+                .map((to) => ({ key: `within-${to}`, label: t(`tables.kanban.within.${to}`), icon: to === "down" ? ArrowDown : ArrowUp, onPress: () => reorder(moving.column, moving.row, to) }))
+            : []),
+          ...columns
+            .filter((c) => c.key !== moving?.column.key)
+            .map((c) => ({ key: c.key || "empty", label: c.label ?? t("tables.kanban.empty"), icon: ArrowRightLeft, onPress: () => moving && kanbanField && moveTo(moving.row, kanbanField, c.key) })),
+        ]}
         onClose={() => setMoving(null)}
         testID="tables-kanban-move"
       />

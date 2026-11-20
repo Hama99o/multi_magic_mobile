@@ -91,3 +91,23 @@ export function viewColumnChoices(viewType: "grid" | "kanban" | "calendar" | "ga
 
 /** A kanban needs its select and a calendar its date before it can be made; a grid and a gallery are ready with a name. */
 export const newViewReady = (viewType: "grid" | "kanban" | "calendar" | "gallery", columnId: number | null) => (viewType !== "kanban" && viewType !== "calendar") || columnId !== null;
+
+export type MoveWithin = "up" | "down" | "top";
+
+/**
+ * A card's column in its new order, for `records#reorder` (the web's kanban
+ * drop keeps the column's positions and only re-deals them). Null when the
+ * card is already there, so nothing is sent.
+ */
+export function moveWithin(ids: number[], id: number, to: MoveWithin): number[] | null {
+  const from = ids.indexOf(id);
+  if (from === -1) return null;
+  const at = to === "top" ? 0 : to === "up" ? from - 1 : from + 1;
+  if (at < 0 || at >= ids.length || at === from) return null;
+  const next = ids.filter((x) => x !== id);
+  next.splice(at, 0, id);
+  return next;
+}
+
+/** A column folded or unfolded (the person's own; the web keeps it in the view's `collapsed_columns`). */
+export const toggleFolded = (folded: string[] | undefined, key: string): string[] => (folded ?? []).includes(key) ? (folded ?? []).filter((k) => k !== key) : [...(folded ?? []), key];

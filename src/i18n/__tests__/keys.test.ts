@@ -201,6 +201,8 @@ const COMPOSED = [
   ...["assistant", "import"].map((v) => `tables.history.sources.${v}`),
   // A new view's column label and empty note, by type (`ViewsSheet.tsx`).
   ...["kanban", "calendar", "gallery"].flatMap((v) => [`tables.viewsSheet.column.${v}`, `tables.viewsSheet.noColumn.${v}`]),
+  // Reordering a card within its column (`table.tsx`, MoveWithin).
+  ...["top", "up", "down"].map((v) => `tables.kanban.within.${v}`),
   // A refused comment file (`commentFiles.ts` CommentFileRefusal["why"]), t(`tables.activity.refused.${why}`).
   ...["type", "size", "count"].map((v) => `tables.activity.refused.${v}`),
   // t(`tables.find.${q.key}`) over the date filter's quick days (FilterSortSheet.tsx DateValue).

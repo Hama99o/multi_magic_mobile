@@ -616,6 +616,8 @@ describe("delete a table or a base by its exact name (the owner, 2026-11-20)", (
     const input = await openDelete();
     expect(await screen.findByText(/25 rows and 4 columns are deleted/)).toBeTruthy();
     expect(screen.getByText(/The column “Items” of “Offices” goes too/)).toBeTruthy();
+    // One of each reads in the singular (seen on a device as "1 columns", 2026-11-20).
+    expect(i18n.t("tables.remove.tableImpact", { rows: i18n.t("tables.remove.rowsN", { count: 1 }), fields: i18n.t("tables.remove.columnsN", { count: 1 }) })).toBe("Its 1 row and 1 column are deleted, and its views.");
     for (const wrong of ["qa table", "QA table ", " QA table", "QA  table"]) {
       fireEvent.changeText(input, wrong);
       expect(screen.getByTestId("tables-delete-table-confirm").props.accessibilityState?.disabled).toBe(true);

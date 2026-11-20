@@ -40,7 +40,9 @@ import { calendarable, columnValue, kanbanable, kanbanColumns, monthFilters, row
 import { scalar } from "@/components/fields/display";
 import { todayKey } from "@/screens/calendar/dates";
 import type { FieldDefinition } from "@/api/fields";
-import { ArrowRightLeft, MessageSquareText, Trash2, Users } from "@/components/icons";
+import { ArrowRightLeft, CalendarDays, Kanban, MessageSquareText, Trash2, Users } from "@/components/icons";
+import type { ViewType } from "@/api/tables";
+import type { LucideIcon } from "lucide-react-native";
 import { FilterSortSheet } from "@/screens/tables/FilterSortSheet";
 import { FieldsSheet } from "@/screens/tables/FieldsSheet";
 import { SaveViewSheet } from "@/screens/tables/SaveViewSheet";
@@ -56,6 +58,9 @@ import { cardFields, CARD_FIELDS, differsFromShared, effectiveQuery, orderedFiel
 import { usePersonalLayer } from "@/screens/tables/usePersonalLayer";
 
 const SEARCH_DELAY_MS = 400;
+
+/** Each view type its own icon, in the switcher and on the pill (seen on a device: every type showed the table icon). */
+const VIEW_ICONS: Record<ViewType, LucideIcon> = { grid: Table2, gallery: LayoutGrid, kanban: Kanban, calendar: CalendarDays };
 
 export default function TableScreen() {
   const colors = useColors();
@@ -246,7 +251,7 @@ export default function TableScreen() {
     key: String(v.id),
     label: v.name,
     hint: t(`tables.viewTypes.${v.viewType}`),
-    icon: v.viewType === "gallery" ? LayoutGrid : Table2,
+    icon: VIEW_ICONS[v.viewType],
     onPress: () => router.setParams({ view: String(v.id) }),
   }));
   const menu: SheetAction[] = [
@@ -264,7 +269,7 @@ export default function TableScreen() {
   const impact = useQuery({ queryKey: tablesKeys.impact(tableId), queryFn: () => tablesApi.tableImpact(tableId), enabled: sheet === "deleteTable" });
   const impactLine = impact.data
     ? [
-        t("tables.remove.tableImpact", { rows: impact.data.rows, fields: impact.data.fields, count: impact.data.rows }),
+        t("tables.remove.tableImpact", { rows: t("tables.remove.rowsN", { count: impact.data.rows }), fields: t("tables.remove.columnsN", { count: impact.data.fields }) }),
         ...impact.data.linksFrom.map((l) => t("tables.remove.linksFrom", { field: l.field, table: l.table, count: l.links })),
       ].join(" ")
     : null;
@@ -378,7 +383,10 @@ export default function TableScreen() {
             accessibilityLabel={t("tables.viewSwitch", { view: view.name })}
             style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: 36, minWidth: 96, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface, flexShrink: 1 }}
           >
-            {gallery ? <LayoutGrid size={16} color={colors.ink} /> : <Table2 size={16} color={colors.ink} />}
+            {(() => {
+              const Icon = VIEW_ICONS[view.viewType];
+              return <Icon size={16} color={colors.ink} />;
+            })()}
             <Text variant="label" numberOfLines={1} style={{ flexShrink: 1 }}>
               {view.name}
             </Text>

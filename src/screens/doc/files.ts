@@ -118,3 +118,11 @@ export function moveItem<T>(list: T[], index: number, by: -1 | 1): T[] {
   [next[index], next[to]] = [next[to], next[index]];
   return next;
 }
+
+/** "1,5" or "1.5" → 1.5, inside the server's range; null when not a number. */
+export function parseTarget(text: string): number | null {
+  const n = Number(text.replace(",", ".").trim());
+  if (!text.trim() || !Number.isFinite(n) || n <= 0) return null;
+  return Math.min(49, Math.max(0.1, n));
+}
+

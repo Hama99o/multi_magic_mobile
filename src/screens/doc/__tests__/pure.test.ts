@@ -147,3 +147,15 @@ describe("page edits (web PagesDoc)", () => {
     expect(moveItem(list, 0, -1)).toBe(list);
   });
 });
+
+import { parseTarget } from "../files";
+
+it("a compress target reads a French comma and stays inside the server's 0.1–49 MB", () => {
+  expect(parseTarget("1,5")).toBe(1.5);
+  expect(parseTarget("1.5")).toBe(1.5);
+  expect(parseTarget("0.01")).toBe(0.1);
+  expect(parseTarget("200")).toBe(49);
+  expect(parseTarget("")).toBeNull();
+  expect(parseTarget("abc")).toBeNull();
+  expect(parseTarget("0")).toBeNull();
+});

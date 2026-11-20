@@ -188,6 +188,8 @@ export const docKeys = {
   inspect: <U extends string>(uri: U) => ["doc", "inspect", uri] as const,
   page: <U extends string, P extends number, W extends number>(uri: U, page: P, width: W) => ["doc", "page", uri, page, width] as const,
   thumbs: <U extends string, W extends number>(uri: U, width: W) => ["doc", "thumbs", uri, width] as const,
+  /** Every text run of a PDF, for the text editor. */
+  text: <U extends string>(uri: U) => ["doc", "text", uri] as const,
   /** A picture the phone cannot draw, as the server's JPEG copy. */
   preview: <U extends string>(uri: U) => ["doc", "preview", uri] as const,
 };

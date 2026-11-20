@@ -10,8 +10,8 @@
  * (the server's `updated_at desc`) and are grouped by their day, latest day
  * first.
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, Animated as RNAnimated, Modal, PanResponder, Pressable, RefreshControl, SectionList, TextInput, View } from "react-native";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ActivityIndicator, Animated as RNAnimated, Modal, Pressable, RefreshControl, SectionList, TextInput, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
@@ -31,7 +31,8 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { FILL } from "@/theme/fill";
 import { parseDay, todayKey, addDays } from "@/screens/calendar/dates";
 import { useFinanceUndo } from "@/stores/financeUndo.store";
-import { SwipeResetScope, useSwipeReset, useSwipeResetToken } from "@/components/swipeReset";
+import { SwipeResetScope, useSwipeResetToken } from "@/components/swipeReset";
+import { REVEAL, useSwipeRow } from "@/components/swipeRow";
 import { chartColor, FChip, FINANCE, HeroAmount, MONEY_IN, PeriodSwitcher, TagPicker, useMoney } from "./parts";
 import { useDeleteEntry, useRestoreEntry } from "./useFinanceMutations";
 
@@ -248,23 +249,8 @@ function EntryRow({ entry, kind, tags, onOpen, onDelete }: { entry: Entry; kind:
   const metrics = useMetrics();
   const { t } = useTranslation();
   const money = useMoney();
-  const dx = useRef(new RNAnimated.Value(0)).current;
-  const [swiping, setSwiping] = useState(false);
-  useSwipeReset(dx, entry.id, () => setSwiping(false));
-  const onDeleteRef = useRef(onDelete);
-  onDeleteRef.current = onDelete;
-  const pan = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_e, g) => g.dx < -12 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
-      onPanResponderGrant: () => setSwiping(true),
-      onPanResponderMove: (_e, g) => dx.setValue(Math.min(0, g.dx)),
-      onPanResponderRelease: (_e, g) => {
-        RNAnimated.spring(dx, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start(() => setSwiping(false));
-        if (g.dx <= -96) onDeleteRef.current();
-      },
-      onPanResponderTerminate: () => RNAnimated.spring(dx, { toValue: 0, useNativeDriver: true }).start(() => setSwiping(false)),
-    }),
-  ).current;
+  // A partial swipe opens on Delete, only a long one deletes (components/swipeRow.tsx).
+  const swipe = useSwipeRow({ id: entry.id, onLeft: onDelete });
   const catIndex = Math.max(0, tags.filter((x) => x.parentId == null).findIndex((x) => x.id === entry.tagId));
   const category = entry.tag?.name ?? null;
   const extra = entry.labels.filter((l) => l.id !== entry.tagId && l.id !== ("subcategoryId" in entry ? entry.subcategoryId : null)).map((l) => l.name);
@@ -273,15 +259,17 @@ function EntryRow({ entry, kind, tags, onOpen, onDelete }: { entry: Entry; kind:
   const pending = "status" in entry && entry.status === "pending";
   return (
     <View style={{ borderRadius: metrics.radius.md, overflow: "hidden" }}>
-      {swiping ? (
-        <View style={{ ...FILL, backgroundColor: colors.danger, alignItems: "flex-end", justifyContent: "center", paddingHorizontal: metrics.space.xl }}>
-          <Trash2 size={22} color="#ffffff" />
+      {swipe.side ? (
+        <View style={{ ...FILL, backgroundColor: colors.danger, flexDirection: "row", justifyContent: "flex-end" }}>
+          <Pressable testID={`finance-${kind}-row-${entry.id}-swipe-delete`} onPress={swipe.actOpen} disabled={!swipe.open} accessibilityRole="button" accessibilityLabel={t("common.delete")} style={{ width: REVEAL, alignItems: "center", justifyContent: "center" }}>
+            <Trash2 size={22} color="#ffffff" />
+          </Pressable>
         </View>
       ) : null}
-      <RNAnimated.View {...pan.panHandlers} style={{ transform: [{ translateX: dx }] }}>
+      <RNAnimated.View {...swipe.panHandlers} onLayout={swipe.onLayout} style={{ transform: [{ translateX: swipe.dx }] }}>
         <Pressable
           testID={`finance-${kind}-row-${entry.id}`}
-          onPress={onOpen}
+          onPress={swipe.open ? swipe.close : onOpen}
           accessibilityRole="button"
           accessibilityLabel={t("finance.ledger.openEntry", { name: nameOf(entry), amount: money(entry.amount, entry.currency) })}
           accessibilityActions={[{ name: "activate" }, { name: "delete", label: t("common.delete") }]}

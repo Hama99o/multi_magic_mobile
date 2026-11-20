@@ -55,6 +55,17 @@ jest.mock("expo-media-library", () => ({
   requestPermissionsAsync: jest.fn(async () => ({ granted: true })),
 }));
 
+// expo-video is the same case: `VideoPlayer` extends a native class, so
+// importing it throws "Cannot read properties of undefined (reading
+// 'prototype')". Since the chat's FilePreview plays video (7a2fc58), every
+// screen that reaches the chat failed to load: 8 suites, their tests never
+// counted, while the run still read "3288 passed". A test that needs the
+// player overrides this with its own jest.mock.
+jest.mock("expo-video", () => ({
+  useVideoPlayer: () => ({}),
+  VideoView: () => null,
+}));
+
 export function __clearSecureStore(): void {
   for (const k of Object.keys(secureStore)) delete secureStore[k];
 }

@@ -1164,6 +1164,7 @@ export const en = {
     noTitle: "Untitled",
     open: "Open {{name}}",
     expired: "Expired",
+    expiresSoon: "Expires soon",
     weak: "Weak",
     identityTypes: {
       passport: "Passport",

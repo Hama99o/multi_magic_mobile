@@ -5,6 +5,7 @@
 import { PIN_LENGTH, pinReducer, EMPTY_PIN, lockoutLeft, formatCountdown } from "../pin";
 import { createRevealer, REVEAL_MS } from "../reveal";
 import { createClipboardGuard, CLIPBOARD_CLEAR_MS } from "../clipboard";
+import { cardExpiry, rowSubtitle } from "../display";
 
 describe("the PIN pad", () => {
   const type = (digits: string) => [...digits].reduce((s, d) => pinReducer(s, { type: "digit", digit: d }), EMPTY_PIN);
@@ -185,5 +186,33 @@ describe("the clipboard guard", () => {
     jest.advanceTimersByTime(10_000);
     await flush();
     expect(cb.read()).toBe("");
+  });
+});
+
+// The web's card row (`PaymentCardItem.tsx:8-22`): a card is good through the
+// END of its expiry month; within 60 days of that it expires soon. Parity
+// SafeZone #10, 2026-11-20.
+describe("a card's expiry", () => {
+  const NOW = new Date(2026, 10, 20); // 20 Nov 2026
+  it("is good, soon, or expired, read from MM/YY or MM/YYYY", () => {
+    expect(cardExpiry("12/29", NOW)).toBeNull();
+    expect(cardExpiry("11/26", NOW)).toBe("soon");
+    expect(cardExpiry("12/2026", NOW)).toBe("soon");
+    expect(cardExpiry("01/2027", NOW)).toBeNull(); // 31 Jan is 72 days away
+    expect(cardExpiry("10/26", NOW)).toBe("expired");
+    expect(cardExpiry("02/27", NOW)).toBeNull();
+  });
+  it("says nothing about what it cannot read", () => {
+    expect(cardExpiry(null, NOW)).toBeNull();
+    expect(cardExpiry("13/27", NOW)).toBeNull();
+    expect(cardExpiry("2027-01", NOW)).toBeNull();
+  });
+});
+
+describe("a row's second line", () => {
+  const t = (k: string) => ({ "safezone.cardTypes.credit_card": "Credit card", "safezone.cardTypes.debit_card": "Debit card" })[k] ?? k;
+  it("a card: its last four, credit or debit, and the expiry, as the web's row", () => {
+    expect(rowSubtitle({ kind: "payment_cards", id: 1, name: "Visa", cardType: "credit_card", expiry: "12/29", last4: "4242", updatedAt: null }, t)).toBe("•••• 4242 · Credit card · 12/29");
+    expect(rowSubtitle({ kind: "payment_cards", id: 1, name: "Visa", cardType: null, expiry: null, last4: null, updatedAt: null }, t)).toBe("••••••••");
   });
 });

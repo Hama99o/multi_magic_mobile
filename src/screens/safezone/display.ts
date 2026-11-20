@@ -18,10 +18,48 @@ export function isExpired(expiresAt: string | null, now: Date = new Date()): boo
   return expiresAt.slice(0, 10) < today;
 }
 
-/** The second line of a list row: never a secret, at most its last four. */
-export function rowSubtitle(row: SafeZoneRow): string {
+/**
+ * A card's expiry, as the web's row reads it (`PaymentCardItem.tsx:8-22`): a
+ * card is good through the END of its "MM/YY" or "MM/YYYY" month, "soon"
+ * within 60 days of that, "expired" after. Anything else says nothing.
+ */
+export function cardExpiry(raw: string | null, now: Date = new Date()): "expired" | "soon" | null {
+  const m = (raw ?? "").trim().match(/^(\d{1,2})\s*\/\s*(\d{2}|\d{4})$/);
+  if (!m) return null;
+  const month = Number(m[1]);
+  if (month < 1 || month > 12) return null;
+  const year = m[2]!.length === 2 ? 2000 + Number(m[2]) : Number(m[2]);
+  const end = new Date(year, month, 0, 23, 59, 59, 999);
+  if (end < now) return "expired";
+  const soon = new Date(now);
+  soon.setDate(soon.getDate() + 60);
+  return end <= soon ? "soon" : null;
+}
+
+/**
+ * The second line of a list row: never a secret, at most its last four. A
+ * card adds credit or debit and its expiry, as the web's row does (parity
+ * SafeZone #10).
+ */
+export function rowSubtitle(row: SafeZoneRow, t: (key: string) => string): string {
   if (row.kind === "passwords") return row.username || row.email || row.link || "";
+  if (row.kind === "payment_cards") return [maskedTail(row.last4), choiceLabel("card_type", row.cardType, t), row.expiry ?? ""].filter(Boolean).join(" · ");
   return maskedTail(row.last4);
+}
+
+/**
+ * The date a row shows on its right, as the web's rows: a login and a card
+ * when last changed ("10 Nov"), a document when it expires ("Mar 2031").
+ */
+export function rowDate(row: SafeZoneRow, language: string): string | null {
+  if (row.kind === "identities") {
+    if (!row.expiresAt) return null;
+    const d = new Date(`${row.expiresAt.slice(0, 10)}T00:00:00`);
+    return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString(language, { month: "short", year: "numeric" });
+  }
+  if (!row.updatedAt) return null;
+  const d = new Date(row.updatedAt);
+  return Number.isNaN(d.getTime()) ? null : d.toLocaleDateString(language, { day: "numeric", month: "short" });
 }
 
 /**

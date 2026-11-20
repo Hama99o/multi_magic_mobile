@@ -16,7 +16,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { SAFEZONE_KINDS, safezoneApi, safezoneKeys, type SafeZoneKind, type SafeZonePage, type SafeZoneRow } from "@/api/safezone";
 import { useSafezoneLock } from "@/stores/safezoneLock.store";
 import { SafeZoneGate } from "@/screens/safezone/SafeZoneGate";
-import { choiceLabel, isExpired, rowSubtitle } from "@/screens/safezone/display";
+import { cardExpiry, choiceLabel, isExpired, rowDate, rowSubtitle } from "@/screens/safezone/display";
 import { KIND_ICONS, Tile } from "@/screens/safezone/Tile";
 import { APP_COLORS } from "@/theme/appColors";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -247,7 +247,9 @@ function EmptyState({ kind, searching }: { kind: SafeZoneKind; searching: boolea
 function Row({ row }: { row: SafeZoneRow }) {
   const colors = useColors();
   const metrics = useMetrics();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const card = row.kind === "payment_cards" ? cardExpiry(row.expiry) : null;
+  const date = rowDate(row, i18n.language);
   const [pressed, setPressed] = useState(false);
   const title = rowTitle(row, t);
   const expired = row.kind === "identities" && isExpired(row.expiresAt);
@@ -279,9 +281,14 @@ function Row({ row }: { row: SafeZoneRow }) {
       <View style={{ flex: 1 }}>
         <Text numberOfLines={1} style={{ fontWeight: "600" }}>{title}</Text>
         <Text tone="muted" variant="caption" numberOfLines={1}>
-          {rowSubtitle(row)}
+          {rowSubtitle(row, t)}
         </Text>
       </View>
+      {card ? (
+        <Text tone={card === "expired" ? "danger" : "muted"} variant="caption" testID={`safezone-card-expiry-${row.id}`} style={card === "soon" ? { fontWeight: "600" } : undefined}>
+          {card === "expired" ? t("safezone.expired") : t("safezone.expiresSoon")}
+        </Text>
+      ) : null}
       {expired ? (
         <Text tone="danger" variant="caption" testID={`safezone-expired-${row.id}`}>
           {t("safezone.expired")}
@@ -290,6 +297,11 @@ function Row({ row }: { row: SafeZoneRow }) {
       {weak ? (
         <Text tone="danger" variant="caption" testID={`safezone-weak-${row.id}`}>
           {t("safezone.weak")}
+        </Text>
+      ) : null}
+      {date ? (
+        <Text tone="muted" variant="caption" testID={`safezone-date-${row.kind}-${row.id}`}>
+          {date}
         </Text>
       ) : null}
       <ChevronRight size={18} color={colors.inkMuted} />

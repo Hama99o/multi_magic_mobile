@@ -1180,6 +1180,7 @@ export const fr: Translations = {
     noTitle: "Sans titre",
     open: "Ouvrir {{name}}",
     expired: "Expiré",
+    expiresSoon: "Expire bientôt",
     weak: "Faible",
     identityTypes: {
       passport: "Passeport",

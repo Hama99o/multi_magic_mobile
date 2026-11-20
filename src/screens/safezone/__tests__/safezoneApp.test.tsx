@@ -201,8 +201,17 @@ describe("the gate", () => {
     expect(screen.queryByTestId("safezone-no-capture-block")).toBeNull();
     assertNoSecretOnScreen();
     fireEvent.press(screen.getByTestId("safezone-tab-payment_cards"));
-    expect(await screen.findByText("•••• 4242")).toBeTruthy();
+    expect(await screen.findByText("•••• 4242 · Credit card · 12/29")).toBeTruthy();
     assertNoSecretOnScreen();
+  });
+
+  it("each row carries its date, as the web's: a login and a card when last changed", async () => {
+    await unlockVault();
+    expect(screen.getByTestId("safezone-date-passwords-11")).toHaveTextContent(new Date("2026-11-10T10:00:00Z").toLocaleDateString("en", { day: "numeric", month: "short" }));
+    fireEvent.press(screen.getByTestId("safezone-tab-payment_cards"));
+    await screen.findByText("•••• 4242 · Credit card · 12/29");
+    expect(screen.getByTestId("safezone-date-payment_cards-21")).toHaveTextContent(new Date("2026-11-09T10:00:00Z").toLocaleDateString("en", { day: "numeric", month: "short" }));
+    expect(screen.queryByTestId("safezone-card-expiry-21")).toBeNull();
   });
 
   it("the dots are cleared the moment the PIN is sent", async () => {

@@ -458,6 +458,22 @@ export default function Viewer() {
         error ? null : <ActivityIndicator color={colors.inkMuted} style={{ marginTop: metrics.space.xl }} testID="pages-view-loading" />
       ) : (
         <View style={{ flex: 1, paddingBottom: metrics.space.md }} testID={`pages-view-${mode}`}>
+          {mode === "page" && rights.canWrite ? (
+            <View style={{ alignItems: "flex-end" }}>
+              <Pressable
+                onPress={() => router.push({ pathname: "/pages/edit", params: { spaceId: String(node.spaceId), nodeId: String(node.id), title: node.title } })}
+                accessibilityRole="button"
+                accessibilityLabel={t("pages.edit.edit")}
+                style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: metrics.touch, paddingHorizontal: metrics.space.sm }}
+                testID="pages-page-edit"
+              >
+                <Pencil size={18} color={colors.accent} />
+                <Text variant="label" tone="accent">
+                  {t("pages.edit.edit")}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
           {mode === "page" ? (
             node.html ? (
               <WebView

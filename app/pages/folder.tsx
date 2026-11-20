@@ -157,6 +157,26 @@ export default function Folder() {
 
   // Import a ZIP here (parity #25): its folders and files land in this folder.
   const [importing, setImporting] = useState<Transfer | null>(null);
+  // New page (parity #22): named first, then opened in the editor.
+  const [namingPage, setNamingPage] = useState(false);
+  const [pageBusy, setPageBusy] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const createPage = useCallback(
+    async (name: string) => {
+      setPageBusy(true);
+      setPageError(null);
+      try {
+        const made = await pagesApi.createPage(spaceId, parentId, name);
+        setNamingPage(false);
+        router.push({ pathname: "/pages/edit", params: { spaceId: String(spaceId), nodeId: String(made.id), title: made.title } });
+      } catch (e) {
+        setPageError(failureMessage(e, t("pages.page.createFailed")));
+      } finally {
+        setPageBusy(false);
+      }
+    },
+    [spaceId, parentId, t],
+  );
   const importZip = useCallback(async () => {
     try {
       const zip = await pickZip();
@@ -295,8 +315,19 @@ export default function Folder() {
         onFiles={() => void add(pickDocuments)}
         onCamera={() => void add(takePhotoOrVideo)}
         onImportZip={rights.canWrite ? () => void importZip() : undefined}
+        onPage={rights.canWrite ? () => setNamingPage(true) : undefined}
       />
       <TransferSheet started={importing} onClose={() => setImporting(null)} />
+      <NameDialog
+        open={namingPage}
+        title={t("pages.page.new")}
+        confirm={t("pages.page.create")}
+        initial=""
+        onCancel={() => setNamingPage(false)}
+        onSubmit={(name) => void createPage(name)}
+        busy={pageBusy}
+        error={pageError}
+      />
       <NameDialog
         open={naming}
         title={t("pages.new.folder")}

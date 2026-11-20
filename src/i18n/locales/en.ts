@@ -1732,6 +1732,18 @@ export const en = {
       failed: "Could not copy it.",
       notZip: "Pick a .zip file.",
     },
+    page: {
+      new: "New page",
+      create: "Create",
+      createFailed: "Could not create the page.",
+      placeholder: "Write here",
+      saving: "Saving…",
+      saved: "Saved",
+      failed: "Not saved. It will try again as you type.",
+      invalid: "This change could not be saved as a page the web can open. Undo it to carry on.",
+      tooLong: "This page is too long to edit on the phone. Open it on the web to edit it.",
+      refused: "This page cannot be edited on the phone yet. Open it on the web to edit it.",
+    },
     notes: {
       menu: "Linked notes",
       title: "Notes linked to “{{title}}”",

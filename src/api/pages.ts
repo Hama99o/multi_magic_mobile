@@ -486,6 +486,17 @@ export const pagesApi = {
     return parseNode(obj(res.data, "update text").node);
   },
 
+  /** New page (parity #22): a rich page, empty, in a folder or at the space's root. */
+  createPage: async (spaceId: number, parentId: number | null, title: string): Promise<PageNode> => {
+    const node = { kind: "page", title, ...(parentId != null ? { parent_id: parentId } : {}), content: { html: "" } };
+    const res = await http.post(`/api/v1/page_app/spaces/${spaceId}/nodes`, { node });
+    return parseNode(obj(res.data, "create page").node);
+  },
+  /** A page's body, saved (parity #50; the web's autosave payload). */
+  savePage: async (spaceId: number, nodeId: number, html: string): Promise<PageNode> => {
+    const res = await http.patch(`/api/v1/page_app/spaces/${spaceId}/nodes/${nodeId}`, { node: { content: { html } } });
+    return parseNode(obj(res.data, "save page").node);
+  },
   node: async (spaceId: number, nodeId: number): Promise<PageNode> => {
     const res = await http.get(`/api/v1/page_app/spaces/${spaceId}/nodes/${nodeId}`);
     return parseNode(obj(res.data, "node").node);

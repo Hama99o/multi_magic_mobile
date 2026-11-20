@@ -1748,6 +1748,18 @@ export const fr: Translations = {
       failed: "Impossible de le copier.",
       notZip: "Choisissez un fichier .zip.",
     },
+    page: {
+      new: "Nouvelle page",
+      create: "Créer",
+      createFailed: "Impossible de créer la page.",
+      placeholder: "Écrivez ici",
+      saving: "Enregistrement…",
+      saved: "Enregistrée",
+      failed: "Non enregistrée. Nouvel essai pendant que vous écrivez.",
+      invalid: "Cette modification ne peut pas être enregistrée comme une page lisible par le web. Annulez-la pour continuer.",
+      tooLong: "Cette page est trop longue pour être modifiée sur le téléphone. Ouvrez-la sur le web pour la modifier.",
+      refused: "Cette page ne peut pas encore être modifiée sur le téléphone. Ouvrez-la sur le web pour la modifier.",
+    },
     notes: {
       menu: "Notes liées",
       title: "Notes liées à « {{title}} »",

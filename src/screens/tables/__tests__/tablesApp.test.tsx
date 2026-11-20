@@ -784,3 +784,57 @@ describe("comments and history (increment 5)", () => {
     await waitFor(() => expect(mock.history.post.map((r) => r.url)).toEqual([`${B}/fields/77/restore`]));
   });
 });
+
+describe("share the base (increment 5)", () => {
+  const people = { owner: { id: 1, name: "QA", email: "qa@example.test" }, members: [{ id: 5, role: "viewer", pending: true, email: "friend@example.test", name: null, user_id: null, invited_at: "t" }] };
+  beforeEach(() => {
+    mockParams.current = { id: "10", base: "3" };
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody());
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+    mock.onGet(`${B}/bases/3/members`).reply(200, people);
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  const openShare = async (role: string, label: string) => {
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }]), role }] });
+    renderScreen(<TableScreen />);
+    await screen.findByText("Blue scarf");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    fireEvent.press(screen.getByTestId("tables-menu"));
+    fireEvent.press(await screen.findByText(label));
+    await screen.findByTestId("tables-share-member-0");
+  };
+
+  it("the owner invites by email with a role, after the sheet says an email may go out", async () => {
+    mock.onPost(`${B}/bases/3/members`).reply(201, { member: { id: 6, role: "editor", pending: false, email: "e@example.test", name: "E", user_id: 7, invited_at: null }, state: "added" });
+    await openShare("owner", "Share the base");
+    expect(screen.getByText("Someone without an account gets an invitation email.")).toBeTruthy();
+    expect(screen.getByTestId("tables-share-invite").props.accessibilityState?.disabled).toBe(true);
+    fireEvent.changeText(screen.getByTestId("tables-share-email"), "e@example.test");
+    fireEvent.press(screen.getByTestId("tables-share-role-editor"));
+    fireEvent.press(screen.getByTestId("tables-share-invite"));
+    await waitFor(() => expect(mock.history.post.length).toBe(1));
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ email: "e@example.test", role: "editor" });
+  });
+
+  it("the owner changes a role, resends a pending invitation, and removes after a confirm", async () => {
+    mock.onPatch(`${B}/bases/3/members/5`).reply(200, { member: { ...people.members[0], role: "editor" } });
+    mock.onPost(`${B}/bases/3/members/5/resend`).reply(200, { member: people.members[0] });
+    mock.onDelete(`${B}/bases/3/members/5`).reply(204);
+    jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => buttons?.find((b) => b.text === "Remove")?.onPress?.());
+    await openShare("owner", "Share the base");
+    fireEvent.press(screen.getByTestId("tables-share-member-0-editor"));
+    await waitFor(() => expect(JSON.parse(mock.history.patch[0].data)).toEqual({ role: "editor" }));
+    fireEvent.press(screen.getByTestId("tables-share-member-0-resend"));
+    await waitFor(() => expect(mock.history.post.map((r) => r.url)).toEqual([`${B}/bases/3/members/5/resend`]));
+    fireEvent.press(screen.getByTestId("tables-share-member-0-remove"));
+    await waitFor(() => expect(mock.history.delete.map((r) => r.url)).toEqual([`${B}/bases/3/members/5`]));
+  });
+
+  it("an editor sees who has access, and nothing to change it with", async () => {
+    await openShare("editor", "Who has access");
+    expect(screen.queryByTestId("tables-share-email")).toBeNull();
+    expect(screen.queryByTestId("tables-share-member-0-remove")).toBeNull();
+    expect(screen.getByText("Only the base's owner can share it.")).toBeTruthy();
+  });
+});

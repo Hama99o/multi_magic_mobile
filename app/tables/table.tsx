@@ -40,12 +40,13 @@ import { calendarable, columnValue, kanbanable, kanbanColumns, monthFilters, row
 import { scalar } from "@/components/fields/display";
 import { todayKey } from "@/screens/calendar/dates";
 import type { FieldDefinition } from "@/api/fields";
-import { ArrowRightLeft, MessageSquareText, Trash2 } from "@/components/icons";
+import { ArrowRightLeft, MessageSquareText, Trash2, Users } from "@/components/icons";
 import { FilterSortSheet } from "@/screens/tables/FilterSortSheet";
 import { FieldsSheet } from "@/screens/tables/FieldsSheet";
 import { SaveViewSheet } from "@/screens/tables/SaveViewSheet";
 import { DeleteByNameSheet } from "@/screens/tables/DeleteByNameSheet";
 import { BulkEditSheet } from "@/screens/tables/BulkEditSheet";
+import { ShareSheet } from "@/screens/tables/ShareSheet";
 import { dropRows } from "@/screens/tables/useRowWrites";
 import { Alert } from "react-native";
 import { GROUP_HEADER, layoutOf, listItems, type ListItem } from "@/screens/tables/grouping";
@@ -94,7 +95,7 @@ export default function TableScreen() {
 
   const [searching, setSearching] = useState(false);
   const [typed, setTyped] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<"views" | "menu" | "find" | "fields" | "save" | "deleteTable" | "deleteBase" | "bulkEdit" | null>(null);
+  const [sheet, setSheet] = useState<"views" | "menu" | "find" | "fields" | "save" | "deleteTable" | "deleteBase" | "bulkEdit" | "share" | null>(null);
   // Select mode (increment 5): a long press starts it, a tap then toggles, the bar acts on the rows.
   const [selected, setSelected] = useState<Set<number>>(() => new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
@@ -251,6 +252,7 @@ export default function TableScreen() {
   const menu: SheetAction[] = [
     { key: "ask", label: t("tables.ask"), icon: Sparkles, onPress: () => ask(t("tables.askQuestion", { table: table.data?.name ?? "", base: base?.name ?? "" })) },
     { key: "fields", label: t("tables.fieldsSheet.title"), icon: Columns3, onPress: () => setTimeout(() => setSheet("fields"), 320) },
+    ...(base ? [{ key: "share", label: base.role === "owner" ? t("tables.share.title") : t("tables.share.people"), icon: Users, onPress: () => setTimeout(() => setSheet("share"), 320) }] : []),
     { key: "activity", label: t("tables.activity.open"), icon: MessageSquareText, onPress: () => router.push({ pathname: "/tables/activity", params: { table: String(tableId) } }) },
     ...(personal && editable ? [{ key: "save", label: t("tables.saveView.title"), hint: t("tables.saveView.hint"), icon: Save, onPress: () => setTimeout(() => setSheet("save"), 320) }] : []),
     ...(personal ? [{ key: "reset", label: t("tables.backToShared"), hint: t("tables.backToSharedHint"), icon: RotateCcw, onPress: reset }] : []),
@@ -604,6 +606,7 @@ export default function TableScreen() {
           </Pressable>
         </View>
       ) : null}
+      {sheet === "share" && base ? <ShareSheet baseId={base.id} baseName={base.name} isOwner={base.role === "owner"} onClose={() => setSheet(null)} /> : null}
       {sheet === "bulkEdit" ? <BulkEditSheet count={selected.size} fields={fields} busy={bulkBusy} error={bulkError} onApply={(f, v) => void bulkApply(f, v)} onClose={() => setSheet(null)} /> : null}
       {editable && table.data && !kanbanField && !calendarField && !selecting ? (
         <Pressable

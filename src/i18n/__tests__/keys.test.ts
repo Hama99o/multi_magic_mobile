@@ -195,6 +195,7 @@ const COMPOSED = [
   // history.ts: t(lineKey(action)) over HISTORY_ACTIONS, and the roles a share line names.
   ...["row_created", "row_updated", "rows_deleted", "rows_restored", "rows_written", "rows_updated", "column_added", "column_updated", "column_deleted", "column_restored", "columns_reordered", "link_added", "link_removed", "share_added", "share_changed", "share_removed", "view_created", "view_renamed", "view_deleted", "table_renamed", "table_duplicated", "import_done", "import_failed", "import_cancelled"].map((v) => `tables.history.lines.${v}`),
   ...["editor", "viewer"].map((v) => `tables.share.roles.${v}`),
+  ...["editor", "viewer"].map((v) => `tables.share.roleHints.${v}`),
   // activity.tsx: the history kinds (HISTORY_KINDS + "all") and the two badged sources.
   ...["all", "rows", "columns", "imports", "links", "sharing", "table"].map((v) => `tables.history.kinds.${v}`),
   ...["assistant", "import"].map((v) => `tables.history.sources.${v}`),

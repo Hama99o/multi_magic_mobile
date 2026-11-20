@@ -63,6 +63,9 @@ function Tile({ entry, width, index, lastUsed, badge, onPress }: { entry: TileEn
   // `home-tile-ai` predates the registry; the flows and tests name it so.
   const testID = entry.key === "assistant" ? "home-tile-ai" : `home-tile-${entry.key}`;
   return (
+    // The app grid is a `.map` inside a ScrollView, not a recycled list, so
+    // the tiles keep their staggered arrival (the list-cell-animation rule).
+    // eslint-disable-next-line no-restricted-syntax
     <Animated.View entering={FadeInDown.delay(index * 30).duration(240)} style={{ width }}>
       <Pressable
         onPress={() => {

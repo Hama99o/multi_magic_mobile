@@ -12,7 +12,6 @@
  */
 import { useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -108,7 +107,7 @@ export default function CategoriesScreen() {
           const top = item.parentId == null;
           const count = top ? subCount(item.id) : 0;
           return (
-            <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+            <View>
               <View testID={`finance-category-${item.id}`} style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.xs, minHeight: 56 }}>
                 <Pressable
                   testID={`finance-category-open-${item.id}`}
@@ -137,7 +136,7 @@ export default function CategoriesScreen() {
                   <Trash2 size={18} color={colors.danger} />
                 </Pressable>
               </View>
-            </Animated.View>
+            </View>
           );
         }}
       />

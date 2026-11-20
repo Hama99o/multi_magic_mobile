@@ -194,7 +194,7 @@ function Lists({ kind, list, search, typed, setTyped }: { kind: SafeZoneKind; li
         }}
         ListEmptyComponent={list.data ? <EmptyState kind={kind} searching={Boolean(search)} /> : null}
         ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator /> : null}
-        renderItem={({ item, index }) => <Row row={item} index={index} />}
+        renderItem={({ item }) => <Row row={item} />}
         // Pull to refresh, as every other list in the app (audit P2).
         refreshControl={<RefreshControl refreshing={list.isRefetching && !list.isFetchingNextPage} onRefresh={() => void list.refetch()} tintColor={colors.inkMuted} />}
         contentContainerStyle={{ paddingBottom: 96, gap: metrics.space.sm }}
@@ -244,7 +244,7 @@ function EmptyState({ kind, searching }: { kind: SafeZoneKind; searching: boolea
   );
 }
 
-function Row({ row, index }: { row: SafeZoneRow; index: number }) {
+function Row({ row }: { row: SafeZoneRow }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -253,7 +253,7 @@ function Row({ row, index }: { row: SafeZoneRow; index: number }) {
   const expired = row.kind === "identities" && isExpired(row.expiresAt);
   const weak = row.kind === "passwords" && row.weak === true;
   return (
-    <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+    <View>
     <Pressable
       testID={`safezone-row-${row.kind}-${row.id}`}
       onPress={() => router.push({ pathname: "/safezone/item", params: { kind: row.kind, id: String(row.id) } })}
@@ -272,7 +272,7 @@ function Row({ row, index }: { row: SafeZoneRow; index: number }) {
         backgroundColor: colors.surface,
         borderWidth: 1,
         borderColor: colors.border,
-        transform: [{ scale: pressed ? 0.98 : 1 }],
+        opacity: pressed ? 0.8 : 1,
       }}
     >
       <Tile kind={row.kind} site={row.kind === "passwords" ? row.link || row.title || "" : ""} testID={`safezone-tile-${row.kind}-${row.id}`} />
@@ -294,6 +294,6 @@ function Row({ row, index }: { row: SafeZoneRow; index: number }) {
       ) : null}
       <ChevronRight size={18} color={colors.inkMuted} />
     </Pressable>
-    </Animated.View>
+    </View>
   );
 }

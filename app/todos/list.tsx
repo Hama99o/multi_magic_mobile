@@ -14,7 +14,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
-import Animated, { FadeIn, FadeInDown, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
+import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -228,7 +228,7 @@ export default function TodoListScreen() {
               );
             }
             return (
-              <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+              <View>
                 <TaskRow
                   todo={item.todo}
                   today={today}
@@ -237,7 +237,7 @@ export default function TodoListScreen() {
                   onOpen={() => setOpenId(item.todo.id)}
                   onDelete={() => onDelete(item.todo)}
                 />
-              </Animated.View>
+              </View>
             );
           }}
         />

@@ -16,7 +16,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Animated, FlatList, PanResponder, Pressable, RefreshControl, TextInput, View } from "react-native";
-import Reanimated, { FadeIn, FadeInDown } from "react-native-reanimated";
+import Reanimated, { FadeIn } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -189,9 +189,9 @@ export function LoansTab() {
           if (list.hasNextPage && !list.isFetchingNextPage) void list.fetchNextPage();
         }}
         renderItem={({ item, index }) => (
-          <Reanimated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+          <View>
             <LoanRow loan={item} onDelete={() => onDelete(item)} />
-          </Reanimated.View>
+          </View>
         )}
         ItemSeparatorComponent={() => <View style={{ height: metrics.space.xs }} />}
         refreshControl={

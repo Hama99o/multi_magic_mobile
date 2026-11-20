@@ -11,7 +11,6 @@
  */
 import { useState } from "react";
 import { FlatList, Pressable, RefreshControl, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
@@ -46,9 +45,9 @@ export function BudgetsTab() {
         contentContainerStyle={{ paddingBottom: 96 }}
         ListEmptyComponent={budgets.data ? <EmptyState testID="finance-budgets-empty" icon={PiggyBank} title={t("finance.manage.budgets.empty")} body={t("finance.manage.budgets.emptyBody")} /> : null}
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+          <View>
             <BudgetCard budget={item} onPress={() => setEditing(item)} />
-          </Animated.View>
+          </View>
         )}
       />
       <Fab testID="finance-budgets-new" label={t("finance.manage.budgets.new")} onPress={() => setEditing(null)} />

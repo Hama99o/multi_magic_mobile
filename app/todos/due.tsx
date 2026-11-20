@@ -114,9 +114,9 @@ export default function DueScreen() {
           </Text>
         )}
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+          <View>
             <DueRow todo={item} today={today} listName={listName(item.todoGroupId)} onOpen={() => setOpenId(item.id)} />
-          </Animated.View>
+          </View>
         )}
         ListEmptyComponent={pending.data ? <Empty view={view} /> : null}
         contentContainerStyle={{ paddingBottom: metrics.space.xl }}

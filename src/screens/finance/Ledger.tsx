@@ -193,9 +193,9 @@ export function Ledger({ kind, header }: { kind: Kind; header?: ReactNode }) {
           </View>
         )}
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 30).duration(200)}>
+          <View>
             <EntryRow entry={item} kind={kind} tags={tags.data ?? []} onOpen={() => setOpenRow(item)} onDelete={() => del(item)} />
-          </Animated.View>
+          </View>
         )}
         ListEmptyComponent={list.data && !list.error ? <Empty kind={kind} filtered={Boolean(search || tagId || oneTime)} year={year} month={month} /> : null}
         ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: metrics.space.md }} /> : null}

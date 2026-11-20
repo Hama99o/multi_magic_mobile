@@ -13,7 +13,6 @@
  */
 import { useState } from "react";
 import { FlatList, Pressable, RefreshControl, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -127,9 +126,9 @@ export default function RecurringScreen() {
           ) : null
         }
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+          <View>
             <RuleRow rule={item} onOpen={() => open(item)} onToggle={() => toggle.mutate(item)} onRun={kind === "income" ? () => run.mutate(item.id) : undefined} />
-          </Animated.View>
+          </View>
         )}
       />
 

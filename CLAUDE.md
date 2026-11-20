@@ -434,6 +434,14 @@ see:
 - `src/stores/__tests__/language.store.test.ts` — the choice survives a restart
   and reaches the server.
 
+**A commit that adds or changes a locale string runs `keys.test` and
+`locales.test` before it is made**, not only the suite of the screen it
+serves. On 2026-11-20 two commits passed their own screen suites and broke
+both i18n suites (a plural not registered in `PLURAL`, a word identical in
+both languages, three French strings over the 1.9× budget); the full run
+caught it a commit later (`docs/design/hygiene-step0/MANIFEST.md`). They are
+fast, and they are the only gates that read the locales against each other.
+
 **Not checked: whether a French string fits.** The 1.9× length budget in
 `locales.test.ts` is a proxy for a translation that wandered into an
 explanation, and it is named as one. The real check is a device at 360 dp.

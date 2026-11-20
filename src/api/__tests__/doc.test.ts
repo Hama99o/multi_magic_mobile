@@ -39,6 +39,7 @@ const pdf = { uri: "file:///cache/Contract.pdf", name: "Contract.pdf", mimeType:
 const photo = { uri: "file:///cache/IMG_1.heic", name: "IMG_1.heic", mimeType: "image/heic", size: 3000 };
 const bytes = (s: string) => new Uint8Array([...s].map((c) => c.charCodeAt(0))).buffer;
 const json = (o: unknown) => new Uint8Array([...JSON.stringify(o)].map((c) => c.charCodeAt(0))).buffer;
+const reasonOf = (p: Promise<unknown>) => p.then(() => "resolved", (e: DocError) => e.reason);
 const keysOf = (data: unknown) => [...(data as FormData).keys()];
 const valueOf = (data: unknown, key: string) => (data as FormData).get(key);
 
@@ -123,17 +124,17 @@ describe("refusals", () => {
 
   it("413 without a body is too_large; 429 is rate_limited; no answer is offline", async () => {
     mock.onPost("/api/v1/doc_app/pdf/merge").replyOnce(413).onPost("/api/v1/doc_app/pdf/merge").replyOnce(429).onPost("/api/v1/doc_app/pdf/merge").networkErrorOnce();
-    expect((await docApi.merge([pdf]).catch((e: DocError) => e)).reason).toBe("too_large");
-    expect((await docApi.merge([pdf]).catch((e: DocError) => e)).reason).toBe("rate_limited");
-    expect((await docApi.merge([pdf]).catch((e: DocError) => e)).reason).toBe("offline");
+    expect(await reasonOf(docApi.merge([pdf]))).toBe("too_large");
+    expect(await reasonOf(docApi.merge([pdf]))).toBe("rate_limited");
+    expect(await reasonOf(docApi.merge([pdf]))).toBe("offline");
   });
 
   it("an aborted call is `cancelled`, never an error to show", async () => {
     const controller = new AbortController();
     mock.onPost("/api/v1/doc_app/pdf/merge").reply(() => new Promise(() => {}));
-    const pending = docApi.merge([pdf], { signal: controller.signal }).catch((e: DocError) => e);
+    const pending = reasonOf(docApi.merge([pdf], { signal: controller.signal }));
     controller.abort();
-    expect((await pending).reason).toBe("cancelled");
+    expect(await pending).toBe("cancelled");
   });
 
   it("an unknown reason stays unknown, with the server's sentence", () => {

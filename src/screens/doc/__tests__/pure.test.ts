@@ -107,3 +107,43 @@ describe("typed signature fonts", () => {
     expect(fontFor(null).family).toBe("SigCaveat");
   });
 });
+
+import { entriesFor, moveSelected, remove, rotate, splitName, toServer } from "../pageOps";
+import { moveItem } from "../files";
+
+describe("page edits (web PagesDoc)", () => {
+  const four = entriesFor(4);
+  const keys = (...k: string[]) => new Set(k);
+
+  it("turns only the selected pages, adding to what they had, in whole turns", () => {
+    const once = rotate(four, keys("p1"), 90);
+    expect(toServer(rotate(once, keys("p1", "p2"), -90))).toEqual([
+      { source: 0, rotation: 0 },
+      { source: 1, rotation: 0 },
+      { source: 2, rotation: 270 },
+      { source: 3, rotation: 0 },
+    ]);
+  });
+
+  it("removing leaves pages out; extracting is sending only some", () => {
+    expect(toServer(remove(four, keys("p0", "p3"))).map((e) => e.source)).toEqual([1, 2]);
+  });
+
+  it("a selection moves one step as a block, and stops at the ends", () => {
+    expect(moveSelected(four, keys("p1", "p2"), -1).map((e) => e.source)).toEqual([1, 2, 0, 3]);
+    expect(moveSelected(four, keys("p1", "p2"), 1).map((e) => e.source)).toEqual([0, 3, 1, 2]);
+    expect(moveSelected(four, keys("p0"), -1)).toBe(four);
+    expect(moveSelected(four, keys("p3"), 1)).toBe(four);
+  });
+
+  it("one file per page is named like the web's zip", () => {
+    expect(splitName("Contract", 2, 9)).toBe("Contract-03.pdf");
+    expect(splitName("Contract", 9, 120)).toBe("Contract-010.pdf");
+  });
+
+  it("merge's arrows move one file and do nothing at an end", () => {
+    expect(moveItem(["a", "b", "c"], 2, -1)).toEqual(["a", "c", "b"]);
+    const list = ["a", "b"];
+    expect(moveItem(list, 0, -1)).toBe(list);
+  });
+});

@@ -58,7 +58,7 @@ export function usePageImage(file: DocFile | null, page: number, widthDp: number
 }
 
 export function useThumbnails(file: DocFile | null, width = 200) {
-  return useQuery({
+  return useQuery<Awaited<ReturnType<typeof docApi.thumbnails>>, DocError>({
     queryKey: docKeys.thumbs(file?.uri ?? "", width),
     queryFn: ({ signal }) => docApi.thumbnails(file as DocFile, width, { signal }),
     enabled: Boolean(file),

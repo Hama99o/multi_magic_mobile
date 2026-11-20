@@ -17,7 +17,9 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { tablesKeys } from "@/api/keys";
 import { tablesApi, type RecordRow } from "@/api/tables";
 import type { RecordOption } from "@/api/fields";
-import { ArrowUpDown, ChevronDown, Ellipsis, LayoutGrid, RotateCcw, Search, Sparkles, Table2, X } from "@/components/icons";
+import { ArrowUpDown, ChevronDown, Ellipsis, LayoutGrid, Plus, RotateCcw, Search, Sparkles, Table2, X } from "@/components/icons";
+import { UndoToast } from "@/components/UndoToast";
+import { failureMessage } from "@/api/failure";
 import { Screen } from "@/components/ScreenContainer";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
@@ -30,7 +32,9 @@ import { ActionSheet, type SheetAction } from "@/screens/contacts/ActionSheet";
 import { EmptyState } from "@/screens/flow/parts";
 import { useAsk } from "@/screens/flow/useAsk";
 import { cardLayout, RecordCard } from "@/screens/tables/RecordCard";
-import { CARD_LINES, countLine, mergePages, titleField } from "@/screens/tables/logic";
+import { CARD_LINES, canEditRows, countLine, mergePages, TABLES_COLOR, titleField } from "@/screens/tables/logic";
+import { useCreateRow } from "@/screens/tables/useRowWrites";
+import { useTablesUndo } from "@/stores/tablesUndo.store";
 import { cardFields, CARD_FIELDS, differsFromShared, effectiveQuery } from "@/screens/tables/personalView";
 import { usePersonalLayer } from "@/screens/tables/usePersonalLayer";
 
@@ -94,6 +98,17 @@ export default function TableScreen() {
   const personal = view ? differsFromShared(view, layer) : false;
   const unsorted = query ? query.sorts.length === 0 : false;
   const count = countLine(firstPage, t, i18n.language);
+
+  const editable = canEditRows(base?.role);
+  const offer = useTablesUndo((s) => s.offer);
+  const clearOffer = useTablesUndo((s) => s.clear);
+  const [failure, setFailure] = useState<string | null>(null);
+  // A new row opens at once, as the web's "reveal" does (SPEC C3): newest
+  // first puts it on top of the list too, and it is there after Back.
+  const create = useCreateRow(tableId, {
+    onCreated: (row) => router.push({ pathname: "/tables/record", params: { table: String(tableId), id: String(row.id) } }),
+    onError: (e) => setFailure(failureMessage(e, t("tables.addFailed"))),
+  });
 
   const openRow = (row: RecordRow) =>
     router.push({ pathname: "/tables/record", params: { table: String(tableId), id: String(row.id), q: queryKey } });
@@ -233,6 +248,11 @@ export default function TableScreen() {
         </Text>
       ) : null}
 
+      {failure ? (
+        <Pressable testID="tables-failure" onPress={() => setFailure(null)} accessibilityRole="button" accessibilityLabel={failure} accessibilityLiveRegion="polite">
+          <Text tone="danger">{failure}</Text>
+        </Pressable>
+      ) : null}
       <LoadFailure error={table.error ?? (records.data ? null : records.error)} loadFailed={t("tables.tableLoadFailed")} hasData={Boolean(records.data)} updatedAt={records.dataUpdatedAt} onRetry={() => void (table.error ? table.refetch() : records.refetch())} testID="tables-table-failed" />
       <UnreadableNotice count={unreadable} />
 
@@ -274,8 +294,23 @@ export default function TableScreen() {
         onEndReachedThreshold={0.6}
         refreshControl={<RefreshControl refreshing={records.isRefetching && !records.isFetchingNextPage} onRefresh={() => void Promise.all([table.refetch(), records.refetch()])} tintColor={colors.inkMuted} />}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: metrics.space.xl }}
+        contentContainerStyle={{ paddingBottom: editable ? 96 : metrics.space.xl }}
       />
+
+      {editable && table.data ? (
+        <Pressable
+          testID="tables-add-row"
+          onPress={() => create.mutate()}
+          disabled={create.isPending}
+          accessibilityRole="button"
+          accessibilityLabel={t("tables.addRow")}
+          accessibilityState={{ disabled: create.isPending, busy: create.isPending }}
+          style={{ position: "absolute", right: metrics.space.lg, bottom: metrics.space.lg, width: 56, height: 56, borderRadius: 28, backgroundColor: TABLES_COLOR, alignItems: "center", justifyContent: "center", opacity: create.isPending ? 0.6 : 1, elevation: 4, shadowColor: "#000", shadowOpacity: 0.2, shadowRadius: 6, shadowOffset: { width: 0, height: 3 } }}
+        >
+          <Plus size={26} color={colors.onAccent} />
+        </Pressable>
+      ) : null}
+      <UndoToast offer={offer} onDone={clearOffer} testID="tables-toast" bottom={editable ? 72 : 0} />
 
       <ActionSheet open={sheet === "views"} title={t("tables.views")} actions={viewActions} onClose={() => setSheet(null)} testID="tables-views" />
       <ActionSheet open={sheet === "menu"} title={table.data?.name ?? ""} actions={menu} onClose={() => setSheet(null)} testID="tables-options" />

@@ -2,7 +2,7 @@
  * Tables' pure rules (no React): what a screen decides, kept testable.
  */
 import type { FieldDefinition } from "@/api/fields";
-import type { Base, RecordRow, RecordsPage, RowHeight, Table } from "@/api/tables";
+import type { Base, BaseRole, RecordRow, RecordsPage, RowHeight, Table } from "@/api/tables";
 import { colorHex } from "@/screens/flow/logic";
 import { APP_COLORS } from "@/theme/appColors";
 
@@ -55,3 +55,6 @@ export function positionOf(rows: RecordRow[], recordId: number): { index: number
   const index = rows.findIndex((r) => r.id === recordId);
   return index === -1 ? null : { index, total: rows.length };
 }
+
+/** Who may add, change and delete rows: the owner and editors (`TableApp::BasePolicy#edit_records?`). Unknown = no. */
+export const canEditRows = (role: BaseRole | undefined) => role === "owner" || role === "editor";

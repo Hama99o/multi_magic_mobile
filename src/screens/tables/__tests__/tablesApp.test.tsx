@@ -12,6 +12,8 @@
 import MockAdapter from "axios-mock-adapter";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
+import { Alert } from "react-native";
+import { useTablesUndo } from "@/stores/tablesUndo.store";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 import i18n from "@/i18n";
@@ -32,7 +34,7 @@ jest.mock("expo-router", () => ({
 }));
 jest.mock("expo-clipboard", () => require("@/__tests__/screenMocks").clipboard);
 
-const router = mockedRouter as unknown as { push: jest.Mock; setParams: jest.Mock };
+const router = mockedRouter as unknown as { push: jest.Mock; setParams: jest.Mock; back: jest.Mock };
 const B = "/api/v1/table_app";
 let mock: MockAdapter;
 
@@ -261,9 +263,112 @@ describe("a row (R1, R2)", () => {
     open.mockRestore();
   });
 
+  it("links past the first 12 come from the relations call, each one opening its row", async () => {
+    mock.onGet(`${B}/records/501/relations`).reply(200, { relations: [{ field_id: 3, field_name: "Supplier", table: { id: 12, name: "Offices", base_id: 3 }, limit: null, count: 13, records: Array.from({ length: 13 }, (_, i) => ({ id: 900 + i, title: `Office ${i + 1}`, fields: [] })) }] });
+    renderScreen(<RecordScreen />);
+    expect(await screen.findByText("Office 13")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("tables-field-3-link-12"));
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/tables/record", params: { table: "12", id: "912" } });
+  });
+
   it("a row that will not load says so, and offers to try again", async () => {
     mock.onGet(`${B}/records/501`).reply(404);
     renderScreen(<RecordScreen />);
     expect(await screen.findByTestId("tables-record-failed")).toBeTruthy();
+  });
+});
+
+describe("editing rows (increment 2)", () => {
+  const baseAs = (role: string) => ({ bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }], { "10": 1 }), role }] });
+  /** Press the confirming button of the next Alert. */
+  const confirmAlert = (label: string) =>
+    jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => buttons?.find((b) => b.text === label)?.onPress?.());
+
+  beforeEach(() => {
+    router.back.mockClear();
+    useTablesUndo.getState().clear();
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody());
+    mock.onGet(`${B}/records/501`).reply(200, { record: scarf });
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it("an editor changes a value through the row's own endpoint, never core's", async () => {
+    mockParams.current = { table: "10", id: "501" };
+    mock.onGet(`${B}/bases`).reply(200, baseAs("editor"));
+    mock.onPatch(`${B}/records/501`).reply(200, { record: row(501, "Blue scarf, wool") });
+    renderScreen(<RecordScreen />);
+    await screen.findByTestId("tables-record-title");
+    await waitFor(() => expect(screen.getByTestId("tables-field-1").props.accessibilityState?.disabled).toBeFalsy());
+    fireEvent.press(screen.getByTestId("tables-field-1"));
+    fireEvent.changeText(await screen.findByTestId("tables-field-1-sheet-input"), "Blue scarf, wool");
+    fireEvent.press(screen.getByTestId("tables-field-1-sheet-save"));
+    await waitFor(() => expect(mock.history.patch.map((r) => r.url)).toEqual([`${B}/records/501`]));
+    expect(JSON.parse(mock.history.patch[0].data)).toEqual({ record: { values: { "1": "Blue scarf, wool" } } });
+  });
+
+  it("a viewer reads: no editor opens, no add button, and the menu only copies the link", async () => {
+    mockParams.current = { table: "10", id: "501" };
+    mock.onGet(`${B}/bases`).reply(200, baseAs("viewer"));
+    renderScreen(<RecordScreen />);
+    await screen.findByTestId("tables-record-title");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    fireEvent.press(screen.getByTestId("tables-field-1"));
+    expect(screen.queryByTestId("tables-field-1-sheet-input")).toBeNull();
+    fireEvent.press(screen.getByTestId("tables-record-menu"));
+    expect(screen.getByText("Copy the row's link")).toBeTruthy();
+    expect(screen.queryByText("Delete the row")).toBeNull();
+  });
+
+  it("deletes to the trash after a confirm, goes back, and Undo restores the row", async () => {
+    mockParams.current = { table: "10", id: "501" };
+    mock.onGet(`${B}/bases`).reply(200, baseAs("owner"));
+    mock.onDelete(`${B}/records/501`).reply(204);
+    mock.onPost(`${B}/tables/10/records/restore`).reply(200, {});
+    confirmAlert("Delete");
+    renderScreen(<RecordScreen />);
+    await screen.findByTestId("tables-record-title");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    fireEvent.press(screen.getByTestId("tables-record-menu"));
+    fireEvent.press(await screen.findByText("Delete the row"));
+    await waitFor(() => expect(router.back).toHaveBeenCalled());
+    expect(mock.history.delete.map((r) => r.url)).toEqual([`${B}/records/501`]);
+    const offer = useTablesUndo.getState().offer;
+    expect(offer?.message).toBe("Row deleted");
+    await act(async () => offer?.undo?.());
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ ids: [501] });
+  });
+
+  it("duplicates the row and shows the copy", async () => {
+    mockParams.current = { table: "10", id: "501" };
+    mock.onGet(`${B}/bases`).reply(200, baseAs("editor"));
+    mock.onPost(`${B}/records/501/duplicate`).reply(201, { record: row(777, "Blue scarf") });
+    renderScreen(<RecordScreen />);
+    await screen.findByTestId("tables-record-title");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    fireEvent.press(screen.getByTestId("tables-record-menu"));
+    fireEvent.press(await screen.findByText("Duplicate the row"));
+    await waitFor(() => expect(router.setParams).toHaveBeenCalledWith({ id: "777" }));
+  });
+
+  it("the add button makes an empty row and opens it at once; a viewer has no button", async () => {
+    mockParams.current = { id: "10", base: "3" };
+    mock.onGet(`${B}/bases`).reply(200, baseAs("editor"));
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+    mock.onPost(`${B}/tables/10/records`).reply(201, { record: row(778, "") });
+    renderScreen(<TableScreen />);
+    await screen.findByText("Blue scarf");
+    fireEvent.press(await screen.findByTestId("tables-add-row"));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: "/tables/record", params: { table: "10", id: "778" } }));
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ record: { values: {} } });
+  });
+
+  it("a viewer's table has no add button", async () => {
+    mockParams.current = { id: "10", base: "3" };
+    mock.onGet(`${B}/bases`).reply(200, baseAs("viewer"));
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+    renderScreen(<TableScreen />);
+    await screen.findByText("Blue scarf");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    expect(screen.queryByTestId("tables-add-row")).toBeNull();
   });
 });

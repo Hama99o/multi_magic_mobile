@@ -239,3 +239,17 @@ describe("writes (increment 2): through Tables' own endpoints, so its checks and
     expect(JSON.parse(mock.history.post[1].data)).toEqual({ field_id: 3, linked_id: 901, replace: true });
   });
 });
+
+describe("relations: every linked row per link column, past the 12 a page carries", () => {
+  it("reads each group with its target table and row titles", async () => {
+    mock.onGet(`${BASE}/records/501/relations`).reply(200, {
+      relations: [
+        { field_id: 3, field_name: "Supplier", table: { id: 12, name: "Offices", base_id: 3 }, limit: null, count: 2, records: [{ id: 900, title: "Kabul office", fields: [] }, { id: 901, title: null, fields: [] }] },
+        { field_id: 8, field_name: "Gone", table: null, limit: 1, count: 0, records: [] },
+      ],
+    });
+    const groups = await tablesApi.relations(501);
+    expect(groups[0]).toEqual({ fieldId: 3, fieldName: "Supplier", table: { id: 12, name: "Offices", baseId: 3 }, rows: [{ id: 900, title: "Kabul office" }, { id: 901, title: null }] });
+    expect(groups[1].table).toBeNull();
+  });
+});

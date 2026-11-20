@@ -134,6 +134,15 @@ export interface RecordRow {
   linkCounts: Record<number, number>;
 }
 
+/** One link column's rows, whole (`records#relations`): the record page's Relations section. */
+export interface RelationGroup {
+  fieldId: number;
+  fieldName: string;
+  /** Null when the linked table is gone. */
+  table: { id: number; name: string; baseId: number } | null;
+  rows: { id: number; title: string | null }[];
+}
+
 export interface RecordsPage {
   rows: RecordRow[];
   unreadable: number;
@@ -365,6 +374,23 @@ export const tablesApi = {
   async record(recordId: number): Promise<RecordRow> {
     const { data } = await http.get(`${BASE}/records/${recordId}`);
     return parseRecord(obj(data, "record response").record);
+  },
+
+  async relations(recordId: number): Promise<RelationGroup[]> {
+    const { data } = await http.get(`${BASE}/records/${recordId}/relations`);
+    return readable(arr(obj(data, "relations response").relations, "relations"), (raw) => {
+      const g = obj(raw, "relation");
+      const t = g.table && typeof g.table === "object" ? (g.table as Record<string, unknown>) : null;
+      return {
+        fieldId: id(g.field_id, "relation.field_id"),
+        fieldName: optStr(g.field_name) ?? "",
+        table: t ? { id: id(t.id, "relation.table.id"), name: optStr(t.name) ?? "", baseId: id(t.base_id, "relation.table.base_id") } : null,
+        rows: readable(Array.isArray(g.records) ? g.records : [], (r) => {
+          const row = obj(r, "relation.record");
+          return { id: id(row.id, "relation.record.id"), title: optStr(row.title) };
+        }),
+      };
+    });
   },
 
   // ── Writes (increment 2), through Tables' own endpoints: TableApp::RecordWriter

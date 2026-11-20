@@ -90,7 +90,11 @@ export const tablesEn = {
     showCount_other: "Show {{formatted}} rows",
     textPlaceholder: "Type a value",
     numberPlaceholder: "A number",
-    datePlaceholder: "YYYY-MM-DD",
+    pickDate: "Pick a date",
+    dateChosen: "{{field}}: {{day}}. Change the date",
+    yesterday: "Yesterday",
+    today: "Today",
+    tomorrow: "Tomorrow",
   },
   ops: {
     contains: "contains",

@@ -10,7 +10,7 @@ Status per line: ☐ open · ☑ proven (evidence beside it) · ⚠ unproven (sa
 
 | # | Criterion | Check | Status |
 |---|---|---|---|
-| F1 | Filter & sort in one sheet: every operator family per column kind (the web's `filters.ts`, the server's `OPERATORS`), AND / OR, a value editor per kind | `filters.test.ts` (6); `tablesApp.test.tsx` › "a filter from the sheet…" | ☑ · ⚠ a date is typed `YYYY-MM-DD` (no picker yet) |
+| F1 | Filter & sort in one sheet: every operator family per column kind (the web's `filters.ts`, the server's `OPERATORS`), AND / OR, a value editor per kind | `filters.test.ts` (6); `tablesApp.test.tsx` › "a filter from the sheet…" | ☑ · a date is PICKED, never typed (Hello, 2026-11-20): the shared `MonthGrid`, plus Yesterday / Today / Tomorrow; `tablesApp.test.tsx` › "a date filter is picked…" (planted back to a text box: red) |
 | F2 | The apply button says how many rows it keeps ("Show 1 row"), from a one-row count request | same test | ☑ |
 | F3 | An unfinished condition stays out of the query (the web's `isComplete`) | `filters.test.ts`, `personalView.test.ts` | ☑ |
 | F4 | Multi-sort with the web's direction words by type (A → Z, 1 → 9, Oldest → Newest, First → Last); a sort replaces newest first | `filters.test.ts` (`directionSet`, `addSort`); increment 1's T6 | ☑ |
@@ -32,8 +32,8 @@ Status per line: ☐ open · ☑ proven (evidence beside it) · ⚠ unproven (sa
 
 ## Not done here, and why
 
-- Field order (drag) on the phone: the web keeps it on the shared view (`field_order` reorders the table's columns for everyone, `views_controller.rb:66`). A personal order needs a design decision first. It stays with the web for now.
-- A date picker in the filter: the value is typed. e2's `DateSheet` is bound to a record's writes; one for filters is a small follow-up.
+- Field order on the phone: the web keeps it on the shared view (`field_order` reorders the table's columns for everyone, `views_controller.rb:66`). Hello is asking the owner. Until then the phone shows the shared order and does not change it.
+- Relative dates in a filter ("past 7 days"): the web has none (a plain date input, `FilterBuilder.tsx:149`) and the server compares a `YYYY-MM-DD`. The quick choices store the day they mean.
 
 ## Gates
 

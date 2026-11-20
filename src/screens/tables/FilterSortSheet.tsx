@@ -19,6 +19,8 @@ import { Text } from "@/components/reusables/text";
 import { SheetButton } from "@/components/fields/FieldRow";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { colorHex } from "@/screens/flow/logic";
+import { MonthGrid } from "@/screens/calendar/MonthGrid";
+import { addDays, formatDay, startOfMonth, todayKey } from "@/screens/calendar/dates";
 import { addSort, defaultCondition, directionSet, groupable, isComplete, kindOf, OPERATORS, parseNumber, retarget, sortable, takesValue, withOperator } from "./filters";
 
 export interface FindDraft {
@@ -233,8 +235,10 @@ function ValueEditor({ field, condition, onChange, testID }: { field: FieldDefin
       </View>
     );
   }
+  if (kind === "date" || kind === "datetime") {
+    return <DateValue value={typeof condition.value === "string" ? condition.value : null} onChange={onChange} testID={testID} label={field.name} />;
+  }
   const numeric = kind === "number";
-  const dated = kind === "date" || kind === "datetime";
   return (
     <TextInput
       testID={testID}
@@ -242,16 +246,63 @@ function ValueEditor({ field, condition, onChange, testID }: { field: FieldDefin
       onChangeText={(text) => {
         setTyped(text);
         if (numeric) onChange(parseNumber(text));
-        else if (dated) onChange(/^\d{4}-\d{2}-\d{2}$/.test(text.trim()) ? text.trim() : null);
         else onChange(text.trim() ? text : null);
       }}
-      placeholder={dated ? t("tables.find.datePlaceholder") : numeric ? t("tables.find.numberPlaceholder") : t("tables.find.textPlaceholder")}
+      placeholder={numeric ? t("tables.find.numberPlaceholder") : t("tables.find.textPlaceholder")}
       placeholderTextColor={colors.inkMuted}
-      keyboardType={numeric ? "decimal-pad" : dated ? "numbers-and-punctuation" : "default"}
+      keyboardType={numeric ? "decimal-pad" : "default"}
       autoCorrect={false}
       accessibilityLabel={field.name}
       style={{ minHeight: 44, borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, paddingHorizontal: metrics.space.md, color: colors.ink, fontSize: 16, backgroundColor: colors.surface }}
     />
+  );
+}
+
+/**
+ * A date, picked: the same month grid as a date cell's editor and the
+ * Calendar (`MonthGrid`), opened under the condition (a sheet on a sheet is
+ * not reliable on Android), plus Yesterday / Today / Tomorrow. The web has
+ * no relative dates (a plain date input, `FilterBuilder.tsx:149`) and the
+ * server compares a `YYYY-MM-DD`, so a quick choice stores the day it means.
+ */
+function DateValue({ value, onChange, testID, label }: { value: string | null; onChange: (v: string | null) => void; testID: string; label: string }) {
+  const colors = useColors();
+  const metrics = useMetrics();
+  const { t, i18n } = useTranslation();
+  const today = todayKey();
+  const [open, setOpen] = useState(value === null);
+  const [month, setMonth] = useState(startOfMonth(value ?? today));
+  const pick = (day: string) => {
+    onChange(day);
+    setMonth(startOfMonth(day));
+    setOpen(false);
+  };
+  const quick = [
+    { key: "yesterday", day: addDays(today, -1) },
+    { key: "today", day: today },
+    { key: "tomorrow", day: addDays(today, 1) },
+  ];
+  return (
+    <View style={{ gap: metrics.space.xs }}>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: metrics.space.xs }}>
+        <Pressable
+          testID={testID}
+          onPress={() => setOpen((o) => !o)}
+          accessibilityRole="button"
+          accessibilityState={{ expanded: open }}
+          accessibilityLabel={value ? t("tables.find.dateChosen", { field: label, day: formatDay(value, i18n.language, true) }) : t("tables.find.pickDate")}
+          style={{ minHeight: 36, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, justifyContent: "center", borderWidth: 1, borderColor: value ? colors.accent : colors.border, backgroundColor: colors.surface }}
+        >
+          <Text variant="label">{value ? formatDay(value, i18n.language, true) : t("tables.find.pickDate")}</Text>
+        </Pressable>
+        {quick.map((q) => (
+          <Pressable key={q.key} testID={`${testID}-${q.key}`} onPress={() => pick(q.day)} accessibilityRole="button" accessibilityLabel={t(`tables.find.${q.key}`)} style={{ minHeight: 36, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, justifyContent: "center", borderWidth: 1, borderColor: value === q.day ? colors.accent : colors.border }}>
+            <Text variant="label">{t(`tables.find.${q.key}`)}</Text>
+          </Pressable>
+        ))}
+      </View>
+      {open ? <MonthGrid testID={`${testID}-month`} month={month} selected={value} today={today} onMonthChange={setMonth} onSelect={pick} /> : null}
+    </View>
   );
 }
 

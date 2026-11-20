@@ -89,7 +89,11 @@ export const tablesFr = {
     showCount_other: "Afficher {{formatted}} lignes",
     textPlaceholder: "Saisissez une valeur",
     numberPlaceholder: "Un nombre",
-    datePlaceholder: "AAAA-MM-JJ",
+    pickDate: "Choisir une date",
+    dateChosen: "{{field}} : {{day}}. Changer la date",
+    yesterday: "Hier",
+    today: "Aujourd’hui",
+    tomorrow: "Demain",
   },
   ops: {
     contains: "contient",

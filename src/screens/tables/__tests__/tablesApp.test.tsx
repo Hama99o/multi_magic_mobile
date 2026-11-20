@@ -400,6 +400,24 @@ describe("find and personal views (increment 3)", () => {
     expect(screen.getByTestId("tables-personal-note")).toBeTruthy();
   });
 
+  it("a date filter is picked, never typed: Today sends today's day, and the month grid picks another", async () => {
+    const withDate = tableBody();
+    withDate.table.fields.push(field(6, "Delivered", "date"));
+    mock.onGet(`${B}/tables/10`).reply(200, withDate);
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+    const { todayKey } = jest.requireActual<typeof import("@/screens/calendar/dates")>("@/screens/calendar/dates");
+    renderScreen(<TableScreen />);
+    await screen.findByText("Blue scarf");
+    fireEvent.press(screen.getByTestId("tables-find-open"));
+    fireEvent.press(await screen.findByTestId("tables-filter-add"));
+    fireEvent.press(screen.getByTestId("tables-filter-pick-6"));
+    // No text box for a date: the picker is open at once.
+    expect(screen.getByTestId("tables-filter-0-value-month")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("tables-filter-0-value-today"));
+    fireEvent.press(screen.getByTestId("tables-find-apply"));
+    await waitFor(() => expect(recordCalls().some((p) => p.filters === JSON.stringify([{ field_id: 6, op: "is", value: todayKey() }]))).toBe(true));
+  });
+
   it("grouping draws a header per group with the server's counts, and a header folds its rows", async () => {
     mock.onGet(`${B}/tables/10`).reply(200, tableBody([view(70, "Grid", "grid", { group_by_field_id: 2, row_height: "short" })]));
     mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf, row(503, "Grey coat")], { total_count: 2, table_total: 2, groups: [{ value: "in", count: 1 }, { value: null, count: 1 }] }));

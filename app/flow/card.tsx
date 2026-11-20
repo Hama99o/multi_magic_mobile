@@ -23,7 +23,7 @@ import type { FieldDefinition, RecordOption } from "@/api/fields";
 import { FieldRow, ChoiceRow } from "@/components/fields/FieldRow";
 import { useFieldWrites } from "@/components/fields/useFieldWrites";
 import { BottomSheet } from "@/components/BottomSheet";
-import { ArrowRightLeft, CircleDot, Columns3, Ellipsis, Kanban, Pencil, Sparkles, Trash2, UserRound } from "@/components/icons";
+import { ArrowRightLeft, CircleDot, Columns3, Ellipsis, Kanban, Pencil, Sparkles, Trash2 } from "@/components/icons";
 import { RichText } from "@/components/RichText";
 import { Screen } from "@/components/ScreenContainer";
 import { AppHeader } from "@/components/shell/AppHeader";
@@ -207,8 +207,12 @@ function CardView({ projectId, cardId }: { projectId: number; cardId: number }) 
   }
 
   return (
-    <Screen measure avoidKeyboard>
+    <Screen measure={false} avoidKeyboard>
       <AppHeader app="flow" back title={parts?.project.title ?? t("flow.title")} />
+      {/* The header spans the window; the card reads in the 640 dp column. In
+          a measured Screen the tablet header's labelled buttons left the title
+          a few dp (device, 800 dp, 2026-11-20). */}
+      <View style={{ flex: 1, width: "100%", maxWidth: metrics.maxMeasure, alignSelf: "center" }}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: metrics.space.xl }} testID="flow-card">
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: metrics.space.sm, marginTop: metrics.space.xs }}>
           {editingTitle ? (
@@ -275,7 +279,6 @@ function CardView({ projectId, cardId }: { projectId: number; cardId: number }) 
         <View style={{ marginTop: metrics.space.md, padding: metrics.space.md, borderRadius: metrics.radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
           <PropertyRow testID="flow-card-column" icon={Columns3} label={t("flow.card.column")} value={column?.title ?? "—"} dot={colorHex(column?.color) ?? undefined} onPress={powers.editCards ? () => setSheet("column") : undefined} />
           <PropertyRow testID="flow-card-sprint" icon={CircleDot} label={t("flow.card.sprint")} value={sprint?.title ?? t("flow.sprints.noSprint")} onPress={powers.editCards ? () => setSheet("sprint") : undefined} />
-          <PropertyRow testID="flow-card-creator" icon={UserRound} label={t("flow.card.creator")} value={c.creator.name || "—"} />
           {fields.map((f) => (
             <FieldRow key={f.id} testID={`flow-field-${f.key}`} field={f} value={c.fieldValues[f.id]} editable={powers.editCards} writes={writes} known={known} onError={setNote} />
           ))}
@@ -385,6 +388,7 @@ function CardView({ projectId, cardId }: { projectId: number; cardId: number }) 
           ))}
         </BottomSheet>
       ) : null}
+      </View>
     </Screen>
   );
 }

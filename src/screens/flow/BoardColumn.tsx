@@ -5,11 +5,11 @@
  * The header is the web's (`BoardColumn.tsx`): a colour dot, the title, the
  * count, + to add. The column is tinted with its colour, or the project's
  * (the web's accent). Its cards are a FlatList of fixed-height tiles
- * (`TILE_HEIGHT`, `getItemLayout`) with no animation on a cell: the owner's
+ * (`tileHeight` per card, `getItemLayout`) with no animation on a cell: the owner's
  * recycled-list rule. Reordering is a mode (⋯ › Reorder) that swaps the list
  * for `DragReorder`, never a gesture on a recycled cell.
  */
-import { useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { Card, Column, Person } from "@/api/flow";
@@ -18,8 +18,9 @@ import { DragReorder } from "@/components/DragReorder";
 import { Check, Ellipsis, Plus, X } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { colorHex } from "./logic";
-import { CardTile, TILE_HEIGHT } from "./parts";
+import { useSubmitText } from "@/lib/useSubmitText";
+import { colorHex, tileHeight, tileShape } from "./logic";
+import { CardTile } from "./parts";
 
 const GAP = 8;
 
@@ -74,6 +75,18 @@ export function BoardColumn({
   const metrics = useMetrics();
   const { t } = useTranslation();
   const [adding, setAdding] = useState(false);
+  // Each tile's height is known from its card (`tileHeight`), so the list
+  // still lays out without measuring: exact offsets, stable recycling.
+  const layout = useMemo(() => {
+    const heights = cards.map((c) => tileHeight(tileShape(c, fields, tagsByCategory, people)));
+    const offsets: number[] = [];
+    let at = 0;
+    for (const h of heights) {
+      offsets.push(at);
+      at += h + GAP;
+    }
+    return { heights, offsets };
+  }, [cards, fields, tagsByCategory, people]);
   const hex = colorHex(column.color) ?? tint;
   const count = filtered && cards.length !== total ? t("flow.board.countOf", { shown: cards.length, total }) : String(total);
 
@@ -123,7 +136,7 @@ export function BoardColumn({
           testID={`flow-column-${column.position}-cards`}
           data={cards}
           keyExtractor={(c) => String(c.id)}
-          getItemLayout={adding ? undefined : (_d, index) => ({ length: TILE_HEIGHT + GAP, offset: (TILE_HEIGHT + GAP) * index, index })}
+          getItemLayout={adding ? undefined : (_d, index) => ({ length: layout.heights[index] + GAP, offset: layout.offsets[index], index })}
           ItemSeparatorComponent={() => <View style={{ height: GAP }} />}
           contentContainerStyle={{ paddingHorizontal: metrics.space.sm, paddingBottom: metrics.space.xl }}
           keyboardShouldPersistTaps="handled"
@@ -182,13 +195,12 @@ function QuickAdd({ column, onAdd, onClose }: { column: Column; onAdd: (title: s
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const [title, setTitle] = useState("");
+  const title = useSubmitText();
   const input = useRef<TextInput>(null);
   const submit = () => {
-    const v = title.trim();
+    const v = title.take();
     if (!v) return;
     onAdd(v);
-    setTitle("");
     input.current?.focus();
   };
   return (
@@ -196,8 +208,8 @@ function QuickAdd({ column, onAdd, onClose }: { column: Column; onAdd: (title: s
       <TextInput
         ref={input}
         testID="flow-quick-add-input"
-        value={title}
-        onChangeText={setTitle}
+        value={title.value}
+        onChangeText={title.onChangeText}
         autoFocus
         multiline
         submitBehavior="submit"
@@ -212,7 +224,7 @@ function QuickAdd({ column, onAdd, onClose }: { column: Column; onAdd: (title: s
         <Pressable testID="flow-quick-add-cancel" onPress={onClose} accessibilityRole="button" accessibilityLabel={t("fields.cancel")} style={{ width: 44, height: 40, alignItems: "center", justifyContent: "center" }}>
           <X size={20} color={colors.inkMuted} />
         </Pressable>
-        <Pressable testID="flow-quick-add-submit" onPress={submit} disabled={!title.trim()} accessibilityRole="button" accessibilityLabel={t("flow.board.add")} style={{ minHeight: 40, paddingHorizontal: metrics.space.lg, borderRadius: metrics.radius.sm, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center", opacity: title.trim() ? 1 : 0.5 }}>
+        <Pressable testID="flow-quick-add-submit" onPress={submit} disabled={!title.value.trim()} accessibilityRole="button" accessibilityLabel={t("flow.board.add")} style={{ minHeight: 40, paddingHorizontal: metrics.space.lg, borderRadius: metrics.radius.sm, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center", opacity: title.value.trim() ? 1 : 0.5 }}>
           <Text variant="label" tone="onAccent">
             {t("flow.board.add")}
           </Text>

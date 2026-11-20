@@ -9,10 +9,11 @@
  * category, made when first saved, as the web does. Every delete is
  * confirmed (the web deletes a field and a label on one click).
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { useSubmitText } from "@/lib/useSubmitText";
 import { useQuery } from "@tanstack/react-query";
 import { fieldKeys, flowKeys } from "@/api/keys";
 import { flowApi, PROJECT_OWNER_TYPE } from "@/api/flow";
@@ -100,7 +101,7 @@ export default function FieldsScreen() {
               </Pressable>
               {manage ? (
                 <Pressable testID="flow-field-delete" onPress={() => confirmDelete(d)} accessibilityRole="button" accessibilityLabel={t("flow.fields.delete", { name: d.name })} style={{ width: 48, height: 48, alignItems: "center", justifyContent: "center" }}>
-                  <Trash2 size={18} color={colors.danger} />
+                  <Trash2 size={18} color={colors.inkMuted} />
                 </Pressable>
               ) : null}
             </View>
@@ -129,6 +130,7 @@ function FieldEditor({ projectId, definition, categories, onClose }: { projectId
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
+  const firstInput = useRef<TextInput>(null);
   const [name, setName] = useState(definition?.name ?? "");
   const [type, setType] = useState<FieldType>(definition?.fieldType ?? "text");
   const [recordClass, setRecordClass] = useState<RecordClass>(definition?.recordClass ?? "User");
@@ -179,7 +181,7 @@ function FieldEditor({ projectId, definition, categories, onClose }: { projectId
   };
 
   return (
-    <BottomSheet
+    <BottomSheet focusRef={definition ? undefined : firstInput}
       open
       title={definition ? t("flow.fields.edit") : t("flow.fields.add")}
       onClose={onClose}
@@ -189,7 +191,7 @@ function FieldEditor({ projectId, definition, categories, onClose }: { projectId
       <View style={{ gap: metrics.space.md }}>
         <View style={{ gap: metrics.space.xs }}>
           <Text variant="label">{t("flow.fields.name")}</Text>
-          <TextInput testID="flow-field-name" value={name} onChangeText={setName} autoFocus={!definition} placeholder={t("flow.fields.namePlaceholder")} placeholderTextColor={colors.inkMuted} accessibilityLabel={t("flow.fields.name")} style={{ minHeight: 48, borderWidth: 1, borderColor: tried && !name.trim() ? colors.danger : colors.border, borderRadius: metrics.radius.md, paddingHorizontal: metrics.space.md, color: colors.ink, fontSize: 16, backgroundColor: colors.surface }} />
+          <TextInput testID="flow-field-name" value={name} onChangeText={setName} ref={firstInput} placeholder={t("flow.fields.namePlaceholder")} placeholderTextColor={colors.inkMuted} accessibilityLabel={t("flow.fields.name")} style={{ minHeight: 48, borderWidth: 1, borderColor: tried && !name.trim() ? colors.danger : colors.border, borderRadius: metrics.radius.md, paddingHorizontal: metrics.space.md, color: colors.ink, fontSize: 16, backgroundColor: colors.surface }} />
         </View>
         <Picker testID="flow-field-type" label={t("flow.fields.type")} value={t(`fields.types.${type}`)} onPress={() => setPicking("type")} />
         {record ? <Picker testID="flow-field-class" label={t("flow.fields.linksTo")} value={t(`fields.recordClasses.${RECORD_CLASS_KEY[recordClass]}`)} onPress={() => setPicking("class")} /> : null}
@@ -342,15 +344,13 @@ function LabelsEditor({ projectId, category }: { projectId: number; category: Ta
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const [label, setLabel] = useState("");
+  const label = useSubmitText();
   const [color, setColor] = useState<string>(COLUMN_COLORS[0]);
   const [failure, setFailure] = useState<string | null>(null);
   const tags = useTagWrites(projectId, { onError: (e) => setFailure(failureMessage(e, t("flow.fields.failed"))) });
   const add = () => {
-    const v = label.trim();
-    if (!v) return;
-    tags.add.mutate({ categoryId: category.id, label: v, color });
-    setLabel("");
+    const v = label.take();
+    if (v) tags.add.mutate({ categoryId: category.id, label: v, color });
   };
   return (
     <View style={{ gap: metrics.space.sm }} testID="flow-labels">
@@ -379,12 +379,12 @@ function LabelsEditor({ projectId, category }: { projectId: number; category: Ta
         ))}
       </View>
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
-        <TextInput testID="flow-label-new" value={label} onChangeText={setLabel} placeholder={t("flow.fields.labelPlaceholder")} placeholderTextColor={colors.inkMuted} returnKeyType="done" submitBehavior="submit" onSubmitEditing={add} accessibilityLabel={t("flow.fields.labelPlaceholder")} style={{ flex: 1, minHeight: 44, color: colors.ink, fontSize: 16, borderBottomWidth: 1, borderBottomColor: colors.border }} />
-        <Pressable testID="flow-label-add" onPress={add} disabled={!label.trim()} accessibilityRole="button" accessibilityLabel={t("flow.fields.labelAdd")} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center", opacity: label.trim() ? 1 : 0.4 }}>
+        <TextInput testID="flow-label-new" value={label.value} onChangeText={label.onChangeText} placeholder={t("flow.fields.labelPlaceholder")} placeholderTextColor={colors.inkMuted} returnKeyType="done" submitBehavior="submit" onSubmitEditing={add} accessibilityLabel={t("flow.fields.labelPlaceholder")} style={{ flex: 1, minHeight: 44, color: colors.ink, fontSize: 16, borderBottomWidth: 1, borderBottomColor: colors.border }} />
+        <Pressable testID="flow-label-add" onPress={add} disabled={!label.value.trim()} accessibilityRole="button" accessibilityLabel={t("flow.fields.labelAdd")} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center", opacity: label.value.trim() ? 1 : 0.4 }}>
           <Plus size={20} color={colors.accent} />
         </Pressable>
       </View>
-      {label.trim() ? <Swatches testID="flow-label-color" colors={SWATCHES} value={color} labelOf={(hex) => t("flow.color.swatch", { n: COLUMN_COLORS.indexOf(hex as (typeof COLUMN_COLORS)[number]) + 1 })} onPick={(c) => c && setColor(c)} /> : null}
+      {label.value.trim() ? <Swatches testID="flow-label-color" colors={SWATCHES} value={color} labelOf={(hex) => t("flow.color.swatch", { n: COLUMN_COLORS.indexOf(hex as (typeof COLUMN_COLORS)[number]) + 1 })} onPick={(c) => c && setColor(c)} /> : null}
       {failure ? (
         <Text tone="danger" variant="caption" accessibilityLiveRegion="polite">
           {failure}

@@ -4,6 +4,7 @@
  * Backlog, Colonne, Carte, Sprint, Étiquettes, Lecteur / Membre / Administrateur.
  */
 export const flowFr = {
+  offlineBanner: "Hors ligne · modifications impossibles",
   title: "Flow",
   tabs: { projects: "Projets", backlog: "Backlog" },
   searchProjects: "Rechercher des projets",
@@ -144,7 +145,6 @@ export const flowFr = {
     editTitleHint: "Modifie le titre",
     column: "Colonne",
     sprint: "Sprint",
-    creator: "Créée par",
     description: "Description",
     addDescription: "Ajouter une description…",
     editDescription: "Modifier la description",
@@ -177,7 +177,7 @@ export const flowFr = {
     loadFailed: "Impossible de charger les commentaires.",
   },
   notes: {
-    tab: "Notes liées",
+    tab: "Notes",
     none: "Aucune note liée à cette carte.",
     link: "Lier une note",
     search: "Rechercher des notes…",
@@ -208,7 +208,7 @@ export const flowFr = {
     title: "Sprints",
     list: "Sprints",
     all: "Toutes les cartes",
-    noSprint: "Sans sprint (backlog)",
+    noSprint: "Hors sprint",
     none: "Aucun sprint pour l’instant.",
     new: "Nouveau sprint",
     create: "Créer le sprint",

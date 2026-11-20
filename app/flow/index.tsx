@@ -47,6 +47,7 @@ export default function FlowScreen() {
   const [typed, setTyped] = useState("");
   const [term, setTerm] = useState("");
   const [editing, setEditing] = useState<Project | "new" | null>(params.new === "1" ? "new" : null);
+  const [empty, setEmpty] = useState(false);
 
   useEffect(() => {
     const id = setTimeout(() => setTerm(typed.trim()), SEARCH_DELAY_MS);
@@ -59,8 +60,10 @@ export default function FlowScreen() {
   };
 
   return (
-    <Screen measure>
+    <Screen measure={false}>
       <AppHeader app="flow" />
+      {/* The header spans the window (see `app/flow/card.tsx`); the list keeps the 640 dp column. */}
+      <View style={{ flex: 1, width: "100%", maxWidth: metrics.maxMeasure, alignSelf: "center" }}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
         <View style={{ flex: 1 }}>
           <Segmented
@@ -106,9 +109,11 @@ export default function FlowScreen() {
         </View>
       ) : null}
 
-      {tab === "projects" ? <ProjectsTab term={term} onNew={() => setEditing("new")} onEdit={setEditing} /> : <BacklogTab />}
+      {tab === "projects" ? <ProjectsTab term={term} onNew={() => setEditing("new")} onEdit={setEditing} onEmpty={setEmpty} /> : <BacklogTab />}
 
-      {tab === "projects" ? (
+      {/* Not over the empty state, which has its own "Create your first
+          project": two buttons for one action (device, 2026-11-20). */}
+      {tab === "projects" && !empty ? (
         <Pressable
           testID="flow-new-project"
           onPress={() => setEditing("new")}
@@ -127,11 +132,12 @@ export default function FlowScreen() {
           onCreated={(p) => router.push({ pathname: "/flow/board", params: { id: String(p.id) } })}
         />
       ) : null}
+      </View>
     </Screen>
   );
 }
 
-function ProjectsTab({ term, onNew, onEdit }: { term: string; onNew: () => void; onEdit: (p: Project) => void }) {
+function ProjectsTab({ term, onNew, onEdit, onEmpty }: { term: string; onNew: () => void; onEdit: (p: Project) => void; onEmpty: (empty: boolean) => void }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -148,6 +154,8 @@ function ProjectsTab({ term, onNew, onEdit }: { term: string; onNew: () => void;
     getNextPageParam: (last) => (last.page < last.pages ? last.page + 1 : undefined),
   });
   const rows = projects.data?.pages.flatMap((p) => p.rows) ?? [];
+  const nothing = Boolean(projects.data) && rows.length === 0 && !term.trim();
+  useEffect(() => onEmpty(nothing), [nothing, onEmpty]);
   const unreadable = projects.data?.pages.reduce((n, p) => n + p.unreadable, 0) ?? 0;
 
   const confirmDelete = (p: Project) =>
@@ -234,7 +242,7 @@ function ProjectRow({ project, meId, onMenu }: { project: Project; meId: number 
         accessibilityRole="button"
         accessibilityLabel={[project.title, project.description, stats, role !== "owner" ? t(`flow.roles.${role}`) : null].filter(Boolean).join(". ")}
         accessibilityHint={t("flow.project.rowHint")}
-        style={{ flex: 1, flexDirection: "row", gap: metrics.space.md, padding: metrics.space.md, minHeight: 84 }}
+        style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: metrics.space.md, padding: metrics.space.md, minHeight: 84 }}
       >
         <ProjectBadge color={project.color} />
         <View style={{ flex: 1, gap: 2 }}>

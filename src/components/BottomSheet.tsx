@@ -8,8 +8,8 @@
  * sheets hold inputs and an edge-to-edge Android window is not resized for
  * the keyboard (docs/TESTING.md §5, MembersSheet QA rc16).
  */
-import type { ReactNode } from "react";
-import { Modal, Pressable, ScrollView, View } from "react-native";
+import type { ReactNode, RefObject } from "react";
+import { Modal, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "@/components/icons";
@@ -17,6 +17,21 @@ import { KeyboardPadding } from "@/components/KeyboardPadding";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { FILL } from "@/theme/fill";
+
+/**
+ * Focus once the modal is shown, and again after its slide-in if nothing took
+ * it: a sheet opened as another closes (the sprint list giving way to the
+ * sprint form) lost the first focus to the closing one on the device.
+ */
+export function focusSoon(ref: RefObject<TextInput | null> | undefined) {
+  if (!ref) return;
+  const go = () => {
+    const input = ref.current;
+    if (input && !input.isFocused()) input.focus();
+  };
+  setTimeout(go, 60);
+  setTimeout(go, 400);
+}
 
 export function BottomSheet({
   open,
@@ -28,6 +43,7 @@ export function BottomSheet({
   headerRight,
   scroll = true,
   tall = false,
+  focusRef,
   testID,
 }: {
   open: boolean;
@@ -42,6 +58,13 @@ export function BottomSheet({
   scroll?: boolean;
   /** A search sheet: the full height, so results do not jump as they load. */
   tall?: boolean;
+  /**
+   * The input to type into first. `autoFocus` inside a Modal places the
+   * cursor and opens NO keyboard on Android (device, 2026-11-20: every sheet
+   * with a field needed a second tap), because focus is asked for before the
+   * modal's window has it. Focusing once the modal is shown does.
+   */
+  focusRef?: RefObject<TextInput | null>;
   testID: string;
 }) {
   const colors = useColors();
@@ -51,7 +74,7 @@ export function BottomSheet({
   if (!open) return null;
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+    <Modal visible transparent animationType="slide" onRequestClose={onClose} onShow={() => focusSoon(focusRef)}>
       <KeyboardPadding>
         <View style={{ flex: 1, justifyContent: "flex-end" }}>
           <Pressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={onClose} style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.5)" }} />

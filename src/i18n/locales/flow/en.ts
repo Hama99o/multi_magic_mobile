@@ -4,6 +4,7 @@
  * `en.ts` composes them under `flow` and `fields`; `fr.ts` mirrors this file.
  */
 export const flowEn = {
+  offlineBanner: "Offline · changes can’t be saved",
   title: "Flow",
   tabs: { projects: "Projects", backlog: "Backlog" },
   searchProjects: "Search projects",
@@ -144,7 +145,6 @@ export const flowEn = {
     editTitleHint: "Edits the title",
     column: "Column",
     sprint: "Sprint",
-    creator: "Created by",
     description: "Description",
     addDescription: "Add a description…",
     editDescription: "Edit the description",
@@ -177,7 +177,7 @@ export const flowEn = {
     loadFailed: "Could not load the comments.",
   },
   notes: {
-    tab: "Linked notes",
+    tab: "Notes",
     none: "No note is linked to this card.",
     link: "Link a note",
     search: "Search your notes…",
@@ -208,7 +208,7 @@ export const flowEn = {
     title: "Sprints",
     list: "Sprints",
     all: "All cards",
-    noSprint: "No sprint (backlog)",
+    noSprint: "Not in a sprint",
     none: "No sprints yet.",
     new: "New sprint",
     create: "Create sprint",

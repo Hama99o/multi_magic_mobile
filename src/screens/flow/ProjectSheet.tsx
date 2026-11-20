@@ -3,7 +3,7 @@
  * web's `ProjectDrawer.tsx`. The web keeps `icon` without a control; so does
  * this sheet (parity audit §2, LATER).
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { Project } from "@/api/flow";
@@ -20,6 +20,7 @@ export function ProjectSheet({ project, onClose, onCreated }: { project: Project
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
+  const firstInput = useRef<TextInput>(null);
   const [title, setTitle] = useState(project?.title ?? "");
   const [description, setDescription] = useState(project?.description ?? "");
   const [color, setColor] = useState<string | null>(project?.color ?? "blue");
@@ -46,7 +47,7 @@ export function ProjectSheet({ project, onClose, onCreated }: { project: Project
   const inputStyle = { borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, paddingHorizontal: metrics.space.md, color: colors.ink, fontSize: 16, backgroundColor: colors.surface } as const;
 
   return (
-    <BottomSheet
+    <BottomSheet focusRef={project ? undefined : firstInput}
       open
       title={project ? t("flow.project.edit") : t("flow.project.new")}
       onClose={onClose}
@@ -60,7 +61,7 @@ export function ProjectSheet({ project, onClose, onCreated }: { project: Project
             testID="flow-project-title"
             value={title}
             onChangeText={setTitle}
-            autoFocus={!project}
+            ref={firstInput}
             placeholder={t("flow.project.titlePlaceholder")}
             placeholderTextColor={colors.inkMuted}
             accessibilityLabel={t("flow.project.title")}

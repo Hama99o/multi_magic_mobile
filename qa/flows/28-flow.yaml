@@ -28,8 +28,21 @@ tags:
       id: "flow-tabs"
     timeout: 60000
 - takeScreenshot: flow-01-projects
-- tapOn:
-    id: "flow-new-project"
+# An empty list offers its own create button and no FAB; a list offers the FAB.
+- runFlow:
+    when:
+      visible:
+        id: "flow-empty-create"
+    commands:
+      - tapOn:
+          id: "flow-empty-create"
+- runFlow:
+    when:
+      visible:
+        id: "flow-new-project"
+    commands:
+      - tapOn:
+          id: "flow-new-project"
 - extendedWaitUntil:
     visible:
       id: "flow-project-sheet"
@@ -59,8 +72,12 @@ tags:
 - inputText: "[qa] First card"
 - tapOn:
     id: "flow-quick-add-submit"
+# The TILE, not the words: the text field still holds "[qa] First card" when
+# the add did nothing, and a text-only wait passed on it (2026-11-20).
 - extendedWaitUntil:
-    visible: "\\[qa\\] First card.*"
+    visible:
+      id: "flow-card"
+      text: "\\[qa\\] First card.*"
     timeout: 20000
 - tapOn:
     id: "flow-quick-add-cancel"

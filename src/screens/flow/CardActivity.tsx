@@ -10,9 +10,10 @@
  * - History: each event as a sentence ("moved from To Do to Done"), not the
  *   raw key the web prints, newest first, more on scroll.
  */
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import * as Clipboard from "expo-clipboard";
-import { ActivityIndicator, Alert, Pressable, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Keyboard, Pressable, TextInput, View } from "react-native";
+import { useSubmitText } from "@/lib/useSubmitText";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
@@ -122,10 +123,11 @@ function EditComment({ projectId, cardId, comment, onClose, onError }: { project
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
+  const firstInput = useRef<TextInput>(null);
   const [text, setText] = useState(comment.content);
   const edit = useEditComment(projectId, cardId, { onError: (e) => onError(failureMessage(e, t("flow.comments.failed"))) });
   return (
-    <BottomSheet
+    <BottomSheet focusRef={firstInput}
       open
       title={t("flow.comments.edit")}
       onClose={onClose}
@@ -147,7 +149,7 @@ function EditComment({ projectId, cardId, comment, onClose, onError }: { project
         </Pressable>
       }
     >
-      <TextInput testID="flow-comment-edit-input" value={text} onChangeText={setText} autoFocus multiline accessibilityLabel={t("flow.comments.edit")} style={{ minHeight: 100, textAlignVertical: "top", color: colors.ink, fontSize: 16, borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, padding: metrics.space.md, backgroundColor: colors.surface }} />
+      <TextInput ref={firstInput} testID="flow-comment-edit-input" value={text} onChangeText={setText} multiline accessibilityLabel={t("flow.comments.edit")} style={{ minHeight: 100, textAlignVertical: "top", color: colors.ink, fontSize: 16, borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, padding: metrics.space.md, backgroundColor: colors.surface }} />
     </BottomSheet>
   );
 }
@@ -157,26 +159,28 @@ export function CommentComposer({ onSend, busy }: { onSend: (text: string) => vo
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const [text, setText] = useState("");
+  const text = useSubmitText();
+  // Once per tap (`useSubmitText`), and the keyboard goes down so the comment
+  // just sent is in view: it landed under the keyboard (device, 2026-11-20).
   const send = () => {
-    const v = text.trim();
+    const v = text.take();
     if (!v) return;
     onSend(v);
-    setText("");
+    Keyboard.dismiss();
   };
   return (
     <View style={{ flexDirection: "row", alignItems: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.sm, borderTopWidth: 1, borderTopColor: colors.border, backgroundColor: colors.ground }}>
       <TextInput
         testID="flow-comment-input"
-        value={text}
-        onChangeText={setText}
+        value={text.value}
+        onChangeText={text.onChangeText}
         multiline
         placeholder={t("flow.comments.placeholder")}
         placeholderTextColor={colors.inkMuted}
         accessibilityLabel={t("flow.comments.placeholder")}
         style={{ flex: 1, minHeight: 44, maxHeight: 120, paddingHorizontal: metrics.space.md, paddingVertical: 10, borderRadius: 22, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, color: colors.ink, fontSize: 16 }}
       />
-      <Pressable testID="flow-comment-send" onPress={send} disabled={!text.trim() || busy} accessibilityRole="button" accessibilityLabel={t("flow.comments.send")} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center", opacity: text.trim() ? 1 : 0.4 }}>
+      <Pressable testID="flow-comment-send" onPress={send} disabled={!text.value.trim() || busy} accessibilityRole="button" accessibilityLabel={t("flow.comments.send")} style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accent, alignItems: "center", justifyContent: "center", opacity: text.value.trim() ? 1 : 0.4 }}>
         <Send size={20} color={colors.onAccent} />
       </Pressable>
     </View>
@@ -246,6 +250,7 @@ function NotePicker({ projectId, cardId, linked, onClose, onError }: { projectId
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
+  const firstInput = useRef<TextInput>(null);
   const [typed, setTyped] = useState("");
   const [term, setTerm] = useState("");
   const link = useLinkNote(projectId, cardId, { onError: (e) => onError(failureMessage(e, t("flow.notes.failed"))) });
@@ -255,10 +260,10 @@ function NotePicker({ projectId, cardId, linked, onClose, onError }: { projectId
   }, [typed]);
   const notes = useQuery({ queryKey: flowKeys.noteSearch(term), queryFn: () => notesApi.list(1, term || undefined) });
   return (
-    <BottomSheet open title={t("flow.notes.link")} onClose={onClose} testID="flow-note-picker" tall>
+    <BottomSheet focusRef={firstInput} open title={t("flow.notes.link")} onClose={onClose} testID="flow-note-picker" tall>
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, paddingHorizontal: metrics.space.md, backgroundColor: colors.surface, marginBottom: metrics.space.sm }}>
         <Search size={18} color={colors.inkMuted} />
-        <TextInput testID="flow-note-search" value={typed} onChangeText={setTyped} autoFocus placeholder={t("flow.notes.search")} placeholderTextColor={colors.inkMuted} accessibilityLabel={t("flow.notes.search")} style={{ flex: 1, minHeight: 44, color: colors.ink, fontSize: 16 }} />
+        <TextInput ref={firstInput} testID="flow-note-search" value={typed} onChangeText={setTyped} placeholder={t("flow.notes.search")} placeholderTextColor={colors.inkMuted} accessibilityLabel={t("flow.notes.search")} style={{ flex: 1, minHeight: 44, color: colors.ink, fontSize: 16 }} />
       </View>
       {notes.isPending ? <ActivityIndicator color={colors.inkMuted} /> : null}
       {notes.error ? <Retry error={notes.error} fallback={t("flow.notes.loadFailed")} onRetry={() => void notes.refetch()} /> : null}

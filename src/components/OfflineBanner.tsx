@@ -38,8 +38,12 @@ export function OfflineBanner({ children }: { children?: ReactNode }) {
   const { t } = useTranslation();
   const reachable = useReachability((s) => s.reachable);
   // The sentence may not promise what the screen under it does not do: the
-  // chat queues, the calendar deliberately does not (its SPEC §C.9).
-  const onCalendar = /^\/calendar(\/|$)/.test(usePathname() ?? "");
+  // chat queues, the calendar deliberately does not (its SPEC §C.9), and nor
+  // does Flow: a card added offline failed and was not sent later (device,
+  // 2026-11-20), under a banner saying it would be.
+  const path = usePathname() ?? "";
+  const onCalendar = /^\/calendar(\/|$)/.test(path);
+  const onFlow = /^\/flow(\/|$)/.test(path);
   const below = useMemo(() => (reachable ? insets : { ...insets, top: 0 }), [reachable, insets]);
 
   return (
@@ -60,7 +64,7 @@ export function OfflineBanner({ children }: { children?: ReactNode }) {
           <View style={{ backgroundColor: colors.ink, borderRadius: metrics.radius.pill, paddingHorizontal: metrics.space.md, paddingVertical: 4, maxWidth: "90%" }}>
             {/* ONE line: at two it was a whole header's height (2026-11-07). */}
             <Text variant="caption" numberOfLines={1} style={{ color: colors.ground, textAlign: "center" }}>
-              {onCalendar ? t("calendar.offlineBanner") : t("common.offlineBanner")}
+              {onCalendar ? t("calendar.offlineBanner") : onFlow ? t("flow.offlineBanner") : t("common.offlineBanner")}
             </Text>
           </View>
         </View>

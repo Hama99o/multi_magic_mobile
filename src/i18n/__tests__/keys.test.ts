@@ -203,6 +203,10 @@ const COMPOSED = [
   ...["kanban", "calendar", "gallery"].flatMap((v) => [`tables.viewsSheet.column.${v}`, `tables.viewsSheet.noColumn.${v}`]),
   // Reordering a card within its column (`table.tsx`, MoveWithin).
   ...["top", "up", "down"].map((v) => `tables.kanban.within.${v}`),
+  // The column editor (`FieldEditorSheet.tsx`): relations, rollup functions, why Save is off.
+  ...["one_to_many", "many_to_one", "one_to_one", "many_to_many"].flatMap((v) => [`tables.fieldEditor.relations.${v}.label`, `tables.fieldEditor.relations.${v}.sentence`]),
+  ...["count", "sum", "avg", "min", "max"].map((v) => `tables.fieldEditor.functions.${v}`),
+  ...["name", "options", "linkTable", "linkColumn", "target"].map((v) => `tables.fieldEditor.blocked.${v}`),
   // A refused comment file (`commentFiles.ts` CommentFileRefusal["why"]), t(`tables.activity.refused.${why}`).
   ...["type", "size", "count"].map((v) => `tables.activity.refused.${v}`),
   // t(`tables.find.${q.key}`) over the date filter's quick days (FilterSortSheet.tsx DateValue).
@@ -219,6 +223,9 @@ const PLURAL = new Set([
   "tables.tableCount",
   "tables.find.showCount",
   "tables.bulk.selected",
+  "tables.admin.cleared",
+  "tables.columns.deleteFilled",
+  "tables.columns.trashedLine",
   "tables.bulk.editTitle",
   "tables.bulk.hint",
   "tables.bulk.apply",

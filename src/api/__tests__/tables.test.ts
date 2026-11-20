@@ -387,3 +387,67 @@ describe("deleting a table or a base (the owner, 2026-11-20)", () => {
     expect(mock.history.delete[1].params).toBeUndefined();
   });
 });
+
+describe("admin (increment 6a): bases and tables, as the server names things", () => {
+  it("a new base posts its name, description, colour and first table; an edit patches only what changed", async () => {
+    mock.onPost(`${BASE}/bases`).reply(201, { base });
+    mock.onPatch(`${BASE}/bases/3`).reply(200, { base });
+    await tablesApi.createBase({ name: "Shop", description: "What we sell", color: "#10b981", firstTableName: "Items" });
+    await tablesApi.updateBase(3, { description: null });
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ base: { name: "Shop", description: "What we sell", color: "#10b981", first_table_name: "Items" } });
+    expect(JSON.parse(mock.history.patch[0].data)).toEqual({ base: { description: null } });
+  });
+
+  it("a table is made in its base, renamed or described by PATCH, duplicated with or without its rows", async () => {
+    mock.onPost(`${BASE}/bases/3/tables`).reply(201, table);
+    mock.onPatch(`${BASE}/tables/10`).reply(200, table);
+    mock.onPost(`${BASE}/tables/10/duplicate`).reply(201, table);
+    await tablesApi.createTable(3, "Suppliers");
+    await tablesApi.updateTable(10, { name: "Items", description: "What we sell" });
+    await tablesApi.duplicateTable(10, { withRows: false });
+    expect(mock.history.post.map((r) => [r.url, JSON.parse(r.data)])).toEqual([
+      [`${BASE}/bases/3/tables`, { table: { name: "Suppliers" } }],
+      [`${BASE}/tables/10/duplicate`, { with_rows: false }],
+    ]);
+    expect(JSON.parse(mock.history.patch[0].data)).toEqual({ table: { name: "Items", description: "What we sell" } });
+  });
+
+  it("clear data returns its batch, and the Undo restores THAT batch by its time, not by ids", async () => {
+    mock.onPost(`${BASE}/tables/10/clear`).reply(200, { deleted: 25, trashed_at: "2026-11-20T23:40:00.123456Z" });
+    mock.onPost(`${BASE}/tables/10/records/restore`).reply(200, { restored: 25 });
+    const cleared = await tablesApi.clearTable(10);
+    expect(cleared).toEqual({ deleted: 25, trashedAt: "2026-11-20T23:40:00.123456Z" });
+    expect(await tablesApi.restoreCleared(10, cleared.trashedAt)).toBe(25);
+    expect(JSON.parse(mock.history.post[1].data)).toEqual({ trashed_at: "2026-11-20T23:40:00.123456Z" });
+  });
+
+  it("the tabs reorder in one call with the base's table ids", async () => {
+    mock.onPost(`${BASE}/bases/3/tables/reorder`).reply(200, { ids: [11, 10] });
+    expect(await tablesApi.reorderTables(3, [11, 10])).toEqual([11, 10]);
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ ids: [11, 10] });
+  });
+});
+
+describe("columns (increment 6b): the web's column menu", () => {
+  const def = (id: number, name: string) => ({ field: field(id, name, "text") });
+  it("reads what a delete takes: filled rows, a link's other side, where titles show", async () => {
+    mock.onGet(`${BASE}/fields/3/usage`).reply(200, { usage: { filled_count: 7, row_count: 25, link: true, inverse: { name: "Items", table_name: "Offices" }, title_shown_in: [{ column: "Items", table: "Offices" }] } });
+    expect(await tablesApi.fieldUsage(3)).toEqual({ filledCount: 7, rowCount: 25, link: true, inverse: { name: "Items", tableName: "Offices" }, titleShownIn: [{ column: "Items", table: "Offices" }] });
+  });
+
+  it("duplicate says with or without values; delete, title and restore hit their own endpoints", async () => {
+    mock.onPost(`${BASE}/fields/2/duplicate`).reply(201, def(9, "Status (copie)"));
+    mock.onDelete(`${BASE}/fields/2`).reply(204);
+    mock.onPost(`${BASE}/fields/5/primary`).reply(200, def(5, "Phone"));
+    expect((await tablesApi.duplicateField(2, false)).id).toBe(9);
+    await tablesApi.deleteField(2);
+    expect((await tablesApi.setPrimaryField(5)).id).toBe(5);
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ with_values: false });
+    expect(mock.history.delete.map((r) => r.url)).toEqual([`${BASE}/fields/2`]);
+  });
+
+  it("the column trash lists deleted columns with when and how many values", async () => {
+    mock.onGet(`${BASE}/tables/10/fields/trashed`).reply(200, { fields: [{ id: 2, name: "Price", field_type: "decimal", deleted_at: "2026-11-20T10:00:00Z", purge_at: "2026-12-20T10:00:00Z", filled_count: 12 }] });
+    expect(await tablesApi.trashedFields(10)).toEqual([{ id: 2, name: "Price", fieldType: "decimal", deletedAt: "2026-11-20T10:00:00Z", purgeAt: "2026-12-20T10:00:00Z", filledCount: 12 }]);
+  });
+});

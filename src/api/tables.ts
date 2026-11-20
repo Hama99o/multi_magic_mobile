@@ -28,7 +28,7 @@ import { http } from "./http";
 import { absoluteUrl } from "./conversations";
 import { UPLOAD_TIMEOUT_MS } from "./ai";
 import { ApiShapeError, arr, id, obj, optStr, readable, readableRows, str } from "./parse";
-import { parseDefinitions, parseFieldValues, type FieldDefinition, type FieldValues, type Selection } from "./fields";
+import { parseDefinition, parseDefinitions, parseFieldValues, type FieldDefinition, type FieldValues, type Selection } from "./fields";
 
 const BASE = "/api/v1/table_app";
 
@@ -403,6 +403,25 @@ export interface HistoryItem {
 export const HISTORY_KINDS = ["rows", "columns", "imports", "links", "sharing", "table"] as const;
 export type HistoryKind = (typeof HISTORY_KINDS)[number];
 
+export interface FieldUsage {
+  filledCount: number;
+  rowCount: number;
+  link: boolean;
+  /** A link column's other side, which goes with it. */
+  inverse: { name: string; tableName: string } | null;
+  /** Where this table's row titles show (other tables' link columns): what "Use as title" changes. */
+  titleShownIn: { column: string; table: string }[];
+}
+
+export interface TrashedField {
+  id: number;
+  name: string;
+  fieldType: string;
+  deletedAt: string;
+  purgeAt: string | null;
+  filledCount: number;
+}
+
 export interface BaseMember {
   id: number;
   role: "editor" | "viewer";
@@ -555,6 +574,63 @@ export const tablesApi = {
   },
 
   /** Owners and editors (`TablePolicy#destroy?` = manage). Rows, views and the links pointing here go with it. */
+// ── Admin (increment 6a; the web's BaseForm, TableTabs and TableMenuPanels) ──
+
+  /** A new base, with its first table unless told otherwise. Anyone signed in (`BasePolicy#create?`). */
+  async createBase(input: { name: string; description?: string; color?: string; firstTableName?: string }): Promise<Base> {
+    const base: Record<string, unknown> = { name: input.name };
+    if (input.description !== undefined) base.description = input.description;
+    if (input.color !== undefined) base.color = input.color;
+    if (input.firstTableName) base.first_table_name = input.firstTableName;
+    const { data } = await http.post(`${BASE}/bases`, { base });
+    return parseBase(obj(data, "base response").base);
+  },
+
+  /** Name, description or colour. Editors (`BasePolicy#update?` is `manage?`). */
+  async updateBase(baseId: number, changes: { name?: string; description?: string | null; color?: string }): Promise<Base> {
+    const { data } = await http.patch(`${BASE}/bases/${baseId}`, { base: changes });
+    return parseBase(obj(data, "base response").base);
+  },
+
+  /** A new, empty table in the base (one text column, the server's default). Editors. */
+  async createTable(baseId: number, name: string): Promise<Table> {
+    const { data } = await http.post(`${BASE}/bases/${baseId}/tables`, { table: { name } });
+    return parseTable(obj(data, "table response").table);
+  },
+
+  /** Rename or describe a table. Editors. */
+  async updateTable(tableId: number, changes: { name?: string; description?: string | null }): Promise<Table> {
+    const { data } = await http.patch(`${BASE}/tables/${tableId}`, { table: changes });
+    return parseTable(obj(data, "table response").table);
+  },
+
+  /** A copy next to the original: its columns and default view, and every row unless `withRows` is false. Editors. */
+  async duplicateTable(tableId: number, opts: { withRows: boolean; name?: string }): Promise<Table> {
+    const { data } = await http.post(`${BASE}/tables/${tableId}/duplicate`, { with_rows: opts.withRows, ...(opts.name ? { name: opts.name } : {}) });
+    return parseTable(obj(data, "table response").table);
+  },
+
+  /** "Clear data": every row to the row trash, never deleted outright. The batch time is the Undo's key. Editors. */
+  async clearTable(tableId: number): Promise<{ deleted: number; trashedAt: string }> {
+    const { data } = await http.post(`${BASE}/tables/${tableId}/clear`);
+    const body = obj(data, "clear response");
+    return { deleted: typeof body.deleted === "number" ? body.deleted : 0, trashedAt: str(body.trashed_at, "clear.trashed_at") };
+  },
+
+  /** The Undo of "Clear data": that batch back from the trash, however many rows. */
+  async restoreCleared(tableId: number, trashedAt: string): Promise<number> {
+    const { data } = await http.post(`${BASE}/tables/${tableId}/records/restore`, { trashed_at: trashedAt });
+    const restored = obj(data, "restore response").restored;
+    return typeof restored === "number" ? restored : 0;
+  },
+
+  /** The base's tables in this order (the tabs). Editors. Tables left out keep their order after these. */
+  async reorderTables(baseId: number, ids: number[]): Promise<number[]> {
+    const { data } = await http.post(`${BASE}/bases/${baseId}/tables/reorder`, { ids });
+    const got = obj(data, "reorder response").ids;
+    return Array.isArray(got) ? got.filter((x): x is number => typeof x === "number") : ids;
+  },
+
   async deleteTable(tableId: number): Promise<void> {
     await http.delete(`${BASE}/tables/${tableId}`);
   },
@@ -642,6 +718,63 @@ export const tablesApi = {
   /** A deleted column back from the 30-day trash (history's Restore; editors and owners). */
   async restoreField(fieldId: number): Promise<void> {
     await http.post(`${BASE}/fields/${fieldId}/restore`);
+  },
+
+  // ── Columns (increment 6b; the web's ColumnHeader menu). Editors (`manage?`). ──
+
+  /** What deleting a column would take, for its confirm: how many rows hold a value, and a link's other side. */
+  async fieldUsage(fieldId: number): Promise<FieldUsage> {
+    const { data } = await http.get(`${BASE}/fields/${fieldId}/usage`);
+    const u = obj(obj(data, "usage response").usage, "usage");
+    const inv = u.inverse && typeof u.inverse === "object" ? (u.inverse as Record<string, unknown>) : null;
+    return {
+      filledCount: typeof u.filled_count === "number" ? u.filled_count : 0,
+      rowCount: typeof u.row_count === "number" ? u.row_count : 0,
+      link: u.link === true,
+      inverse: inv ? { name: optStr(inv.name) ?? "", tableName: optStr(inv.table_name) ?? "" } : null,
+      titleShownIn: readable(Array.isArray(u.title_shown_in) ? u.title_shown_in : [], (raw) => {
+        const x = obj(raw, "title_shown_in");
+        return { column: optStr(x.column) ?? "", table: optStr(x.table) ?? "" };
+      }),
+    };
+  },
+
+  /** A new column (6c). `body` is `fieldBody(...)` from the editor: the server's own names, as `fields#create` permits. */
+  async createField(tableId: number, body: { field: Record<string, unknown> }): Promise<FieldDefinition> {
+    const { data } = await http.post(`${BASE}/tables/${tableId}/fields`, body);
+    return parseDefinition(obj(data, "field response").field);
+  },
+
+  /** A column changed (6c): name, description, options, default, link or computed settings, or its type. */
+  async updateField(fieldId: number, body: { field: Record<string, unknown> }): Promise<FieldDefinition> {
+    const { data } = await http.patch(`${BASE}/fields/${fieldId}`, body);
+    return parseDefinition(obj(data, "field response").field);
+  },
+
+  /** "<name> (copie)" right after it, with its cells unless `withValues` is false. */
+  async duplicateField(fieldId: number, withValues: boolean): Promise<FieldDefinition> {
+    const { data } = await http.post(`${BASE}/fields/${fieldId}/duplicate`, { with_values: withValues });
+    return parseDefinition(obj(data, "field response").field);
+  },
+
+  /** To the column trash (it can come back from there or from the history). */
+  async deleteField(fieldId: number): Promise<void> {
+    await http.delete(`${BASE}/fields/${fieldId}`);
+  },
+
+  /** "Use as title". */
+  async setPrimaryField(fieldId: number): Promise<FieldDefinition> {
+    const { data } = await http.post(`${BASE}/fields/${fieldId}/primary`);
+    return parseDefinition(obj(data, "field response").field);
+  },
+
+  /** The column trash, newest first, with when each is purged. */
+  async trashedFields(tableId: number): Promise<TrashedField[]> {
+    const { data } = await http.get(`${BASE}/tables/${tableId}/fields/trashed`);
+    return readable(arr(obj(data, "trashed response").fields, "fields"), (raw) => {
+      const f = obj(raw, "trashed field");
+      return { id: id(f.id, "trashed.id"), name: optStr(f.name) ?? "", fieldType: optStr(f.field_type) ?? "", deletedAt: str(f.deleted_at, "trashed.deleted_at"), purgeAt: optStr(f.purge_at), filledCount: typeof f.filled_count === "number" ? f.filled_count : 0 };
+    });
   },
 
   async members(baseId: number): Promise<{ owner: { id: number; name: string; email: string }; members: BaseMember[] }> {

@@ -724,6 +724,216 @@ describe("manage the table's views (4b; the web's ViewSwitcher)", () => {
   });
 });
 
+describe("table and base admin (increment 6a; the web's tab menu and BaseForm)", () => {
+  const twoTables = (role: string) => mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }, { id: 11, name: "Orders", position: 1 }]), role }] });
+  beforeEach(() => {
+    mockParams.current = { id: "10", base: "3" };
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody());
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+    useTablesUndo.getState().clear();
+  });
+  afterEach(() => jest.restoreAllMocks());
+  const openMenu = async () => {
+    renderScreen(<TableScreen />);
+    await screen.findByText("Blue scarf");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    fireEvent.press(screen.getByTestId("tables-menu"));
+    return screen.findByTestId("tables-options");
+  };
+
+  it("rename and describe the table: one PATCH with both", async () => {
+    twoTables("editor");
+    mock.onPatch(`${B}/tables/10`).reply(200, tableBody());
+    fireEvent.press(await within(await openMenu()).findByText("Rename or describe the table"));
+    fireEvent.changeText(await screen.findByTestId("tables-rename-name"), "Stock");
+    fireEvent.changeText(screen.getByTestId("tables-rename-description"), "What is on the shelf");
+    fireEvent.press(screen.getByTestId("tables-rename-save"));
+    await waitFor(() => expect(mock.history.patch.map((r) => JSON.parse(r.data))).toEqual([{ table: { name: "Stock", description: "What is on the shelf" } }]));
+  });
+
+  it("duplicate with columns only opens the copy", async () => {
+    twoTables("editor");
+    const copy = tableBody();
+    copy.table.id = 12;
+    mock.onPost(`${B}/tables/10/duplicate`).reply(201, copy);
+    fireEvent.press(await within(await openMenu()).findByText("Duplicate the table"));
+    fireEvent.press(await within(await screen.findByTestId("tables-duplicate")).findByText("Columns only, no rows"));
+    await waitFor(() => expect(mock.history.post.map((r) => JSON.parse(r.data))).toEqual([{ with_rows: false }]));
+    await waitFor(() => expect(router.setParams).toHaveBeenCalledWith({ id: "12", view: undefined }));
+  });
+
+  it("clear the data asks first, sends every row to the trash, and Undo restores THAT batch", async () => {
+    twoTables("editor");
+    mock.onPost(`${B}/tables/10/clear`).reply(200, { deleted: 25, trashed_at: "2026-11-20T23:40:00.123456Z" });
+    mock.onPost(`${B}/tables/10/records/restore`).reply(200, { restored: 25 });
+    const alert = jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => buttons?.find((b) => b.style === "destructive")?.onPress?.());
+    fireEvent.press(await within(await openMenu()).findByText("Clear the data…"));
+    await waitFor(() => expect(alert).toHaveBeenCalled());
+    expect(alert.mock.calls[0][0]).toBe("Clear every row of Items?");
+    await waitFor(() => expect(useTablesUndo.getState().offer?.message).toBe("25 rows cleared"));
+    await act(async () => useTablesUndo.getState().offer?.undo?.());
+    expect(JSON.parse(mock.history.post.find((r) => r.url === `${B}/tables/10/records/restore`)!.data)).toEqual({ trashed_at: "2026-11-20T23:40:00.123456Z" });
+  });
+
+  it("a new table is made in this base and opens", async () => {
+    twoTables("editor");
+    const made = tableBody();
+    made.table.id = 13;
+    mock.onPost(`${B}/bases/3/tables`).reply(201, made);
+    fireEvent.press(await within(await openMenu()).findByText("New table"));
+    fireEvent.changeText(await screen.findByTestId("tables-new-table-name"), "Suppliers");
+    fireEvent.press(screen.getByTestId("tables-new-table-save"));
+    await waitFor(() => expect(router.setParams).toHaveBeenCalledWith({ id: "13", view: undefined }));
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ table: { name: "Suppliers" } });
+  });
+
+  it("order the tables: move one later and save, in one call", async () => {
+    twoTables("editor");
+    mock.onPost(`${B}/bases/3/tables/reorder`).reply(200, { ids: [11, 10] });
+    fireEvent.press(await within(await openMenu()).findByText("Order the tables"));
+    expect((await screen.findByTestId("tables-manage-save")).props.accessibilityState.disabled).toBe(true); // nothing moved yet
+    fireEvent.press(await screen.findByTestId("tables-manage-down-10"));
+    fireEvent.press(screen.getByTestId("tables-manage-save"));
+    await waitFor(() => expect(mock.history.post.map((r) => JSON.parse(r.data))).toEqual([{ ids: [11, 10] }]));
+  });
+
+  it("edit the base: its name, description and colour", async () => {
+    twoTables("editor");
+    mock.onPatch(`${B}/bases/3`).reply(200, { base: base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }]) });
+    fireEvent.press(await within(await openMenu()).findByText("Edit the base"));
+    fireEvent.press(await screen.findByTestId("tables-edit-base-color-6"));
+    fireEvent.press(screen.getByTestId("tables-edit-base-save"));
+    await waitFor(() => expect(mock.history.patch.map((r) => JSON.parse(r.data))).toEqual([{ base: { name: "[qa] Shop", description: null, color: "#ef4444" } }]));
+  });
+
+  it("a viewer is offered none of it", async () => {
+    twoTables("viewer");
+    const menu = await openMenu();
+    for (const label of ["Rename or describe the table", "Duplicate the table", "Clear the data…", "New table", "Order the tables", "Edit the base"]) expect(within(menu).queryByText(label)).toBeNull();
+  });
+
+  it("the bases list: + makes a new base (green by default, as the web) and opens its first table", async () => {
+    mock.onGet(`${B}/bases`).reply(200, { bases: [] });
+    mock.onPost(`${B}/bases`).reply(201, { base: base(9, "Family budget", [{ id: 90, name: "Table 1", position: 0 }]) });
+    renderScreen(<Bases />);
+    fireEvent.press(await screen.findByTestId("tables-new-base"));
+    fireEvent.changeText(await screen.findByTestId("tables-new-base-sheet-name"), "Family budget");
+    fireEvent.press(screen.getByTestId("tables-new-base-sheet-save"));
+    await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: "/tables/table", params: { id: "90", base: "9" } }));
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ base: { name: "Family budget", color: "#10b981" } });
+  });
+});
+
+describe("the table's columns (increment 6b; the web's column menu)", () => {
+  const editorBase = (role = "editor") => mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }]), role }] });
+  beforeEach(() => {
+    mockParams.current = { id: "10", base: "3" };
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody());
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+    mock.onGet(`${B}/tables/10/fields/trashed`).reply(200, { fields: [{ id: 8, name: "Price", field_type: "decimal", deleted_at: "2026-11-20T10:00:00Z", purge_at: null, filled_count: 12 }] });
+  });
+  afterEach(() => jest.restoreAllMocks());
+  const openColumns = async () => {
+    renderScreen(<TableScreen />);
+    await screen.findByText("Blue scarf");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    fireEvent.press(screen.getByTestId("tables-menu"));
+    fireEvent.press(await within(await screen.findByTestId("tables-options")).findByText("Columns"));
+    return screen.findByTestId("tables-columns");
+  };
+
+  it("delete says how many rows hold a value and the link's other side, then sends the column to the trash", async () => {
+    editorBase();
+    mock.onGet(`${B}/fields/3/usage`).reply(200, { usage: { filled_count: 7, row_count: 25, link: true, inverse: { name: "Items", table_name: "Offices" }, title_shown_in: [] } });
+    mock.onDelete(`${B}/fields/3`).reply(204);
+    const alert = jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => buttons?.find((b) => b.style === "destructive")?.onPress?.());
+    await openColumns();
+    fireEvent.press(screen.getByTestId("tables-columns-3-menu"));
+    fireEvent.press(screen.getByTestId("tables-columns-3-delete"));
+    await waitFor(() => expect(alert).toHaveBeenCalled());
+    expect(alert.mock.calls[0][0]).toBe("Delete the column Supplier?");
+    expect(alert.mock.calls[0][1]).toBe("7 of 25 rows have a value in it.\n\nIts other side goes too: Items in Offices.\n\nIt goes to the column trash, and can be restored from there.");
+    await waitFor(() => expect(mock.history.delete.map((r) => r.url)).toEqual([`${B}/fields/3`]));
+  });
+
+  it("use as title names where the row titles show; the title column offers neither title nor delete", async () => {
+    editorBase();
+    mock.onGet(`${B}/fields/5/usage`).reply(200, { usage: { filled_count: 1, row_count: 1, link: false, inverse: null, title_shown_in: [{ column: "Items", table: "Offices" }] } });
+    mock.onPost(`${B}/fields/5/primary`).reply(200, { field: field(5, "Phone", "phone") });
+    const alert = jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => buttons?.find((b) => b.text === "Use as title")?.onPress?.());
+    await openColumns();
+    fireEvent.press(screen.getByTestId("tables-columns-1-menu"));
+    expect(screen.queryByTestId("tables-columns-1-title")).toBeNull();
+    expect(screen.queryByTestId("tables-columns-1-delete")).toBeNull();
+    fireEvent.press(screen.getByTestId("tables-columns-5-menu"));
+    fireEvent.press(screen.getByTestId("tables-columns-5-title"));
+    await waitFor(() => expect(alert).toHaveBeenCalled());
+    expect(String(alert.mock.calls[0][1])).toContain("In Offices, column Items");
+    await waitFor(() => expect(mock.history.post.map((r) => r.url)).toEqual([`${B}/fields/5/primary`]));
+  });
+
+  it("duplicate asks with or without values; a deleted column comes back from the trash", async () => {
+    editorBase();
+    mock.onPost(`${B}/fields/2/duplicate`).reply(201, { field: field(9, "Status (copie)", "single_select") });
+    mock.onPost(`${B}/fields/8/restore`).reply(200, {});
+    jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => buttons?.find((b) => b.text === "With its values")?.onPress?.());
+    await openColumns();
+    fireEvent.press(screen.getByTestId("tables-columns-2-menu"));
+    fireEvent.press(screen.getByTestId("tables-columns-2-duplicate"));
+    await waitFor(() => expect(mock.history.post.map((r) => JSON.parse(r.data ?? "{}"))).toEqual([{ with_values: true }]));
+    fireEvent.press(await screen.findByTestId("tables-columns-restore-8"));
+    await waitFor(() => expect(mock.history.post.map((r) => r.url)).toContain(`${B}/fields/8/restore`));
+  });
+
+  it("6c: add a single-choice column with two options and a default, posted in the server's names", async () => {
+    editorBase();
+    mock.onPost(`${B}/tables/10/fields`).reply(201, { field: field(9, "Size", "single_select") });
+    await openColumns();
+    fireEvent.press(screen.getByTestId("tables-columns-add"));
+    const name = await screen.findByTestId("tables-field-editor-name");
+    expect(screen.getByTestId("tables-field-editor-blocked").props.children).toBe("Give the column a name."); // why Save is off, said
+    fireEvent.changeText(name, "Size");
+    expect(screen.queryByTestId("tables-field-editor-blocked")).toBeNull();
+    fireEvent.press(screen.getByTestId("tables-field-editor-type-single_select"));
+    expect(screen.getByTestId("tables-field-editor-save").props.accessibilityState.disabled).toBe(true); // a select needs an option
+    fireEvent.press(screen.getByTestId("tables-field-editor-option-add"));
+    fireEvent.changeText(screen.getByTestId("tables-field-editor-option-0-label"), "Small");
+    fireEvent.press(screen.getByTestId("tables-field-editor-option-add"));
+    fireEvent.changeText(screen.getByTestId("tables-field-editor-option-1-label"), "Large");
+    fireEvent.press(screen.getByTestId("tables-field-editor-option-1-up"));
+    fireEvent.press(screen.getByText("Large", { exact: true }));
+    fireEvent.press(screen.getByTestId("tables-field-editor-save"));
+    await waitFor(() => expect(mock.history.post.filter((r) => r.url === `${B}/tables/10/fields`)).toHaveLength(1));
+    const body = JSON.parse(mock.history.post.find((r) => r.url === `${B}/tables/10/fields`)!.data);
+    expect(body.field).toMatchObject({ name: "Size", description: "", field_type: "single_select", default_value: "Large" });
+    expect(body.field.options.map((o: { label: string }) => o.label)).toEqual(["Large", "Small"]);
+    expect(body.field.options.every((o: { value?: string }) => o.value === undefined)).toBe(true); // new options: the server names them
+  });
+
+  it("6c: editing a column's type warns that its values convert, and sends the new type", async () => {
+    editorBase();
+    mock.onPatch(`${B}/fields/5`).reply(200, { field: field(5, "Phone", "text") });
+    await openColumns();
+    fireEvent.press(screen.getByTestId("tables-columns-5-menu"));
+    fireEvent.press(screen.getByTestId("tables-columns-5-edit"));
+    expect(await screen.findByTestId("tables-field-editor-name")).toBeTruthy();
+    expect(screen.queryByTestId("tables-field-editor-type-warning")).toBeNull();
+    fireEvent.press(screen.getByTestId("tables-field-editor-type-text"));
+    expect(screen.getByTestId("tables-field-editor-type-warning")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("tables-field-editor-save"));
+    await waitFor(() => expect(mock.history.patch.map((r) => JSON.parse(r.data))).toEqual([{ field: { name: "Phone", description: "", field_type: "text", default_value: null } }]));
+  });
+
+  it("a viewer has no Columns entry", async () => {
+    editorBase("viewer");
+    renderScreen(<TableScreen />);
+    await screen.findByText("Blue scarf");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    fireEvent.press(screen.getByTestId("tables-menu"));
+    expect(within(await screen.findByTestId("tables-options")).queryByText("Columns")).toBeNull();
+  });
+});
+
 describe("delete a table or a base by its exact name (the owner, 2026-11-20)", () => {
   const qaTable = () => {
     const b = tableBody();

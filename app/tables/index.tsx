@@ -15,11 +15,14 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { failureMessage } from "@/api/failure";
 import { ActionSheet } from "@/screens/contacts/ActionSheet";
 import { DeleteByNameSheet } from "@/screens/tables/DeleteByNameSheet";
+import { NameSheet } from "@/screens/tables/AdminSheets";
+import { DEFAULT_BASE_COLOR } from "@/screens/tables/palette";
+import { canEditRows } from "@/screens/tables/logic";
 import { UndoToast } from "@/components/UndoToast";
 import { useTablesUndo } from "@/stores/tablesUndo.store";
 import { tablesKeys } from "@/api/keys";
 import { BASE_SORTS, tablesApi, type Base, type BaseSort } from "@/api/tables";
-import { Search, Table2, Trash2, X } from "@/components/icons";
+import { Palette, Plus, Search, Table2, Trash2, X } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { Text } from "@/components/reusables/text";
@@ -63,6 +66,30 @@ export default function TablesScreen() {
   };
   const shown = useMemo(() => (bases.data ?? []).filter((b) => baseMatches(b, term)), [bases.data, term]);
 
+  // Increment 6a: a new base (anyone signed in), and a base's name, description and colour (its editors).
+  const [form, setForm] = useState<{ base: Base | null } | null>(null);
+  const saveBase = async (v: { name: string; description: string | null; color: string | null }) => {
+    setBusy(true);
+    setError(null);
+    try {
+      if (form?.base) {
+        await tablesApi.updateBase(form.base.id, { name: v.name, description: v.description, ...(v.color ? { color: v.color } : {}) });
+        setForm(null);
+        await client.invalidateQueries({ queryKey: tablesKeys.baseLists() });
+      } else {
+        const made = await tablesApi.createBase({ name: v.name, ...(v.description ? { description: v.description } : {}), ...(v.color ? { color: v.color } : {}) });
+        setForm(null);
+        await client.invalidateQueries({ queryKey: tablesKeys.baseLists() });
+        const first = made.tables[0];
+        if (first) router.push({ pathname: "/tables/table", params: { id: String(first.id), base: String(made.id) } });
+      }
+    } catch (e) {
+      setError(failureMessage(e, t("tables.admin.failed")));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Screen measure>
       <AppHeader app="tables" />
@@ -86,6 +113,18 @@ export default function TablesScreen() {
           style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
         >
           {searching ? <X size={22} color={colors.ink} /> : <Search size={22} color={colors.ink} />}
+        </Pressable>
+        <Pressable
+          testID="tables-new-base"
+          onPress={() => {
+            setError(null);
+            setForm({ base: null });
+          }}
+          accessibilityRole="button"
+          accessibilityLabel={t("tables.admin.newBase")}
+          style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
+        >
+          <Plus size={22} color={colors.ink} />
         </Pressable>
       </View>
       {searching ? (
@@ -122,7 +161,7 @@ export default function TablesScreen() {
             )
           ) : null
         }
-        renderItem={({ item, index }) => <BaseRow base={item} index={index} onMenu={item.role === "owner" ? () => setMenuFor(item) : undefined} />}
+        renderItem={({ item, index }) => <BaseRow base={item} index={index} onMenu={canEditRows(item.role) ? () => setMenuFor(item) : undefined} />}
         ItemSeparatorComponent={() => <View style={{ height: metrics.space.sm }} />}
         refreshControl={<RefreshControl refreshing={bases.isRefetching} onRefresh={() => void bases.refetch()} tintColor={colors.inkMuted} />}
         keyboardShouldPersistTaps="handled"
@@ -131,12 +170,35 @@ export default function TablesScreen() {
       <ActionSheet
         open={menuFor !== null}
         title={menuFor?.name ?? ""}
-        actions={menuFor ? [{ key: "delete", label: t("tables.remove.baseAction"), icon: Trash2, danger: true, onPress: () => { const b = menuFor; setTimeout(() => setDeletingBase(b), 320); } }] : []}
+        actions={
+          menuFor
+            ? [
+                { key: "edit", label: t("tables.admin.editBase"), icon: Palette, onPress: () => { const b = menuFor; setTimeout(() => { setError(null); setForm({ base: b }); }, 320); } },
+                // Deleting a base stays the owner's (`BasePolicy#destroy?`).
+                ...(menuFor.role === "owner" ? [{ key: "delete", label: t("tables.remove.baseAction"), icon: Trash2, danger: true, onPress: () => { const b = menuFor; setTimeout(() => setDeletingBase(b), 320); } }] : []),
+              ]
+            : []
+        }
         onClose={() => setMenuFor(null)}
         testID="tables-base-menu"
       />
       {deletingBase ? (
         <DeleteByNameSheet kind="base" name={deletingBase.name} consequence={t("tables.remove.baseImpact", { count: deletingBase.tables.length, rows: deletingBase.rowCount })} busy={busy} error={error} onDelete={(typed) => void removeBase(deletingBase, typed)} onClose={() => { setDeletingBase(null); setError(null); }} />
+      ) : null}
+      {form ? (
+        <NameSheet
+          title={form.base ? t("tables.admin.editBase") : t("tables.admin.newBase")}
+          initial={form.base ? { name: form.base.name, description: form.base.description, color: form.base.color } : { name: "", description: "", color: DEFAULT_BASE_COLOR }}
+          withDescription
+          withColor
+          saveLabel={form.base ? t("tables.admin.save") : t("tables.admin.create")}
+          note={form.base ? t("tables.admin.baseNote") : t("tables.admin.newBaseNote")}
+          busy={busy}
+          error={error}
+          onSave={(v) => void saveBase(v)}
+          onClose={() => setForm(null)}
+          testID={form.base ? "tables-edit-base" : "tables-new-base-sheet"}
+        />
       ) : null}
       <UndoToast offer={offer} onDone={clearOffer} testID="tables-bases-toast" />
     </Screen>

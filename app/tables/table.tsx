@@ -47,6 +47,7 @@ import { FilterSortSheet } from "@/screens/tables/FilterSortSheet";
 import { FieldsSheet } from "@/screens/tables/FieldsSheet";
 import { SaveViewSheet } from "@/screens/tables/SaveViewSheet";
 import { ViewsSheet } from "@/screens/tables/ViewsSheet";
+import { useTableAdmin } from "@/screens/tables/useTableAdmin";
 import { DeleteByNameSheet } from "@/screens/tables/DeleteByNameSheet";
 import { BulkEditSheet } from "@/screens/tables/BulkEditSheet";
 import { ShareSheet } from "@/screens/tables/ShareSheet";
@@ -258,6 +259,7 @@ export default function TableScreen() {
     router.push({ pathname: "/tables/record", params: { table: String(tableId), id: String(row.id), q: queryKey, ...(view ? { view: String(view.id) } : {}) } });
 
   const switchTable = (id: number) => router.setParams({ id: String(id), view: undefined });
+  const admin = useTableAdmin({ table: table.data, base, editable, onOpenTable: switchTable });
 
   const menu: SheetAction[] = [
     { key: "ask", label: t("tables.ask"), icon: Sparkles, onPress: () => ask(t("tables.askQuestion", { table: table.data?.name ?? "", base: base?.name ?? "" })) },
@@ -266,6 +268,7 @@ export default function TableScreen() {
     { key: "activity", label: t("tables.activity.open"), icon: MessageSquareText, onPress: () => router.push({ pathname: "/tables/activity", params: { table: String(tableId) } }) },
     ...(personal && editable ? [{ key: "save", label: t("tables.saveView.title"), hint: t("tables.saveView.hint"), icon: Save, onPress: () => setTimeout(() => setSheet("save"), 320) }] : []),
     ...(personal ? [{ key: "reset", label: t("tables.backToShared"), hint: t("tables.backToSharedHint"), icon: RotateCcw, onPress: reset }] : []),
+    ...admin.actions,
     // The owner, 2026-11-20: a table and a base can be deleted from the phone, by typing the name.
     ...(editable ? [{ key: "deleteTable", label: t("tables.remove.tableAction"), icon: Trash2, danger: true, onPress: () => setTimeout(() => setSheet("deleteTable"), 320) }] : []),
     ...(base?.role === "owner" ? [{ key: "deleteBase", label: t("tables.remove.baseAction"), icon: Trash2, danger: true, onPress: () => setTimeout(() => setSheet("deleteBase"), 320) }] : []),
@@ -701,6 +704,7 @@ export default function TableScreen() {
         />
       ) : null}
       <ActionSheet open={sheet === "menu"} title={table.data?.name ?? ""} actions={menu} onClose={() => setSheet(null)} testID="tables-options" />
+      {admin.sheets}
     </Screen>
   );
 }

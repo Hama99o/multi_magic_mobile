@@ -1,5 +1,6 @@
 import type { RecordRow } from "@/api/tables";
 import { newestProven } from "../logic";
+import { moveTable } from "../AdminSheets";
 
 const row = (id: number, createdAt: string): RecordRow => ({ id, position: id, createdAt, updatedAt: createdAt, values: {}, linkLabels: {}, linkCounts: {} });
 
@@ -33,5 +34,15 @@ describe("the typed name must be the name EXACTLY (the owner, 2026-11-20)", () =
     expect(nameMatches("Ete", "Été")).toBe(false);
     expect(nameMatches("été", "Été")).toBe(false);
     expect(nameMatches("Été", "Été")).toBe(true);
+  });
+});
+
+describe("moveTable (6a: the tables in order)", () => {
+  it("moves one place either way and keeps the rest in order; an edge or an unknown id changes nothing", () => {
+    expect(moveTable([10, 11, 12], 10, 1)).toEqual([11, 10, 12]);
+    expect(moveTable([10, 11, 12], 12, -1)).toEqual([10, 12, 11]);
+    expect(moveTable([10, 11, 12], 10, -1)).toEqual([10, 11, 12]);
+    expect(moveTable([10, 11, 12], 12, 1)).toEqual([10, 11, 12]);
+    expect(moveTable([10, 11, 12], 99, 1)).toEqual([10, 11, 12]);
   });
 });

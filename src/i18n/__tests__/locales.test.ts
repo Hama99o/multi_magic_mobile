@@ -74,6 +74,12 @@ const SAME_IN_BOTH = new Set([
   "tables.activity.attachPhotos",
   // "Type", the same word in both (the new view sheet).
   "tables.viewsSheet.type",
+  // "Description", the same word in both (the admin sheets).
+  "tables.admin.description",
+  "tables.fieldEditor.description",
+  "tables.fieldEditor.type",
+  "tables.fieldEditor.options",
+  "tables.fieldEditor.optionLabel",
   "fields.more_one",
   "fields.more_other",
   // Signs and letters (the web's French keeps them): >, ≥, <, ≤, A → Z, 1 → 9.

@@ -36,7 +36,7 @@ describe("inAppRoute", () => {
   });
 
   it("records the app has no screen for stay on the web", () => {
-    expect(inAppRoute({ key: "flow_card", path: "/flow/3/cards/9", label: null })).toBeNull();
+    expect(inAppRoute({ key: "table_app_record", path: "/tables/2/5?record=9", label: null })).toBeNull();
     expect(inAppRoute({ key: null, path: null, label: null })).toBeNull();
   });
 
@@ -65,6 +65,21 @@ describe("inAppRoute", () => {
     expect(routeForWebPath("/todos?group=2&task=9")).toEqual({ pathname: "/todos/list", params: { id: "2", task: "9" } });
     expect(inAppRoute({ key: "todos", path: "/todos", label: null })).toBe("/todos");
     expect(routeForWebPath("/todos")).toBe("/todos");
+  });
+
+  // Flow (2026-11-20). Paths per `frontend_routes.rb:40-41`; the web's board
+  // opens a card as a drawer (`/flow/7?card=12`).
+  it("a Flow project opens its board and a Flow card opens the card", () => {
+    expect(inAppRoute({ key: "flow_project", path: "/flow/7", label: null })).toEqual({ pathname: "/flow/board", params: { id: "7" } });
+    expect(inAppRoute({ key: "flow_card", path: "/flow/7/cards/12", label: null })).toEqual({ pathname: "/flow/card", params: { projectId: "7", id: "12" } });
+    expect(routeForWebPath("/flow/7?card=12")).toEqual({ pathname: "/flow/card", params: { projectId: "7", id: "12" } });
+    expect(routeForWebPath("/flow")).toBe("/flow");
+    expect(routeForWebPath("/flow/backlog")).toEqual({ pathname: "/flow", params: { tab: "backlog" } });
+  });
+
+  it("a Flow link that cannot be read is not guessed", () => {
+    expect(routeForWebPath("/flow/7?card=x")).toBeNull();
+    expect(inAppRoute({ key: "flow_card", path: "/flow/x/cards/1", label: null })).toBe("/flow");
   });
 
   it("a todo link whose list id cannot be read is not guessed", () => {

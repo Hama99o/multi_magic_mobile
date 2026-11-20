@@ -31,6 +31,14 @@ describe("placeFor: what the current screen saves", () => {
     expect(placeFor("/calendar/event", { id: "5", on: "2026-11-20" })).toEqual({ app: "calendar", root: "/calendar", sub: { kind: "event", id: 5, on: "2026-11-20" } });
   });
 
+  it("a Flow board is a record to re-open; a card is not a place, and the Backlog tab is kept", () => {
+    expect(placeFor("/flow/board", { id: "7" })).toEqual({ app: "flow", root: "/flow", sub: { kind: "board", id: 7 } });
+    expect(placeFor("/flow/card", { projectId: "7", id: "12" })).toBeNull();
+    expect(placeFor("/flow", { tab: "backlog" })).toEqual({ app: "flow", root: "/flow?tab=backlog" });
+    expect(placeFor("/flow/columns", { id: "7" })).toEqual({ app: "flow", root: "/flow" });
+    expect(parsePlace(JSON.stringify({ v: 2, app: "flow", root: "/flow?tab=backlog", sub: { kind: "board", id: 7 }, userId: 1 }))).toEqual({ v: 2, app: "flow", root: "/flow?tab=backlog", sub: { kind: "board", id: 7 }, userId: 1 });
+  });
+
   it("Finance's own lists are screens to re-open", () => {
     expect(placeFor("/finance/recurring", {})).toEqual({ app: "finance", root: "/finance", sub: { kind: "screen", path: "/finance/recurring" } });
     expect(placeFor("/finance/reports", {})).toEqual({ app: "finance", root: "/finance", sub: { kind: "screen", path: "/finance/reports" } });

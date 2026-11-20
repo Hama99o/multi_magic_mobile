@@ -1,5 +1,6 @@
 import { accountFr } from "./account/fr";
 import { financeFr } from "./finance/fr";
+import { docFr } from "./doc/fr";
 import { loansFr } from "./finance/loans.fr";
 import { manageFr } from "./finance/manage.fr";
 /**
@@ -1320,6 +1321,7 @@ export const fr: Translations = {
     contactsBody: "Vos proches, à un geste d’un appel",
     todosBody: "Vos listes et ce qui arrive",
     financeBody: "Dépenses, revenus, prêts et budgets",
+    docBody: "Signer, fusionner et convertir PDF et photos",
     safezoneBody: "Mots de passe, cartes et papiers, derrière votre code",
     calendarBody: "Ce qui arrive",
     conversationsBody: "Vos questions passées",
@@ -1425,6 +1427,7 @@ export const fr: Translations = {
     intervalMore: "Plus espacé",
   },
   finance: { ...financeFr, loans: loansFr, manage: manageFr },
+  doc: docFr,
   richText: {
     done: "OK",
     placeholder: "Écrivez quelque chose",

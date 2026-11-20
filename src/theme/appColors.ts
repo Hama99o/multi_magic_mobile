@@ -16,13 +16,15 @@
  */
 import { CATEGORY_COLORS, TOKENS } from "./tokens";
 
-export const HOME_APPS = ["pages", "notes", "assistant", "chats", "notifications", "calendar", "contacts", "safezone", "conversations", "todos", "finance"] as const;
+export const HOME_APPS = ["pages", "notes", "assistant", "chats", "notifications", "calendar", "contacts", "safezone", "conversations", "todos", "finance", "doc"] as const;
 export type HomeApp = (typeof HOME_APPS)[number];
 
 const [BLUE, GREEN, ORANGE, PINK, PURPLE, TEAL, YELLOW, CORAL] = CATEGORY_COLORS;
 export const INDIGO = "#8b93e0";
 export const LIME = "#a7c957";
 export const GOLD = "#c9a227";
+/** Doc Tools (2026-11-20): slate, not a PDF red — red is `danger` here (docs/design/doc/SPEC.md). */
+export const SLATE = "#7a9cc6";
 
 export const APP_COLORS: Record<HomeApp, string> = {
   pages: TEAL,
@@ -36,6 +38,7 @@ export const APP_COLORS: Record<HomeApp, string> = {
   conversations: INDIGO,
   todos: LIME,
   finance: GOLD,
+  doc: SLATE,
 };
 
 /** The Assistant's badge: a gradient between two of the icon's colours. */

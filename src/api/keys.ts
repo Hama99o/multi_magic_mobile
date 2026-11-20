@@ -176,3 +176,18 @@ export const financeKeys = {
   cashFlow: <C extends string>(currency: C) => ["finance", "cashFlow", currency] as const,
   trash: <K extends "expenses" | "incomes" | "loans">(kind: K) => ["finance", "trash", kind] as const,
 };
+
+/**
+ * Doc Tools. Every tool call is stateless, so the only cached reads are the
+ * signatures and, per picked file (its cache uri), what the server said about
+ * it: its inspection, a page drawn at a width, every page small.
+ */
+export const docKeys = {
+  all: ["doc"] as const,
+  signatures: () => ["doc", "signatures"] as const,
+  inspect: <U extends string>(uri: U) => ["doc", "inspect", uri] as const,
+  page: <U extends string, P extends number, W extends number>(uri: U, page: P, width: W) => ["doc", "page", uri, page, width] as const,
+  thumbs: <U extends string, W extends number>(uri: U, width: W) => ["doc", "thumbs", uri, width] as const,
+  /** A picture the phone cannot draw, as the server's JPEG copy. */
+  preview: <U extends string>(uri: U) => ["doc", "preview", uri] as const,
+};

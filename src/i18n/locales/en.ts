@@ -1,5 +1,6 @@
 import { accountEn } from "./account/en";
 import { financeEn } from "./finance/en";
+import { docEn } from "./doc/en";
 import { loansEn } from "./finance/loans.en";
 import { manageEn } from "./finance/manage.en";
 /**
@@ -1304,6 +1305,7 @@ export const en = {
     contactsBody: "Everyone you know, one tap to call",
     todosBody: "Lists and what is due",
     financeBody: "Spending, income, loans and budgets",
+    docBody: "Sign, merge and convert PDFs and photos",
     safezoneBody: "Passwords, cards and IDs, behind your PIN",
     calendarBody: "What's next",
     conversationsBody: "Your past questions",
@@ -1409,6 +1411,7 @@ export const en = {
     intervalMore: "More apart",
   },
   finance: { ...financeEn, loans: loansEn, manage: manageEn },
+  doc: docEn,
   richText: {
     done: "Done",
     placeholder: "Write something",

@@ -14,7 +14,7 @@ import { ActivityIndicator, Alert, Pressable, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { Image as ExpoImage } from "expo-image";
 import { DocError, type CallOptions, type DocFile, type DocResult, type Progress } from "@/api/doc";
-import { Camera, File as FileIcon, FileText, Images, Plus, ScanLine, X, type LucideIcon } from "@/components/icons";
+import { Camera, File as FileIcon, FileImage, FileText, Images, Plus, ScanLine, X, type LucideIcon } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -146,6 +146,7 @@ export function IntakeCard({ icon: Icon, help, limits, onAdd, testID }: { icon: 
 
 /** One file, with its size, an optional note, and a way to take it away. */
 export function FileRow({ file, note, onClear, right }: { file: DocFile; note?: string | null; onClear?: () => void; right?: ReactNode }) {
+  const [thumbFailed, setThumbFailed] = useState(false);
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
@@ -155,8 +156,11 @@ export function FileRow({ file, note, onClear, right }: { file: DocFile; note?: 
       testID="doc-file-row"
       style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.md, padding: metrics.space.md, borderRadius: metrics.radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
     >
-      {kind === "image" ? (
-        <ExpoImage source={{ uri: file.uri }} style={{ width: 40, height: 40, borderRadius: 6, backgroundColor: colors.border }} contentFit="cover" accessible={false} />
+      {kind === "image" && !thumbFailed ? (
+        // A picture the phone cannot decode (a 10-bit HEIC, a TIFF) gets the icon instead of a grey square.
+        <ExpoImage source={{ uri: file.uri }} style={{ width: 40, height: 40, borderRadius: 6, backgroundColor: colors.border }} contentFit="cover" accessible={false} onError={() => setThumbFailed(true)} />
+      ) : kind === "image" ? (
+        <FileImage size={28} color={colors.inkMuted} />
       ) : (
         <FileText size={28} color={colors.inkMuted} />
       )}

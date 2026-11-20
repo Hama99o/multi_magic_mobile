@@ -28,6 +28,7 @@
  */
 import axios, { type AxiosProgressEvent, type AxiosResponse } from "axios";
 import { Directory, File, Paths } from "expo-file-system";
+import { absoluteUrl } from "./conversations";
 import { http } from "./http";
 import { arr, id, num, obj, optStr, readableRows, str } from "./parse";
 
@@ -39,7 +40,8 @@ export const DOC_MAX_MERGE_FILES = 30;
 export const DOC_PER_PAGE_LIMIT = 20;
 
 /** A slow tool: poppler has 20 s for one page plus 1–3 s per extra page. */
-const TOOL_TIMEOUT_MS = 180_000;
+export const DOC_TOOL_TIMEOUT_MS = 180_000;
+const TOOL_TIMEOUT_MS = DOC_TOOL_TIMEOUT_MS;
 
 /** A file the phone holds: picked, photographed, or a previous result. */
 export interface DocFile {
@@ -223,18 +225,33 @@ export function docError(error: unknown): DocError {
 }
 
 async function post<T>(path: string, data: FormData, opts: CallOptions | undefined, binary: boolean): Promise<AxiosResponse<T>> {
+  // Our own clock as well as axios's: on qa_phone3 a connection the server
+  // dropped mid-request (a killed worker) left the phone "working" for over
+  // four minutes, past the 180 s timeout. Whatever the transport does, the
+  // call ends here, said as "stopped answering" (reason `offline`).
+  const guard = new AbortController();
+  let timedOut = false;
+  const timer = setTimeout(() => {
+    timedOut = true;
+    guard.abort();
+  }, TOOL_TIMEOUT_MS);
+  const relay = () => guard.abort();
+  opts?.signal?.addEventListener("abort", relay);
   try {
     const res = await http.post<T>(`/api/v1/doc_app/${path}`, data, {
       headers: { "Content-Type": "multipart/form-data" },
       timeout: TOOL_TIMEOUT_MS,
-      signal: opts?.signal,
+      signal: guard.signal,
       onUploadProgress: progressHandler(opts),
       ...(binary ? { responseType: "arraybuffer" as const } : {}),
     });
     opts?.onProgress?.({ sent: 1, working: false });
     return res;
   } catch (error) {
-    throw docError(error);
+    throw timedOut ? new DocError("offline") : docError(error);
+  } finally {
+    clearTimeout(timer);
+    opts?.signal?.removeEventListener("abort", relay);
   }
 }
 
@@ -358,7 +375,8 @@ export function parseSignature(raw: unknown): Signature {
     color: optStr(s.color),
     fontSize: typeof s.font_size === "number" ? s.font_size : null,
     active: s.active === true,
-    imageUrl: optStr(s.image_url),
+    // The server names its own host; "localhost" from a phone is the phone.
+    imageUrl: absoluteUrl(optStr(s.image_url)),
     updatedAt: optStr(s.updated_at) ?? "",
   };
 }

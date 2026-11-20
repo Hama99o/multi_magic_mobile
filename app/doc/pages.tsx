@@ -68,9 +68,11 @@ export default function PagesScreen() {
     setEntries(last);
   };
 
-  const contentWidth = Math.min(width, metrics.maxMeasure * 1.4) - metrics.space.lg * 2;
+  // The grid's own width, measured: computed from the window it missed the
+  // screen's padding and wrapped to ONE column at 360 dp (qa_phone3).
+  const [gridWidth, setGridWidth] = useState(0);
   const columns = width >= 800 ? 5 : width >= 600 ? 4 : width >= 400 ? 3 : 2;
-  const cell = Math.floor((contentWidth - metrics.space.sm * (columns - 1)) / columns);
+  const cell = gridWidth ? Math.floor((gridWidth - metrics.space.sm * (columns - 1)) / columns) : 0;
   const thumbOf = (source: number) => thumbs.data?.pages.find((p) => p.index === source);
 
   const base = file ? baseName(file.name) : "document";
@@ -116,7 +118,7 @@ export default function PagesScreen() {
           <>
             <FileRow
               file={file}
-              note={entries.length ? t("doc.pages.count", { count: entries.length }) : t("doc.file.checking")}
+              note={entries.length ? t("doc.pages.count", { count: entries.length }) : problem ? null : t("doc.file.checking")}
               right={
                 <Pressable onPress={intake.openSheet} accessibilityRole="button" accessibilityLabel={t("doc.intake.change")} style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }} testID="doc-pages-change">
                   <Text variant="label" tone="accent">
@@ -154,8 +156,8 @@ export default function PagesScreen() {
                 {entries.length === 0 ? (
                   <Text tone="muted">{t("doc.pages.allRemoved")}</Text>
                 ) : (
-                  <View style={{ flexDirection: "row", flexWrap: "wrap", gap: metrics.space.sm }} testID="doc-pages-grid">
-                    {entries.map((e, i) => {
+                  <View onLayout={(e) => setGridWidth(e.nativeEvent.layout.width)} style={{ flexDirection: "row", flexWrap: "wrap", gap: metrics.space.sm }} testID="doc-pages-grid">
+                    {cell > 0 && entries.map((e, i) => {
                       const th = thumbOf(e.source);
                       const on = sel.has(e.key);
                       return (
@@ -191,24 +193,6 @@ export default function PagesScreen() {
                     })}
                   </View>
                 )}
-                {sel.size ? (
-                  <View testID="doc-pages-bar" style={{ flexDirection: "row", borderRadius: metrics.radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
-                    <BarItem icon={RotateCcw} label={t("doc.pages.rotateLeft")} onPress={() => edit(rotate(entries, sel, -90))} testID="doc-pages-rotate-left" />
-                    <BarItem icon={RotateCw} label={t("doc.pages.rotateRight")} onPress={() => edit(rotate(entries, sel, 90))} testID="doc-pages-rotate-right" />
-                    <BarItem icon={ArrowUp} label={t("doc.pages.moveBack")} onPress={() => edit(moveSelected(entries, sel, -1))} testID="doc-pages-earlier" />
-                    <BarItem icon={ArrowDown} label={t("doc.pages.moveForward")} onPress={() => edit(moveSelected(entries, sel, 1))} testID="doc-pages-later" />
-                    <BarItem
-                      icon={Trash2}
-                      danger
-                      label={t("doc.pages.deletePage")}
-                      onPress={() => {
-                        edit(remove(entries, sel));
-                        setSelected(new Set());
-                      }}
-                      testID="doc-pages-delete"
-                    />
-                  </View>
-                ) : null}
                 <BusyCard task={task} />
                 <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} />
                 <Button testID="doc-pages-save" label={t("doc.pages.saveAll")} disabled={task.busy || entries.length === 0} onPress={() => void save("all")} />
@@ -225,6 +209,25 @@ export default function PagesScreen() {
           </>
         )}
       </ScrollView>
+      {/* Pinned while pages are selected: under a long grid it was a scroll away (measured on qa_phone3). */}
+      {file && thumbs.data && sel.size ? (
+                  <View testID="doc-pages-bar" style={{ flexDirection: "row", marginHorizontal: metrics.space.lg, marginBottom: metrics.space.sm, borderRadius: metrics.radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}>
+                    <BarItem icon={RotateCcw} label={t("doc.pages.rotateLeft")} onPress={() => edit(rotate(entries, sel, -90))} testID="doc-pages-rotate-left" />
+                    <BarItem icon={RotateCw} label={t("doc.pages.rotateRight")} onPress={() => edit(rotate(entries, sel, 90))} testID="doc-pages-rotate-right" />
+                    <BarItem icon={ArrowUp} label={t("doc.pages.moveBack")} onPress={() => edit(moveSelected(entries, sel, -1))} testID="doc-pages-earlier" />
+                    <BarItem icon={ArrowDown} label={t("doc.pages.moveForward")} onPress={() => edit(moveSelected(entries, sel, 1))} testID="doc-pages-later" />
+                    <BarItem
+                      icon={Trash2}
+                      danger
+                      label={t("doc.pages.deletePage")}
+                      onPress={() => {
+                        edit(remove(entries, sel));
+                        setSelected(new Set());
+                      }}
+                      testID="doc-pages-delete"
+                    />
+                  </View>
+      ) : null}
       {intake.sheet}
       <ResultSheet results={results} onClose={() => setResults(null)} />
     </Screen>

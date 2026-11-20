@@ -343,3 +343,44 @@ the one users know.
 Every pixel claim above (French fits at 360 dp, the white-card rule on dark,
 the 48 dp handle) is a device check at 360, 411 and 800 dp, light and dark,
 saved to `ours/` before this row may say `DONE`.
+
+## F · Measured on a device (qa_phone3, 2026-11-20)
+
+Dev client SDK 57 (1.2.0), Metro on 3031 with `--clear`, the served bundle
+checked for `doc/sign` before trusting anything, API on the local stack with
+the Doc endpoints (demo accounts only). Samples: synthetic, plus the public
+CC0 HEIC `nokiatech/heif` `content/cc0/3B_HEIC_SDR.heic` (10-bit HEVC).
+Screenshots in `ours/`; the full contact sheet (34 shots) is in Pages,
+MultiMagic / 2026-11-20.
+
+**Checked in the output file, not only on screen:**
+
+| Tool | What ran | Evidence |
+|---|---|---|
+| Sign, PDF | drawn signature, tap, drag, Bigger, Turn 15° | stamp centre (0.495, 0.638) in the PDF vs ~(0.50, 0.65) on screen |
+| Sign, HEIC → PDF | phone HEIC, typed signature | ink at (0.72, 0.74), exactly the tap |
+| Sign, EXIF-6 JPEG (fr, dark) | sideways photo shown upright | ink (0.13–0.32, 0.23–0.26) vs (0.12–0.34, 0.22–0.26) on screen; output upright 800×1200 |
+| Merge | PDF ×3 pages + WebP + HEIC + TIFF + AVIF, reordered | 7 A4 pages, in the list's order |
+| Pages | page 2 moved first, turned 90°; extract; split | page 1 `rot 90`; `-pages.pdf`; `-01..-03.pdf` saved to a folder |
+| Convert | HEIC → JPG to the gallery; 3-page PDF → 3 PNG to the gallery; camera photo → PDF | `DCIM/docqa-3B_HEIC_SDR.jpg` etc. |
+| Compress | HEIC Basic 4.5 → 2.5 MB; Strong; PDF 2 % | numbers on screen = headers |
+| Text | "1250" → "1340", bold | `pdftotext` reads the new line; font Helvetica-Bold |
+| Refusals | locked (Merge, red row), damaged (Pages), empty (before upload), BMP (before upload) | plain sentences, by name |
+| Out | Share sheet, Save to folder (SAF), Save to gallery | files on disk under their real names |
+
+**Found on the device and fixed the same evening** (none were visible to
+Jest): a server image on a loopback host drew blank (`absoluteUrl`); the stamp
+bar and Save were out of reach while a stamp was selected; a 10-bit HEIC drew
+nothing natively (server JPEG copy as fallback); the Pages grid was one column
+at 360 dp and its bar a scroll away (measured width, pinned bar); the text
+preview cut a bold line; plus labels, a missing spinner, "Checking…" left on.
+
+**Still open:**
+- Server: a 5-file merge and a custom compress target on the 10-bit HEIC
+  killed a worker on the local stack (OOM, 2 GB cap). Fix in progress on
+  `feat/doc-mobile-endpoints`; production sizing is a question for the owner.
+- A request the server dropped kept the phone "working" past the 180 s
+  timeout. Cause NOT MEASURED; `post()` now ends every call on its own clock.
+- iOS: nothing here ran on an iPhone (no simulator on this box).
+- Scanner: behind `DOC_SCANNER_ENABLED`, next native build
+  (`docs/MISSING_FEATURES.md` #5).

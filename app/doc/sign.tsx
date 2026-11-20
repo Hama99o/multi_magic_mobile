@@ -11,10 +11,10 @@
  * signature per call, so each signature is a pass over the previous result.
  */
 import { useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Pressable, View, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Gesture, GestureDetector, GestureHandlerRootView } from "react-native-gesture-handler";
+import { Gesture, GestureDetector, GestureHandlerRootView, ScrollView } from "react-native-gesture-handler";
 import { Image as ExpoImage } from "expo-image";
 import { useQuery } from "@tanstack/react-query";
 import { docKeys } from "@/api/keys";
@@ -45,6 +45,10 @@ export default function SignScreen() {
   const [aspects, setAspects] = useState<Record<number, number>>({});
   const [imageAspect, setImageAspect] = useState<number | null>(null);
   const [hint, setHint] = useState<string | null>(null);
+  const [touching, setTouching] = useState(false);
+  // The phone's own decoder failed on this picture (measured on qa_phone3: a
+  // HEVC Main 10 HEIC drew nothing), so the server's JPEG copy stands in.
+  const [nativeFailed, setNativeFailed] = useState(false);
   const [results, setResults] = useState<DocResult[] | null>(null);
   const task = useDocTask();
 
@@ -67,11 +71,11 @@ export default function SignScreen() {
   const preview = useQuery({
     queryKey: docKeys.preview(file?.uri ?? ""),
     queryFn: async ({ signal }) => (await docApi.convertImage(file as DocFile, "jpg", { signal, max: 2000 })).uri,
-    enabled: Boolean(file) && kind === "image" && needsServerPreview(file as DocFile),
+    enabled: Boolean(file) && kind === "image" && (needsServerPreview(file as DocFile) || nativeFailed),
     staleTime: Infinity,
     retry: false,
   });
-  const imageUri = kind === "image" && file ? (needsServerPreview(file) ? (preview.data ?? null) : file.uri) : null;
+  const imageUri = kind === "image" && file ? (needsServerPreview(file) || nativeFailed ? (preview.data ?? null) : file.uri) : null;
 
   const intake = useIntake("any", false, (files) => {
     setFile(files[0]);
@@ -79,6 +83,7 @@ export default function SignScreen() {
     setSelected(null);
     setPageIndex(0);
     setImageAspect(null);
+    setNativeFailed(false);
     setHint(null);
     task.clearError();
   });
@@ -87,7 +92,7 @@ export default function SignScreen() {
   // the buttons stay on screen (web `DocImageSigner` fits both ways too).
   const contentWidth = Math.min(windowWidth, metrics.maxMeasure) - metrics.space.lg * 2;
   const aspect = kind === "pdf" ? (inspect.data?.sizes[pageIndex] ? inspect.data.sizes[pageIndex].height / inspect.data.sizes[pageIndex].width : 1.414) : (imageAspect ?? 1);
-  const maxHeight = windowHeight * 0.55;
+  const maxHeight = windowHeight * 0.5;
   const pageWidth = Math.max(160, Math.min(contentWidth, maxHeight / aspect));
   const pageHeight = pageWidth * aspect;
 
@@ -139,7 +144,7 @@ export default function SignScreen() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <Screen measure>
         <AppHeader app="doc" title={t("doc.tools.sign.title")} back />
-        <ScrollView contentContainerStyle={{ gap: metrics.space.md, paddingVertical: metrics.space.md }} scrollEnabled={!selected}>
+        <ScrollView contentContainerStyle={{ gap: metrics.space.md, paddingVertical: metrics.space.md }} scrollEnabled={!touching}>
           <SignatureStrip rows={rows} loading={signatures.isPending} failed={signatures.isError} selected={signatureId} onSelect={(id) => setSignatureId(id)} onAspect={(id, a) => setAspects((m) => (m[id] === a ? m : { ...m, [id]: a }))} />
 
           {!file ? (
@@ -169,11 +174,16 @@ export default function SignScreen() {
                         {kind === "pdf" ? (
                           <PdfPage file={file} page={pageIndex} width={pageWidth} aspect={aspect}>
                             {shownStamps.map((s) => (
-                              <StampView key={s.key} stamp={s} page={{ width: pageWidth, height: pageHeight }} imageUri={byId.get(s.signatureId)?.imageUrl ?? null} aspect={aspects[s.signatureId] ?? 3} selected={selected === s.key} onSelect={() => setSelected(s.key)} onChange={(n) => update(s.key, () => n)} />
+                              <StampView key={s.key} stamp={s} page={{ width: pageWidth, height: pageHeight }} imageUri={byId.get(s.signatureId)?.imageUrl ?? null} aspect={aspects[s.signatureId] ?? 3} selected={selected === s.key} onSelect={() => setSelected(s.key)} onChange={(n) => update(s.key, () => n)} onActive={setTouching} />
                             ))}
                           </PdfPage>
                         ) : (
                           <View style={{ width: pageWidth, height: pageHeight, backgroundColor: colors.surface }}>
+                            {!imageUri && preview.isFetching ? (
+                              <View style={{ flex: 1, alignItems: "center", justifyContent: "center" }}>
+                                <ActivityIndicator color={colors.accent} />
+                              </View>
+                            ) : null}
                             {imageUri ? (
                               <ExpoImage
                                 source={{ uri: imageUri }}
@@ -181,10 +191,11 @@ export default function SignScreen() {
                                 contentFit="contain"
                                 accessible={false}
                                 onLoad={(e) => e.source.width && e.source.height && setImageAspect(e.source.height / e.source.width)}
+                                onError={() => setNativeFailed(true)}
                               />
                             ) : null}
                             {shownStamps.map((s) => (
-                              <StampView key={s.key} stamp={s} page={{ width: pageWidth, height: pageHeight }} imageUri={byId.get(s.signatureId)?.imageUrl ?? null} aspect={aspects[s.signatureId] ?? 3} selected={selected === s.key} onSelect={() => setSelected(s.key)} onChange={(n) => update(s.key, () => n)} />
+                              <StampView key={s.key} stamp={s} page={{ width: pageWidth, height: pageHeight }} imageUri={byId.get(s.signatureId)?.imageUrl ?? null} aspect={aspects[s.signatureId] ?? 3} selected={selected === s.key} onSelect={() => setSelected(s.key)} onChange={(n) => update(s.key, () => n)} onActive={setTouching} />
                             ))}
                           </View>
                         )}

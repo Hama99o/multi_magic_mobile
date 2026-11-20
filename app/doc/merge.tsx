@@ -17,7 +17,7 @@ import { useQueries } from "@tanstack/react-query";
 import { Image as ExpoImage } from "expo-image";
 import { docKeys } from "@/api/keys";
 import { docApi, type DocError, type DocFile, type DocResult, type PdfInspection } from "@/api/doc";
-import { ArrowDown, ArrowUp, Check, Combine, X } from "@/components/icons";
+import { ArrowDown, ArrowUp, Check, Combine, FileImage, X } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { Button } from "@/components/reusables/button";
@@ -101,7 +101,7 @@ export default function MergeScreen() {
                   pages={kindOf(it.file) === "pdf" ? (info?.pages ?? null) : 1}
                   aspect={info?.sizes[0] ? info.sizes[0].height / info.sizes[0].width : 1.414}
                   checking={checking}
-                  problem={problem ? reasonText(t, problem, it.file.name) : null}
+                  problem={problem ? reasonText(t, problem) : null}
                   selected={selected.has(it.key)}
                   first={i === 0}
                   last={i === items.length - 1}
@@ -202,6 +202,8 @@ function MergeRow({
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
   const isPdf = kindOf(item.file) === "pdf";
+  // The phone's decoder may refuse a picture the server reads (a 10-bit HEIC).
+  const [thumbFailed, setThumbFailed] = useState(false);
   const thumb = usePageImage(isPdf && !problem && !checking ? item.file : null, 0, 56);
   const name = item.file.name;
   const icon = (Icon: typeof ArrowUp, label: string, onPress: () => void, id: string, disabled = false) => (
@@ -236,17 +238,19 @@ function MergeRow({
       </Pressable>
       {/* Paper in both themes: a page is white (SPEC §B). */}
       <View style={{ width: 52, height: 68, borderRadius: 4, backgroundColor: "#ffffff", overflow: "hidden", borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center" }}>
-        {isPdf ? (
+        {thumbFailed ? (
+          <FileImage size={24} color={colors.inkMuted} />
+        ) : isPdf ? (
           thumb.data ? <ExpoImage source={{ uri: thumb.data }} style={{ width: 52, height: Math.min(68, 52 * aspect) }} contentFit="contain" transition={120} accessible={false} /> : null
         ) : (
-          <ExpoImage source={{ uri: item.file.uri }} style={{ width: 52, height: 68 }} contentFit="cover" accessible={false} />
+          <ExpoImage source={{ uri: item.file.uri }} style={{ width: 52, height: 68 }} contentFit="cover" accessible={false} onError={() => setThumbFailed(true)} />
         )}
       </View>
       <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
         <Text variant="label" numberOfLines={2}>
           {name}
         </Text>
-        <Text variant="caption" tone={problem ? "danger" : "muted"} numberOfLines={3}>
+        <Text variant="caption" tone={problem ? "danger" : "muted"} numberOfLines={problem ? undefined : 3}>
           {problem ??
             [isPdf ? (checking ? t("doc.file.checking") : pages !== null ? t("doc.file.pages", { count: pages }) : null) : t("doc.merge.picture"), formatBytes(item.file.size, t, i18n.language)].filter(Boolean).join(" · ")}
         </Text>

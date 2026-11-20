@@ -231,7 +231,7 @@ export default function TextEditorScreen() {
                           disabled={rotated}
                           onPress={() => start(r)}
                         >
-                          {changed && draft ? <Preview run={r} draft={draft} scale={scale} /> : null}
+                          {changed && draft ? <Preview run={r} draft={draft} scale={scale} pageWidth={shownWidth} /> : null}
                         </Mark>
                       );
                     })}
@@ -246,7 +246,7 @@ export default function TextEditorScreen() {
                   </View>
                 ) : null}
 
-                <View testID="doc-text-legend" style={{ gap: 2 }}>
+                <View testID="doc-text-legend" style={{ gap: 2, display: rotated ? "none" : "flex" }}>
                   <Text variant="caption" tone="muted">
                     {t("doc.text.legendEditable", { count: editable.length })}
                   </Text>
@@ -344,7 +344,7 @@ function Mark({
       accessibilityLabel={label}
       // A 6 pt line is a sliver: the touch reaches past it (the list below is the real target).
       hitSlop={6}
-      style={{ position: "absolute", left: box.left * size.width, top: box.top * size.height, width: box.width * size.width, height: box.height * size.height, ...style }}
+      style={{ position: "absolute", left: box.left * size.width, top: box.top * size.height, width: box.width * size.width, height: box.height * size.height, overflow: "visible", ...style }}
     >
       {children}
     </Pressable>
@@ -352,20 +352,25 @@ function Mark({
 }
 
 /** The change, drawn on the page: old words covered, new ones in their style. */
-function Preview({ run, draft, scale }: { run: TextRun; draft: Draft; scale: number }) {
+function Preview({ run, draft, scale, pageWidth }: { run: TextRun; draft: Draft; scale: number; pageWidth: number }) {
   const size = Math.max(6, (draft.size ?? run.size) * scale);
   const family = draft.family === "serif" ? familyFor("serif") : draft.family === "mono" ? familyFor("mono") : undefined;
   return (
-    <View pointerEvents="none" style={{ ...FILL, backgroundColor: draft.highlight ?? (repaints(run, draft) ? "#ffffff" : "transparent"), justifyContent: "flex-end", overflow: "visible" }}>
+    <>
+      {/* The old words covered (or highlighted) inside their own box. */}
+      <View pointerEvents="none" style={{ ...FILL, backgroundColor: draft.highlight ?? (repaints(run, draft) ? "#ffffff" : "transparent") }} />
       {repaints(run, draft) ? (
+        // The new words may be wider than the old box (bold, a longer amount):
+        // they overflow it, as the rewrite will, rather than being cut — measured
+        // on qa_phone3, "Total due: 1340 EUR" in bold lost its "EUR".
         <Text
           numberOfLines={1}
-          style={{ fontSize: size, lineHeight: size * 1.15, color: draft.color ?? run.color, fontWeight: draft.bold ? "700" : "400", fontStyle: draft.italic ? "italic" : "normal", fontFamily: family, includeFontPadding: false }}
+          style={{ position: "absolute", left: 0, bottom: 0, width: pageWidth, backgroundColor: "transparent", fontSize: size, lineHeight: size * 1.15, color: draft.color ?? run.color, fontWeight: draft.bold ? "700" : "400", fontStyle: draft.italic ? "italic" : "normal", fontFamily: family, includeFontPadding: false }}
         >
           {draft.text}
         </Text>
       ) : null}
-    </View>
+    </>
   );
 }
 

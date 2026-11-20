@@ -67,6 +67,7 @@ export function StampView({
   selected,
   onSelect,
   onChange,
+  onActive,
 }: {
   stamp: Stamp;
   page: { width: number; height: number };
@@ -76,6 +77,13 @@ export function StampView({
   selected: boolean;
   onSelect: () => void;
   onChange: (next: Stamp) => void;
+  /**
+   * True while a finger is on the stamp: the screen stops scrolling only
+   * then. Measured on qa_phone3 2026-11-20: locking the scroll for as long
+   * as a stamp was SELECTED left the size bar and Save below the fold at
+   * 360 dp, out of reach.
+   */
+  onActive?: (active: boolean) => void;
 }) {
   const { t } = useTranslation();
   const start = useRef(stamp);
@@ -88,7 +96,9 @@ export function StampView({
     .onBegin(() => {
       start.current = stamp;
       onSelect();
+      onActive?.(true);
     })
+    .onFinalize(() => onActive?.(false))
     .onUpdate((e) => onChange({ ...start.current, ...latest(), x: clamp(start.current.x + e.translationX / page.width, 0, 1), y: clamp(start.current.y + e.translationY / page.height, 0, 1) }));
   const pinch = Gesture.Pinch()
     .runOnJS(true)

@@ -6,9 +6,10 @@
  * call asks for an arraybuffer and gets one even for the JSON error.
  * Invented values only.
  */
+import axios from "axios";
 import MockAdapter from "axios-mock-adapter";
 
-import { docApi, DocError, dispositionName, docError, safeName, utf8 } from "../doc";
+import { DOC_TOOL_TIMEOUT_MS, docApi, DocError, dispositionName, docError, safeName, utf8 } from "../doc";
 import { http } from "../http";
 
 const written: { uri: string; bytes: Uint8Array }[] = [];
@@ -137,6 +138,26 @@ describe("refusals", () => {
     expect(await pending).toBe("cancelled");
   });
 
+  it("a call that never answers is given up after the tool timeout, by our own clock (measured: a dropped connection kept the phone busy 4+ minutes)", async () => {
+    jest.useFakeTimers();
+    try {
+      // A server that never answers, behind a transport that honours the abort
+      // signal as React Native's XHR adapter does (axios-mock-adapter does not
+      // listen to it once a request is dispatched).
+      mock.onPost("/api/v1/doc_app/compress").reply(
+        (config) =>
+          new Promise((_, reject) => {
+            config.signal?.addEventListener?.("abort", () => reject(new axios.CanceledError("aborted")));
+          }),
+      );
+      const pending = reasonOf(docApi.compress(pdf, "basic"));
+      await jest.advanceTimersByTimeAsync(DOC_TOOL_TIMEOUT_MS + 10);
+      expect(await pending).toBe("offline");
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
   it("an unknown reason stays unknown, with the server's sentence", () => {
     const e = docError({ response: { status: 422, data: { message: "pages: entry 4 is past the end", reason: "invalid" } } });
     expect(e.reason).toBe("invalid");
@@ -165,6 +186,13 @@ describe("JSON tools", () => {
     const { rows } = await docApi.signatures.list();
     expect(rows.map((r) => r.id)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
     expect(rows[0]).toMatchObject({ active: true, bgColor: "transparent", imageUrl: "https://files.example.test/1.png" });
+  });
+
+  it("a signature's picture on a loopback host is fetched from the host the app used (measured: the emulator showed a blank card)", async () => {
+    mock.onGet("/api/v1/doc_app/signatures").reply(200, { signatures: [{ id: 3, name: "Signature 1", kind: "draw", strokes: [], image_url: "http://localhost:3020/rails/active_storage/blobs/proxy/abc/signature-1.png" }], meta: { pagy: { page: 1, last: 1 } } });
+    const { rows } = await docApi.signatures.list();
+    const base = (http.defaults.baseURL ?? "").replace(/\/$/, "");
+    expect(rows[0].imageUrl).toBe(`${base}/rails/active_storage/blobs/proxy/abc/signature-1.png`);
   });
 
   it("a signature is saved without a PNG: the server draws it (G7)", async () => {

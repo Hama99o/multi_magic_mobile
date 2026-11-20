@@ -57,3 +57,21 @@ it("a failed write does not undo the choice; the cached profile goes back to the
   await waitFor(() => expect(client.getQueryData<Profile>(profileKeys.me())?.lang).toBe("en"));
   expect(useLanguage.getState().language).toBe("fr");
 });
+
+it("once the server confirms, the phone's choice is no longer pending: the laptop's next switch reaches it", async () => {
+  const { result } = renderHook(() => useChooseLanguage(7), { wrapper });
+  act(() => result.current("fr"));
+  expect(useLanguage.getState().chosenHere).toBe(true);
+  await waitFor(() => expect(useLanguage.getState().chosenHere).toBe(false));
+  act(() => useLanguage.getState().applyFromServer("en"));
+  expect(useLanguage.getState().language).toBe("en");
+});
+
+it("a failed write keeps the choice pending, so the server cannot switch it back", async () => {
+  jest.spyOn(profileApi, "update").mockRejectedValueOnce(new Error("offline"));
+  const { result } = renderHook(() => useChooseLanguage(7), { wrapper });
+  act(() => result.current("fr"));
+  await new Promise((r) => setTimeout(r, 20));
+  act(() => useLanguage.getState().applyFromServer("en"));
+  expect(useLanguage.getState().language).toBe("fr");
+});

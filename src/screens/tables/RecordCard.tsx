@@ -13,6 +13,7 @@ import type { RecordRow } from "@/api/tables";
 import { CARD_LABEL_HEIGHT, CARD_VALUE_HEIGHT, CardValue } from "@/components/fields/CardValue";
 import { displayValue, optionsFor, type KnownRecords } from "@/components/fields/display";
 import { Text } from "@/components/reusables/text";
+import { Check } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { colorHex } from "@/screens/flow/logic";
 
@@ -41,6 +42,7 @@ export function RecordCard({
   onPress,
   onLongPress,
   testID,
+  selected,
 }: {
   row: RecordRow;
   index: number;
@@ -54,6 +56,8 @@ export function RecordCard({
   /** Kanban's "Move to…" (increment 4). */
   onLongPress?: () => void;
   testID?: string;
+  /** In select mode: true or false; undefined when not selecting. */
+  selected?: boolean;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -72,10 +76,11 @@ export function RecordCard({
         onLongPress={onLongPress}
         onPressIn={() => setPressed(true)}
         onPressOut={() => setPressed(false)}
-        accessibilityRole="button"
+        accessibilityRole={selected === undefined ? "button" : "checkbox"}
+        accessibilityState={selected === undefined ? undefined : { checked: selected }}
         accessibilityLabel={titleText}
         accessibilityHint={onLongPress ? t("tables.kanban.cardHint") : t("tables.openRowHint")}
-        style={{ flex: 1, flexDirection: "row", overflow: "hidden", borderRadius: metrics.radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: pressed ? colors.border : colors.surface }}
+        style={{ flex: 1, flexDirection: "row", overflow: "hidden", borderRadius: metrics.radius.lg, borderWidth: selected ? 2 : 1, borderColor: selected ? colors.accent : colors.border, backgroundColor: pressed ? colors.border : selected ? `${colors.accent}14` : colors.surface }}
       >
         {bar ? <View testID={`tables-card-${index}-bar`} style={{ width: 4, backgroundColor: bar }} /> : null}
         <View style={{ flex: 1 }}>
@@ -87,9 +92,16 @@ export function RecordCard({
             )
           ) : null}
           <View style={{ padding: CARD_PAD, gap: CARD_GAP }}>
-            <Text variant="label" numberOfLines={1} style={{ height: CARD_TITLE, fontSize: 16, lineHeight: 22 }}>
-              {titleText}
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+              {selected !== undefined ? (
+                <View testID={`${testID ?? `tables-card-${index}`}-check`} style={{ width: 20, height: 20, borderRadius: 10, borderWidth: 2, borderColor: selected ? colors.accent : colors.border, backgroundColor: selected ? colors.accent : "transparent", alignItems: "center", justifyContent: "center" }}>
+                  {selected ? <Check size={14} color={colors.onAccent} /> : null}
+                </View>
+              ) : null}
+              <Text variant="label" numberOfLines={1} style={{ flex: 1, height: CARD_TITLE, fontSize: 16, lineHeight: 22 }}>
+                {titleText}
+              </Text>
+            </View>
             {fields.map((f) => (
               <CardValue key={f.id} field={f} value={row.values[f.id]} known={known} testID={`tables-card-${index}-f${f.id}`} />
             ))}

@@ -661,3 +661,59 @@ describe("delete a table or a base by its exact name (the owner, 2026-11-20)", (
     expect(JSON.parse(mock.history.delete[0].data)).toEqual({ confirm_name: "Shop" });
   });
 });
+
+describe("select rows, then edit or delete them together (increment 5)", () => {
+  const two = () => page([row(502, "Red hat", { "2": { scalar_value: "out" } }), scarf]);
+  beforeEach(() => {
+    mockParams.current = { id: "10", base: "3" };
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }]), role: "editor" }] });
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody());
+    mock.onGet(`${B}/tables/10/records`).reply(200, two());
+    useTablesUndo.getState().clear();
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  const selectBoth = async () => {
+    renderScreen(<TableScreen />);
+    await screen.findByText("Red hat");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    fireEvent(screen.getByTestId("tables-card-0"), "longPress");
+    fireEvent.press(screen.getByTestId("tables-card-1"));
+    expect(screen.getByTestId("tables-bulk-count").props.children).toBe("2 rows selected");
+  };
+
+  it("deletes the selected rows to the trash after a confirm; one Undo restores them all", async () => {
+    mock.onPost(`${B}/tables/10/records/bulk_destroy`).reply(200, { deleted: 2, ids: [502, 501] });
+    mock.onPost(`${B}/tables/10/records/restore`).reply(200, {});
+    jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => buttons?.find((b) => b.text === "Delete")?.onPress?.());
+    await selectBoth();
+    fireEvent.press(screen.getByTestId("tables-bulk-delete"));
+    await waitFor(() => expect(useTablesUndo.getState().offer?.message).toBe("2 rows deleted"));
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ ids: [502, 501] });
+    expect(screen.queryByTestId("tables-bulk-bar")).toBeNull();
+    await act(async () => useTablesUndo.getState().offer?.undo?.());
+    expect(JSON.parse(mock.history.post[1].data)).toEqual({ ids: [502, 501] });
+  });
+
+  it("sets one column on every selected row; Undo writes each row's own value back", async () => {
+    mock.onPost(`${B}/tables/10/records/bulk_write`).reply(200, { result: { created: 0, updated: 2, ids: [502, 501] }, records: [] });
+    await selectBoth();
+    fireEvent.press(screen.getByTestId("tables-bulk-edit-open"));
+    fireEvent.press(await screen.findByTestId("tables-bulk-field-2"));
+    fireEvent.press(screen.getByTestId("tables-bulk-value-in"));
+    fireEvent.press(screen.getByTestId("tables-bulk-edit-apply"));
+    await waitFor(() => expect(useTablesUndo.getState().offer?.message).toBe("2 rows changed"));
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ rows: [{ id: 502, values: { "2": "in" } }, { id: 501, values: { "2": "in" } }] });
+    await act(async () => useTablesUndo.getState().offer?.undo?.());
+    expect(JSON.parse(mock.history.post[1].data)).toEqual({ rows: [{ id: 502, values: { "2": "out" } }, { id: 501, values: { "2": "in" } }] });
+  });
+
+  it("a viewer cannot start selecting", async () => {
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }]), role: "viewer" }] });
+    renderScreen(<TableScreen />);
+    await screen.findByText("Red hat");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    fireEvent(screen.getByTestId("tables-card-0"), "longPress");
+    expect(screen.queryByTestId("tables-bulk-bar")).toBeNull();
+  });
+});

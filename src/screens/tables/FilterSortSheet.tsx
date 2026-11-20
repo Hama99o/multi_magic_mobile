@@ -265,7 +265,7 @@ function ValueEditor({ field, condition, onChange, testID }: { field: FieldDefin
  * no relative dates (a plain date input, `FilterBuilder.tsx:149`) and the
  * server compares a `YYYY-MM-DD`, so a quick choice stores the day it means.
  */
-function DateValue({ value, onChange, testID, label }: { value: string | null; onChange: (v: string | null) => void; testID: string; label: string }) {
+export function DateValue({ value, onChange, testID, label }: { value: string | null; onChange: (v: string | null) => void; testID: string; label: string }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();

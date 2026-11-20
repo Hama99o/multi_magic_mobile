@@ -545,7 +545,12 @@ export const tablesApi = {
 
   /** One column set on many rows (the web's bulk edit, one Undo there; `BulkWriter`). */
   async bulkSet(tableId: number, ids: number[], fieldId: number, value: unknown): Promise<void> {
-    await http.post(`${BASE}/tables/${tableId}/records/bulk_write`, { rows: ids.map((rid) => ({ id: rid, values: { [String(fieldId)]: value } })) });
+    await tablesApi.bulkWrite(tableId, ids.map((rid) => ({ id: rid, values: { [fieldId]: value } })));
+  },
+
+  /** Each row its own values in one request: the bulk edit's Undo puts every row back as it was. */
+  async bulkWrite(tableId: number, rows: { id: number; values: Record<number, unknown> }[]): Promise<void> {
+    await http.post(`${BASE}/tables/${tableId}/records/bulk_write`, { rows: rows.map((r) => ({ id: r.id, values: Object.fromEntries(Object.entries(r.values)) })) });
   },
 
   /** Many rows to the trash at once; `restore` with the ids brings them back. */

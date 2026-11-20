@@ -45,6 +45,9 @@ import { FilterSortSheet } from "@/screens/tables/FilterSortSheet";
 import { FieldsSheet } from "@/screens/tables/FieldsSheet";
 import { SaveViewSheet } from "@/screens/tables/SaveViewSheet";
 import { DeleteByNameSheet } from "@/screens/tables/DeleteByNameSheet";
+import { BulkEditSheet } from "@/screens/tables/BulkEditSheet";
+import { dropRows } from "@/screens/tables/useRowWrites";
+import { Alert } from "react-native";
 import { GROUP_HEADER, layoutOf, listItems, type ListItem } from "@/screens/tables/grouping";
 import { colorHex } from "@/screens/flow/logic";
 import { useTablesUndo } from "@/stores/tablesUndo.store";
@@ -91,7 +94,12 @@ export default function TableScreen() {
 
   const [searching, setSearching] = useState(false);
   const [typed, setTyped] = useState<string | null>(null);
-  const [sheet, setSheet] = useState<"views" | "menu" | "find" | "fields" | "save" | "deleteTable" | "deleteBase" | null>(null);
+  const [sheet, setSheet] = useState<"views" | "menu" | "find" | "fields" | "save" | "deleteTable" | "deleteBase" | "bulkEdit" | null>(null);
+  // Select mode (increment 5): a long press starts it, a tap then toggles, the bar acts on the rows.
+  const [selected, setSelected] = useState<Set<number>>(() => new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkError, setBulkError] = useState<string | null>(null);
+  const selecting = selected.size > 0;
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [folded, setFolded] = useState<Set<string>>(() => new Set());
@@ -177,6 +185,56 @@ export default function TableScreen() {
   });
   const offerUndo = useTablesUndo((s) => s.offerUndo);
   const moveTo = (row: RecordRow, field: FieldDefinition, key: string) => move.mutate({ row, field, value: columnValue(key), before: scalar(row.values[field.id]) ?? null });
+
+  const toggleSelect = (row: RecordRow) =>
+    setSelected((cur) => {
+      const next = new Set(cur);
+      if (next.has(row.id)) next.delete(row.id);
+      else next.add(row.id);
+      return next;
+    });
+  const clearSelection = () => setSelected(new Set());
+
+  /** Many rows to the trash; one Undo brings them all back (`records#restore`). */
+  const bulkDelete = () => {
+    const ids = [...selected];
+    Alert.alert(t("tables.bulk.deleteTitle", { count: ids.length }), t("tables.bulk.deleteBody", { count: ids.length }), [
+      { text: t("fields.cancel"), style: "cancel" },
+      {
+        text: t("tables.delete"),
+        style: "destructive",
+        onPress: () =>
+          void tablesApi
+            .bulkDestroy(tableId, ids)
+            .then((gone) => {
+              dropRows(client, tableId, gone);
+              clearSelection();
+              void client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) });
+              offerUndo(t("tables.bulk.deleted", { count: gone.length }), () => void tablesApi.restore(tableId, gone).then(() => client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) })));
+            })
+            .catch((e: unknown) => setFailure(failureMessage(e, t("tables.deleteFailed")))),
+      },
+    ]);
+  };
+
+  /** One column, one value, every selected row; Undo writes each row's old value back. */
+  const bulkApply = async (field: FieldDefinition, value: unknown) => {
+    const ids = [...selected];
+    const before = ids.map((id) => ({ id, values: { [field.id]: scalar(rows.find((r) => r.id === id)?.values[field.id]) ?? null } }));
+    setBulkBusy(true);
+    setBulkError(null);
+    try {
+      await tablesApi.bulkSet(tableId, ids, field.id, value);
+      setSheet(null);
+      clearSelection();
+      void client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) });
+      offerUndo(t("tables.bulk.edited", { count: ids.length }), () => void tablesApi.bulkWrite(tableId, before).then(() => client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) })));
+    } catch (e) {
+      setBulkError(failureMessage(e, t("tables.bulk.failed")));
+    } finally {
+      setBulkBusy(false);
+    }
+  };
 
   const openRow = (row: RecordRow) =>
     router.push({ pathname: "/tables/record", params: { table: String(tableId), id: String(row.id), q: queryKey, ...(view ? { view: String(view.id) } : {}) } });
@@ -463,7 +521,19 @@ export default function TableScreen() {
           item.kind === "header" ? (
             <GroupHeader item={item} onPress={() => toggleFold(item.key)} />
           ) : (
-            <RecordCard row={item.row} index={item.index} title={title} fields={shownFields} colorField={colorField} coverField={coverField} known={known} height={itemHeight} onPress={() => openRow(item.row)} />
+            <RecordCard
+              row={item.row}
+              index={item.index}
+              title={title}
+              fields={shownFields}
+              colorField={colorField}
+              coverField={coverField}
+              known={known}
+              height={itemHeight}
+              onPress={() => (selecting ? toggleSelect(item.row) : openRow(item.row))}
+              onLongPress={editable ? () => toggleSelect(item.row) : undefined}
+              selected={selecting ? selected.has(item.row.id) : undefined}
+            />
           )
         }
         ListEmptyComponent={
@@ -513,7 +583,28 @@ export default function TableScreen() {
       />
       )}
 
-      {editable && table.data && !kanbanField && !calendarField ? (
+      {selecting ? (
+        <View testID="tables-bulk-bar" style={{ position: "absolute", left: metrics.space.lg, right: metrics.space.lg, bottom: metrics.space.lg, flexDirection: "row", alignItems: "center", gap: metrics.space.sm, minHeight: 56, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.lg, backgroundColor: colors.ink }}>
+          <Pressable testID="tables-bulk-clear" onPress={clearSelection} accessibilityRole="button" accessibilityLabel={t("tables.bulk.clear")} style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}>
+            <X size={20} color={colors.ground} />
+          </Pressable>
+          <Text testID="tables-bulk-count" style={{ flex: 1, color: colors.ground }} numberOfLines={1}>
+            {t("tables.bulk.selected", { count: selected.size })}
+          </Text>
+          <Pressable testID="tables-bulk-edit-open" onPress={() => setSheet("bulkEdit")} accessibilityRole="button" accessibilityLabel={t("tables.bulk.edit")} style={{ minHeight: 40, paddingHorizontal: metrics.space.md, justifyContent: "center" }}>
+            <Text variant="label" style={{ color: colors.ground }}>
+              {t("tables.bulk.edit")}
+            </Text>
+          </Pressable>
+          <Pressable testID="tables-bulk-delete" onPress={bulkDelete} accessibilityRole="button" accessibilityLabel={t("tables.bulk.delete")} style={{ minHeight: 40, paddingHorizontal: metrics.space.md, justifyContent: "center" }}>
+            <Text variant="label" style={{ color: colors.danger }}>
+              {t("tables.bulk.delete")}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+      {sheet === "bulkEdit" ? <BulkEditSheet count={selected.size} fields={fields} busy={bulkBusy} error={bulkError} onApply={(f, v) => void bulkApply(f, v)} onClose={() => setSheet(null)} /> : null}
+      {editable && table.data && !kanbanField && !calendarField && !selecting ? (
         <Pressable
           testID="tables-add-row"
           onPress={() => create.mutate(undefined)}

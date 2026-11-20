@@ -69,15 +69,12 @@ The full web inventory, every feature with its web `file:line`, is [`docs/parity
 - **Row colour** (the view's colour-by setting) is a 4 dp bar on the card's leading edge, as the web phone already does.
 - **Height is fixed per view**, computed from the number of card lines (1–4, the web's row height). It is measured once, so `getItemLayout` holds and a recycled cell never changes size. **No Reanimated on cells** (the owner's rule, `.eslintrc.js` `list-cell-animation`).
 
-**C3. Newest first: what the server allows, and the fallback.**
-- **Rows:** the server orders by `position ASC, id ASC` after any view sort (`record_query.rb:388`). Newest first is possible only through a `created_time` field (`VIRTUAL_COLUMN`, `:44`), and many tables have none.
-  - **Phone default:** when the view has **no sort** and the table **has** a `created_time` field, the personal layer starts on *"Newest first"* by that field, and the view's order is one tap away (*"Table order"*).
-  - Without such a field, the view's order stays. The created row **opens at once** in the record screen and is also **pinned at the top** of the list until the next refresh, so it is visible without scrolling 20k cards.
-- **Bases:** the server sends `updated_at desc`.
-- **API asks** (in `docs/API_ASKS.md` §6):
-  - a sort on the record's own `created_at` without a field (e.g. `sorts=[{"field_id":"@created","direction":"desc"}]`);
-  - `GET bases?sort=created_at_desc`.
-- **The owner's invariant says newest first. Airtable semantics say manual order.** The fallback above respects both until he says otherwise.
+**C3. Newest first (server change built 2026-11-20, `API_ASKS.md` §6, deploy pending).**
+- **Rows:** when the view has **no sort of its own**, the personal layer starts on **Newest first**, sending `sort=-created_at`: the row's own creation time, no column needed. **"Table order"** is one tap away and drops it. With `group_by`, the groups come first and newest first applies inside each.
+- **Before that deploy lands:** where the table has a `created_time` field, the phone sorts by it. Otherwise the view's order stays, and a created row **opens at once** and is **pinned at the top** until the next refresh.
+- **The new row always opens at once** (the web's `reveal`), whatever the order.
+- **Bases:** the server's default is now `created_at desc`. The sort chip offers Newest · Recently changed (`updated_at_desc`) · A–Z (`name_asc`).
+- **Tables inside a base** keep the user's tab order, on purpose, as the server does.
 
 **C4. Record screen, not a sheet.**
 - **Layout:** a pushed full-screen route (`app/tables/record.tsx`) with a big title, then one row per field: **label above value**, the field's description under its label, Notion's "Empty" for a blank.
@@ -191,7 +188,7 @@ Each increment ships on its own: en+fr, light+dark, 360/411/800 dp, its flows ru
 ## G · Decided by Hello, 2026-11-20
 
 1. **C1:** the whole personal layer: filter, sort, group, hidden fields and card lines. "That's the spirit of the owner's rule."
-2. **C3:** as written. The two server asks are in `docs/API_ASKS.md` §6, and Hello is having them done on the server.
+2. **C3:** as written. The two server asks were built by multi-magic-9c on `feat/flow-rest-paging` @ `8358b961` (`docs/API_ASKS.md` §6). Deploy pending.
 3. **Design and increments:** approved. **Forms (8), relations (2) and AI (1, "Ask about this table"; import through chat in 7) stay in the plan.** They are the owner's vision for Tables.
 4. **Order:** increment 1 starts when e2's field layer is committed and gated. Step 0's device QA takes priority over increment 1 the moment the emulator is free.
 5. **Still to decide when increments 7 and 8 come:** parity decisions (c) and (d), with defaults: public form in the browser; a server import preview.

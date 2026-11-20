@@ -114,18 +114,24 @@ Found by the parity audit (`docs/MOBILE_PARITY_2026-11-20.md`, `docs/parity/`) a
 
 ## 6 · Tables: newest first (2026-11-20)
 
-From the Tables spec (`docs/design/tables/SPEC.md` C3), approved by Hello on 2026-11-20. Hello is having these done on the server. **OPEN** until a deploy carries them.
+From the Tables spec (`docs/design/tables/SPEC.md` C3), approved by Hello on 2026-11-20. **BUILT, NOT DEPLOYED:** `multi_magic` branch `feat/flow-rest-paging` @ `8358b961` (by multi-magic-9c). CI is running, then Hello merges and deploys. Both changes are backward compatible. The phone may use these params only once the deploy has landed; before that it keeps the fallbacks below.
 
-### 6.1 · Rows: sort by the record's own creation time, without a field
+### 6.1 · Rows by their own creation time
 
-- **Now:** `GET /api/v1/table_app/tables/:id/records` orders by the view's `sorts`, then `position ASC, id ASC` (`record_query.rb:388`). Each sort needs a `field_id` (`apply_sort`, `field!(sort['field_id'])`). Newest first is possible only through a `created_time` field (`VIRTUAL_COLUMN`, `:44`), and many tables have none.
-- **Ask:** accept a pseudo field in `sorts`, `{"field_id": "@created", "direction": "desc"}` (and `@modified`), ordering on `table_app_records.created_at` / `updated_at` the way `VIRTUAL_COLUMN` already does. The same token works in `records/summary` and in `exports` queries.
-- **Phone meanwhile:** where the table has a `created_time` field and the view has no sort, the phone's personal layer starts on newest first by that field, with the table's order one tap away. Without one, the view's order stays. A new row opens at once and stays pinned on top until the next refresh.
+`GET /api/v1/table_app/tables/:table_id/records`
+- **Newest first:** `sort=created_at desc`, `sort=-created_at`, or `sort=created_at&direction=desc` orders by the row's own `created_at`, with no "Created time" column needed. `sort=created_at` is oldest first. `updated_at` works the same way.
+- **The same inside `sorts`:** `[{"column":"created_at","direction":"desc"}]` (an entry with `column` and no `field_id`).
+- **Order of precedence:** `sort`, then the column `sorts`, then position and id as the tie-break. `group_by` still groups first.
+- **Without `sort`:** the table's own order, exactly as before. An unknown column is ignored.
+- **Paging:** unchanged.
+- **Phone:** the personal layer (C1) starts on `sort=-created_at` when the view has no sort of its own, and "Table order" drops it.
+- **Before the deploy:** a `created_time` field's sort where the table has one; otherwise the view's order, with a new row pinned on top.
 
-### 6.2 · Bases: newest first by creation
+### 6.2 · Bases newest first
 
-- **Now:** `GET /api/v1/table_app/bases` orders by `updated_at desc` (`bases_controller.rb:7`), so editing an old base moves it to the top. The serializer sends no `created_at`.
-- **Ask:**
-  - Add `created_at` to the base serializer.
-  - Accept `sort=created_at` (default) | `updated_at` | `name`.
-- **Phone meanwhile:** the server's order, with "Recently changed" named as such on the sort chip.
+`GET /api/v1/table_app/bases`
+- **Default:** now `created_at desc`, so a base just created is on top. The web reads the same list, so it changes too (the owner's rule).
+- **Other orders:** `sort=created_at_desc | created_at_asc | updated_at_desc | updated_at_asc | name_asc | name_desc`. An unknown value gives the default.
+- **Tables inside a base** keep their tab order (position) on purpose. That is the user's own arrangement.
+- **Response shape:** unchanged, `{ bases: [...] }`.
+- **Phone:** no param needed for the default. A sort chip offers Newest · Recently changed · A–Z.

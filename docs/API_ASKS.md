@@ -111,3 +111,21 @@ Found by the parity audit (`docs/MOBILE_PARITY_2026-11-20.md`, `docs/parity/`) a
 - **Now:** `GET /contact_app/contacts/family_members` sends `family_label` as an English word built by `ContactApp::Family#label_for` (LABELS by gender, QUALIFIED "step-%s"/"half-%s"/"adoptive %s"/"%s-in-law", and "former %s"). A French phone, and the French web, show English.
 - **Ask:** send the parts instead of the sentence, `family_kind` (`parent`, `child`, … `child_in_law`), `family_qualifier` (`step`/`half`/`adoptive`/null) and `family_former` (boolean), next to `family_label` for old clients.
 - **Phone meanwhile:** `src/screens/contacts/familyLabel.ts` reads the English word back to a key over the server's whole vocabulary (55 words) and says it in the app's language. A word outside that table is shown as sent.
+
+## 6 · Tables: newest first (2026-11-20)
+
+From the Tables spec (`docs/design/tables/SPEC.md` C3), approved by Hello on 2026-11-20. Hello is having these done on the server. **OPEN** until a deploy carries them.
+
+### 6.1 · Rows: sort by the record's own creation time, without a field
+
+- **Now:** `GET /api/v1/table_app/tables/:id/records` orders by the view's `sorts`, then `position ASC, id ASC` (`record_query.rb:388`). Each sort needs a `field_id` (`apply_sort`, `field!(sort['field_id'])`). Newest first is possible only through a `created_time` field (`VIRTUAL_COLUMN`, `:44`), and many tables have none.
+- **Ask:** accept a pseudo field in `sorts`, `{"field_id": "@created", "direction": "desc"}` (and `@modified`), ordering on `table_app_records.created_at` / `updated_at` the way `VIRTUAL_COLUMN` already does. The same token works in `records/summary` and in `exports` queries.
+- **Phone meanwhile:** where the table has a `created_time` field and the view has no sort, the phone's personal layer starts on newest first by that field, with the table's order one tap away. Without one, the view's order stays. A new row opens at once and stays pinned on top until the next refresh.
+
+### 6.2 · Bases: newest first by creation
+
+- **Now:** `GET /api/v1/table_app/bases` orders by `updated_at desc` (`bases_controller.rb:7`), so editing an old base moves it to the top. The serializer sends no `created_at`.
+- **Ask:**
+  - Add `created_at` to the base serializer.
+  - Accept `sort=created_at` (default) | `updated_at` | `name`.
+- **Phone meanwhile:** the server's order, with "Recently changed" named as such on the sort chip.

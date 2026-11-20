@@ -1,6 +1,6 @@
 # Tables: the fifth full app (2026-11-20)
 
-**Status: `SPECIFIED`**: decided, not built. Nothing under `app/tables/` or `src/screens/tables/` exists yet. Increment 1 starts only after Hello reviews this file. The board row (`README.md`) is added with increment 1: `qa/board_check.py` fails every `SPECIFIED` row, with UNDER when its file exists, PATH when it does not, and WISH when it names none.
+**Status: `SPECIFIED`**, approved by Hello on 2026-11-20 (§G): decided, not built. Nothing under `app/tables/` or `src/screens/tables/` exists yet. The board row (`README.md`) is added with increment 1: `qa/board_check.py` fails every `SPECIFIED` row, with UNDER when its file exists, PATH when it does not, and WISH when it names none.
 
 The owner, 2026-11-20 (relayed by Hello): the order is **Flow → Tables → Doc**, "attack". This session takes Tables. Session `multi-magic-mobile-e2` builds Flow, including the shared Core field editors, which Tables reuses.
 
@@ -74,7 +74,7 @@ The full web inventory, every feature with its web `file:line`, is [`docs/parity
   - **Phone default:** when the view has **no sort** and the table **has** a `created_time` field, the personal layer starts on *"Newest first"* by that field, and the view's order is one tap away (*"Table order"*).
   - Without such a field, the view's order stays. The created row **opens at once** in the record screen and is also **pinned at the top** of the list until the next refresh, so it is visible without scrolling 20k cards.
 - **Bases:** the server sends `updated_at desc`.
-- **API asks** (to be written into `docs/API_ASKS.md` §6 with increment 1, in the same format as §5):
+- **API asks** (in `docs/API_ASKS.md` §6):
   - a sort on the record's own `created_at` without a field (e.g. `sorts=[{"field_id":"@created","direction":"desc"}]`);
   - `GET bases?sort=created_at_desc`.
 - **The owner's invariant says newest first. Airtable semantics say manual order.** The fallback above respects both until he says otherwise.
@@ -188,9 +188,10 @@ Each increment ships on its own: en+fr, light+dark, 360/411/800 dp, its flows ru
 
 ---
 
-## G · Open, for Hello / the owner
+## G · Decided by Hello, 2026-11-20
 
-1. **C1 scope:** the whole personal layer (filter, sort, group, fields), or the filter alone? Default: the whole layer.
-2. **C3:** newest first where a `created_time` field exists, else the table's order with the new row pinned on top. The server asks go into `API_ASKS.md` §6. Default as written.
-3. **C9:** agreed with e2. Increment 1 starts on e2's branch once its field layer is committed and green.
-4. **Parity decisions (c) and (d)** wait until increments 7–8: public form in the browser, and a server import preview instead of bundling SheetJS. Default: browser; server endpoint.
+1. **C1:** the whole personal layer: filter, sort, group, hidden fields and card lines. "That's the spirit of the owner's rule."
+2. **C3:** as written. The two server asks are in `docs/API_ASKS.md` §6, and Hello is having them done on the server.
+3. **Design and increments:** approved. **Forms (8), relations (2) and AI (1, "Ask about this table"; import through chat in 7) stay in the plan.** They are the owner's vision for Tables.
+4. **Order:** increment 1 starts when e2's field layer is committed and gated. Step 0's device QA takes priority over increment 1 the moment the emulator is free.
+5. **Still to decide when increments 7 and 8 come:** parity decisions (c) and (d), with defaults: public form in the browser; a server import preview.

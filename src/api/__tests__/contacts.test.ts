@@ -170,6 +170,16 @@ describe("the whole address book", () => {
     expect(params).toEqual({ search: "0612", page: 1, per_page: 100 });
   });
 
+  it("a search reads every page of matches, not the first 100 only (parity 2026-11-20)", async () => {
+    const seen: unknown[] = [];
+    mock.onGet("/api/v1/contact_app/contacts").reply((config) => {
+      seen.push(config.params);
+      return config.params.page === 1 ? [200, listPage([jamil], 1, 2)] : [200, listPage([{ ...jamil, id: 8, firstname: "Jamila" }], 2, 2)];
+    });
+    expect((await contactsApi.search("jam")).map((c) => c.id)).toEqual([7, 8]);
+    expect(seen).toEqual([{ search: "jam", page: 1, per_page: 100 }, { search: "jam", page: 2, per_page: 100 }]);
+  });
+
   it("reads the trash from its own endpoint", async () => {
     mock.onGet("/api/v1/contact_app/contacts/trashes").reply(200, listPage([jamil], 1, 1));
     expect((await contactsApi.trash()).map((c) => c.id)).toEqual([7]);

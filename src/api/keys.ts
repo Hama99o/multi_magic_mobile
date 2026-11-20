@@ -92,6 +92,8 @@ export const contactsKeys = {
   search: <S extends string>(term: S) => ["contacts", "search", term] as const,
   detail: <C extends number>(contactId: C) => ["contacts", "contact", contactId] as const,
   trash: () => ["contacts", "trash"] as const,
+  /** The web's My Family tab: under `all`, so marking who you are refreshes it. */
+  familyMembers: () => ["contacts", "familyMembers"] as const,
   allBirthdays: () => ["contacts", "birthdays"] as const,
   birthdays: <D extends number>(days: D) => ["contacts", "birthdays", days] as const,
   duplicates: () => ["contacts", "duplicates"] as const,

@@ -396,7 +396,8 @@ async function allPages(path: string, params: Record<string, unknown> = {}): Pro
 export const contactsApi = {
   list: (): Promise<Contact[]> => allPages(BASE),
 
-  search: async (term: string): Promise<Contact[]> => (await page(BASE, { search: term.trim() }, 1)).rows,
+  /** Every page of matches (a common first name can match more than 100). */
+  search: (term: string): Promise<Contact[]> => allPages(BASE, { search: term.trim() }),
 
   trash: (): Promise<Contact[]> => allPages(`${BASE}/trashes`),
 
@@ -491,6 +492,26 @@ export const contactsApi = {
   /** Which contact is the user: the root the family is measured from. Only
    *  one can be; marking another moves the mark (`clear_other_self`). */
   setSelf: (contactId: number, isSelf: boolean) => contactsApi.update(contactId, { is_self: isSelf }),
+
+  /**
+   * The user's family, the web's "My Family" tab (`FamilyTab.tsx`): everyone
+   * reachable through family ties from the contact marked as the user, each
+   * with what they are to them (`family_label`: "mother", "cousin"; null when
+   * no word fits). Without a contact marked as the user, `selfId` is null and
+   * the list is everyone with any family tie. `family_label` is an English
+   * word from the server, as on the web: a server-side gap for French.
+   */
+  familyMembers: async (): Promise<{ selfId: number | null; members: (Contact & { familyLabel: string | null })[] }> => {
+    const body = (await http.get(`${BASE}/family_members`)).data as { self_id?: unknown; contacts?: unknown };
+    const rows = Array.isArray(body?.contacts) ? body.contacts : [];
+    return {
+      selfId: typeof body?.self_id === "number" ? body.self_id : null,
+      members: rows.map((raw) => {
+        const label = (raw as { family_label?: unknown }).family_label;
+        return { ...parseContact(raw), familyLabel: typeof label === "string" && label ? label : null };
+      }),
+    };
+  },
 
   /** A gendered role ("father") tells the card a gender it did not have. */
   setGender: (contactId: number, gender: Gender) => contactsApi.update(contactId, { gender }),

@@ -20,7 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import * as Sharing from "expo-sharing";
 import {
   BookUser, Cake, Check, CircleCheck, Circle, Copy, Globe, Import, Mail, MessageCircle,
-  MoreVertical, Phone, Plus, Search, Share2, Star, StarOff, Trash2, Upload, X,
+  MoreVertical, Phone, Plus, Search, Share2, Star, StarOff, Trash2, Upload, Users, X,
 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -196,6 +196,7 @@ function ContactsList({ pane = false, openId = null, onOpen }: { pane?: boolean;
   const lang = i18n.language === "fr" ? "fr" : "en";
   const countryName = countryByCode(country)?.name[lang] ?? t("contacts.country.none");
   const moreActions: SheetAction[] = [
+    { key: "family", icon: Users, label: t("contacts.menu.family"), onPress: () => router.push("/contacts/my-family") },
     { key: "import", icon: Import, label: t("contacts.menu.import"), hint: t("contacts.menu.importHint"), onPress: () => router.push("/contacts/import") },
     { key: "export-all", icon: Upload, label: t("contacts.menu.exportAll"), disabled: !allIds.length, onPress: () => exporting.mutate("all") },
     { key: "select", icon: CircleCheck, label: t("contacts.menu.select"), disabled: !allIds.length, onPress: () => setSelecting(true) },

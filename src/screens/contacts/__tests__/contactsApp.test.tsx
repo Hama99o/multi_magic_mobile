@@ -26,6 +26,7 @@ import ContactDetail from "../../../../app/contacts/contact";
 import EditContact from "../../../../app/contacts/edit";
 import ImportContacts from "../../../../app/contacts/import";
 import SharedIntoContacts from "../../../../app/contacts/shared";
+import MyFamily from "../../../../app/contacts/my-family";
 import { useSharedIntoContacts } from "@/stores/sharedIntoContacts.store";
 import { parseCard } from "../shareIn";
 import { __parse } from "@/api/contacts";
@@ -346,6 +347,20 @@ describe("one contact", () => {
     fireEvent.press(await screen.findByTestId("contact-family-who-8"));
     await waitFor(() => expect(mock.history.post.find((r) => r.url === `${BASE}/7/relations`)?.data).toBe(JSON.stringify({ relative_id: 8, kind: "sibling", qualifier: "half" })));
     await waitFor(() => expect(mock.history.put.find((r) => r.url === `${BASE}/8`)?.data).toBe(JSON.stringify({ contact: { gender: "female" } })));
+  });
+
+  it("the who-is-it list has a search, so a long book is not scrolled by hand (old audit P2)", async () => {
+    mock.onGet(`${BASE}/7`).reply(200, { contact: contact() });
+    mock.onGet(BASE).reply(200, page([contact(), contact({ id: 8, firstname: "Anisa", lastname: "Safi" }), contact({ id: 9, firstname: "Bilal", lastname: "Khan" })]));
+    renderScreen(<ContactDetail />);
+    fireEvent.press(await screen.findByTestId("contact-family-add"));
+    fireEvent.press(screen.getByTestId("contact-family-role-friend"));
+    expect(await screen.findByTestId("contact-family-who-9")).toBeTruthy();
+    fireEvent.changeText(screen.getByTestId("contact-family-who-search"), "anis");
+    expect(screen.getByTestId("contact-family-who-8")).toBeTruthy();
+    expect(screen.queryByTestId("contact-family-who-9")).toBeNull();
+    // "New person" stays whatever is typed: the one you want may not be in the book.
+    expect(screen.getByTestId("contact-family-who-new")).toBeTruthy();
   });
 
   it("a friend skips the kind of tie", async () => {
@@ -984,5 +999,67 @@ describe("shared from another app", () => {
     mock.onPost(`${BASE}/import_vcard`).reply(201, { summary: { created: 2, skipped: 0, failed: 0, total: 2 }, skipped: [], failed: [] });
     renderScreen(<ImportContacts />);
     expect(await screen.findByTestId("contacts-import-summary")).toHaveTextContent("2 contacts added");
+  });
+});
+
+// The web's "My Family" tab (`FamilyTab.tsx`, `GET contacts/family_members`),
+// parity 2026-11-20: only the user's family, measured from the contact marked
+// as them; without one it asks who they are first, and twice.
+describe("My family", () => {
+  const fam = (self: number | null, rows: unknown[]) => ({ self_id: self, contacts: rows });
+
+  it("is in the Contacts menu", async () => {
+    mock.onGet(BASE).reply(200, page([contact()]));
+    renderScreen(<Contacts />);
+    fireEvent.press(await screen.findByTestId("contacts-more"));
+    fireEvent.press(screen.getByTestId("contacts-menu-family"));
+    expect(router.push).toHaveBeenCalledWith("/contacts/my-family");
+  });
+
+  it("lists the family with each one's tie to the user, opens a person, the tree and the user's own card", async () => {
+    mock.onGet(`${BASE}/family_members`).reply(
+      200,
+      fam(1, [
+        { ...contact({ id: 1, firstname: "[qa] Self", lastname: null, is_self: true }), family_label: null },
+        { ...contact({ id: 2, firstname: "[qa] Mum", lastname: null }), family_label: "mother" },
+      ]),
+    );
+    renderScreen(<MyFamily />);
+    expect(await screen.findByText("[qa] Mum")).toBeTruthy();
+    expect(screen.getByTestId("my-family-count")).toHaveTextContent("2 family members");
+    expect(screen.getByTestId("my-family-you-are")).toHaveTextContent("You are [qa] Self");
+    expect(screen.getByTestId("my-family-badge-1")).toHaveTextContent("you");
+    expect(screen.getByTestId("my-family-badge-2")).toHaveTextContent("mother");
+    fireEvent.press(screen.getByTestId("my-family-row-2"));
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/contacts/contact", params: { id: "2" } });
+    fireEvent.press(screen.getByTestId("my-family-tree"));
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/contacts/family", params: { id: "1" } });
+    fireEvent.press(screen.getByTestId("my-family-add"));
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/contacts/contact", params: { id: "1" } });
+  });
+
+  it("Not me clears who the user is", async () => {
+    mock.onGet(`${BASE}/family_members`).reply(200, fam(1, [{ ...contact({ id: 1, firstname: "[qa] Self", lastname: null, is_self: true }), family_label: null }]));
+    mock.onPut(`${BASE}/1`).reply(200, { contact: contact({ id: 1, is_self: false }) });
+    renderScreen(<MyFamily />);
+    fireEvent.press(await screen.findByTestId("my-family-change-self"));
+    await waitFor(() => expect(mock.history.put.map((r) => JSON.parse(r.data as string))).toEqual([{ contact: { is_self: false } }]));
+  });
+
+  it("with no one marked as the user, asks who they are, finds them by name, and asks again before saving", async () => {
+    mock.onGet(`${BASE}/family_members`).reply(200, fam(null, []));
+    mock.onGet(BASE).reply(200, page([contact({ id: 4, firstname: "[qa] Alex", lastname: null }), contact({ id: 5, firstname: "[qa] Sam", lastname: null })]));
+    mock.onPut(`${BASE}/5`).reply(200, { contact: contact({ id: 5, is_self: true }) });
+    renderScreen(<MyFamily />);
+    expect(await screen.findByText("Who are you?")).toBeTruthy();
+    expect(screen.getByText("No family yet. Mark which contact is you, then link your relatives.")).toBeTruthy();
+    expect(screen.queryByTestId("my-family-add")).toBeNull();
+    fireEvent.changeText(screen.getByTestId("my-family-self-search"), "sam");
+    expect(screen.queryByTestId("my-family-self-4")).toBeNull();
+    fireEvent.press(await screen.findByTestId("my-family-self-5"));
+    expect(screen.getByText("Is [qa] Sam you?")).toBeTruthy();
+    expect(mock.history.put).toHaveLength(0);
+    fireEvent.press(screen.getByTestId("my-family-self-yes"));
+    await waitFor(() => expect(mock.history.put.map((r) => [r.url, JSON.parse(r.data as string)])).toEqual([[`${BASE}/5`, { contact: { is_self: true } }]]));
   });
 });

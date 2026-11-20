@@ -115,6 +115,8 @@ export function ContactCard({
   const [error, setError] = useState<string | null>(null);
   const [rolePicking, setRolePicking] = useState(false);
   const [adding, setAdding] = useState<{ step: "qualifier" | "who" | "name"; tie: Adding } | null>(null);
+  // The "who is it?" list's search (old audit P2): a long book is not scrolled by hand.
+  const [whoTyped, setWhoTyped] = useState("");
   const [nameError, setNameError] = useState<string | null>(null);
   const [editing, setEditing] = useState<{ step: "menu" | "role" | "qualifier"; relation: Relation } | null>(null);
   // The whole book, only once "Add" is tapped: the detail can be opened from a
@@ -195,8 +197,10 @@ export function ContactCard({
 
   // Everyone else in the book, for "add a family member".
   const anchorId = adding?.tie.anchorId ?? contact.id;
+  const whoTerm = whoTyped.trim().toLocaleLowerCase();
   const others = (book.data ?? [])
     .filter((c) => c.id !== contact.id && c.id !== anchorId && (anchorId !== contact.id || !contact.relations.some((r) => r.relative.id === c.id)))
+    .filter((c) => !whoTerm || displayName(c).toLocaleLowerCase().includes(whoTerm))
     .sort((a, b) => sortKey(a).localeCompare(sortKey(b)));
   // A current spouse is the door into the other family (web `viaFamily`).
   const spouses = contact.relations.filter((r) => r.kind === "spouse" && r.status === "current").map((r) => r.relative);
@@ -551,8 +555,12 @@ export function ContactCard({
           } },
           ...others.map((c) => ({ key: String(c.id), label: displayName(c) || t("contacts.noName"), onPress: () => linkTo(adding.tie, c) })),
         ] : []}
-        onClose={() => setAdding((a) => (a?.step === "who" ? null : a))}
+        onClose={() => {
+          setWhoTyped("");
+          setAdding((a) => (a?.step === "who" ? null : a));
+        }}
         testID="contact-family-who"
+        search={{ value: whoTyped, onChange: setWhoTyped, placeholder: t("contacts.list.search") }}
       />
       <NameDialog
         open={adding?.step === "name"}

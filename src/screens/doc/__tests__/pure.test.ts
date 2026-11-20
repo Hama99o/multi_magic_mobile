@@ -21,7 +21,7 @@ const f = (name: string, mimeType: string | null = null, size: number | null = 1
 describe("what Doc takes", () => {
   it("knows a PDF and every image a phone holds, by type or by name", () => {
     expect(kindOf(f("a.pdf"))).toBe("pdf");
-    for (const name of ["a.heic", "a.HEIF", "a.avif", "a.webp", "a.tiff", "a.tif", "a.jp2", "a.bmp", "a.ico", "a.jpeg", "a.png", "a.gif"]) expect([name, kindOf(f(name))]).toEqual([name, "image"]);
+    for (const name of ["a.heic", "a.HEIF", "a.avif", "a.webp", "a.tiff", "a.tif", "a.jpeg", "a.png", "a.gif"]) expect([name, kindOf(f(name))]).toEqual([name, "image"]);
     expect(kindOf(f("scan", "image/heic"))).toBe("image"); // no extension, a type
     expect(kindOf(f("notes.docx", "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))).toBe("other");
     expect(mimeFor(f("IMG.HEIC", "application/octet-stream"))).toBe("image/heic");
@@ -32,7 +32,6 @@ describe("what Doc takes", () => {
     expect(needsServerPreview(f("a.heic", "image/heic"))).toBe(false);
     expect(needsServerPreview(f("a.webp", "image/webp"))).toBe(false);
     expect(needsServerPreview(f("a.tiff", "image/tiff"))).toBe(true);
-    expect(needsServerPreview(f("a.bmp", "image/bmp"))).toBe(true);
     expect(kindOf(f("a.svg", "image/svg+xml"))).toBe("other"); // refused by the server on purpose
     expect(needsServerPreview(f("a.pdf", "application/pdf"))).toBe(false);
   });
@@ -42,6 +41,10 @@ describe("what Doc takes", () => {
     expect(checkOne(f("a.jpg"), "pdf")).toEqual({ reason: "not_pdf", name: "a.jpg" });
     expect(checkOne(f("a.mov", "video/quicktime"), "any")).toEqual({ reason: "unreadable_image", name: "a.mov" });
     expect(checkOne(f("a.pdf", null, 0), "pdf")).toEqual({ reason: "empty", name: "a.pdf" });
+    // Refused by the server on purpose (Active Storage blocks the untrusted
+    // loaders, multi_magic MOBILE_ENDPOINTS.md): said here, never uploaded.
+    for (const [name, mime] of [["a.bmp", "image/bmp"], ["a.ico", "image/x-icon"], ["a.jp2", "image/jp2"], ["a.svg", "image/svg+xml"], ["scan", "image/vnd.microsoft.icon"]] as const)
+      expect([name, checkOne(f(name, mime), "any")]).toEqual([name, { reason: "unsupported_format", name }]);
     expect(checkOne(f("a.pdf"), "pdf")).toBeNull();
     expect(checkOne(f("a.pdf", null, null), "any")).toBeNull(); // an unknown size is the server's to judge
   });

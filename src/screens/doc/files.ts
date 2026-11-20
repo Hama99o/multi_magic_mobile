@@ -16,11 +16,25 @@ import { DOC_MAX_FILE_BYTES, DOC_MAX_MERGE_BYTES, DOC_MAX_MERGE_FILES, type DocF
 export type DocKind = "pdf" | "image" | "other";
 
 /**
- * Every image extension the server decodes (libvips + poppler). Not SVG: the
- * server refuses it on purpose (Active Storage blocks the untrusted loader,
- * multi_magic feat/mobile-server-gaps), so the phone says so before sending.
+ * The images the server reads (multi_magic `MOBILE_ENDPOINTS.md`, "Which
+ * images the server reads"): JPEG, PNG, WebP, GIF, TIFF, HEIC, plus AVIF
+ * (measured on the local stack 2026-11-20).
  */
-export const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "bmp", "heic", "heif", "avif", "tif", "tiff", "jp2", "j2k", "jpf", "jpx", "ico"] as const;
+export const IMAGE_EXTENSIONS = ["jpg", "jpeg", "png", "webp", "gif", "heic", "heif", "avif", "tif", "tiff"] as const;
+
+/**
+ * Refused by the server ON PURPOSE, the same in production: Active Storage
+ * calls `Vips.block_untrusted(true)`, which turns off ImageMagick (BMP, ICO),
+ * openjpeg (JPEG 2000) and SVG, the loaders least safe with a hostile file.
+ * Said before upload rather than after a round trip; converting them on the
+ * phone would need a native image module.
+ */
+const BLOCKED_EXTENSIONS = ["bmp", "dib", "ico", "cur", "jp2", "j2k", "jpf", "jpx", "jpm", "svg", "svgz"];
+const BLOCKED_MIME = /^image\/(bmp|x-bmp|x-ms-bmp|x-icon|vnd\.microsoft\.icon|jp2|jpx|jpm|svg\+xml)$/;
+
+export function isBlockedFormat(file: { name: string; mimeType: string | null }): boolean {
+  return BLOCKED_EXTENSIONS.includes(extensionOf(file.name)) || BLOCKED_MIME.test(file.mimeType ?? "");
+}
 
 /** What the phone's own image views draw without the server's help. */
 const NATIVE_DRAWABLE = ["jpg", "jpeg", "png", "webp", "gif", "heic", "heif", "avif"];
@@ -61,7 +75,8 @@ export function mimeFor(file: { name: string; mimeType: string | null }): string
 export function kindOf(file: { name: string; mimeType: string | null }): DocKind {
   const mime = mimeFor(file);
   if (mime === "application/pdf") return "pdf";
-  if (mime === "image/svg+xml" || extensionOf(file.name) === "svg") return "other";
+  // Blocked on the server (see BLOCKED_EXTENSIONS): not an image any tool can use.
+  if (isBlockedFormat(file)) return "other";
   if (mime.startsWith("image/")) return "image";
   if ((IMAGE_EXTENSIONS as readonly string[]).includes(extensionOf(file.name))) return "image";
   return "other";
@@ -87,6 +102,7 @@ export function checkOne(file: DocFile, accept: "pdf" | "image" | "any"): Refusa
   const kind = kindOf(file);
   // Zero bytes: the server would call it "not a PDF" (measured on :3020); it is empty.
   if (file.size === 0) return { reason: "empty", name: file.name };
+  if (isBlockedFormat(file)) return { reason: "unsupported_format", name: file.name };
   if (kind === "other") return { reason: "unreadable_image", name: file.name };
   if (accept === "pdf" && kind !== "pdf") return { reason: "not_pdf", name: file.name };
   if (accept === "image" && kind !== "image") return { reason: "unreadable_image", name: file.name };

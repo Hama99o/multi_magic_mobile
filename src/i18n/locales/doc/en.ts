@@ -70,6 +70,7 @@ export const docEn = {
     unreadable_image: "This file is neither a PDF nor a picture Doc can read.",
     no_signature: "That signature could not be found. Pick it again.",
     invalid: "Something in the request was not right.",
+    unsupported_format: "BMP, ICO, JPEG 2000 and SVG files cannot be used. Save it as JPEG or PNG and try again.",
     rate_limited: "Too many requests in a minute. Wait a moment and try again.",
     offline: "No connection to MultiMagic. Doc needs it to work on your file.",
     unknown: "That did not work. Try again.",

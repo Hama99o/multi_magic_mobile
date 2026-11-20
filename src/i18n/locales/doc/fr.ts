@@ -72,6 +72,7 @@ export const docFr: typeof docEn = {
     unreadable_image: "Ce fichier n’est ni un PDF ni une image que Doc sait lire.",
     no_signature: "Cette signature est introuvable. Choisissez-la à nouveau.",
     invalid: "Un élément de la demande n’était pas correct.",
+    unsupported_format: "Les fichiers BMP, ICO, JPEG 2000 et SVG ne sont pas acceptés. Enregistrez-le en JPEG ou PNG et réessayez.",
     rate_limited: "Trop de demandes en une minute. Patientez un instant et réessayez.",
     offline: "Pas de connexion à MultiMagic. Doc en a besoin pour traiter votre fichier.",
     unknown: "Cela n’a pas fonctionné. Réessayez.",

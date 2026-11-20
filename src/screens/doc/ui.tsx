@@ -40,6 +40,7 @@ const REASON_KEYS: Partial<Record<string, string>> = {
   no_signature: "doc.errors.no_signature",
   invalid: "doc.errors.invalid",
   rate_limited: "doc.errors.rate_limited",
+  unsupported_format: "doc.errors.unsupported_format",
   offline: "doc.errors.offline",
 };
 
@@ -50,7 +51,7 @@ export function reasonText(t: Translate, problem: DocError | Refusal, name?: str
   if (reason === "not_pdf") return who ? t("doc.errors.not_pdf", { name: who }) : t("doc.errors.not_pdf_plain");
   const key = REASON_KEYS[reason] ?? "doc.errors.unknown";
   const base = t(key);
-  return who && (reason === "locked" || reason === "damaged" || reason === "empty" || reason === "too_large" || reason === "unreadable_image")
+  return who && (reason === "locked" || reason === "damaged" || reason === "empty" || reason === "too_large" || reason === "unreadable_image" || reason === "unsupported_format")
     ? t("doc.errors.named", { name: who, reason: base })
     : base;
 }

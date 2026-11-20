@@ -67,6 +67,8 @@ export type DocReason =
   | "no_signature"
   | "invalid"
   | "rate_limited"
+  /** Phone-side only: BMP, ICO, JPEG 2000, SVG, refused by the server on purpose. */
+  | "unsupported_format"
   | "offline"
   | "cancelled"
   | "unknown";

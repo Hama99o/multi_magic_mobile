@@ -17,7 +17,8 @@
  */
 import { router } from "expo-router";
 import type { QueryClient } from "@tanstack/react-query";
-import { calendarKeys, conversationKeys, financeKeys, todoKeys } from "@/api/keys";
+import { calendarKeys, conversationKeys, financeKeys, flowKeys, todoKeys } from "@/api/keys";
+import { flowApi } from "@/api/flow";
 import { conversationsApi } from "@/api/conversations";
 import { todoGroupsApi } from "@/api/todos";
 import { financeApi } from "@/api/finance";
@@ -26,7 +27,7 @@ import { FINANCE_TABS } from "@/screens/finance/tabs/names";
 import type { AppKey } from "./registry";
 
 /** The apps a place can be in: every app with a root of its own, and Home (left on Home → Home). */
-export const PLACE_APPS = ["home", "safezone", "notes", "todos", "pages", "finance", "chats", "contacts", "calendar", "notifications"] as const;
+export const PLACE_APPS = ["home", "safezone", "notes", "todos", "pages", "finance", "chats", "contacts", "calendar", "notifications", "flow"] as const;
 export type PlaceApp = (typeof PLACE_APPS)[number];
 
 const ROOTS: Record<PlaceApp, string> = {
@@ -40,6 +41,7 @@ const ROOTS: Record<PlaceApp, string> = {
   contacts: "/contacts",
   calendar: "/calendar",
   notifications: "/notifications",
+  flow: "/flow",
 };
 
 /**
@@ -50,9 +52,12 @@ const ROOTS: Record<PlaceApp, string> = {
 const NOT_PLACES = [
   "/finance/entry", "/finance/loan-edit", "/finance/recurring-edit", "/todos/template", "/calendar/edit",
   "/contacts/edit", "/notes/edit", "/notes/note", "/safezone/item", "/safezone/edit", "/pages/view", "/pages/save",
+  "/flow/card",
 ] as const;
 const PAGES_TABS = ["starred", "shared", "files"] as const;
 const pagesRoot = (tab: string | undefined) => ((PAGES_TABS as readonly string[]).includes(tab ?? "") ? `/pages?tab=${tab}` : "/pages");
+
+const flowRoot = (tab: string | undefined) => (tab === "backlog" ? "/flow?tab=backlog" : "/flow");
 
 const FINANCE_SCREENS = ["/finance/recurring", "/finance/categories", "/finance/reports", "/finance/trash"] as const;
 
@@ -61,6 +66,7 @@ export type PlaceSub =
   | { kind: "loan"; id: number }
   | { kind: "event"; id: number; on?: string }
   | { kind: "thread"; id: number }
+  | { kind: "board"; id: number }
   | { kind: "screen"; path: (typeof FINANCE_SCREENS)[number] };
 
 export interface Place {
@@ -95,6 +101,11 @@ export function placeFor(pathname: string, params: Params): PlaceDraft | null {
   const app = (Object.keys(ROOTS) as PlaceApp[]).find((a) => pathname === ROOTS[a] || pathname.startsWith(`${ROOTS[a]}/`));
   if (!app) return null;
   if (pathname === "/pages") return { app, root: pagesRoot(one(params.tab)) };
+  if (pathname === "/flow") return { app, root: flowRoot(one(params.tab)) };
+  if (app === "flow" && pathname === "/flow/board") {
+    const id = idOf(params.id);
+    return id == null ? { app, root: ROOTS.flow } : { app, root: ROOTS.flow, sub: { kind: "board", id } };
+  }
 
   if (app === "finance") {
     if (pathname === "/finance") return { app, root: financeRoot(one(params.tab)) };
@@ -124,7 +135,7 @@ function parseSub(raw: unknown): PlaceSub | undefined {
   if (!raw || typeof raw !== "object") return undefined;
   const r = raw as Record<string, unknown>;
   const id = typeof r.id === "number" && Number.isInteger(r.id) && r.id > 0 ? r.id : null;
-  if ((r.kind === "list" || r.kind === "loan" || r.kind === "thread") && id != null) return { kind: r.kind, id };
+  if ((r.kind === "list" || r.kind === "loan" || r.kind === "thread" || r.kind === "board") && id != null) return { kind: r.kind, id };
   if (r.kind === "event" && id != null) return typeof r.on === "string" && /^\d{4}-\d{2}-\d{2}$/.test(r.on) ? { kind: "event", id, on: r.on } : { kind: "event", id };
   if (r.kind === "screen") {
     const path = FINANCE_SCREENS.find((p) => p === r.path);
@@ -152,7 +163,7 @@ export function parsePlace(raw: string | null): Place | null {
   const app = r.app;
   const ownRoot = typeof r.root === "string" && (r.root === ROOTS[app] || r.root.startsWith(`${ROOTS[app]}?`));
   const tab = ownRoot ? (new URLSearchParams((r.root as string).split("?")[1] ?? "").get("tab") ?? undefined) : undefined;
-  const root = app === "finance" ? financeRoot(tab) : app === "pages" ? pagesRoot(tab) : ROOTS[app];
+  const root = app === "finance" ? financeRoot(tab) : app === "pages" ? pagesRoot(tab) : app === "flow" ? flowRoot(tab) : ROOTS[app];
   const sub = parseSub(r.sub);
   const userId = typeof r.userId === "number" ? r.userId : null;
   return sub ? { v: 2, app, root, sub, userId } : { v: 2, app, root, userId };
@@ -196,6 +207,12 @@ export async function restoreSub(place: Place, queryClient: QueryClient): Promis
     if (sub.kind === "loan") {
       await queryClient.fetchQuery({ queryKey: financeKeys.loan(sub.id), queryFn: () => financeApi.loans.show(sub.id) });
       router.push({ pathname: "/finance/loan", params: { id: String(sub.id) } });
+      return;
+    }
+    if (sub.kind === "board") {
+      // The board fetches itself (its first page); only the project is checked here, so a gone board stays on Flow.
+      await queryClient.fetchQuery({ queryKey: flowKeys.project(sub.id), queryFn: () => flowApi.project(sub.id) });
+      router.push({ pathname: "/flow/board", params: { id: String(sub.id) } });
       return;
     }
     if (sub.kind === "thread") {

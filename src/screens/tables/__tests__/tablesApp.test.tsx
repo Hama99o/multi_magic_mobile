@@ -761,6 +761,36 @@ describe("comments and history (increment 5)", () => {
     await waitFor(() => expect(mock.history.delete.map((r) => r.url)).toEqual([`${B}/comments/9`]));
   });
 
+  it("joins files: a refused video is said, a chip can be removed, and files alone can be sent (the web's `CommentsFeed.tsx`)", async () => {
+    const pickers = jest.requireActual<typeof import("@/screens/contacts/documents")>("@/screens/contacts/documents");
+    const api = jest.requireActual<typeof import("@/api/tables")>("@/api/tables").tablesApi;
+    jest.spyOn(pickers, "pickPhotos").mockResolvedValue({
+      files: [
+        { uri: "file:///shop.jpg", name: "shop.jpg", mimeType: "image/jpeg", size: 2048 },
+        { uri: "file:///clip.mp4", name: "clip.mp4", mimeType: "video/mp4", size: 2048 },
+        { uri: "file:///till.jpg", name: "till.jpg", mimeType: "image/jpeg", size: 4096 },
+      ],
+    });
+    const alert = jest.spyOn(Alert, "alert").mockImplementation(() => undefined);
+    const add = jest.spyOn(api, "addComment").mockResolvedValue({ id: 11, body: "", editedAt: null, createdAt: "x", author: { id: 1, name: "QA" }, mine: true, canDelete: true, files: [] });
+    mock.onGet(`${B}/tables/10/comments`).reply(200, { comments: [{ ...comment(9, "Receipt"), files: [{ id: 3, filename: "receipt.pdf", content_type: "application/pdf", byte_size: 10, url: "https://example.test/receipt.pdf" }] }], next_before: null });
+    renderScreen(<Activity />);
+    expect(await screen.findByTestId("tables-comment-0-file-0")).toBeTruthy();
+    expect(screen.getByLabelText("Open receipt.pdf")).toBeTruthy();
+    expect(screen.getByTestId("tables-comment-send").props.accessibilityState.disabled).toBe(true);
+    fireEvent.press(screen.getByTestId("tables-comment-attach"));
+    fireEvent.press(await screen.findByText("Photos"));
+    await waitFor(() => expect(alert).toHaveBeenCalledWith("Some files were not joined", "clip.mp4: this kind of file cannot be joined"));
+    expect(within(screen.getByTestId("tables-comment-files")).getByText("shop.jpg")).toBeTruthy();
+    fireEvent.press(screen.getByLabelText("Remove shop.jpg"));
+    expect(within(screen.getByTestId("tables-comment-files")).queryByText("shop.jpg")).toBeNull();
+    expect(screen.getByTestId("tables-comment-send").props.accessibilityState.disabled).toBe(false);
+    fireEvent.press(screen.getByTestId("tables-comment-send"));
+    await waitFor(() => expect(add).toHaveBeenCalledTimes(1));
+    expect(add).toHaveBeenCalledWith(10, { body: "", recordId: 501, mentionIds: [], files: [{ uri: "file:///till.jpg", name: "till.jpg", mimeType: "image/jpeg", size: 4096 }] });
+    await waitFor(() => expect(screen.queryByTestId("tables-comment-files")).toBeNull());
+  });
+
   it("someone else's comment offers nothing to change", async () => {
     mock.onGet(`${B}/tables/10/comments`).reply(200, { comments: [comment(9, "Theirs", false)], next_before: null });
     renderScreen(<Activity />);
@@ -784,6 +814,30 @@ describe("comments and history (increment 5)", () => {
     expect(await screen.findByText('QA deleted the column "Price"')).toBeTruthy();
     fireEvent.press(screen.getByTestId("tables-history-0-restore"));
     await waitFor(() => expect(mock.history.post.map((r) => r.url)).toEqual([`${B}/fields/77/restore`]));
+  });
+
+  it("filters the table's history by person, by ACCOUNT id, and offers it only with two people (the web's `HistoryFeed.tsx`)", async () => {
+    mockParams.current = { table: "10", tab: "history" };
+    mock.onGet(`${B}/tables/10/activities`).reply((config) => [
+      200,
+      (config.params as { user_id?: number }).user_id === 42
+        ? { activities: [{ id: 3, action: "row.created", source: "app", details: {}, subject_type: "record", subject_id: 7, user: { id: 42, name: "Omar" }, created_at: "2026-11-20T10:00:00Z", updated_at: "x", restorable: false }], next_before: null }
+        : { activities: [], next_before: null },
+    ]);
+    renderScreen(<Activity />);
+    fireEvent.press(await screen.findByTestId("tables-history-person-42"));
+    await waitFor(() => expect(mock.history.get.filter((r) => r.url === `${B}/tables/10/activities`).at(-1)?.params).toEqual({ user_id: 42 }));
+    expect(screen.getByLabelText("Changes by Omar").props.accessibilityState.selected).toBe(true);
+    fireEvent.press(screen.getByTestId("tables-history-person-0"));
+    await waitFor(() => expect(mock.history.get.filter((r) => r.url === `${B}/tables/10/activities`).at(-1)?.params).toEqual({}));
+  });
+
+  it("a row's history offers no person filter (the row view is the row's own)", async () => {
+    mockParams.current = { table: "10", record: "501", tab: "history" };
+    mock.onGet(`${B}/tables/10/activities`).reply(200, { activities: [], next_before: null });
+    renderScreen(<Activity />);
+    expect(await screen.findByTestId("tables-history-empty")).toBeTruthy();
+    expect(screen.queryByTestId("tables-history-people")).toBeNull();
   });
 });
 

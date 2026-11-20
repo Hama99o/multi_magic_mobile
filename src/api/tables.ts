@@ -26,6 +26,7 @@
  */
 import { http } from "./http";
 import { absoluteUrl } from "./conversations";
+import { UPLOAD_TIMEOUT_MS } from "./ai";
 import { ApiShapeError, arr, id, obj, optStr, readable, readableRows, str } from "./parse";
 import { parseDefinitions, parseFieldValues, type FieldDefinition, type FieldValues, type Selection } from "./fields";
 
@@ -573,7 +574,17 @@ export const tablesApi = {
   },
 
   /** A comment; @mentions ring those people's bell (the server sends no email). */
-  async addComment(tableId: number, input: { body: string; recordId?: number; mentionIds?: number[] }): Promise<TableComment> {
+  async addComment(tableId: number, input: { body: string; recordId?: number; mentionIds?: number[]; files?: { uri: string; name: string; mimeType: string }[] }): Promise<TableComment> {
+    if (input.files?.length) {
+      // Files go as multipart `comment[files][]` (CommentsController#uploaded_files), so every field does.
+      const form = new FormData();
+      form.append("comment[body]", input.body);
+      if (input.recordId) form.append("comment[record_id]", String(input.recordId));
+      for (const m of input.mentionIds ?? []) form.append("comment[mention_ids][]", String(m));
+      for (const f of input.files) form.append("comment[files][]", { uri: f.uri, name: f.name, type: f.mimeType } as unknown as Blob);
+      const { data } = await http.post(`${BASE}/tables/${tableId}/comments`, form, { headers: { "Content-Type": "multipart/form-data" }, timeout: UPLOAD_TIMEOUT_MS });
+      return parseComment(obj(data, "comment response").comment);
+    }
     const comment: Record<string, unknown> = { body: input.body };
     if (input.recordId) comment.record_id = input.recordId;
     if (input.mentionIds?.length) comment.mention_ids = input.mentionIds;

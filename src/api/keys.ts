@@ -225,7 +225,8 @@ export const tablesKeys = {
   comments: <T extends number, R extends number>(tableId: T, recordId: R) => ["tables", "comments", tableId, recordId] as const,
   /** Every history list of one table, as one prefix. */
   historyAll: <T extends number>(tableId: T) => ["tables", "history", tableId] as const,
-  history: <T extends number, R extends number, K extends string>(tableId: T, recordId: R, kind: K) => ["tables", "history", tableId, recordId, kind] as const,
+  /** `person` is the account whose changes are shown, 0 for everyone. */
+  history: <T extends number, R extends number, K extends string, P extends number>(tableId: T, recordId: R, kind: K, person: P) => ["tables", "history", tableId, recordId, kind, person] as const,
   members: <B extends number>(baseId: B) => ["tables", "members", baseId] as const,
   /** What a delete would take with it (`tables#impact`), read when the delete sheet opens. */
   impact: <T extends number>(tableId: T) => ["tables", "impact", tableId] as const,

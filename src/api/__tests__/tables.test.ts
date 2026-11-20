@@ -291,6 +291,35 @@ describe("collaborate (increment 5)", () => {
     expect(JSON.parse(mock.history.post[0].data)).toEqual({ comment: { body: "Hi", record_id: 501, mention_ids: [2] } });
   });
 
+  it("sends a comment with files as multipart comment[...] fields, with a long timeout (the server's `comment[files][]`)", async () => {
+    const appended: [string, unknown][] = [];
+    const original = FormData.prototype.append;
+    jest.spyOn(FormData.prototype, "append").mockImplementation(function (this: FormData, field: string, part: unknown) {
+      appended.push([field, typeof part === "string" ? part : { ...(part as object) }]);
+      return original.call(this, field, String(part) as unknown as Blob);
+    });
+    let headers: Record<string, unknown> = {};
+    let timeout = 0;
+    mock.onPost(`${BASE}/tables/10/comments`).reply((config) => {
+      headers = config.headers as Record<string, unknown>;
+      timeout = config.timeout ?? 0;
+      return [201, { comment: { id: 11, body: "", edited_at: null, created_at: "x", user: { id: 1, name: "QA" }, mine: true, can_delete: true, files: [{ id: 3, filename: "shop.jpg", content_type: "image/jpeg", byte_size: 2048, url: "/rails/x/shop.jpg" }] } }];
+    });
+    const c = await tablesApi.addComment(10, { body: "", recordId: 501, mentionIds: [2, 4], files: [{ uri: "file:///shop.jpg", name: "shop.jpg", mimeType: "image/jpeg" }, { uri: "file:///r.pdf", name: "r.pdf", mimeType: "application/pdf" }] });
+    jest.restoreAllMocks();
+    expect(appended).toEqual([
+      ["comment[body]", ""],
+      ["comment[record_id]", "501"],
+      ["comment[mention_ids][]", "2"],
+      ["comment[mention_ids][]", "4"],
+      ["comment[files][]", { uri: "file:///shop.jpg", name: "shop.jpg", type: "image/jpeg" }],
+      ["comment[files][]", { uri: "file:///r.pdf", name: "r.pdf", type: "application/pdf" }],
+    ]);
+    expect(String(headers["Content-Type"])).toMatch(/multipart\/form-data/);
+    expect(timeout).toBeGreaterThanOrEqual(60_000);
+    expect(c.files).toEqual([{ id: 3, filename: "shop.jpg", contentType: "image/jpeg", byteSize: 2048, url: expect.stringMatching(/\/rails\/x\/shop\.jpg$/) }]);
+  });
+
   it("reads the history with its filters and cursor", async () => {
     mock.onGet(`${BASE}/tables/10/activities`, { params: { kind: "rows", before: 50 } }).reply(200, {
       activities: [{ id: 49, action: "row.updated", source: "assistant", details: { fields: ["Status"] }, subject_type: "record", subject_id: 501, user: { id: 1, name: "QA" }, created_at: "c", updated_at: "u", restorable: false }],

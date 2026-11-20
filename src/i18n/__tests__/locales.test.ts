@@ -70,6 +70,8 @@ const SAME_IN_BOTH = new Set([
   "tables.viewTypes.kanban",
   "tables.position",
   "tables.whatsapp",
+  // "Photos", one word in both (the comment composer's attach menu).
+  "tables.activity.attachPhotos",
   "fields.more_one",
   "fields.more_other",
   // Signs and letters (the web's French keeps them): >, ≥, <, ≤, A → Z, 1 → 9.

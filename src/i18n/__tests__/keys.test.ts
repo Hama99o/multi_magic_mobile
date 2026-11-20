@@ -199,6 +199,8 @@ const COMPOSED = [
   // activity.tsx: the history kinds (HISTORY_KINDS + "all") and the two badged sources.
   ...["all", "rows", "columns", "imports", "links", "sharing", "table"].map((v) => `tables.history.kinds.${v}`),
   ...["assistant", "import"].map((v) => `tables.history.sources.${v}`),
+  // A refused comment file (`commentFiles.ts` CommentFileRefusal["why"]), t(`tables.activity.refused.${why}`).
+  ...["type", "size", "count"].map((v) => `tables.activity.refused.${v}`),
   // t(`tables.find.${q.key}`) over the date filter's quick days (FilterSortSheet.tsx DateValue).
   ...["yesterday", "today", "tomorrow"].map((v) => `tables.find.${v}`),
   // Finance: the five tabs (app/finance/index.tsx) and the Help sheet's sections (HelpSheet.tsx).

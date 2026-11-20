@@ -19,7 +19,7 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FILL } from "@/theme/fill";
-import { Camera, Plus, ChevronRight, Download, File, Folder, FolderInput, FolderPlus, Images, Info, Link2, MapPin, Copy, FileStack, FileArchive, History, RefreshCw, Pencil, Star, StarOff, Trash2, Users, type LucideIcon } from "@/components/icons";
+import { Camera, Plus, ChevronRight, Download, File, Folder, FolderInput, FolderPlus, Images, Info, Link2, MapPin, Copy, FileStack, FileArchive, History, RefreshCw, NotebookPen, Pencil, Star, StarOff, Trash2, Users, type LucideIcon } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -159,6 +159,7 @@ export function ActionsSheet({
   onDownloadZip,
   onVersions,
   onReplace,
+  onLinkedNotes,
   rights,
 }: {
   node: PageNode | null;
@@ -179,6 +180,8 @@ export function ActionsSheet({
   onMakeCopy?: (node: PageNode) => void;
   /** Copy to another place (parity #34), offered to anyone who can see it (the web's rule). */
   onCopyTo?: (node: PageNode) => void;
+  /** Notes linked to this item (parity #26, #51). */
+  onLinkedNotes?: (node: PageNode) => void;
   /** A file's versions (parity #39) and replacing it (#37, needs write). */
   onVersions?: (node: PageNode) => void;
   onReplace?: (node: PageNode) => void;
@@ -221,6 +224,7 @@ export function ActionsSheet({
         {node.kind === "folder" && onDownloadZip ? <SheetRow icon={FileArchive} label={t("pages.copy.downloadZip")} onPress={run(onDownloadZip)} testID="pages-action-download-zip" /> : null}
         {node.kind === "file" && canWrite && onReplace ? <SheetRow icon={RefreshCw} label={t("pages.versions.replace")} onPress={run(onReplace)} testID="pages-action-replace" /> : null}
         {node.kind === "file" && onVersions ? <SheetRow icon={History} label={t("pages.versions.menu")} onPress={run(onVersions)} testID="pages-action-versions" /> : null}
+        {onLinkedNotes ? <SheetRow icon={NotebookPen} label={t("pages.notes.menu")} onPress={run(onLinkedNotes)} testID="pages-action-notes" /> : null}
         {onShowLocation ? <SheetRow icon={MapPin} label={t("pages.actions.showLocation")} onPress={run(onShowLocation)} testID="pages-action-location" /> : null}
         <SheetRow icon={Info} label={t("pages.actions.details")} onPress={run(onDetails)} testID="pages-action-details" />
         {canMove ? <SheetRow icon={Trash2} label={t("pages.actions.trash")} danger onPress={run(onTrash)} testID="pages-action-trash" /> : null}

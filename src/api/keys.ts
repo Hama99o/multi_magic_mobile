@@ -129,6 +129,10 @@ export const pagesKeys = {
   transfer: <I extends number>(transferId: I) => ["pages", "transfer", transferId] as const,
   /** A file's earlier versions (parity #39). */
   versions: <S extends number, N extends number>(spaceId: S, nodeId: N) => ["pages", "versions", spaceId, nodeId] as const,
+  /** The notes linked to a node (parity #51). */
+  noteLinks: <S extends number, N extends number>(spaceId: S, nodeId: N) => ["pages", "noteLinks", spaceId, nodeId] as const,
+  /** Notes to link, as searched in the picker. */
+  notePicker: <Q extends string>(query: Q) => ["pages", "notePicker", query] as const,
 };
 
 export const todoKeys = {

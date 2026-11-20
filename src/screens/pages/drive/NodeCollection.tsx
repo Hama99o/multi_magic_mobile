@@ -26,6 +26,7 @@ import { pagesApi } from "@/api/pages";
 import { transfersApi, type Transfer } from "@/api/transfers";
 import { TransferSheet } from "../TransferSheet";
 import { VersionsSheet } from "../VersionsSheet";
+import { LinkedNotesSheet } from "../LinkedNotesSheet";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import type { PageNode } from "@/api/pages";
 import { failureMessage } from "@/api/failure";
@@ -147,6 +148,7 @@ export function NodeCollection({
   const [copying, setCopying] = useState<PageNode[] | null>(null);
   const [transfer, setTransfer] = useState<Transfer | null>(null);
   const [versionsOf, setVersionsOf] = useState<{ node: PageNode; replace: boolean } | null>(null);
+  const [notesOf, setNotesOf] = useState<PageNode | null>(null);
   const duplicate = useCallback(
     async (node: PageNode, to?: { spaceId: number; parentId: number | null }, opts: { quiet?: boolean } = {}) => {
       try {
@@ -432,6 +434,7 @@ export function NodeCollection({
         onDownloadZip={(n) => void downloadZip(n)}
         onVersions={(n) => setVersionsOf({ node: n, replace: false })}
         onReplace={(n) => setVersionsOf({ node: n, replace: true })}
+        onLinkedNotes={setNotesOf}
         onShowLocation={showSpace ? showLocation : undefined}
         rights={actionsFor ? rightsOf(actionsFor) : null}
       />
@@ -486,6 +489,7 @@ export function NodeCollection({
         }}
       />
       <TransferSheet started={transfer} onClose={() => setTransfer(null)} />
+      <LinkedNotesSheet node={notesOf} canWrite={notesOf ? rightsOf(notesOf).canWrite : false} onClose={() => setNotesOf(null)} />
       <VersionsSheet node={versionsOf?.node ?? null} replaceNow={versionsOf?.replace} canWrite={versionsOf ? rightsOf(versionsOf.node).canWrite : false} onClose={() => setVersionsOf(null)} />
       <NameDialog
         open={renaming != null}

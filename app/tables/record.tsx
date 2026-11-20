@@ -37,6 +37,9 @@ import { displayValue, linkedRecords, scalar } from "@/components/fields/display
 import { useFieldWrites } from "@/components/fields/useFieldWrites";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useAsk } from "@/screens/flow/useAsk";
+import { useMe } from "@/hooks/useMe";
+import { orderedFields } from "@/screens/tables/personalView";
+import { usePersonalLayer } from "@/screens/tables/usePersonalLayer";
 import { ActionSheet, type SheetAction } from "@/screens/contacts/ActionSheet";
 import { canEditRows } from "@/screens/tables/logic";
 import { RowLinkConflict, restoreRows, rowFieldTarget, useDeleteRow, useDuplicateRow } from "@/screens/tables/useRowWrites";
@@ -50,7 +53,7 @@ export default function RecordScreen() {
   const { t, i18n } = useTranslation();
   const ask = useAsk();
   const client = useQueryClient();
-  const params = useLocalSearchParams<{ table: string; id: string; q?: string }>();
+  const params = useLocalSearchParams<{ table: string; id: string; q?: string; view?: string }>();
   const tableId = Number(params.table);
   const recordId = Number(params.id);
 
@@ -143,7 +146,11 @@ export default function RecordScreen() {
       : []),
   ];
 
-  const fields = table.data?.fields ?? [];
+  // The fields in the order the person sees them on the table (their own, else the view's).
+  const me = useMe();
+  const view = table.data ? (table.data.views.find((v) => String(v.id) === params.view) ?? table.data.view) : undefined;
+  const { layer } = usePersonalLayer(me?.id, view);
+  const fields = table.data && view ? orderedFields(table.data.fields, view, layer) : (table.data?.fields ?? []);
   // Every linked row, not only the first 12 a page carries (the web's Relations section).
   const hasLinks = fields.some((f) => f.fieldType === "single_record" || f.fieldType === "multi_record");
   const relations = useQuery({ queryKey: [...tablesKeys.rows(tableId), "relations", recordId], queryFn: () => tablesApi.relations(recordId), enabled: hasLinks && Number.isFinite(recordId) });

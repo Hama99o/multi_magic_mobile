@@ -33,14 +33,21 @@ import { EmptyState } from "@/screens/flow/parts";
 import { useAsk } from "@/screens/flow/useAsk";
 import { cardLayout, RecordCard } from "@/screens/tables/RecordCard";
 import { CARD_LINES, canEditRows, countLine, mergePages, TABLES_COLOR, titleField } from "@/screens/tables/logic";
-import { useCreateRow } from "@/screens/tables/useRowWrites";
+import { useCreateRow, useMoveRow } from "@/screens/tables/useRowWrites";
+import { KanbanView } from "@/screens/tables/KanbanView";
+import { CalendarView } from "@/screens/tables/CalendarView";
+import { calendarable, columnValue, kanbanable, kanbanColumns, monthFilters, rowsByDay, type KanbanColumn } from "@/screens/tables/boardViews";
+import { scalar } from "@/components/fields/display";
+import { todayKey } from "@/screens/calendar/dates";
+import type { FieldDefinition } from "@/api/fields";
+import { ArrowRightLeft } from "@/components/icons";
 import { FilterSortSheet } from "@/screens/tables/FilterSortSheet";
 import { FieldsSheet } from "@/screens/tables/FieldsSheet";
 import { SaveViewSheet } from "@/screens/tables/SaveViewSheet";
 import { GROUP_HEADER, layoutOf, listItems, type ListItem } from "@/screens/tables/grouping";
 import { colorHex } from "@/screens/flow/logic";
 import { useTablesUndo } from "@/stores/tablesUndo.store";
-import { cardFields, CARD_FIELDS, differsFromShared, effectiveQuery } from "@/screens/tables/personalView";
+import { cardFields, CARD_FIELDS, differsFromShared, effectiveQuery, orderedFields } from "@/screens/tables/personalView";
 import { usePersonalLayer } from "@/screens/tables/usePersonalLayer";
 
 const SEARCH_DELAY_MS = 400;
@@ -62,7 +69,23 @@ export default function TableScreen() {
 
   const view = table.data ? (table.data.views.find((v) => String(v.id) === params.view) ?? table.data.view) : undefined;
   const { layer, ready, change, reset } = usePersonalLayer(me?.id, view);
-  const query = view ? effectiveQuery(view, layer) : null;
+  const shared = view ? effectiveQuery(view, layer) : null;
+  const allFields = table.data?.fields ?? [];
+  // Kanban groups by its column; Calendar asks for the month on screen (the
+  // web fetches only the visible weeks). Both are the VIEW's, not the person's.
+  const kanbanField = view?.viewType === "kanban" ? (allFields.find((f) => f.id === view.config.kanbanFieldId) ?? kanbanable(allFields)[0] ?? null) : null;
+  const calendarField = view?.viewType === "calendar" ? (allFields.find((f) => f.id === view.config.calendarFieldId) ?? calendarable(allFields)[0] ?? null) : null;
+  const [month, setMonth] = useState(() => todayKey());
+  const [day, setDay] = useState(() => todayKey());
+  const [showUndated, setShowUndated] = useState(false);
+  const canNarrow = Boolean(shared && (shared.match === "and" || shared.filters.length === 0));
+  const query = !shared
+    ? null
+    : kanbanField
+      ? { ...shared, groupBy: kanbanField.id }
+      : calendarField && canNarrow
+        ? { ...shared, match: "and" as const, filters: [...shared.filters, ...monthFilters(calendarField.id, month)] }
+        : shared;
   const queryKey = JSON.stringify(query);
 
   const [searching, setSearching] = useState(false);
@@ -77,6 +100,12 @@ export default function TableScreen() {
     const id = setTimeout(() => change({ search: typed.trim() || undefined }), SEARCH_DELAY_MS);
     return () => clearTimeout(id);
   }, [typed, change]);
+
+  const undated = useQuery({
+    queryKey: tablesKeys.undated(tableId, JSON.stringify({ field: calendarField?.id, shared })),
+    queryFn: () => tablesApi.records(tableId, { ...shared, match: "and", filters: [...(shared?.filters ?? []), { fieldId: calendarField!.id, op: "empty", value: null }] }, 0),
+    enabled: ready && Boolean(calendarField) && showUndated && canNarrow,
+  });
 
   const records = useInfiniteQuery({
     queryKey: tablesKeys.records(tableId, queryKey),
@@ -108,7 +137,10 @@ export default function TableScreen() {
   const itemHeight = cardLayout(shownFields.length, Boolean(coverField));
   const items = useMemo(() => listItems(rows, groupField, firstPage?.groups ?? null, folded), [rows, groupField, firstPage?.groups, folded]);
   const layout = useMemo(() => layoutOf(items, itemHeight), [items, itemHeight]);
-  const finding = Boolean(query && (query.filters.length || query.groupBy || layer.sorts !== undefined));
+  const finding = Boolean(shared && (shared.filters.length || shared.groupBy || layer.sorts !== undefined));
+  const columns = useMemo(() => (kanbanField ? kanbanColumns(kanbanField, rows, firstPage?.groups ?? null) : []), [kanbanField, rows, firstPage?.groups]);
+  const byDay = useMemo(() => (calendarField ? rowsByDay(rows, calendarField) : new Map<string, RecordRow[]>()), [calendarField, rows]);
+  const [moving, setMoving] = useState<{ row: RecordRow; column: KanbanColumn } | null>(null);
   const personal = view ? differsFromShared(view, layer) : false;
   const unsorted = query ? query.sorts.length === 0 : false;
   const count = countLine(firstPage, t, i18n.language);
@@ -124,8 +156,19 @@ export default function TableScreen() {
     onError: (e) => setFailure(failureMessage(e, t("tables.addFailed"))),
   });
 
+  const move = useMoveRow(tableId, {
+    onMoved: (row, before) => {
+      const field = kanbanField;
+      if (!field) return;
+      offerUndo(t("tables.kanban.moved"), () => move.mutate({ row, field, value: before, before: null }));
+    },
+    onError: (e) => setFailure(failureMessage(e, t("tables.kanban.moveFailed"))),
+  });
+  const offerUndo = useTablesUndo((s) => s.offerUndo);
+  const moveTo = (row: RecordRow, field: FieldDefinition, key: string) => move.mutate({ row, field, value: columnValue(key), before: scalar(row.values[field.id]) ?? null });
+
   const openRow = (row: RecordRow) =>
-    router.push({ pathname: "/tables/record", params: { table: String(tableId), id: String(row.id), q: queryKey } });
+    router.push({ pathname: "/tables/record", params: { table: String(tableId), id: String(row.id), q: queryKey, ...(view ? { view: String(view.id) } : {}) } });
 
   const switchTable = (id: number) => router.setParams({ id: String(id), view: undefined });
 
@@ -152,7 +195,7 @@ export default function TableScreen() {
         name,
         viewType: view.viewType,
         fromViewId: view.id,
-        config: { search: query.search, match: query.match, filters: query.filters, sorts: query.sorts, groupByFieldId: query.groupBy, hiddenFieldIds: layer.hiddenFieldIds ?? view.config.hiddenFieldIds, rowColorFieldId: colorFieldId },
+        config: { search: query.search, match: query.match, filters: query.filters, sorts: query.sorts, groupByFieldId: query.groupBy, hiddenFieldIds: layer.hiddenFieldIds ?? view.config.hiddenFieldIds, fieldOrder: layer.fieldOrder ?? view.config.fieldOrder, rowColorFieldId: colorFieldId },
       });
       await client.invalidateQueries({ queryKey: tablesKeys.table(tableId) });
       // The person's choices are now that view's own; the view they came from goes back to shared.
@@ -312,7 +355,46 @@ export default function TableScreen() {
       <LoadFailure error={table.error ?? (records.data ? null : records.error)} loadFailed={t("tables.tableLoadFailed")} hasData={Boolean(records.data)} updatedAt={records.dataUpdatedAt} onRetry={() => void (table.error ? table.refetch() : records.refetch())} testID="tables-table-failed" />
       <UnreadableNotice count={unreadable} />
 
-      <FlatList
+      {kanbanField ? (
+        <KanbanView
+          columns={columns}
+          title={title}
+          fields={shownFields}
+          colorField={colorField}
+          known={known}
+          cardHeight={itemHeight}
+          editable={editable}
+          onOpen={openRow}
+          onMenu={(row, column) => setMoving({ row, column })}
+          onAdd={(column) => create.mutate({ [kanbanField.id]: columnValue(column.key) })}
+          onEndReached={() => {
+            if (records.hasNextPage && !records.isFetchingNextPage && !records.error) void records.fetchNextPage();
+          }}
+        />
+      ) : calendarField ? (
+        <CalendarView
+          month={month}
+          day={day}
+          byDay={byDay}
+          undated={undated.data?.rows ?? null}
+          showUndated={showUndated}
+          title={title}
+          fields={shownFields}
+          colorField={colorField}
+          known={known}
+          cardHeight={itemHeight}
+          editable={editable}
+          onMonthChange={setMonth}
+          onDayChange={(d) => {
+            setDay(d);
+            setShowUndated(false);
+          }}
+          onToggleUndated={() => setShowUndated((u) => !u)}
+          onOpen={openRow}
+          onAdd={(d) => create.mutate({ [calendarField.id]: d })}
+        />
+      ) : (
+        <FlatList
         testID="tables-rows"
         data={items}
         keyExtractor={(item) => (item.kind === "header" ? `h:${item.key}` : String(item.row.id))}
@@ -369,11 +451,12 @@ export default function TableScreen() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: editable ? 96 : metrics.space.xl }}
       />
+      )}
 
-      {editable && table.data ? (
+      {editable && table.data && !kanbanField && !calendarField ? (
         <Pressable
           testID="tables-add-row"
-          onPress={() => create.mutate()}
+          onPress={() => create.mutate(undefined)}
           disabled={create.isPending}
           accessibilityRole="button"
           accessibilityLabel={t("tables.addRow")}
@@ -398,7 +481,7 @@ export default function TableScreen() {
           />
           <FieldsSheet
             open={sheet === "fields"}
-            fields={fields}
+            fields={orderedFields(fields, view, layer)}
             primaryFieldId={table.data.primaryFieldId}
             hidden={layer.hiddenFieldIds ?? view.config.hiddenFieldIds}
             onCards={shownFields.map((f) => f.id)}
@@ -409,6 +492,16 @@ export default function TableScreen() {
           {sheet === "save" ? <SaveViewSheet open suggested={t("tables.saveView.suggested", { view: view.name })} busy={saving} error={saveError} onSave={(name) => void saveView(name)} onClose={() => setSheet(null)} /> : null}
         </>
       ) : null}
+      <ActionSheet
+        open={moving !== null}
+        title={t("tables.kanban.moveTo")}
+        subtitle={moving ? t("tables.kanban.moving", { column: moving.column.label ?? t("tables.kanban.empty") }) : undefined}
+        actions={columns
+          .filter((c) => c.key !== moving?.column.key)
+          .map((c) => ({ key: c.key || "empty", label: c.label ?? t("tables.kanban.empty"), icon: ArrowRightLeft, onPress: () => moving && kanbanField && moveTo(moving.row, kanbanField, c.key) }))}
+        onClose={() => setMoving(null)}
+        testID="tables-kanban-move"
+      />
       <ActionSheet open={sheet === "views"} title={t("tables.views")} actions={viewActions} onClose={() => setSheet(null)} testID="tables-views" />
       <ActionSheet open={sheet === "menu"} title={table.data?.name ?? ""} actions={menu} onClose={() => setSheet(null)} testID="tables-options" />
     </Screen>

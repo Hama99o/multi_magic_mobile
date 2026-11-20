@@ -22,6 +22,11 @@ export interface PersonalLayer {
   sorts?: SortRule[];
   groupBy?: number | null;
   hiddenFieldIds?: number[];
+  /**
+   * The order of the fields (the owner, 2026-11-20: personal like the rest;
+   * the web's own order is the SHARED view's, `field_order`).
+   */
+  fieldOrder?: number[];
   /** The fields a card shows under its title, in order (Airtable's "Customize cards"). */
   cardFieldIds?: number[];
   /** Colour the cards by this single select (the view's `row_color_field_id`); null for none. */
@@ -63,6 +68,7 @@ export function differsFromShared(view: View, layer: PersonalLayer): boolean {
   if (layer.groupBy !== undefined && layer.groupBy !== c.groupByFieldId) return true;
   if (layer.hiddenFieldIds !== undefined && !same([...layer.hiddenFieldIds].sort(), [...c.hiddenFieldIds].sort())) return true;
   if (layer.cardFieldIds !== undefined) return true;
+  if (layer.fieldOrder !== undefined && !same(layer.fieldOrder, c.fieldOrder)) return true;
   if (layer.rowColorFieldId !== undefined && layer.rowColorFieldId !== c.rowColorFieldId) return true;
   return layer.newestFirst === false && sortsOf(view, layer).length === 0;
 }
@@ -70,12 +76,27 @@ export function differsFromShared(view: View, layer: PersonalLayer): boolean {
 /** The view's fields in its order, without the hidden ones (the person's hidden list wins). */
 export function visibleFields(fields: FieldDefinition[], view: View, layer: PersonalLayer): FieldDefinition[] {
   const hidden = new Set(layer.hiddenFieldIds ?? view.config.hiddenFieldIds);
-  const order = view.config.fieldOrder;
+  return orderedFields(fields, view, layer).filter((field) => !hidden.has(field.id));
+}
+
+/** Every field, in the person's order, else the view's, else the table's (a field new since keeps its place at the end). */
+export function orderedFields(fields: FieldDefinition[], view: View, layer: PersonalLayer): FieldDefinition[] {
+  const order = layer.fieldOrder ?? view.config.fieldOrder;
   const rank = (field: FieldDefinition) => {
     const at = order.indexOf(field.id);
     return at === -1 ? order.length + field.position : at;
   };
-  return fields.filter((field) => !hidden.has(field.id)).sort((a, b) => rank(a) - rank(b));
+  return [...fields].sort((a, b) => rank(a) - rank(b));
+}
+
+/** One field one place up or down in the order on screen. */
+export function moveField(ordered: number[], fieldId: number, by: -1 | 1): number[] {
+  const at = ordered.indexOf(fieldId);
+  const to = at + by;
+  if (at === -1 || to < 0 || to >= ordered.length) return ordered;
+  const next = [...ordered];
+  [next[at], next[to]] = [next[to], next[at]];
+  return next;
 }
 
 /** The fields a card shows under its title: the person's choice, else the first visible ones. */

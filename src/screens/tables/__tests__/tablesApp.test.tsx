@@ -465,3 +465,109 @@ describe("find and personal views (increment 3)", () => {
     await waitFor(() => expect(within(screen.getByTestId("tables-card-0")).queryByText("Status")).toBeNull());
   });
 });
+
+describe("kanban and calendar (increment 4)", () => {
+  const withDue = () => {
+    const body = tableBody([view(73, "Board", "kanban", { kanban_field_id: 2 }), view(74, "When", "calendar", { calendar_field_id: 6 })]);
+    body.table.fields.push(field(6, "Due", "date"));
+    body.table.fields[1] = field(2, "Status", "single_select", { options: [{ value: "in", label: "In stock", color: "#10b981" }, { value: "out", label: "Sold out", color: "#ef4444" }] });
+    return body;
+  };
+  beforeEach(() => {
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }], { "10": 2 }), role: "editor" }] });
+    mock.onGet(`${B}/tables/10`).reply(200, withDue());
+    useTablesUndo.getState().clear();
+  });
+
+  it("a board asks rows grouped by its column, shows one column per option plus No value, with counts", async () => {
+    mockParams.current = { id: "10", base: "3", view: "73" };
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf, row(502, "Red hat", { "2": { scalar_value: "out" } }), row(503, "Grey coat")], { groups: [{ value: "in", count: 1 }, { value: "out", count: 1 }, { value: null, count: 1 }] }));
+    renderScreen(<TableScreen />);
+    expect(await screen.findByText("Red hat")).toBeTruthy();
+    expect(recordCalls()[0].group_by).toBe(2);
+    expect(screen.getByTestId("tables-kanban-chip-0").props.accessibilityLabel).toBe("In stock, 1 cards");
+    expect(screen.getByTestId("tables-kanban-chip-2").props.accessibilityLabel).toBe("No value, 1 cards");
+    expect(within(screen.getByTestId("tables-kanban-column-1")).getByText("Red hat")).toBeTruthy();
+  });
+
+  it("a long press moves a card through the row's endpoint, and Undo puts it back", async () => {
+    mockParams.current = { id: "10", base: "3", view: "73" };
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf], { groups: [{ value: "in", count: 1 }] }));
+    mock.onPatch(`${B}/records/501`).reply(200, { record: scarf });
+    renderScreen(<TableScreen />);
+    fireEvent(await screen.findByTestId("tables-kanban-0-card-0"), "longPress");
+    fireEvent.press(await within(await screen.findByTestId("tables-kanban-move")).findByText("Sold out"));
+    await waitFor(() => expect(mock.history.patch.length).toBe(1));
+    expect(JSON.parse(mock.history.patch[0].data)).toEqual({ record: { values: { "2": "out" } } });
+    await waitFor(() => expect(useTablesUndo.getState().offer?.message).toBe("Moved"));
+    await act(async () => useTablesUndo.getState().offer?.undo?.());
+    await waitFor(() => expect(mock.history.patch.length).toBe(2));
+    expect(JSON.parse(mock.history.patch[1].data)).toEqual({ record: { values: { "2": "in" } } });
+  });
+
+  it("+ at a column's foot adds a row already in that column", async () => {
+    mockParams.current = { id: "10", base: "3", view: "73" };
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+    mock.onPost(`${B}/tables/10/records`).reply(201, { record: row(779, "") });
+    renderScreen(<TableScreen />);
+    fireEvent.press(await screen.findByTestId("tables-kanban-add-1"));
+    await waitFor(() => expect(mock.history.post.length).toBe(1));
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ record: { values: { "2": "out" } } });
+  });
+
+  it("a calendar asks for the month on screen, lists the chosen day's rows, and No date asks for the rest", async () => {
+    const { todayKey } = jest.requireActual<typeof import("@/screens/calendar/dates")>("@/screens/calendar/dates");
+    const today = todayKey();
+    mockParams.current = { id: "10", base: "3", view: "74" };
+    mock.onGet(`${B}/tables/10/records`).reply((config) => {
+      const p = config.params as Record<string, unknown>;
+      const filters = JSON.parse(String(p.filters ?? "[]")) as { op: string }[];
+      if (filters.some((f) => f.op === "empty")) return [200, page([row(504, "No-date scarf")])];
+      return [200, page([row(505, "Due today", { "6": { scalar_value: today } })])];
+    });
+    renderScreen(<TableScreen />);
+    expect(await screen.findByText("Due today")).toBeTruthy();
+    const first = JSON.parse(String(recordCalls()[0].filters)) as { field_id: number; op: string }[];
+    expect(first.map((f) => [f.field_id, f.op])).toEqual([[6, "on_or_after"], [6, "on_or_before"]]);
+    fireEvent.press(screen.getByTestId("tables-calendar-undated"));
+    expect(await screen.findByText("No-date scarf")).toBeTruthy();
+  });
+});
+
+describe("a personal field order (the owner, 2026-11-20)", () => {
+  beforeEach(() => {
+    mockParams.current = { id: "10", base: "3" };
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }], { "10": 1 }), role: "editor" }] });
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody());
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+  });
+
+  it("moving a field up changes the cards, for this person only; Back to the shared view undoes it", async () => {
+    renderScreen(<TableScreen />);
+    const card = await screen.findByTestId("tables-card-0");
+    expect(within(card).getAllByText(/^(Status|Supplier|Photos)$/).map((n) => n.props.children)).toEqual(["Status", "Supplier", "Photos"]);
+    fireEvent.press(screen.getByTestId("tables-menu"));
+    fireEvent.press(await screen.findByText("Fields and cards"));
+    fireEvent.press(await screen.findByTestId("tables-fields-3-up"));
+    await waitFor(() => expect(within(screen.getByTestId("tables-card-0")).getAllByText(/^(Status|Supplier|Photos)$/).map((n) => n.props.children)).toEqual(["Supplier", "Status", "Photos"]));
+    expect(screen.getByTestId("tables-personal-note")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("tables-menu"));
+    fireEvent.press(await screen.findByText("Back to the shared view"));
+    await waitFor(() => expect(within(screen.getByTestId("tables-card-0")).getAllByText(/^(Status|Supplier|Photos)$/).map((n) => n.props.children)).toEqual(["Status", "Supplier", "Photos"]));
+  });
+
+  it("Save as a new view carries the personal order into the new view", async () => {
+    mock.onPost(`${B}/tables/10/views`).reply(201, { view: view(72, "Mine", "grid") });
+    renderScreen(<TableScreen />);
+    await screen.findByTestId("tables-card-0");
+    fireEvent.press(screen.getByTestId("tables-menu"));
+    fireEvent.press(await screen.findByText("Fields and cards"));
+    fireEvent.press(await screen.findByTestId("tables-fields-3-up"));
+    await screen.findByTestId("tables-personal-note");
+    fireEvent.press(screen.getByTestId("tables-menu"));
+    fireEvent.press(await screen.findByText("Save as a new view…"));
+    fireEvent.press(await screen.findByTestId("tables-save-view-save"));
+    await waitFor(() => expect(mock.history.post.length).toBe(1));
+    expect(JSON.parse(mock.history.post[0].data).view.config.field_order).toEqual([1, 3, 2, 4, 5]);
+  });
+});

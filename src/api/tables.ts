@@ -408,6 +408,7 @@ export const tablesApi = {
     if (c.sorts !== undefined) config.sorts = c.sorts.map((s) => ({ field_id: s.fieldId, direction: s.direction }));
     if (c.groupByFieldId !== undefined) config.group_by_field_id = c.groupByFieldId;
     if (c.hiddenFieldIds !== undefined) config.hidden_field_ids = c.hiddenFieldIds;
+    if (c.fieldOrder !== undefined) config.field_order = c.fieldOrder;
     if (c.rowColorFieldId !== undefined) config.row_color_field_id = c.rowColorFieldId;
     const { data } = await http.post(`${BASE}/tables/${tableId}/views`, { from_view_id: input.fromViewId, view: { name: input.name, view_type: input.viewType, config } });
     return parseView(obj(data, "view response").view);

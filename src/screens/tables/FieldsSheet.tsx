@@ -2,17 +2,18 @@
  * FIELDS, one sheet (SPEC C7; Airtable's "Customize cards"). Increment 3.
  *
  * Which columns the row page and the cards show, which three a card shows
- * under its title, and the colour bar. All of it is the person's (SPEC C1):
+ * under its title, their ORDER (the owner, 2026-11-20: personal too), and
+ * the colour bar. All of it is the person's (SPEC C1):
  * applied to the personal layer, never to the view.
  */
 import { Pressable, Switch, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { FieldDefinition } from "@/api/fields";
 import { BottomSheet } from "@/components/BottomSheet";
-import { Check } from "@/components/icons";
+import { ArrowDown, ArrowUp, Check } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { CARD_FIELDS } from "./personalView";
+import { CARD_FIELDS, moveField } from "./personalView";
 import { groupable } from "./filters";
 
 export function FieldsSheet({
@@ -32,13 +33,16 @@ export function FieldsSheet({
   /** The fields cards show now, in order. */
   onCards: number[];
   colorFieldId: number | null;
-  onChange: (patch: { hiddenFieldIds?: number[]; cardFieldIds?: number[]; rowColorFieldId?: number | null }) => void;
+  onChange: (patch: { hiddenFieldIds?: number[]; cardFieldIds?: number[]; rowColorFieldId?: number | null; fieldOrder?: number[] }) => void;
   onClose: () => void;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
+  // `fields` arrive in the order on screen; the title column stays first, as on the web.
   const others = fields.filter((f) => f.id !== primaryFieldId);
+  const order = fields.map((f) => f.id);
+  const move = (id: number, by: -1 | 1) => onChange({ fieldOrder: moveField(order, id, by) });
 
   const toggleHidden = (id: number, show: boolean) => {
     const next = show ? hidden.filter((h) => h !== id) : [...hidden, id];
@@ -57,12 +61,16 @@ export function FieldsSheet({
         <Text tone="muted" variant="caption">
           {t("tables.fieldsSheet.cardHint", { count: CARD_FIELDS })}
         </Text>
-        {others.map((f) => {
+        {others.map((f, i) => {
           const shown = !hidden.includes(f.id);
           const card = onCards.includes(f.id);
           const full = !card && onCards.length >= CARD_FIELDS;
           return (
             <View key={f.id} testID={`tables-fields-${f.id}`} style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, minHeight: metrics.touch }}>
+              <View style={{ flexDirection: "row" }}>
+                <OrderButton testID={`tables-fields-${f.id}-up`} label={t("tables.fieldsSheet.up", { field: f.name })} disabled={i === 0} onPress={() => move(f.id, -1)} up />
+                <OrderButton testID={`tables-fields-${f.id}-down`} label={t("tables.fieldsSheet.down", { field: f.name })} disabled={i === others.length - 1} onPress={() => move(f.id, 1)} />
+              </View>
               <Text numberOfLines={1} style={{ flex: 1 }}>
                 {f.name}
               </Text>
@@ -102,5 +110,15 @@ export function FieldsSheet({
         ) : null}
       </View>
     </BottomSheet>
+  );
+}
+
+function OrderButton({ testID, label, disabled, onPress, up = false }: { testID: string; label: string; disabled: boolean; onPress: () => void; up?: boolean }) {
+  const colors = useColors();
+  const Icon = up ? ArrowUp : ArrowDown;
+  return (
+    <Pressable testID={testID} onPress={onPress} disabled={disabled} accessibilityRole="button" accessibilityLabel={label} accessibilityState={{ disabled }} hitSlop={4} style={{ width: 32, height: 40, alignItems: "center", justifyContent: "center", opacity: disabled ? 0.3 : 1 }}>
+      <Icon size={18} color={colors.inkMuted} />
+    </Pressable>
   );
 }

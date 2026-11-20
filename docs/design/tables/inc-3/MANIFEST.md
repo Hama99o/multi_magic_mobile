@@ -15,7 +15,8 @@ Status per line: ☐ open · ☑ proven (evidence beside it) · ⚠ unproven (sa
 | F3 | An unfinished condition stays out of the query (the web's `isComplete`) | `filters.test.ts`, `personalView.test.ts` | ☑ |
 | F4 | Multi-sort with the web's direction words by type (A → Z, 1 → 9, Oldest → Newest, First → Last); a sort replaces newest first | `filters.test.ts` (`directionSet`, `addSort`); increment 1's T6 | ☑ |
 | F5 | Group by a single select: a header per group with the server's count over the whole view, folding; fixed heights kept (`getItemLayout` over headers and cards) | `grouping.test.ts` (3); `tablesApp.test.tsx` › grouping (planted: red) | ☑ |
-| F6 | Fields and cards: hide a field, choose up to 3 on cards, colour by a single select | `tablesApp.test.tsx` › "hiding a field…" | ☑ · ⚠ field ORDER is not editable on the phone yet |
+| F6 | Fields and cards: hide a field, choose up to 3 on cards, colour by a single select, and the ORDER of the fields | `tablesApp.test.tsx` › "hiding a field…", "a personal field order" (2) | ☑ |
+| F10 | **The owner's call (2026-11-20, relayed by Hello): field order is PERSONAL**, part of the layer like filter, sort and hidden fields. Kept per user and view on the device, never a `PATCH` of the view, reset by "Back to the shared view", and carried into "Save as a new view" (`field_order`) | `personalView.test.ts` (order, `moveField`); `tablesApp.test.tsx` › reorder changes the cards and Back resets it; saved view carries `field_order`; the suite-wide PATCH guard ran on both (planted: the person's order ignored → red) | ☑ |
 | F7 | "No match" offers Clear the filters | `tablesApp.test.tsx` › no match | ☑ |
 | F8 | Every one of these is the person's: sent as the query, never as `PATCH views` (the owner, C1); the toolbar shows it (tint, dot, the note) | the suite-wide `afterEach` guard; a planted PATCH on apply: red | ☑ |
 | F9 | "Save as a new view…" (editors and owners): says in words that everyone on the base will see it, makes a NEW view from the one on screen (`from_view_id`), opens it, and drops the layer from the old view | `tables.test.ts` › createView; `tablesApp.test.tsx` › save (POST only, no PATCH) | ☑ |
@@ -32,7 +33,7 @@ Status per line: ☐ open · ☑ proven (evidence beside it) · ⚠ unproven (sa
 
 ## Not done here, and why
 
-- Field order on the phone: the web keeps it on the shared view (`field_order` reorders the table's columns for everyone, `views_controller.rb:66`). Hello is asking the owner. Until then the phone shows the shared order and does not change it.
+- (Field order: decided by the owner and done, F10. It was here as "needs a decision" until then.)
 - Relative dates in a filter ("past 7 days"): the web has none (a plain date input, `FilterBuilder.tsx:149`) and the server compares a `YYYY-MM-DD`. The quick choices store the day they mean.
 
 ## Gates

@@ -39,6 +39,8 @@ export function RecordCard({
   known,
   height,
   onPress,
+  onLongPress,
+  testID,
 }: {
   row: RecordRow;
   index: number;
@@ -49,6 +51,9 @@ export function RecordCard({
   known: KnownRecords;
   height: number;
   onPress: () => void;
+  /** Kanban's "Move to…" (increment 4). */
+  onLongPress?: () => void;
+  testID?: string;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -62,13 +67,14 @@ export function RecordCard({
   return (
     <View style={{ height, paddingBottom: CARD_SPACING }}>
       <Pressable
-        testID={`tables-card-${index}`}
+        testID={testID ?? `tables-card-${index}`}
         onPress={onPress}
+        onLongPress={onLongPress}
         onPressIn={() => setPressed(true)}
         onPressOut={() => setPressed(false)}
         accessibilityRole="button"
         accessibilityLabel={titleText}
-        accessibilityHint={t("tables.openRowHint")}
+        accessibilityHint={onLongPress ? t("tables.kanban.cardHint") : t("tables.openRowHint")}
         style={{ flex: 1, flexDirection: "row", overflow: "hidden", borderRadius: metrics.radius.lg, borderWidth: 1, borderColor: colors.border, backgroundColor: pressed ? colors.border : colors.surface }}
       >
         {bar ? <View testID={`tables-card-${index}-bar`} style={{ width: 4, backgroundColor: bar }} /> : null}

@@ -223,6 +223,8 @@ export const tablesKeys = {
   table: <T extends number>(tableId: T) => ["tables", "table", tableId] as const,
   rows: <T extends number>(tableId: T) => ["tables", "rows", tableId] as const,
   records: <T extends number, Q extends string>(tableId: T, query: Q) => ["tables", "rows", tableId, query] as const,
+  /** The calendar's "No date" rows: ONE page, not infinite, so a key of its own shape. */
+  undated: <T extends number, Q extends string>(tableId: T, query: Q) => ["tables", "rows", tableId, "undated", query] as const,
 };
 
 /**

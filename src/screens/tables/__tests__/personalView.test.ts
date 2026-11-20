@@ -7,7 +7,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import type { FieldDefinition } from "@/api/fields";
 import type { View } from "@/api/tables";
-import { cardFields, differsFromShared, effectiveQuery, layerKey, readLayer, visibleFields, writeLayer } from "../personalView";
+import { cardFields, differsFromShared, effectiveQuery, layerKey, moveField, orderedFields, readLayer, visibleFields, writeLayer } from "../personalView";
 
 const view = (config: Partial<View["config"]> = {}): View => ({
   id: 70,
@@ -91,6 +91,19 @@ describe("which fields show", () => {
 
   it("a card shows the title, then at most three others", () => {
     expect(cardFields(fields, 1, view(), {}).map((x) => x.id)).toEqual([2, 3, 4]);
+  });
+
+  it("the person's order wins over the view's (the owner's call), and a new field keeps its place at the end", () => {
+    const v = view({ fieldOrder: [3, 1, 2] });
+    expect(orderedFields(fields, v, { fieldOrder: [2, 1] }).map((x) => x.id)).toEqual([2, 1, 3, 4, 5, 6]);
+    expect(differsFromShared(v, { fieldOrder: [2, 1] })).toBe(true);
+    expect(differsFromShared(v, { fieldOrder: [3, 1, 2] })).toBe(false);
+  });
+
+  it("moves one field up or down, never past an end", () => {
+    expect(moveField([1, 2, 3], 3, -1)).toEqual([1, 3, 2]);
+    expect(moveField([1, 2, 3], 1, -1)).toEqual([1, 2, 3]);
+    expect(moveField([1, 2, 3], 3, 1)).toEqual([1, 2, 3]);
   });
 
   it("the person's hidden fields and card fields win", () => {

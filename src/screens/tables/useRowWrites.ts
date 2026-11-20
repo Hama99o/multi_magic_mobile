@@ -16,12 +16,15 @@ import type { FieldTarget } from "@/components/fields/useFieldWrites";
 
 const isRow = (value: unknown): value is RecordRow => Boolean(value && typeof value === "object" && "values" in value && "linkLabels" in value);
 const isPages = (value: unknown): value is InfiniteData<RecordsPage> => Boolean(value && typeof value === "object" && "pages" in value);
+/** One page on its own (the calendar's "No date" rows). */
+const isPage = (value: unknown): value is RecordsPage => Boolean(value && typeof value === "object" && "rows" in value && "hasMore" in value);
 
 /** Change one row wherever it is cached: in every page of every query, and on its own page. */
 export function editRow(client: QueryClient, tableId: number, recordId: number, edit: (row: RecordRow) => RecordRow) {
   client.setQueriesData({ queryKey: tablesKeys.rows(tableId) }, (data: unknown) => {
     if (isRow(data)) return data.id === recordId ? edit(data) : data;
     if (isPages(data)) return { ...data, pages: data.pages.map((p) => ({ ...p, rows: p.rows.map((r) => (r.id === recordId ? edit(r) : r)) })) };
+    if (isPage(data)) return { ...data, rows: data.rows.map((r) => (r.id === recordId ? edit(r) : r)) };
     return data;
   });
 }
@@ -30,7 +33,11 @@ export function editRow(client: QueryClient, tableId: number, recordId: number, 
 export function dropRows(client: QueryClient, tableId: number, ids: number[]) {
   const gone = new Set(ids);
   client.setQueriesData({ queryKey: tablesKeys.rows(tableId) }, (data: unknown) =>
-    isPages(data) ? { ...data, pages: data.pages.map((p) => ({ ...p, rows: p.rows.filter((r) => !gone.has(r.id)) })) } : data,
+    isPages(data)
+      ? { ...data, pages: data.pages.map((p) => ({ ...p, rows: p.rows.filter((r) => !gone.has(r.id)) })) }
+      : isPage(data)
+        ? { ...data, rows: data.rows.filter((r) => !gone.has(r.id)) }
+        : data,
   );
 }
 
@@ -70,7 +77,8 @@ export class RowLinkConflict extends CardinalityError {
 export function useCreateRow(tableId: number, opts: { onCreated: (row: RecordRow) => void; onError: (e: unknown) => void }) {
   const client = useQueryClient();
   return useMutation({
-    mutationFn: () => tablesApi.createRecord(tableId),
+    // Values to start with: the kanban column it is added in, the calendar day.
+    mutationFn: (values: Record<number, unknown> | void) => tablesApi.createRecord(tableId, values ?? {}),
     onSuccess: (row) => {
       void client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) });
       opts.onCreated(row);
@@ -108,4 +116,25 @@ export function useDeleteRow(tableId: number, opts: { onDeleted: (recordId: numb
 export async function restoreRows(client: QueryClient, tableId: number, ids: number[]) {
   await tablesApi.restore(tableId, ids);
   await client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) });
+}
+
+/**
+ * Move a row to another value of one column (a kanban card to a column):
+ * shown at once, sent through `records#update`, put back if refused. The
+ * value before goes to `onMoved`, for the Undo.
+ */
+export function useMoveRow(tableId: number, opts: { onMoved: (row: RecordRow, before: unknown) => void; onError: (e: unknown) => void }) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ row, field, value }: { row: RecordRow; field: FieldDefinition; value: unknown; before: unknown }) => tablesApi.updateValues(row.id, { [field.id]: value }),
+    onMutate: ({ row, field, value }) => editRow(client, tableId, row.id, (r) => ({ ...r, values: { ...r.values, [field.id]: { kind: "scalar", value } } })),
+    onSuccess: (_, { row, before }) => {
+      void client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) });
+      opts.onMoved(row, before);
+    },
+    onError: (e, { row, field, before }) => {
+      editRow(client, tableId, row.id, (r) => ({ ...r, values: { ...r.values, [field.id]: { kind: "scalar", value: before } } }));
+      opts.onError(e);
+    },
+  });
 }

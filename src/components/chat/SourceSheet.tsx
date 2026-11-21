@@ -13,7 +13,7 @@
  * in the app.
  */
 import { useCallback, useState } from "react";
-import { Linking, Modal, Pressable, ScrollView, View } from "react-native";
+import { Linking, Pressable, ScrollView, View } from "react-native";
 import { SheetFrame } from "@/components/SheetFrame";
 import { router } from "expo-router";
 import { X } from "@/components/icons";

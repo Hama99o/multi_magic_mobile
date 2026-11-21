@@ -17,10 +17,14 @@ tags:
     timeout: 30000
 - tapOn:
     id: "contacts-trash-delete-${CONTACT_ID}"
+# The dialog's words, in English or French (the run may end on either):
+# "Delete [qa] Readiness for ever?" / its French, then "Delete for ever".
+# lint: regex-ok — an alternation on purpose (en|fr).
 - extendedWaitUntil:
-    visible: "Delete \\[qa\\] Readiness\\?"
+    visible: "(Delete \\[qa\\] Readiness for ever\\?|Supprimer \\[qa\\] Readiness définitivement.\\?)"
     timeout: 10000
-- tapOn: "Delete for ever"
+# lint: regex-ok — the button, en or fr, either case.
+- tapOn: "(Delete for ever|DELETE FOR EVER|Supprimer définitivement|SUPPRIMER DÉFINITIVEMENT)"
 # lint: dbid-ok — the same contact, gone.
 - extendedWaitUntil:
     notVisible:

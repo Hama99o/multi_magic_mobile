@@ -49,24 +49,46 @@ tags:
       id: "home-tile-contacts"
 - tapOn:
     id: "home-tile-contacts"
+# The QA account's book may be EMPTY (it was on 2026-11-21): the empty
+# state has no search field, and is a legitimate state, pictured, not asserted.
+# The ⋮ menu shows in both states (empty or not); the A–Z strip only with
+# two letters or more.
 - extendedWaitUntil:
     visible:
-      id: "contacts-search"
+      id: "contacts-more"
     timeout: 60000
 - takeScreenshot: reports/48-${W}-${THEME}-f${FONT}-${NET}-list
-- tapOn:
-    id: "contacts-search"
-- inputText: "zqx-qa-none"
-- takeScreenshot: reports/48-${W}-${THEME}-f${FONT}-${NET}-no-match
-- tapOn:
-    id: "contacts-search-clear"
+- runFlow:
+    when:
+      visible:
+        id: "contacts-search"
+    commands:
+      - tapOn:
+          id: "contacts-search"
+      - inputText: "zqx-qa-none"
+      - takeScreenshot: reports/48-${W}-${THEME}-f${FONT}-${NET}-no-match
+      - tapOn:
+          id: "contacts-search-clear"
 
 - runFlow:
     when:
       true: ${NET == "online"}
     commands:
-      - tapOn:
-          id: "contacts-new"
+      # From the empty state's own button, or the list's +.
+      - runFlow:
+          when:
+            visible:
+              id: "contacts-empty-new"
+          commands:
+            - tapOn:
+                id: "contacts-empty-new"
+      - runFlow:
+          when:
+            notVisible:
+              id: "contact-form-firstname"
+          commands:
+            - tapOn:
+                id: "contacts-new"
       - extendedWaitUntil:
           visible:
             id: "contact-form-firstname"
@@ -82,6 +104,17 @@ tags:
             id: "contact-name"
           timeout: 30000
       - takeScreenshot: reports/48-${W}-${THEME}-f${FONT}-${NET}-card
+      # The list WITH a row and its letter header: the 200 % fix's picture.
+      - back
+      - extendedWaitUntil:
+          visible: "\\[qa\\] Readiness.*"
+          timeout: 20000
+      - takeScreenshot: reports/48-${W}-${THEME}-f${FONT}-${NET}-list-with-row
+      - tapOn: "\\[qa\\] Readiness.*"
+      - extendedWaitUntil:
+          visible:
+            id: "contact-name"
+          timeout: 20000
       - scrollUntilVisible:
           element:
             id: "contact-delete"
@@ -92,7 +125,8 @@ tags:
           timeout: 10000
       # lint: regex-ok — the alert's button, either case (Android caps it).
       - tapOn: "(Delete|DELETE)"
+      # Back on the list, which may be empty again (no search field then).
       - extendedWaitUntil:
           visible:
-            id: "contacts-search"
+            id: "contacts-more"
           timeout: 20000

@@ -12,7 +12,7 @@
  * keyboard (KeyboardPadding: Android does not resize an edge-to-edge window).
  */
 import type { ReactNode } from "react";
-import { Modal, Pressable, View, useWindowDimensions, type StyleProp, type ViewStyle } from "react-native";
+import { Modal, Pressable, StyleSheet, View, useWindowDimensions, type StyleProp, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useColors } from "@/hooks/useColors";
 import { SPLIT_AT } from "@/screens/contacts/split";
@@ -54,6 +54,11 @@ export function SheetFrame({
   const { width } = useWindowDimensions();
   const tablet = width >= SPLIT_AT;
   const frameID = testID ? `${testID}-frame` : undefined;
+  // A phone's sheet sits on the home indicator: the inset is ADDED to the
+  // sheet's own bottom padding, so its last row is never under it
+  // (src/components/__tests__/sheets.insets.test.tsx).
+  const own = (StyleSheet.flatten(style) ?? {}) as ViewStyle;
+  const ownBottom = Number(own.paddingBottom ?? own.paddingVertical ?? own.padding ?? 0) || 0;
 
   const body = (
     <View testID={frameID} style={{ flex: 1, justifyContent: tablet ? "center" : "flex-end", alignItems: "center" }}>
@@ -77,11 +82,10 @@ export function SheetFrame({
             ...(tablet ? {} : { borderBottomLeftRadius: 0, borderBottomRightRadius: 0 }),
           },
           style,
+          tablet ? null : { paddingBottom: ownBottom + insets.bottom },
         ]}
       >
         {children}
-        {/* The home indicator's room on a phone, whatever padding the sheet sets. */}
-        {tablet ? null : <View style={{ height: insets.bottom }} />}
       </View>
     </View>
   );

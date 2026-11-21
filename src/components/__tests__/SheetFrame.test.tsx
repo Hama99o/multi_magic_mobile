@@ -5,6 +5,7 @@
  * already does (src/components/shell/AppSwitcher.tsx).
  */
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { SafeAreaProvider } from "react-native-safe-area-context";
 import { StyleSheet, Text } from "react-native";
 import { SheetFrame, SHEET_CARD_WIDTH } from "../SheetFrame";
 
@@ -56,4 +57,16 @@ it("a sheet with a field sits above the keyboard", () => {
   widthOf(360);
   open(jest.fn(), true);
   expect(screen.getByTestId("keyboard-padding")).toBeTruthy();
+});
+
+it("on a phone the home indicator is added to the sheet's own bottom padding", () => {
+  widthOf(393);
+  render(
+    <SafeAreaProvider initialMetrics={{ frame: { x: 0, y: 0, width: 393, height: 852 }, insets: { top: 59, bottom: 34, left: 0, right: 0 } }}>
+      <SheetFrame visible onClose={jest.fn()} closeLabel="Close" testID="the-sheet" style={{ padding: 16 }}>
+        <Text>inside</Text>
+      </SheetFrame>
+    </SafeAreaProvider>,
+  );
+  expect(style("the-sheet").paddingBottom).toBe(50);
 });

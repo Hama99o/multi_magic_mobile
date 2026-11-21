@@ -18,3 +18,22 @@
 ## Unproven
 - Pixels at 200 %, TalkBack's speech, and offline on a device: flow 37 and the 200 % and dark passes of 32–36.
 - iOS Dynamic Type above 200 %: capped by design (`FONT_CAP`).
+
+## Device pass 4 (qa_phone, 2026-11-21 07:48–08:29, bundle b52e5df, :3020 demo account)
+Contact sheet: `~/Downloads/multimagic-qa/2026-11-21-tables-p4.jpg`, also in MultiMagic Pages, space MultiMagic, folder 2026-11-21.
+
+| Flow | Result |
+|---|---|
+| 37 hidden criteria, 100 % and 200 % | ☑ PASS. Double tap 25 → 26; `items` and `Items ` refused, cancelled; offline import showed its failure and Try again recovered; 200 % cards fit. |
+| 36 grid at 800 dp, light and dark | ☑ PASS |
+| 32 views and kanban | ⚠ fold ☑; Move up never offered: **app bug, fixed below** |
+| 33 admin | ⚠ rename, new column, clear and Undo (25 back) ☑; the flow looked for the oldest row off screen (flow fixed); duplicate and new table not reached |
+| 34 import and export | NOT MEASURED: Maestro's inputText drops `\n` (flow now types Enter between lines) |
+| 35 forms | ⚠ list, new form and questions ☑; the flow expected an "Ask Phone" chip, but a new form asks every column (flow fixed) |
+
+### Found on the device, fixed red first
+1. **A board never showed Newest first**, so Table order, and with it a card's Move up/down, was unreachable. The proof ran across columns; a board is sorted by column first. `newestProven(rows, groupOf)` now reads it within each group (boards and grouped lists). Tests: logic "WITHIN each group", tablesApp "a board with two columns still shows Newest first".
+2. **The table strip's pills were cut at the bottom at 411 dp** (and the board's chips are the same shape): a horizontal ScrollView shrinks by default. `flexShrink: 0` on both. Test: "the table strip and the board's chips never shrink". This cause is inferred from RN's defaults, not measured; device pass 5 checks the pixels.
+3. **At 800 dp the + button covered the summary bar's last cell.** The grid now keeps `FAB_ZONE` (96, what the card list already kept) free below it. Test: "the + button never covers the grid's summary bar". At 360 dp there is no grid; the card list already keeps the same 96.
+
+Red: 4 of 6 new tests failed on the old code (the other 2 are guards that must stay false). Green: 344/344 in the Tables, i18n and a11y suites. tsc and lint are clean.

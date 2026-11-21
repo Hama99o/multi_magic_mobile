@@ -49,11 +49,10 @@ tags:
       id: "tables-form-tabs"
     timeout: 15000
 - takeScreenshot: t8-02-questions
-# The chip's name is "Ask <column>" (`tables.form.addOne`).
-- tapOn: "Ask Phone"
+# A new form already asks every column it can (seen on :3020, 2026-11-21): Name and Phone are there.
 - assertVisible:
     id: "tables-form-question-1"
-- takeScreenshot: t8-03-question-added
+- takeScreenshot: t8-03-questions-default
 - tapOn: "Page"
 - assertVisible:
     id: "tables-form-title"

@@ -66,10 +66,27 @@ export const canEditRows = (role: BaseRole | undefined) => role === "owner" || r
  * none created after the one above it. Anything less and the screen claims
  * nothing.
  */
-export function newestProven(rows: RecordRow[]): boolean {
-  if (rows.length < 2) return false;
-  for (let i = 1; i < rows.length; i++) if (rows[i].createdAt > rows[i - 1].createdAt) return false;
-  return rows[0].createdAt > rows[rows.length - 1].createdAt;
+export function newestProven(rows: RecordRow[], groupOf?: (row: RecordRow) => string): boolean {
+  if (!groupOf) {
+    if (rows.length < 2) return false;
+    for (let i = 1; i < rows.length; i++) if (rows[i].createdAt > rows[i - 1].createdAt) return false;
+    return rows[0].createdAt > rows[rows.length - 1].createdAt;
+  }
+  // A board or a grouped list comes sorted by group first, newest first WITHIN each group, so
+  // that is where the proof is read (qa_phone, 2026-11-21: across columns it never held, the chip
+  // hid on every board, and Table order, which a card's Move up needs, could not be reached).
+  const groups = new Map<string, RecordRow[]>();
+  for (const row of rows) {
+    const key = groupOf(row);
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  }
+  let shown = false;
+  for (const group of groups.values()) {
+    if (group.length < 2) continue;
+    if (!newestProven(group)) return false;
+    shown = true;
+  }
+  return shown;
 }
 
 /**

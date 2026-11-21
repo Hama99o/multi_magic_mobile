@@ -17,6 +17,24 @@ describe("newestProven: the chip says Newest first only when the rows show it", 
   });
 });
 
+describe("newestProven on a board or a grouped list: newest first WITHIN each group (qa_phone, 2026-11-21)", () => {
+  // The server sorts by group first, then newest: [in 503, in 501, out 502]. Across groups 502 is
+  // newer than 501, so a check over the whole page hid the chip on every board, and with it the
+  // only way to Table order, which "Move up" needs.
+  const rows = [row(503, "2026-11-20T10:03:00Z"), row(501, "2026-11-20T10:01:00Z"), row(502, "2026-11-20T10:02:00Z")];
+  const keyOf = (r: RecordRow) => (r.id === 502 ? "out" : "in");
+  it("proven within each group, though not across them", () => {
+    expect(newestProven(rows)).toBe(false);
+    expect(newestProven(rows, keyOf)).toBe(true);
+  });
+  it("one group out of order: not proven", () => {
+    expect(newestProven([row(501, "2026-11-20T10:01:00Z"), row(503, "2026-11-20T10:03:00Z")], () => "in")).toBe(false);
+  });
+  it("only single-row groups: nothing to prove", () => {
+    expect(newestProven([row(1, "2026-11-20T10:01:00Z"), row(2, "2026-11-20T10:02:00Z")], (r) => String(r.id))).toBe(false);
+  });
+});
+
 describe("the typed name must be the name EXACTLY (the owner, 2026-11-20)", () => {
   // Imported here so the test fails red while `nameMatches` does not exist.
   const { nameMatches } = jest.requireActual<typeof import("../logic")>("../logic");

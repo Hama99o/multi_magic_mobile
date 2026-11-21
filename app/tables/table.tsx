@@ -58,13 +58,15 @@ import { BulkEditSheet } from "@/screens/tables/BulkEditSheet";
 import { ShareSheet } from "@/screens/tables/ShareSheet";
 import { dropRows } from "@/screens/tables/useRowWrites";
 import { Alert } from "react-native";
-import { GROUP_HEADER, layoutOf, listItems, type ListItem } from "@/screens/tables/grouping";
+import { GROUP_HEADER, groupKey, layoutOf, listItems, type ListItem } from "@/screens/tables/grouping";
 import { colorHex } from "@/screens/flow/logic";
 import { useTablesUndo } from "@/stores/tablesUndo.store";
 import { cardFields, CARD_FIELDS, differsFromShared, effectiveQuery, orderedFields, visibleFields } from "@/screens/tables/personalView";
 import { usePersonalLayer } from "@/screens/tables/usePersonalLayer";
 
 const SEARCH_DELAY_MS = 400;
+/** The + button (56) and its margin: what a list or the grid keeps clear at the bottom when it shows. */
+const FAB_ZONE = 96;
 
 /** Each view type its own icon, in the switcher and on the pill (seen on a device: every type showed the table icon). */
 const VIEW_ICONS: Record<ViewType, LucideIcon> = { grid: Table2, gallery: LayoutGrid, kanban: Kanban, calendar: CalendarDays };
@@ -170,7 +172,9 @@ export default function TableScreen() {
   // Say "Newest first" only when the first page proves it: an older server
   // ignores `sort=-created_at` and sends the table's order (seen on a device,
   // 2026-11-20). Unproven, the screen shows the order and claims nothing.
-  const newestShown = Boolean(query?.newestFirst && firstPage && newestProven(firstPage.rows));
+  // On a board or a grouped list the proof is read within each group (`newestProven`).
+  const proofGroup = kanbanField ?? groupField;
+  const newestShown = Boolean(query?.newestFirst && firstPage && newestProven(firstPage.rows, proofGroup ? (r) => groupKey(r, proofGroup) : undefined));
   const showOrderChip = newestShown || layer.newestFirst === false;
   // Increment 9: the grid where the web shows one (720 dp and up, a grid view); cards below.
   const grid = Boolean(view && showsGrid(screenWidth, view.viewType));
@@ -372,7 +376,7 @@ export default function TableScreen() {
     <Screen measure header={<AppHeader app="tables" back title={base?.name ?? table.data?.name ?? t("tables.title")} />}>
 
       {base && base.tables.length > 1 ? (
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} testID="tables-table-strip" contentContainerStyle={{ gap: metrics.space.xs, paddingVertical: metrics.space.xs }} style={{ flexGrow: 0 }}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} testID="tables-table-strip" contentContainerStyle={{ gap: metrics.space.xs, paddingVertical: metrics.space.xs }} style={{ flexGrow: 0, flexShrink: 0 }}>
           {base.tables.map((tb) => {
             const on = tb.id === tableId;
             return (
@@ -543,6 +547,8 @@ export default function TableScreen() {
           onEndReached={() => {
             if (records.hasNextPage && !records.isFetchingNextPage && !records.error) void records.fetchNextPage();
           }}
+          // The + button floats at the bottom right: the grid, and its summary bar, stop above it (qa_phone at 800 dp).
+          bottomInset={editable ? FAB_ZONE : 0}
         />
       ) : calendarField ? (
         <CalendarView
@@ -634,7 +640,7 @@ export default function TableScreen() {
         onEndReachedThreshold={0.6}
         refreshControl={<RefreshControl refreshing={records.isRefetching && !records.isFetchingNextPage} onRefresh={() => void Promise.all([table.refetch(), records.refetch()])} tintColor={colors.inkMuted} />}
         keyboardShouldPersistTaps="handled"
-        contentContainerStyle={{ paddingBottom: editable ? 96 : metrics.space.xl }}
+        contentContainerStyle={{ paddingBottom: editable ? FAB_ZONE : metrics.space.xl }}
       />
       )}
 

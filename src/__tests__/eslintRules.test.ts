@@ -104,6 +104,14 @@ const CASES: Case[] = [
     times: 3,
   },
   {
+    // THREE: an inline renderItem's entering, a renderSectionHeader's
+    // exiting, and a row component staggered by its index.
+    rule: "a layout animation on a list cell, which a recycled cell keeps",
+    fixture: "list-cell-animation.tsx",
+    says: /recycled cell keeps it/,
+    times: 3,
+  },
+  {
     // FOUR, one per branch of the compound selector — a compound selector can
     // have dead branches and still look alive, which is this file's subject.
     rule: "a bare worded string in an accessibility attribute",
@@ -146,7 +154,7 @@ describe("every custom rule can actually fire", () => {
     expect(restricted(fixture).filter((hit) => says.test(hit.message))).toHaveLength(times);
   });
 
-  it("flags nothing in the legitimate forms of all eight", () => {
+  it("flags nothing in the legitimate forms of all nine", () => {
     expect(restricted("clean.tsx").map((hit) => `${hit.line}: ${hit.message}`)).toEqual([]);
   });
 

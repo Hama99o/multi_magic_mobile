@@ -3,11 +3,12 @@
  * acts and closes. Used for the list's More menu, a row's long press, and
  * "which number?" when a contact has several.
  */
-import { Modal, Pressable, ScrollView, View } from "react-native";
+import { Modal, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import type { LucideIcon } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
+import { KeyboardPadding } from "@/components/KeyboardPadding";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { FILL } from "@/theme/fill";
 
@@ -28,6 +29,7 @@ export function ActionSheet({
   actions,
   onClose,
   testID,
+  search,
 }: {
   open: boolean;
   title: string;
@@ -35,6 +37,8 @@ export function ActionSheet({
   actions: SheetAction[];
   onClose: () => void;
   testID: string;
+  /** A field over the actions that narrows them (the caller filters); the sheet rises with the keyboard. */
+  search?: { value: string; onChange: (text: string) => void; placeholder: string };
 }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -44,6 +48,7 @@ export function ActionSheet({
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
+      <KeyboardPadding>
       <View style={{ flex: 1, justifyContent: "flex-end" }}>
         <Pressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={onClose} style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.5)" }} />
         <View
@@ -68,7 +73,19 @@ export function ActionSheet({
               {subtitle}
             </Text>
           ) : null}
-          <ScrollView style={{ marginTop: metrics.space.sm }}>
+          {search ? (
+            <TextInput
+              testID={`${testID}-search`}
+              value={search.value}
+              onChangeText={search.onChange}
+              placeholder={search.placeholder}
+              placeholderTextColor={colors.inkMuted}
+              accessibilityLabel={search.placeholder}
+              autoCorrect={false}
+              style={{ marginTop: metrics.space.sm, minHeight: 44, paddingHorizontal: metrics.space.md, borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, color: colors.ink, fontSize: 16 }}
+            />
+          ) : null}
+          <ScrollView style={{ marginTop: metrics.space.sm }} keyboardShouldPersistTaps="handled">
             {actions.map((action) => {
               const Icon = action.icon;
               const tint = action.disabled ? colors.inkMuted : action.danger ? colors.danger : colors.ink;
@@ -102,6 +119,7 @@ export function ActionSheet({
           </ScrollView>
         </View>
       </View>
+      </KeyboardPadding>
     </Modal>
   );
 }

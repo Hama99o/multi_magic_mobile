@@ -137,8 +137,7 @@ export default function Chats() {
   }, [data]);
 
   return (
-    <Screen measure>
-      <AppHeader app="chats" />
+    <Screen measure header={<AppHeader app="chats" />}>
       {/* The app's own row: search, and a new conversation beside it. */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, marginTop: metrics.space.sm, marginBottom: metrics.space.sm }}>
       <View

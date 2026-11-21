@@ -3,7 +3,8 @@
  * web's `RecurringPanel.tsx` and `RecurringIncomePanel.tsx`). Expenses or
  * incomes that come back on their own: rent, subscriptions, a salary.
  *
- * Rows come in the server's order, the soonest due first. Each says how often
+ * Newest first by default (owner rule); "Next due" restores the server's
+ * order, the soonest due first. Each says how often
  * ("Every 3 months") and when next ("Next on 2 Dec"), or Paused, dimmed. Pause
  * / Resume shows at once (`useToggleRecurring`); an income can be Run now,
  * which adds one income dated today and leaves the schedule alone.
@@ -13,7 +14,6 @@
  */
 import { useState } from "react";
 import { FlatList, Pressable, RefreshControl, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -29,7 +29,7 @@ import { UndoToast } from "@/components/UndoToast";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { parseDay } from "@/screens/calendar/dates";
 import { ChoiceSheet } from "@/screens/calendar/ChoiceSheet";
-import { FChip, MONEY_IN, useMoney } from "@/screens/finance/parts";
+import { FChip, MONEY_IN, newestFirst, SortChip, useMoney } from "@/screens/finance/parts";
 import { useRunRecurringIncome, useToggleRecurring } from "@/screens/finance/useFinanceMutations";
 import { EmptyState, Fab, PillButton, repeatLabel, Segmented, sumByCurrency } from "@/screens/finance/manage/common";
 import { useFinanceUndo } from "@/stores/financeUndo.store";
@@ -45,6 +45,8 @@ export default function RecurringScreen() {
   const [tagId, setTagId] = useState<number | null>(null);
   const [choosing, setChoosing] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);
+  // Newest first by default; the server's order (the soonest due first) is one tap away.
+  const [sort, setSort] = useState<"newest" | "next">("newest");
   const offer = useFinanceUndo((s) => s.offer);
   const offerUndo = useFinanceUndo((s) => s.offerUndo);
   const clearOffer = useFinanceUndo((s) => s.clear);
@@ -55,7 +57,8 @@ export default function RecurringScreen() {
   const run = useRunRecurringIncome({ onDone: () => offerUndo(t("finance.manage.recurring.ran")), onError: failed });
 
   const categories = (tags.data ?? []).filter((x) => x.parentId == null);
-  const shown = (rules.data ?? []).filter((r) => tagId == null || r.tag?.id === tagId);
+  const filtered = (rules.data ?? []).filter((r) => tagId == null || r.tag?.id === tagId);
+  const shown = sort === "next" ? filtered : newestFirst(filtered);
   const totals = formatTotals(sumByCurrency(shown), i18n.language);
   const filterName = tagId == null ? t("finance.manage.recurring.allCategories") : (categories.find((c) => c.id === tagId)?.name ?? t("finance.manage.recurring.allCategories"));
   const pick = (k: Kind) => {
@@ -66,8 +69,7 @@ export default function RecurringScreen() {
   const open = (r: Recurring | null) => router.push({ pathname: "/finance/recurring-edit", params: r ? { kind, id: String(r.id) } : { kind } });
 
   return (
-    <Screen measure>
-      <AppHeader app="finance" title={t("finance.manage.recurring.title")} back />
+    <Screen measure header={<AppHeader app="finance" title={t("finance.manage.recurring.title")} back />}>
       <View style={{ height: metrics.space.md }} />
       <Segmented
         testID="finance-recurring-kind"
@@ -83,6 +85,15 @@ export default function RecurringScreen() {
       </Text>
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingBottom: metrics.space.md }}>
         <FChip testID="finance-recurring-filter" label={filterName} selected={tagId != null} onPress={() => setChoosing(true)} a11yLabel={t("finance.manage.recurring.filterA11y", { name: filterName })} />
+        <SortChip
+          testID="finance-recurring-sort"
+          value={sort}
+          onChange={setSort}
+          options={[
+            { key: "newest", label: t("finance.sort.newest") },
+            { key: "next", label: t("finance.sort.nextDue") },
+          ]}
+        />
         <View style={{ flex: 1 }} />
         {rules.data ? (
           <View style={{ alignItems: "flex-end" }}>
@@ -127,9 +138,9 @@ export default function RecurringScreen() {
           ) : null
         }
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+          <View>
             <RuleRow rule={item} onOpen={() => open(item)} onToggle={() => toggle.mutate(item)} onRun={kind === "income" ? () => run.mutate(item.id) : undefined} />
-          </Animated.View>
+          </View>
         )}
       />
 

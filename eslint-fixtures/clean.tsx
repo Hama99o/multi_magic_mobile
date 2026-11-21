@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import type { LucideIcon } from "lucide-react-native";
+import Animated, { FadeIn } from "react-native-reanimated";
 
 // A literal require of a name written out: the form the app actually uses.
 let audio: unknown = null;
@@ -83,4 +84,10 @@ export function NotRequestsInEffects({ id, frame }: { id: number; frame: unknown
     messagesApi.parseOne(frame);
   }, [id, frame]);
   return <Pressable onPress={() => void pagesApi.trash(id)} />;
+}
+
+// A list's empty state and a one-off card may animate: neither is a recycled
+// cell, and neither reads an index.
+export function EmptyFade() {
+  return <Animated.View entering={FadeIn.duration(260)} />;
 }

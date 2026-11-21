@@ -37,6 +37,11 @@ const FRENCH = flatten(fr);
  * because it was checked, not because it looked foreign.
  */
 const SAME_IN_BOTH = new Set([
+  // "A–Z": letters, the same in both (a sort chip, finance/parts.tsx).
+  "finance.sort.az",
+  // Family words French spells the same (`familyLabel.ts`).
+  "contacts.familyLabels.parent",
+  "contacts.familyLabels.cousin",
   "pages.searchChips.type",
   // "Pause" is the French word too (a player button).
   "pages.view.pause",

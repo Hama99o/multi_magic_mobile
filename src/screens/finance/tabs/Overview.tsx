@@ -5,6 +5,8 @@
  *     income and net (per currency, never added together);
  *   - To receive / To pay over EVERY unpaid loan (the web sums its first
  *     page only, a web bug not copied);
+ *   - the active loans, five at most, as the web's dashboard lists them
+ *     (`Dashboard.tsx:444-475`; parity F-D10, 2026-11-20); none owed, no card;
  *   - the four budgets nearest their limit;
  *   - spend by category (a donut; a category opens its subcategories);
  *   - income vs expenses over 12 months, and spending over time;
@@ -19,7 +21,7 @@ import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
-import { dominantCurrency, financeApi, formatTotals, type Currency, type Slice, type Totals } from "@/api/finance";
+import { dominantCurrency, financeApi, formatMoney, formatTotals, type Currency, type Slice, type Totals } from "@/api/finance";
 import { ArrowDownLeft, ArrowUpRight, ChevronRight, PiggyBank, Plus } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { UndoToast } from "@/components/UndoToast";
@@ -27,6 +29,7 @@ import { useFinanceUndo } from "@/stores/financeUndo.store";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { Bars, budgetColor, chartColor, Donut, FINANCE, HeroAmount, MONEY_IN, MONEY_OWED, PeriodSwitcher, ShareBar, shortMonth, useMoney } from "../parts";
 import type { FinanceTab } from "./names";
+import { loanTone, useDueLabel } from "./Loans";
 
 const period = (year: number, month: number) => (month ? { year, month } : { year });
 
@@ -102,6 +105,8 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: FinanceTab) => void }) {
         <OwedCard testID="finance-overview-pay" icon="out" title={t("finance.overview.toPay")} totals={owed.data?.pay} count={owed.data?.payCount} failed={Boolean(owed.error)} onPress={() => onOpen("loans")} />
       </View>
 
+      <ActiveLoans onAll={() => onOpen("loans")} />
+
       <Card testID="finance-overview-budgets">
         <CardHead title={t("finance.overview.budgets")} action={t("finance.overview.manage")} onAction={() => onOpen("budgets")} testID="finance-overview-budgets-all" />
         {budgets.data && !topBudgets.length ? (
@@ -174,6 +179,47 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: FinanceTab) => void }) {
     </ScrollView>
     <UndoToast offer={offer} onDone={clearOffer} testID="finance-overview-toast" />
     </View>
+  );
+}
+
+/** The web's "Active loans": the first five unpaid, who, which way, what is left of what. Tap opens the loan. */
+function ActiveLoans({ onAll }: { onAll: () => void }) {
+  const metrics = useMetrics();
+  const { t, i18n } = useTranslation();
+  const dueLabel = useDueLabel();
+  const loans = useQuery({ queryKey: financeKeys.activeLoans(), queryFn: () => financeApi.loans.list({ page: 1 }) });
+  const rows = (loans.data?.rows ?? []).filter((l) => l.status !== "paid").slice(0, 5);
+  if (!rows.length && !loans.error) return null;
+  return (
+    <Card testID="finance-overview-loans">
+      <CardHead title={t("finance.overview.activeLoans")} action={t("finance.overview.seeAll")} onAction={onAll} testID="finance-overview-loans-all" />
+      {rows.map((loan) => {
+        const money = (n: number) => formatMoney(n, loan.currency, i18n.language);
+        const kind = loan.type === "given" ? t("finance.loans.lent") : t("finance.loans.borrowed");
+        const due = dueLabel(loan);
+        return (
+          <Pressable
+            key={loan.id}
+            testID={`finance-overview-loan-${loan.id}`}
+            onPress={() => router.push({ pathname: "/finance/loan", params: { id: String(loan.id) } })}
+            accessibilityRole="button"
+            accessibilityLabel={t("finance.loans.rowLabel", { name: loan.contactName, kind, remaining: money(loan.remaining), total: money(loan.amount) })}
+            style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, minHeight: 48 }}
+          >
+            <View style={{ flex: 1, gap: 2 }}>
+              <Text numberOfLines={1}>{loan.contactName || "—"}</Text>
+              <Text variant="caption" tone="muted" numberOfLines={1}>
+                {due ? `${kind} · ${due.text}` : kind}
+              </Text>
+            </View>
+            <Text variant="label" style={{ color: loanTone(loan.type), fontVariant: ["tabular-nums"] }}>
+              {t("finance.overview.ofBudget", { spent: money(loan.remaining), amount: money(loan.amount) })}
+            </Text>
+          </Pressable>
+        );
+      })}
+      <Retry failed={Boolean(loans.error)} onRetry={() => void loans.refetch()} />
+    </Card>
   );
 }
 

@@ -92,8 +92,7 @@ export default function TodosScreen() {
   );
 
   return (
-    <Screen measure>
-      <AppHeader app="todos" />
+    <Screen measure header={<AppHeader app="todos" />}>
       {/* The app's own row, under the shared header: search and templates. */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
         <Pressable
@@ -149,7 +148,7 @@ export default function TodosScreen() {
         onEndReached={() => {
           if (lists.hasNextPage && !lists.isFetchingNextPage) void lists.fetchNextPage();
         }}
-        renderItem={({ item, index }) => <ListRow group={item} index={index} today={today} />}
+        renderItem={({ item }) => <ListRow group={item} today={today} />}
         ItemSeparatorComponent={() => <View style={{ height: metrics.space.sm }} />}
         refreshControl={
           <RefreshControl
@@ -228,7 +227,7 @@ function DueCard({ view, icon: Icon, count, loading, alert = false }: { view: Du
   );
 }
 
-function ListRow({ group, index, today }: { group: TodoGroup; index: number; today: string }) {
+function ListRow({ group, today }: { group: TodoGroup; today: string }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -236,7 +235,7 @@ function ListRow({ group, index, today }: { group: TodoGroup; index: number; tod
   const [pressed, setPressed] = useState(false);
   const more = group.pendingCount - group.previewTodos.length;
   return (
-    <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+    <View>
       <Pressable
         testID={`todos-list-${group.id}`}
         onPress={() => router.push({ pathname: "/todos/list", params: { id: String(group.id) } })}
@@ -244,7 +243,7 @@ function ListRow({ group, index, today }: { group: TodoGroup; index: number; tod
         onPressOut={() => setPressed(false)}
         accessibilityRole="button"
         accessibilityLabel={t("todos.openList", { name: group.name, done: group.completedCount, total: group.todosCount })}
-        style={{ padding: metrics.space.md, gap: metrics.space.sm, borderRadius: metrics.radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, transform: [{ scale: pressed ? 0.98 : 1 }] }}
+        style={{ padding: metrics.space.md, gap: metrics.space.sm, borderRadius: metrics.radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border, opacity: pressed ? 0.8 : 1 }}
       >
         <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.md }}>
           <ProgressRing done={group.completedCount} total={group.todosCount} />
@@ -256,6 +255,14 @@ function ListRow({ group, index, today }: { group: TodoGroup; index: number; tod
               {group.todosCount === 0 ? t("todos.noTasksYet") : t("todos.progress", { done: group.completedCount, total: group.todosCount })}
             </Text>
           </View>
+          {group.todosCount > 0 && group.completedCount === group.todosCount ? (
+            // The web's card says "All done" once every task is ticked (`GroupCard.tsx:89-97`).
+            <View testID={`todos-list-${group.id}-done`} style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: metrics.radius.pill, backgroundColor: `${colors.accent}1f` }}>
+              <Text variant="caption" style={{ color: colors.accent }}>
+                {t("todos.allDoneTitle")}
+              </Text>
+            </View>
+          ) : null}
           {group.overdueCount > 0 ? (
             <View testID={`todos-list-${group.id}-overdue`} style={{ paddingHorizontal: 8, paddingVertical: 2, borderRadius: metrics.radius.pill, backgroundColor: `${colors.danger}1f` }}>
               <Text variant="caption" tone="danger">
@@ -279,7 +286,7 @@ function ListRow({ group, index, today }: { group: TodoGroup; index: number; tod
           </Text>
         ) : null}
       </Pressable>
-    </Animated.View>
+    </View>
   );
 }
 

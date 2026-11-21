@@ -36,8 +36,26 @@ describe("inAppRoute", () => {
   });
 
   it("records the app has no screen for stay on the web", () => {
-    expect(inAppRoute({ key: "loan", path: "/finance/loans?loan=4", label: null })).toBeNull();
+    expect(inAppRoute({ key: "flow_card", path: "/flow/3/cards/9", label: null })).toBeNull();
     expect(inAppRoute({ key: null, path: null, label: null })).toBeNull();
+  });
+
+  // Finance (2026-11-20, parity F-X3). Paths per `frontend_routes.rb`:
+  // `expense` → /finance/expenses?expense=, `income` → /finance/income?income=,
+  // `loan` → /finance/loans?loan=.
+  it("an expense or an income opens on its own sheet, a loan on its screen", () => {
+    expect(inAppRoute({ key: "expense", path: "/finance/expenses?expense=12", label: null })).toEqual({ pathname: "/finance", params: { tab: "expenses", entry: "12" } });
+    expect(inAppRoute({ key: "income", path: "/finance/income?income=7", label: null })).toEqual({ pathname: "/finance", params: { tab: "income", entry: "7" } });
+    expect(inAppRoute({ key: "loan", path: "/finance/loans?loan=4", label: null })).toEqual({ pathname: "/finance/loan", params: { id: "4" } });
+  });
+
+  it("a Finance list opens on its tab, and a damaged id falls back to it", () => {
+    expect(inAppRoute({ key: "expenses", path: "/finance/expenses", label: null })).toEqual({ pathname: "/finance", params: { tab: "expenses" } });
+    expect(inAppRoute({ key: "incomes", path: "/finance/income", label: null })).toEqual({ pathname: "/finance", params: { tab: "income" } });
+    expect(routeForWebPath("/finance/loans")).toEqual({ pathname: "/finance", params: { tab: "loans" } });
+    expect(routeForWebPath("/finance/dashboard")).toBe("/finance");
+    expect(routeForWebPath("/finance/expenses?expense=abc")).toBeNull();
+    expect(inAppRoute({ key: "expense", path: "/finance/expenses?expense=abc", label: null })).toBe("/finance");
   });
 
   // The Todo app (2026-11-16). Paths per `frontend_routes.rb` and

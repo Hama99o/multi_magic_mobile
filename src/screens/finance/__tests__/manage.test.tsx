@@ -196,7 +196,7 @@ afterEach(() => mock.restore());
 
 // ── Budgets ─────────────────────────────────────────────────────────────
 describe("budgets", () => {
-  it("shows each one in server order: X of Y, its state colour, and what is left or over", async () => {
+  it("shows each one newest first: X of Y, its state colour, and what is left or over", async () => {
     serve({
       budgets: [
         budget(1),
@@ -206,7 +206,7 @@ describe("budgets", () => {
     });
     renderScreen(<BudgetsTab />);
     expect(await screen.findByText("Food")).toBeTruthy();
-    expect(screen.getAllByTestId(/^finance-budget-\d+$/).map((n) => n.props.testID)).toEqual(["finance-budget-1", "finance-budget-2", "finance-budget-3"]);
+    expect(screen.getAllByTestId(/^finance-budget-\d+$/).map((n) => n.props.testID)).toEqual(["finance-budget-3", "finance-budget-2", "finance-budget-1"]);
     expect(screen.getByTestId("finance-budget-of-1")).toHaveTextContent("€120.00 of €300.00");
     expect(screen.getByTestId("finance-budget-percent-1")).toHaveTextContent("40%");
     expect(colorOf("finance-budget-percent-1")).toBe(MONEY_IN);
@@ -220,6 +220,19 @@ describe("budgets", () => {
     expect(DANGER).toContain(colorOf("finance-budget-percent-3"));
     expect(screen.getByTestId("finance-budget-rest-3")).toHaveTextContent("€20.00 over");
     expect(DANGER).toContain(colorOf("finance-budget-rest-3"));
+  });
+
+  it("sorts oldest first on request, and back", async () => {
+    serve({ budgets: [budget(1), budget(2, { tag_id: null, tag: null }), budget(3, { tag_id: 6, tag: tag(6, "Rent") })] });
+    renderScreen(<BudgetsTab />);
+    expect(await screen.findByText("Food")).toBeTruthy();
+    const order = () => screen.getAllByTestId(/^finance-budget-\d+$/).map((n) => n.props.testID);
+    expect(screen.getByTestId("finance-budgets-sort")).toHaveTextContent("Newest first");
+    fireEvent.press(screen.getByTestId("finance-budgets-sort"));
+    expect(screen.getByTestId("finance-budgets-sort")).toHaveTextContent("Oldest first");
+    expect(order()).toEqual(["finance-budget-1", "finance-budget-2", "finance-budget-3"]);
+    fireEvent.press(screen.getByTestId("finance-budgets-sort"));
+    expect(order()).toEqual(["finance-budget-3", "finance-budget-2", "finance-budget-1"]);
   });
 
   it("with none, says to set a monthly limit", async () => {
@@ -319,6 +332,18 @@ describe("recurring", () => {
     expect(await screen.findByText("Salary")).toBeTruthy();
     expect(screen.getByTestId("finance-recurring-run-3")).toBeTruthy();
     expect(screen.getByTestId("finance-recurring-count")).toHaveTextContent("1 entry");
+  });
+
+  it("lists the newest rule first; Next due puts them in the server's order, soonest first", async () => {
+    serve({ rexpenses: [rexpense(1, { item: "Gym" }), rexpense(2, { item: "Insurance" }), rexpense(4, { item: "VPN" })] });
+    renderScreen(<Recurring />);
+    expect(await screen.findByText("Gym")).toBeTruthy();
+    const order = () => screen.getAllByTestId(/^finance-recurring-\d+$/).map((n) => n.props.testID);
+    expect(order()).toEqual(["finance-recurring-4", "finance-recurring-2", "finance-recurring-1"]);
+    expect(screen.getByTestId("finance-recurring-sort")).toHaveTextContent("Newest first");
+    fireEvent.press(screen.getByTestId("finance-recurring-sort"));
+    expect(screen.getByTestId("finance-recurring-sort")).toHaveTextContent("Next due");
+    expect(order()).toEqual(["finance-recurring-1", "finance-recurring-2", "finance-recurring-4"]);
   });
 
   it("pauses a rule at once and tells the server {active: false}", async () => {
@@ -442,6 +467,18 @@ describe("categories", () => {
     expect(screen.getByTestId("finance-category-count-6")).toHaveTextContent("0 subcategories");
     fireEvent.press(screen.getByTestId("finance-category-open-3"));
     expect(router.push).toHaveBeenCalledWith({ pathname: "/finance/categories", params: { parent: "3" } });
+  });
+
+  it("lists the newest category first; A–Z on request", async () => {
+    serve({ tags: [FOOD, tag(6, "Rent"), tag(7, "Books")] });
+    renderScreen(<Categories />);
+    expect(await screen.findByText("Food")).toBeTruthy();
+    const order = () => screen.getAllByTestId(/^finance-category-\d+$/).map((n) => n.props.testID);
+    expect(order()).toEqual(["finance-category-7", "finance-category-6", "finance-category-3"]);
+    expect(screen.getByTestId("finance-categories-sort")).toHaveTextContent("Newest first");
+    fireEvent.press(screen.getByTestId("finance-categories-sort"));
+    expect(screen.getByTestId("finance-categories-sort")).toHaveTextContent("A–Z");
+    expect(order()).toEqual(["finance-category-7", "finance-category-3", "finance-category-6"]);
   });
 
   it("one category's level shows its subcategories, and adds one under it", async () => {

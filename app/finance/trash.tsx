@@ -8,7 +8,6 @@
  */
 import { useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
@@ -74,8 +73,7 @@ export default function TrashScreen() {
     ]);
 
   return (
-    <Screen measure>
-      <AppHeader app="finance" title={t("finance.manage.trash.title")} back />
+    <Screen measure header={<AppHeader app="finance" title={t("finance.manage.trash.title")} back />}>
       <View style={{ height: metrics.space.md }} />
       <Segmented
         testID="finance-trash-kind"
@@ -111,9 +109,9 @@ export default function TrashScreen() {
         ListFooterComponent={trash.isFetchingNextPage ? <ActivityIndicator color={colors.inkMuted} style={{ padding: metrics.space.md }} /> : null}
         ListEmptyComponent={trash.data ? <EmptyState testID="finance-trash-empty" icon={Trash2} title={t("finance.manage.trash.empty")} body={t("finance.manage.trash.emptyBody")} /> : null}
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+          <View>
             <TrashRow row={item} onRestore={() => restore.mutate(item.id)} onDestroy={() => confirmDestroy(item)} />
-          </Animated.View>
+          </View>
         )}
       />
       <UndoToast offer={offer} onDone={clearOffer} testID="finance-trash-toast" />

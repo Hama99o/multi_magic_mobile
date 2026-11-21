@@ -11,8 +11,9 @@
  * the list still scrolls. Every swipe action is also a button (the check;
  * Delete in the task sheet), so nothing needs the gesture.
  */
-import { useEffect, useRef, useState } from "react";
-import { Animated, PanResponder, Pressable, View } from "react-native";
+import { useEffect, useState } from "react";
+import { REVEAL, useSwipeRow } from "@/components/swipeRow";
+import { Animated, Pressable, View } from "react-native";
 import Reanimated, { useAnimatedStyle, useSharedValue, withSequence, withSpring, withTiming } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import { useTranslation } from "react-i18next";
@@ -25,8 +26,6 @@ import { APP_COLORS } from "@/theme/appColors";
 import { dueLabel, dueTone } from "./due";
 
 const [BLUE, , ORANGE] = CATEGORY_COLORS;
-/** Swipe distance that acts, and where the haptic says so. */
-const ACT_AT = 96;
 
 export function priorityColor(priority: TodoPriority, danger: string): string | null {
   if (priority === "low") return BLUE;
@@ -101,41 +100,9 @@ export function TaskRow({
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
-  const dx = useRef(new Animated.Value(0)).current;
-  const [side, setSide] = useState<"done" | "delete" | null>(null);
-  const passed = useRef(false);
-
-  const pan = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_e, g) => Math.abs(g.dx) > 12 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
-      onPanResponderGrant: () => {
-        passed.current = false;
-      },
-      onPanResponderMove: (_e, g) => {
-        dx.setValue(g.dx);
-        setSide(g.dx > 0 ? "done" : g.dx < 0 ? "delete" : null);
-        const over = Math.abs(g.dx) >= ACT_AT;
-        if (over !== passed.current) {
-          passed.current = over;
-          if (over) void Haptics.selectionAsync().catch(() => undefined);
-        }
-      },
-      onPanResponderRelease: (_e, g) => {
-        const act = Math.abs(g.dx) >= ACT_AT ? (g.dx > 0 ? "done" : "delete") : null;
-        Animated.spring(dx, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start(() => setSide(null));
-        if (act === "done") onToggleRef.current();
-        if (act === "delete") onDeleteRef.current();
-      },
-      onPanResponderTerminate: () => {
-        Animated.spring(dx, { toValue: 0, useNativeDriver: true }).start(() => setSide(null));
-      },
-    }),
-  ).current;
-  // The responder is made once; the handlers it calls are the latest.
-  const onToggleRef = useRef(onToggle);
-  onToggleRef.current = onToggle;
-  const onDeleteRef = useRef(onDelete);
-  onDeleteRef.current = onDelete;
+  // A partial swipe opens on its button, only a long one acts (components/swipeRow.tsx).
+  const swipe = useSwipeRow({ id: todo.id, right: true, onLeft: onDelete, onRight: onToggle });
+  const side = swipe.side === "right" ? "done" : swipe.side === "left" ? "delete" : null;
 
   const tone = dueTone(todo.dueDate, todo.completed, today);
   const flag = priorityColor(todo.priority, colors.danger);
@@ -159,19 +126,28 @@ export function TaskRow({
             left: 0,
             right: 0,
             flexDirection: "row",
-            alignItems: "center",
+            alignItems: "stretch",
             justifyContent: side === "done" ? "flex-start" : "flex-end",
-            paddingHorizontal: metrics.space.xl,
             backgroundColor: side === "done" ? APP_COLORS.todos : colors.danger,
           }}
         >
-          {side === "done" ? <Check size={22} color="#04161a" strokeWidth={3} /> : <Trash2 size={22} color="#ffffff" />}
+          <Pressable
+            testID={`todo-row-${todo.id}-${side === "done" ? "swipe-done" : "swipe-delete"}`}
+            onPress={swipe.actOpen}
+            disabled={!swipe.open}
+            accessibilityRole="button"
+            accessibilityLabel={side === "done" ? t("todos.markDone", { title: todo.title }) : t("common.delete")}
+            style={{ width: REVEAL, alignItems: "center", justifyContent: "center" }}
+          >
+            {side === "done" ? <Check size={22} color="#04161a" strokeWidth={3} /> : <Trash2 size={22} color="#ffffff" />}
+          </Pressable>
         </View>
       ) : null}
-      <Animated.View {...pan.panHandlers} style={{ transform: [{ translateX: dx }] }}>
+      <Animated.View {...swipe.panHandlers} onLayout={swipe.onLayout} style={{ transform: [{ translateX: swipe.dx }] }}>
         <Pressable
           testID={`todo-row-${todo.id}`}
-          onPress={onOpen}
+          // An open row closes on a tap, before it opens anything.
+          onPress={swipe.open ? swipe.close : onOpen}
           disabled={pending}
           accessibilityRole="button"
           accessibilityLabel={t("todos.openTask", { title: todo.title })}

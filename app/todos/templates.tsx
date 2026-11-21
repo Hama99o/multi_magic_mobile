@@ -7,7 +7,6 @@
  */
 import { useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -44,8 +43,7 @@ export default function TemplatesScreen() {
     ]);
 
   return (
-    <Screen measure>
-      <AppHeader app="todos" title={t("todos.templates")} back />
+    <Screen measure header={<AppHeader app="todos" title={t("todos.templates")} back />}>
       <Text tone="muted" style={{ paddingVertical: metrics.space.md }}>
         {t("todos.templatesHint")}
       </Text>
@@ -82,7 +80,7 @@ export default function TemplatesScreen() {
         renderItem={({ item, index }) => {
           const repeat = repeatLabel(item, t);
           return (
-            <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+            <View>
               <View testID={`todo-template-${item.id}`} style={{ padding: metrics.space.md, gap: metrics.space.sm, borderRadius: metrics.radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
                 <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
                   <LayoutTemplate size={18} color={colors.inkMuted} />
@@ -112,7 +110,7 @@ export default function TemplatesScreen() {
                   <ActionButton testID={`todo-template-delete-${item.id}`} icon={Trash2} label={t("common.delete")} danger onPress={() => confirmDelete(item)} />
                 </View>
               </View>
-            </Animated.View>
+            </View>
           );
         }}
       />

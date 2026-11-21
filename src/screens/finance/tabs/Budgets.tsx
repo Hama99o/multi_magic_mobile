@@ -1,7 +1,8 @@
 /**
  * Finance › Budgets (`docs/design/finance/SPEC.md` §A F21, §D.8; the web's
- * `pages/finance/budgets/Index.tsx`). One card per budget, in the server's
- * order (`created_at asc`): the category or "Overall budget", the period,
+ * `pages/finance/budgets/Index.tsx`). One card per budget, newest first (the
+ * owner's rule; the server sends `created_at asc`, so "Oldest first" is that
+ * order, one tap away): the category or "Overall budget", the period,
  * "€120 of €300", a bar coloured by its state (green, orange from 80%, red
  * from 100%: colour is the sign) and what is left, or how much over in red.
  * A tap edits it, the FAB makes one (`BudgetSheet`).
@@ -11,7 +12,6 @@
  */
 import { useState } from "react";
 import { FlatList, Pressable, RefreshControl, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
@@ -21,7 +21,7 @@ import { Text } from "@/components/reusables/text";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { LoadFailure } from "@/components/LoadFailure";
 import { useColors, useMetrics } from "@/hooks/useColors";
-import { budgetColor, ShareBar, useMoney } from "@/screens/finance/parts";
+import { budgetColor, newestFirst, ShareBar, SortChip, useMoney } from "@/screens/finance/parts";
 import { EmptyState, Fab } from "@/screens/finance/manage/common";
 import { BudgetSheet } from "@/screens/finance/manage/BudgetSheet";
 
@@ -32,23 +32,38 @@ export function BudgetsTab() {
   const budgets = useQuery({ queryKey: financeKeys.budgets(), queryFn: financeApi.budgets.list });
   /** undefined: closed; null: a new budget; a budget: editing it. */
   const [editing, setEditing] = useState<Budget | null | undefined>(undefined);
+  const [sort, setSort] = useState<"newest" | "oldest">("newest");
+  const rows = budgets.data ? (sort === "oldest" ? budgets.data : newestFirst(budgets.data)) : [];
 
   return (
     <View testID="finance-tab-budgets" style={{ flex: 1 }}>
       <LoadFailure error={budgets.error} loadFailed={t("finance.manage.budgets.loadFailed")} hasData={Boolean(budgets.data)} updatedAt={budgets.dataUpdatedAt} onRetry={() => void budgets.refetch()} testID="finance-budgets-load-failed" />
       {budgets.isPending && !budgets.error ? <RowsSkeleton rows={3} testID="finance-budgets-loading" /> : null}
+      {budgets.data?.length ? (
+        <View style={{ flexDirection: "row", paddingBottom: metrics.space.sm }}>
+          <SortChip
+            testID="finance-budgets-sort"
+            value={sort}
+            onChange={setSort}
+            options={[
+              { key: "newest", label: t("finance.sort.newest") },
+              { key: "oldest", label: t("finance.sort.oldest") },
+            ]}
+          />
+        </View>
+      ) : null}
       <FlatList
         testID="finance-budgets-list"
-        data={budgets.data ?? []}
+        data={rows}
         keyExtractor={(b) => String(b.id)}
         ItemSeparatorComponent={() => <View style={{ height: metrics.space.sm }} />}
         refreshControl={<RefreshControl refreshing={budgets.isRefetching} onRefresh={() => void budgets.refetch()} tintColor={colors.inkMuted} />}
         contentContainerStyle={{ paddingBottom: 96 }}
         ListEmptyComponent={budgets.data ? <EmptyState testID="finance-budgets-empty" icon={PiggyBank} title={t("finance.manage.budgets.empty")} body={t("finance.manage.budgets.emptyBody")} /> : null}
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+          <View>
             <BudgetCard budget={item} onPress={() => setEditing(item)} />
-          </Animated.View>
+          </View>
         )}
       />
       <Fab testID="finance-budgets-new" label={t("finance.manage.budgets.new")} onPress={() => setEditing(null)} />

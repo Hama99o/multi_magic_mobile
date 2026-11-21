@@ -34,7 +34,7 @@ French app and what the screen it opens is titled).
 | The two locales have the same keys, no empty values, the same interpolations | `src/i18n/__tests__/locales.test.ts` |
 | No French value is still the English one | same file — the failure that a type check cannot see, because a copied English string type-checks |
 | Every screen renders every handle **and reads French** at 360 dp | `src/screens/__tests__/screens.render.test.tsx`. Each row carries a distinctive French sentence, because a handle is on a container and the English text inside it survives a language switch untouched — proven by planting exactly that |
-| The choice survives a restart, reaches the server, and is not overridden by it | `src/stores/__tests__/language.store.test.ts` |
+| The choice survives a restart and reaches the server; until the server confirms it, the server does not override it; once confirmed, the server (`users.lang`) wins, so a switch on the laptop reaches the phone (2026-11-20) | `src/stores/__tests__/language.store.test.ts` |
 | No `accessibilityLabel` or `accessibilityHint` is a bare English string | `no-restricted-syntax` in `.eslintrc.js`. Added after two of them shipped |
 | Every key **defined** is called by something | `keys.test.ts`, the other direction. An orphan key is the receipt for a string that went into a component as a literal instead — `docs/TESTING.md` §8 |
 | The grep knows every name `t` is imported under | same file. It knew `t(` and not `translate(`, so keys reached through the alias were never resolved at all |

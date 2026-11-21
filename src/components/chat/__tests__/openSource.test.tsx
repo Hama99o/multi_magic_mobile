@@ -36,7 +36,9 @@ function Host({ link }: { link: MessageLink }) {
 }
 
 const aiKeys: MessageLink = { label: "AI keys", path: "/profile/me/api-keys", key: "ai_keys" };
-const note: MessageLink = { label: "Rent", path: "/finance/loans?loan=7", key: "loan" };
+// A Flow card: the web has a board, this app does not (loans were the example
+// here until 2e1dfb1 gave them a screen).
+const note: MessageLink = { label: "Sprint plan", path: "/flow/3/cards/9", key: "flow_card" };
 
 beforeEach(() => mockPush.mockClear());
 

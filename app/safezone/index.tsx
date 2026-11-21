@@ -16,7 +16,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { SAFEZONE_KINDS, safezoneApi, safezoneKeys, type SafeZoneKind, type SafeZonePage, type SafeZoneRow } from "@/api/safezone";
 import { useSafezoneLock } from "@/stores/safezoneLock.store";
 import { SafeZoneGate } from "@/screens/safezone/SafeZoneGate";
-import { choiceLabel, isExpired, rowSubtitle } from "@/screens/safezone/display";
+import { cardExpiry, choiceLabel, isExpired, rowDate, rowSubtitle } from "@/screens/safezone/display";
 import { KIND_ICONS, Tile } from "@/screens/safezone/Tile";
 import { APP_COLORS } from "@/theme/appColors";
 import Animated, { FadeInDown } from "react-native-reanimated";
@@ -28,8 +28,7 @@ const SEARCH_DELAY_MS = 300;
 
 export default function SafeZoneScreen() {
   return (
-    <Screen measure>
-      <AppHeader app="safezone" />
+    <Screen measure header={<AppHeader app="safezone" />}>
       <VaultActions />
       <SafeZoneGate>
         <Vault />
@@ -194,7 +193,7 @@ function Lists({ kind, list, search, typed, setTyped }: { kind: SafeZoneKind; li
         }}
         ListEmptyComponent={list.data ? <EmptyState kind={kind} searching={Boolean(search)} /> : null}
         ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator /> : null}
-        renderItem={({ item, index }) => <Row row={item} index={index} />}
+        renderItem={({ item }) => <Row row={item} />}
         // Pull to refresh, as every other list in the app (audit P2).
         refreshControl={<RefreshControl refreshing={list.isRefetching && !list.isFetchingNextPage} onRefresh={() => void list.refetch()} tintColor={colors.inkMuted} />}
         contentContainerStyle={{ paddingBottom: 96, gap: metrics.space.sm }}
@@ -244,16 +243,18 @@ function EmptyState({ kind, searching }: { kind: SafeZoneKind; searching: boolea
   );
 }
 
-function Row({ row, index }: { row: SafeZoneRow; index: number }) {
+function Row({ row }: { row: SafeZoneRow }) {
   const colors = useColors();
   const metrics = useMetrics();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const card = row.kind === "payment_cards" ? cardExpiry(row.expiry) : null;
+  const date = rowDate(row, i18n.language);
   const [pressed, setPressed] = useState(false);
   const title = rowTitle(row, t);
   const expired = row.kind === "identities" && isExpired(row.expiresAt);
   const weak = row.kind === "passwords" && row.weak === true;
   return (
-    <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+    <View>
     <Pressable
       testID={`safezone-row-${row.kind}-${row.id}`}
       onPress={() => router.push({ pathname: "/safezone/item", params: { kind: row.kind, id: String(row.id) } })}
@@ -272,16 +273,21 @@ function Row({ row, index }: { row: SafeZoneRow; index: number }) {
         backgroundColor: colors.surface,
         borderWidth: 1,
         borderColor: colors.border,
-        transform: [{ scale: pressed ? 0.98 : 1 }],
+        opacity: pressed ? 0.8 : 1,
       }}
     >
       <Tile kind={row.kind} site={row.kind === "passwords" ? row.link || row.title || "" : ""} testID={`safezone-tile-${row.kind}-${row.id}`} />
       <View style={{ flex: 1 }}>
         <Text numberOfLines={1} style={{ fontWeight: "600" }}>{title}</Text>
         <Text tone="muted" variant="caption" numberOfLines={1}>
-          {rowSubtitle(row)}
+          {rowSubtitle(row, t)}
         </Text>
       </View>
+      {card ? (
+        <Text tone={card === "expired" ? "danger" : "muted"} variant="caption" testID={`safezone-card-expiry-${row.id}`} style={card === "soon" ? { fontWeight: "600" } : undefined}>
+          {card === "expired" ? t("safezone.expired") : t("safezone.expiresSoon")}
+        </Text>
+      ) : null}
       {expired ? (
         <Text tone="danger" variant="caption" testID={`safezone-expired-${row.id}`}>
           {t("safezone.expired")}
@@ -292,8 +298,13 @@ function Row({ row, index }: { row: SafeZoneRow; index: number }) {
           {t("safezone.weak")}
         </Text>
       ) : null}
+      {date ? (
+        <Text tone="muted" variant="caption" testID={`safezone-date-${row.kind}-${row.id}`}>
+          {date}
+        </Text>
+      ) : null}
       <ChevronRight size={18} color={colors.inkMuted} />
     </Pressable>
-    </Animated.View>
+    </View>
   );
 }

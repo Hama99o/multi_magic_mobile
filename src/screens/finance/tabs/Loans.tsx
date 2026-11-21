@@ -14,14 +14,15 @@
  * is React Native's own `PanResponder`, as Todo's `TaskRow`: the app has no
  * `GestureHandlerRootView`. Delete is also the row's accessibility action.
  */
-import { useCallback, useEffect, useRef, useState } from "react";
-import { ActivityIndicator, Animated, FlatList, PanResponder, Pressable, RefreshControl, TextInput, View } from "react-native";
-import Reanimated, { FadeIn, FadeInDown } from "react-native-reanimated";
-import * as Haptics from "expo-haptics";
+import { useCallback, useEffect, useState } from "react";
+import { ActivityIndicator, Animated, FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
+import Reanimated, { FadeIn } from "react-native-reanimated";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
+import { SwipeResetScope, useSwipeResetToken } from "@/components/swipeReset";
+import { REVEAL, useSwipeRow } from "@/components/swipeRow";
 import { financeApi, formatMoney, formatTotals, type Loan, type LoanType, type Totals } from "@/api/finance";
 import { CircleCheck, HandCoins, Plus, Search, Trash2, X } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
@@ -37,8 +38,6 @@ import { useDeleteEntry, useRestoreEntry } from "@/screens/finance/useFinanceMut
 import { useFinanceUndo } from "@/stores/financeUndo.store";
 
 const SEARCH_DELAY_MS = 300;
-/** Swipe distance that deletes, and where the haptic says so. */
-const ACT_AT = 96;
 
 // ── shared with the loan detail ──────────────────────────────────────────
 
@@ -174,9 +173,13 @@ export function LoansTab() {
     </View>
   );
 
+  // A half-swiped row goes back to 0 on scroll and on new data (src/components/swipeReset.tsx).
+  const [swipeToken, resetSwipes] = useSwipeResetToken(rows.map((r) => r.id).join());
   return (
     <View testID="finance-tab-loans" style={{ flex: 1 }}>
+      <SwipeResetScope token={swipeToken}>
       <FlatList
+        onScrollBeginDrag={resetSwipes}
         testID="finance-loans-list"
         // NO layout animation on the rows (Todo QA 2026-11-16: `layout` /
         // `exiting` / `itemLayoutAnimation` overlapped rows on the device).
@@ -189,9 +192,9 @@ export function LoansTab() {
           if (list.hasNextPage && !list.isFetchingNextPage) void list.fetchNextPage();
         }}
         renderItem={({ item, index }) => (
-          <Reanimated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+          <View>
             <LoanRow loan={item} onDelete={() => onDelete(item)} />
-          </Reanimated.View>
+          </View>
         )}
         ItemSeparatorComponent={() => <View style={{ height: metrics.space.xs }} />}
         refreshControl={
@@ -207,6 +210,7 @@ export function LoansTab() {
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={{ paddingBottom: 96 }}
       />
+      </SwipeResetScope>
 
       <Pressable
         testID="finance-loans-new"
@@ -266,37 +270,8 @@ function LoanRow({ loan, onDelete }: { loan: Loan; onDelete: () => void }) {
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
   const dueLabel = useDueLabel();
-  const dx = useRef(new Animated.Value(0)).current;
-  const [swiping, setSwiping] = useState(false);
-  const passed = useRef(false);
-  const onDeleteRef = useRef(onDelete);
-  onDeleteRef.current = onDelete;
-
-  const pan = useRef(
-    PanResponder.create({
-      // Only a drag that is clearly sideways and leftwards: the list still scrolls.
-      onMoveShouldSetPanResponder: (_e, g) => g.dx < -12 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
-      onPanResponderGrant: () => {
-        passed.current = false;
-        setSwiping(true);
-      },
-      onPanResponderMove: (_e, g) => {
-        dx.setValue(Math.min(0, g.dx));
-        const over = g.dx <= -ACT_AT;
-        if (over !== passed.current) {
-          passed.current = over;
-          if (over) void Haptics.selectionAsync().catch(() => undefined);
-        }
-      },
-      onPanResponderRelease: (_e, g) => {
-        Animated.spring(dx, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start(() => setSwiping(false));
-        if (g.dx <= -ACT_AT) onDeleteRef.current();
-      },
-      onPanResponderTerminate: () => {
-        Animated.spring(dx, { toValue: 0, useNativeDriver: true }).start(() => setSwiping(false));
-      },
-    }),
-  ).current;
+  // A partial swipe opens on Delete, only a long one deletes (components/swipeRow.tsx).
+  const swipe = useSwipeRow({ id: loan.id, onLeft: onDelete });
 
   const money = (n: number) => formatMoney(n, loan.currency, i18n.language);
   const share = paidShare(loan);
@@ -309,15 +284,17 @@ function LoanRow({ loan, onDelete }: { loan: Loan; onDelete: () => void }) {
 
   return (
     <View style={{ borderRadius: metrics.radius.md, overflow: "hidden" }}>
-      {swiping ? (
-        <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, flexDirection: "row", alignItems: "center", justifyContent: "flex-end", paddingHorizontal: metrics.space.xl, backgroundColor: colors.danger }}>
-          <Trash2 size={22} color="#ffffff" />
+      {swipe.side ? (
+        <View style={{ position: "absolute", top: 0, bottom: 0, left: 0, right: 0, flexDirection: "row", justifyContent: "flex-end", backgroundColor: colors.danger }}>
+          <Pressable testID={`finance-loan-row-${loan.id}-swipe-delete`} onPress={swipe.actOpen} disabled={!swipe.open} accessibilityRole="button" accessibilityLabel={t("common.delete")} style={{ width: REVEAL, alignItems: "center", justifyContent: "center" }}>
+            <Trash2 size={22} color="#ffffff" />
+          </Pressable>
         </View>
       ) : null}
-      <Animated.View {...pan.panHandlers} style={{ transform: [{ translateX: dx }] }}>
+      <Animated.View {...swipe.panHandlers} onLayout={swipe.onLayout} style={{ transform: [{ translateX: swipe.dx }] }}>
         <Pressable
           testID={`finance-loan-row-${loan.id}`}
-          onPress={open}
+          onPress={swipe.open ? swipe.close : open}
           accessibilityRole="button"
           accessibilityLabel={t("finance.loans.rowLabel", { name: loan.contactName, kind, remaining: money(loan.remaining), total: money(loan.amount) })}
           accessibilityActions={[{ name: "activate" }, { name: "delete", label: t("common.delete") }]}

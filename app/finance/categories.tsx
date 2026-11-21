@@ -12,7 +12,6 @@
  */
 import { useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
-import Animated, { FadeInDown } from "react-native-reanimated";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
@@ -28,6 +27,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { NameDialog } from "@/screens/pages/ItemSheet";
 import { useCreateTag, useDeleteTag, useRenameTag } from "@/screens/finance/useFinanceMutations";
 import { EmptyState, Fab } from "@/screens/finance/manage/common";
+import { newestFirst, SortChip } from "@/screens/finance/parts";
 
 export default function CategoriesScreen() {
   const colors = useColors();
@@ -39,6 +39,8 @@ export default function CategoriesScreen() {
   const [dialog, setDialog] = useState<{ mode: "add" } | { mode: "rename"; tag: Tag } | null>(null);
   const [dialogError, setDialogError] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  // Newest first by default; A–Z is one tap away (owner rule, 2026-11-09).
+  const [sort, setSort] = useState<"newest" | "az">("newest");
   const close = () => {
     setDialog(null);
     setDialogError(null);
@@ -49,7 +51,8 @@ export default function CategoriesScreen() {
 
   const all = tags.data ?? [];
   const parent = parentId == null ? null : (all.find((x) => x.id === parentId) ?? null);
-  const rows = all.filter((x) => x.parentId === parentId).sort((a, b) => a.name.localeCompare(b.name));
+  const level = all.filter((x) => x.parentId === parentId);
+  const rows = sort === "az" ? [...level].sort((a, b) => a.name.localeCompare(b.name)) : newestFirst(level);
   const subCount = (id: number) => all.filter((x) => x.parentId === id).length;
 
   const confirmDelete = (tag: Tag) => {
@@ -74,13 +77,23 @@ export default function CategoriesScreen() {
 
   const title = parent ? parent.name : t("finance.manage.categories.title");
   return (
-    <Screen measure>
-      <AppHeader app="finance" title={title} back />
+    <Screen measure header={<AppHeader app="finance" title={title} back />}>
       {parent ? (
         <Text variant="caption" tone="muted" numberOfLines={1} style={{ paddingTop: metrics.space.sm }} testID="finance-categories-subtitle">
           {t("finance.manage.categories.subcategories")}
         </Text>
       ) : null}
+      <View style={{ flexDirection: "row", paddingVertical: metrics.space.sm }}>
+        <SortChip
+          testID="finance-categories-sort"
+          value={sort}
+          onChange={setSort}
+          options={[
+            { key: "newest", label: t("finance.sort.newest") },
+            { key: "az", label: t("finance.sort.az") },
+          ]}
+        />
+      </View>
       <LoadFailure error={tags.error} loadFailed={t("finance.manage.categories.loadFailed")} hasData={Boolean(tags.data)} updatedAt={tags.dataUpdatedAt} onRetry={() => void tags.refetch()} testID="finance-categories-load-failed" />
       {failure ? (
         <Pressable testID="finance-categories-failure" onPress={() => setFailure(null)} accessibilityRole="button" accessibilityLabel={failure} accessibilityLiveRegion="polite">
@@ -108,7 +121,7 @@ export default function CategoriesScreen() {
           const top = item.parentId == null;
           const count = top ? subCount(item.id) : 0;
           return (
-            <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 35).duration(220)}>
+            <View>
               <View testID={`finance-category-${item.id}`} style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.xs, minHeight: 56 }}>
                 <Pressable
                   testID={`finance-category-open-${item.id}`}
@@ -137,7 +150,7 @@ export default function CategoriesScreen() {
                   <Trash2 size={18} color={colors.danger} />
                 </Pressable>
               </View>
-            </Animated.View>
+            </View>
           );
         }}
       />

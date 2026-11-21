@@ -54,42 +54,84 @@ export function useMoney() {
 }
 
 /** ‹ November 2026 › with a Month / Year toggle (Monarch, Copilot). `month` 0 = the whole year. */
-export function PeriodSwitcher({ year, month, onChange, allowYear = true, testID = "finance-period" }: { year: number; month: number; onChange: (year: number, month: number) => void; allowYear?: boolean; testID?: string }) {
+/** How far ahead a period may go: the web's YEARS_AHEAD, so a post-dated entry stays reachable (`FinanceFilters.tsx:16`). */
+export const YEARS_AHEAD = 5;
+
+/**
+ * A month, a whole year, or (with `allowAll`) all time, which is `year` 0:
+ * `listParams` then sends no year and no month, and the server lists every
+ * date (the web's "All years", parity F-E5). The arrows go back without end
+ * and forward to the end of `YEARS_AHEAD` years (parity F-E6). The mode
+ * button cycles month → year → all time → month.
+ */
+export function PeriodSwitcher({ year, month, onChange, allowYear = true, allowAll = false, testID = "finance-period" }: { year: number; month: number; onChange: (year: number, month: number) => void; allowYear?: boolean; allowAll?: boolean; testID?: string }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
-  const label = month ? new Date(year, month - 1, 1).toLocaleDateString(i18n.language, { month: "long", year: "numeric" }) : String(year);
+  const now = new Date();
+  const all = allowAll && year === 0;
+  const label = all ? t("finance.period.allTime") : month ? new Date(year, month - 1, 1).toLocaleDateString(i18n.language, { month: "long", year: "numeric" }) : String(year);
   const step = (by: number) => {
     if (!month) return onChange(year + by, 0);
     const d = new Date(year, month - 1 + by, 1);
     onChange(d.getFullYear(), d.getMonth() + 1);
   };
-  const now = new Date();
-  const atNow = month ? year === now.getFullYear() && month === now.getMonth() + 1 : year === now.getFullYear();
+  const lastYear = now.getFullYear() + YEARS_AHEAD;
+  const atEnd = month ? year > lastYear || (year === lastYear && month === 12) : year >= lastYear;
+  const nextMode = () => {
+    if (month) return onChange(year, 0);
+    if (allowAll && !all) return onChange(0, 0);
+    const y = all ? now.getFullYear() : year;
+    return onChange(y, y === now.getFullYear() ? now.getMonth() + 1 : 12);
+  };
+  const modeA11y = month ? t("finance.period.showYear") : allowAll && !all ? t("finance.period.showAll") : t("finance.period.showMonth");
+  const modeText = month ? t("finance.period.year") : allowAll && !all ? t("finance.period.all") : t("finance.period.month");
   return (
     <View testID={testID} style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
-      <Pressable testID={`${testID}-prev`} onPress={() => step(-1)} accessibilityRole="button" accessibilityLabel={t("finance.period.previous")} hitSlop={8} style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}>
-        <ChevronLeft size={22} color={colors.ink} />
-      </Pressable>
-      <Text testID={`${testID}-label`} variant="label" style={{ flex: 1, textAlign: "center", fontSize: 17, textTransform: "capitalize" }} accessibilityRole="header">
+      {all ? null : (
+        <Pressable testID={`${testID}-prev`} onPress={() => step(-1)} accessibilityRole="button" accessibilityLabel={t("finance.period.previous")} hitSlop={8} style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}>
+          <ChevronLeft size={22} color={colors.ink} />
+        </Pressable>
+      )}
+      <Text testID={`${testID}-label`} variant="label" style={{ flex: 1, textAlign: "center", fontSize: 17, textTransform: "capitalize", minHeight: all ? metrics.touch : undefined, lineHeight: all ? metrics.touch : undefined }} accessibilityRole="header">
         {label}
       </Text>
-      <Pressable testID={`${testID}-next`} onPress={() => step(1)} disabled={atNow} accessibilityRole="button" accessibilityLabel={t("finance.period.next")} accessibilityState={{ disabled: atNow }} hitSlop={8} style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center", opacity: atNow ? 0.3 : 1 }}>
-        <ChevronRight size={22} color={colors.ink} />
-      </Pressable>
+      {all ? null : (
+        <Pressable testID={`${testID}-next`} onPress={() => step(1)} disabled={atEnd} accessibilityRole="button" accessibilityLabel={t("finance.period.next")} accessibilityState={{ disabled: atEnd }} hitSlop={8} style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center", opacity: atEnd ? 0.3 : 1 }}>
+          <ChevronRight size={22} color={colors.ink} />
+        </Pressable>
+      )}
       {allowYear ? (
         <Pressable
           testID={`${testID}-mode`}
-          onPress={() => onChange(year, month ? 0 : year === now.getFullYear() ? now.getMonth() + 1 : 12)}
+          onPress={nextMode}
           accessibilityRole="button"
-          accessibilityLabel={month ? t("finance.period.showYear") : t("finance.period.showMonth")}
+          accessibilityLabel={modeA11y}
           style={{ minHeight: 36, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, borderWidth: 1, borderColor: colors.border, justifyContent: "center" }}
         >
-          <Text variant="caption">{month ? t("finance.period.year") : t("finance.period.month")}</Text>
+          <Text variant="caption">{modeText}</Text>
         </Pressable>
       ) : null}
     </View>
   );
+}
+
+/**
+ * Newest first, the owner's default for every list (2026-11-09; Hello's
+ * call for Finance, 2026-11-20). The finance serializers send no
+ * `created_at`, and ids only grow, so the newest record has the largest id.
+ */
+export function newestFirst<T extends { id: number }>(rows: readonly T[]): T[] {
+  return [...rows].sort((a, b) => b.id - a.id);
+}
+
+/** One chip that switches a list between Newest first and its other order; the label says the order in force. */
+export function SortChip<K extends string>({ value, options, onChange, testID }: { value: K; options: readonly { key: K; label: string }[]; onChange: (key: K) => void; testID: string }) {
+  const { t } = useTranslation();
+  const at = Math.max(0, options.findIndex((o) => o.key === value));
+  const current = options[at]!;
+  const next = options[(at + 1) % options.length]!;
+  return <FChip testID={testID} label={current.label} onPress={() => onChange(next.key)} a11yLabel={t("finance.sort.a11y", { order: current.label, next: next.label })} />;
 }
 
 /** One small chip (the Todo chip's twin, in the Finance colour). */
@@ -156,21 +198,27 @@ export function typedAmount(value: string, language: string): string {
 }
 
 /** Today / Yesterday / a day from the month grid (Copilot's date row). */
-export function DayChooser({ value, onChange, testID }: { value: string; onChange: (day: string) => void; testID: string }) {
+/**
+ * Today, yesterday, or a picked day. `onNone` adds "No date": an expense or
+ * an income may have none, as on the web (parity F-E13); `value` is then
+ * null. Without it a caller always has a day.
+ */
+export function DayChooser({ value, onChange, onNone, testID }: { value: string | null; onChange: (day: string) => void; onNone?: () => void; testID: string }) {
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
   const today = todayKey();
   const [picking, setPicking] = useState(false);
   const [month, setMonth] = useState(startOfMonth(value || today));
-  const custom = value !== today && value !== addDays(today, -1);
+  const custom = value != null && value !== today && value !== addDays(today, -1);
   return (
     <View style={{ gap: metrics.space.sm }}>
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: metrics.space.sm }}>
         <FChip testID={`${testID}-today`} label={t("finance.day.today")} selected={value === today} onPress={() => onChange(today)} />
         <FChip testID={`${testID}-yesterday`} label={t("finance.day.yesterday")} selected={value === addDays(today, -1)} onPress={() => onChange(addDays(today, -1))} />
+        {onNone ? <FChip testID={`${testID}-none`} label={t("finance.day.none")} selected={value == null} onPress={onNone} /> : null}
         <FChip
           testID={`${testID}-pick`}
-          label={custom ? parseDay(value).toLocaleDateString(i18n.language, { day: "numeric", month: "short", year: "numeric" }) : t("finance.day.pick")}
+          label={custom && value ? parseDay(value).toLocaleDateString(i18n.language, { day: "numeric", month: "short", year: "numeric" }) : t("finance.day.pick")}
           selected={custom || picking}
           onPress={() => setPicking((p) => !p)}
         />
@@ -179,7 +227,7 @@ export function DayChooser({ value, onChange, testID }: { value: string; onChang
         <MonthGrid
           testID={`${testID}-month`}
           month={month}
-          selected={value}
+          selected={value ?? ""}
           today={today}
           onMonthChange={setMonth}
           onSelect={(d) => {

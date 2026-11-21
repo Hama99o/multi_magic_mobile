@@ -43,13 +43,60 @@ const settleAll = (client: QueryClient) => client.invalidateQueries({ queryKey: 
 
 const listKey = (kind: EntryKind): QueryKey => (kind === "expense" ? financeKeys.expenseLists() : kind === "income" ? financeKeys.incomeLists() : financeKeys.loanLists());
 
-/** Take one row out of every page of every list under `prefix`, and its count. */
-function dropRow(client: QueryClient, prefix: QueryKey, rowId: number) {
-  client.setQueriesData<InfiniteData<Page<{ id: number }>>>({ queryKey: prefix }, (data) =>
-    data?.pages
-      ? { ...data, pages: data.pages.map((p) => (p.rows.some((r) => r.id === rowId) ? { ...p, rows: p.rows.filter((r) => r.id !== rowId), count: Math.max(0, p.count - 1) } : p)) }
-      : data,
-  );
+type Money = { id: number; amount?: unknown; currency?: unknown };
+
+/**
+ * The header reads the list's count and per-currency total from its FIRST
+ * page (`Ledger.tsx`), so a row's leaving or coming back changes the first
+ * page's figures wherever the row sat (a device pass, 2026-11-20: a delete
+ * left "€30.00 · 29 entries", and a row on page 2 changed nothing).
+ */
+function shiftFirst<T>(pages: Page<T>[], row: Money, sign: 1 | -1): Page<T>[] {
+  const [head, ...rest] = pages;
+  if (!head) return pages;
+  const amount = typeof row.amount === "number" ? row.amount : Number(row.amount);
+  const cur = typeof row.currency === "string" ? (row.currency as keyof Page<T>["totals"]) : null;
+  const totals = { ...head.totals };
+  if (cur && Number.isFinite(amount) && totals[cur] !== undefined) totals[cur] = Math.round(((totals[cur] ?? 0) + sign * amount) * 100) / 100;
+  return [{ ...head, count: Math.max(0, head.count + sign), totals }, ...rest];
+}
+
+/**
+ * Where a deleted row sat, so an Undo puts it back in place before the server
+ * answers: remembered against the list's data as the delete left it. If a
+ * refetch has replaced that data since, the row goes back on top (these lists
+ * are newest first) and the refetch after the Undo puts it in its exact place.
+ */
+const placeIn = new WeakMap<object, { page: number; index: number }>();
+const removedRows = new Map<string, Money>();
+const removedKey = (prefix: QueryKey, rowId: number) => `${JSON.stringify(prefix)}#${rowId}`;
+
+/** Take one row out of every page of every list under `prefix`, with its count and its amount. */
+function dropRow(client: QueryClient, prefix: QueryKey, row: Money) {
+  removedRows.set(removedKey(prefix, row.id), row);
+  client.setQueriesData<InfiniteData<Page<{ id: number }>>>({ queryKey: prefix }, (data) => {
+    if (!data?.pages) return data;
+    const page = data.pages.findIndex((p) => p.rows.some((r) => r.id === row.id));
+    if (page === -1) return data;
+    const index = data.pages[page].rows.findIndex((r) => r.id === row.id);
+    const pages = data.pages.map((p, i) => (i === page ? { ...p, rows: p.rows.filter((r) => r.id !== row.id) } : p));
+    const next = { ...data, pages: shiftFirst(pages, row, -1) };
+    placeIn.set(next, { page, index });
+    return next;
+  });
+}
+
+/** Undo: the row back where it was in every list it left, with its count and amount. The server's refetch follows. */
+function putBack(client: QueryClient, prefix: QueryKey, rowId: number) {
+  const row = removedRows.get(removedKey(prefix, rowId));
+  if (!row) return;
+  removedRows.delete(removedKey(prefix, rowId));
+  client.setQueriesData<InfiniteData<Page<{ id: number }>>>({ queryKey: prefix }, (data) => {
+    if (!data?.pages?.length || data.pages.some((p) => p.rows.some((r) => r.id === rowId))) return data;
+    const at = placeIn.get(data) ?? { page: 0, index: 0 };
+    const pages = data.pages.map((p, i) => (i === at.page ? { ...p, rows: [...p.rows.slice(0, at.index), row as { id: number }, ...p.rows.slice(at.index)] } : p));
+    return { ...data, pages: shiftFirst(pages, row, 1) };
+  });
 }
 
 /** Delete to the trash (soft), out of its lists at once. */
@@ -60,7 +107,7 @@ export function useDeleteEntry(kind: EntryKind, opts: Opts<{ id: number }> = {})
       kind === "expense" ? financeApi.expenses.remove(row.id) : kind === "income" ? financeApi.incomes.remove(row.id) : financeApi.loans.remove(row.id),
     onMutate: async (row) => {
       const saved = await snapshot(client, [listKey(kind)]);
-      dropRow(client, listKey(kind), row.id);
+      dropRow(client, listKey(kind), row);
       return { saved };
     },
     onSuccess: (_r, row) => opts.onDone?.(row),
@@ -79,10 +126,14 @@ export function useRestoreEntry(kind: EntryKind, opts: Opts = {}) {
   return useMutation({
     mutationFn: (rowId: number) =>
       kind === "expense" ? financeApi.expenses.restore(rowId) : kind === "income" ? financeApi.incomes.restore(rowId) : financeApi.loans.restore(rowId),
-    // Out of the trash at once (an Undo has nothing in a trash list to move).
+    // Out of the trash at once, and (an Undo) back into its lists at once:
+    // the refetch after it only confirms, so the row cannot stay missing
+    // while a delete's refetch and the restore race (a device pass, 2026-11-20).
     onMutate: async (rowId) => {
-      const saved = await snapshot(client, [trash]);
-      dropRow(client, trash, rowId);
+      await client.cancelQueries({ queryKey: listKey(kind) });
+      const saved = await snapshot(client, [trash, listKey(kind)]);
+      dropRow(client, trash, { id: rowId });
+      putBack(client, listKey(kind), rowId);
       return { saved };
     },
     onSuccess: () => opts.onDone?.(undefined),
@@ -103,7 +154,7 @@ export function useDestroyForever(kind: EntryKind, opts: Opts = {}) {
       kind === "expense" ? financeApi.expenses.destroyForever(rowId) : kind === "income" ? financeApi.incomes.destroyForever(rowId) : financeApi.loans.destroyForever(rowId),
     onMutate: async (rowId) => {
       const saved = await snapshot(client, [trash]);
-      dropRow(client, trash, rowId);
+      dropRow(client, trash, { id: rowId });
       return { saved };
     },
     onError: (e, _id, ctx) => {

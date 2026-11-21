@@ -23,6 +23,7 @@
 import fs from "fs";
 import path from "path";
 import i18n from "..";
+import { FAMILY_LABEL_KEYS } from "@/screens/contacts/familyLabel";
 
 const ROOTS = ["app", "src"];
 /**
@@ -141,6 +142,8 @@ const COMPOSED = [
     "spouse.biological",
   ].flatMap((w) => ["male", "female", "neutral"].map((g) => `contacts.family.words.${w}.${g}`)),
   ...["biological", "step", "half", "adoptive"].map((v) => `contacts.family.qualifiers.${v}`),
+  // t(`contacts.familyLabels.${key}`) over the server's family words (`familyLabel.ts`).
+  ...FAMILY_LABEL_KEYS.map((v) => `contacts.familyLabels.${v}`),
   // The web drawer's enums (`ContactApp::Family`): t(`contacts.genders.${g}`),
   // t(`contacts.closenessLevels.${c}`).
   ...["unknown", "male", "female", "other"].map((v) => `contacts.genders.${v}`),
@@ -183,6 +186,7 @@ const PLURAL = new Set([
   "finance.overview.active",
   "finance.loans.activeCount",
   "finance.manage.recurring.count",
+  "contacts.myFamily.count",
   "finance.manage.recurring.everyDay",
   "finance.manage.recurring.everyWeek",
   "finance.manage.recurring.everyMonth",

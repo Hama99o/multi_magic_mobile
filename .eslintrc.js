@@ -313,6 +313,33 @@ const config = {
         message:
           "A request inside useEffect: server data goes through useQuery (a read) or a useMutation's mutate() (a write), never an effect. See docs/DATA_LAYER.md.",
       },
+      /**
+       * NO LAYOUT ANIMATION ON A LIST CELL (owner bug, 2026-11-17).
+       *
+       * Reanimated `entering`/`exiting`/`layout` on the rows of a FlatList,
+       * SectionList or FlashList. A recycled cell keeps the stale animated
+       * state and the list shows overlapping rows, gaps and shifted columns.
+       * 1.3.0 shipped eleven of them across Tasks, Finance and SafeZone, all a
+       * staggered `FadeInDown.delay(index * 35)` (`docs/MOBILE_PARITY_2026-11-20.md`
+       * §4). A plain opacity fade on an image, reset per item, is the most a
+       * cell may do, and its height stays measured and stable.
+       *
+       * Two branches, both on the attribute: one inside an inline `renderItem`
+       * / `renderSectionHeader`, and one whose value reads `index`, which is
+       * how a row component staggers itself.
+       *
+       * DOES NOT COVER: a row component, in another file or not, that animates
+       * without reading `index`; a transform (a press scale, a swipe) on a cell;
+       * an animation passed in through a variable. An empty state or a header
+       * may animate: neither is recycled.
+       */
+      {
+        id: "list-cell-animation",
+        selector:
+          "JSXAttribute[name.name=/^render(Item|SectionHeader)$/] JSXAttribute[name.name=/^(entering|exiting|layout)$/], JSXAttribute[name.name=/^(entering|exiting|layout)$/]:has(Identifier[name='index'])",
+        message:
+          "A layout animation on a list cell: a recycled cell keeps it and the list shows overlapping rows and gaps (owner bug, 2026-11-17). Render the row plainly; an empty state or a header may animate. See docs/MOBILE_PARITY_2026-11-20.md §4.",
+      },
       {
         selector:
           "JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > ConditionalExpression > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > LogicalExpression > Literal[value=/[A-Za-z]{3,}/]",

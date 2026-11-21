@@ -28,7 +28,11 @@ export function useChooseLanguage(userId: number | null | undefined) {
     onError: (_e, _v, ctx) => {
       if (ctx?.before) client.setQueryData(profileKeys.me(), ctx.before);
     },
-    onSuccess: (saved) => client.setQueryData(profileKeys.me(), saved),
+    onSuccess: (saved, { language }) => {
+      client.setQueryData(profileKeys.me(), saved);
+      // The server has it now: from here on, a change on the laptop wins again.
+      useLanguage.getState().markSynced(language);
+    },
   });
   return (language: LanguageCode) => {
     useLanguage.getState().setLanguage(language);

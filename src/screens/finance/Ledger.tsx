@@ -10,8 +10,8 @@
  * (the server's `updated_at desc`) and are grouped by their day, latest day
  * first.
  */
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { ActivityIndicator, Animated as RNAnimated, Modal, PanResponder, Pressable, RefreshControl, SectionList, TextInput, View } from "react-native";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { ActivityIndicator, Animated as RNAnimated, Modal, Pressable, RefreshControl, SectionList, TextInput, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
@@ -31,6 +31,8 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { FILL } from "@/theme/fill";
 import { parseDay, todayKey, addDays } from "@/screens/calendar/dates";
 import { useFinanceUndo } from "@/stores/financeUndo.store";
+import { SwipeResetScope, useSwipeResetToken } from "@/components/swipeReset";
+import { REVEAL, useSwipeRow } from "@/components/swipeRow";
 import { chartColor, FChip, FINANCE, HeroAmount, MONEY_IN, PeriodSwitcher, TagPicker, useMoney } from "./parts";
 import { useDeleteEntry, useRestoreEntry } from "./useFinanceMutations";
 
@@ -52,7 +54,8 @@ export function totalOf(rows: { amount: number; currency: Currency }[]): Totals 
   return rows.reduce<Totals>((t, r) => ({ ...t, [r.currency]: Math.round(((t[r.currency] ?? 0) + r.amount) * 100) / 100 }), {});
 }
 
-export function Ledger({ kind, header }: { kind: Kind; header?: ReactNode }) {
+/** `openId`: a link to one entry (`app/finance/index.tsx` `?entry=`) opens its sheet once it has loaded. */
+export function Ledger({ kind, header, openId }: { kind: Kind; header?: ReactNode; openId?: number }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
@@ -65,6 +68,13 @@ export function Ledger({ kind, header }: { kind: Kind; header?: ReactNode }) {
   const [oneTime, setOneTime] = useState(false);
   const [picking, setPicking] = useState(false);
   const [openRow, setOpenRow] = useState<Entry | null>(null);
+  const [linkClosed, setLinkClosed] = useState(false);
+  const linked = useQuery({
+    queryKey: financeKeys.entry(kind, openId ?? 0),
+    queryFn: (): Promise<Entry> => (kind === "expense" ? financeApi.expenses.show(openId!) : financeApi.incomes.show(openId!)),
+    enabled: openId != null,
+  });
+  const sheetRow = openRow ?? (!linkClosed && openId != null ? (linked.data ?? null) : null);
   const [failure, setFailure] = useState<string | null>(null);
   const offer = useFinanceUndo((s) => s.offer);
   const offerUndo = useFinanceUndo((s) => s.offerUndo);
@@ -106,7 +116,7 @@ export function Ledger({ kind, header }: { kind: Kind; header?: ReactNode }) {
   const restore = useRestoreEntry(kind, { onError: () => setFailure(t("finance.ledger.failed")) });
   const exportX = useMutation({
     mutationFn: async () => {
-      const label = month ? `${year}-${String(month).padStart(2, "0")}` : String(year);
+      const label = !year ? "all" : month ? `${year}-${String(month).padStart(2, "0")}` : String(year);
       const uri = await financeApi.expenses.export({ page: 1, ...filters }, `expenses-${label}`);
       if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
     },
@@ -115,6 +125,7 @@ export function Ledger({ kind, header }: { kind: Kind; header?: ReactNode }) {
   const tagName = tags.data?.find((x) => x.id === tagId)?.name;
   const del = (row: Entry) => {
     setOpenRow(null);
+    setLinkClosed(true);
     remove.mutate(row);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => undefined);
     offerUndo(kind === "expense" ? t("finance.ledger.expenseDeleted") : t("finance.ledger.incomeDeleted"), () => restore.mutate(row.id));
@@ -127,9 +138,13 @@ export function Ledger({ kind, header }: { kind: Kind; header?: ReactNode }) {
     return parseDay(key).toLocaleDateString(i18n.language, { weekday: "short", day: "numeric", month: "short", ...(key.slice(0, 4) === today.slice(0, 4) ? {} : { year: "numeric" }) });
   };
 
+  // A half-swiped row goes back to 0 on scroll and on new data (src/components/swipeReset.tsx).
+  const [swipeToken, resetSwipes] = useSwipeResetToken(rows.map((r) => r.id).join());
   return (
     <View style={{ flex: 1 }}>
+      <SwipeResetScope token={swipeToken}>
       <SectionList
+        onScrollBeginDrag={resetSwipes}
         testID={`finance-${kind}-list`}
         sections={list.data ? sections : []}
         keyExtractor={(r) => String(r.id)}
@@ -142,7 +157,7 @@ export function Ledger({ kind, header }: { kind: Kind; header?: ReactNode }) {
         ListHeaderComponent={
           <View style={{ gap: metrics.space.md, paddingBottom: metrics.space.sm }}>
             {header}
-            <PeriodSwitcher year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m); }} testID={`finance-${kind}-period`} />
+            <PeriodSwitcher allowAll year={year} month={month} onChange={(y, m) => { setYear(y); setMonth(m); }} testID={`finance-${kind}-period`} />
             <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, paddingHorizontal: metrics.space.md }}>
               <Search size={18} color={colors.inkMuted} />
               <TextInput testID={`finance-${kind}-search`} value={typed} onChangeText={setTyped} placeholder={t("finance.ledger.search")} placeholderTextColor={colors.inkMuted} returnKeyType="search" accessibilityLabel={t("finance.ledger.search")} style={{ flex: 1, minHeight: 44, color: colors.ink, fontSize: 16 }} />
@@ -193,14 +208,15 @@ export function Ledger({ kind, header }: { kind: Kind; header?: ReactNode }) {
           </View>
         )}
         renderItem={({ item, index }) => (
-          <Animated.View entering={FadeInDown.delay(Math.min(index, 10) * 30).duration(200)}>
+          <View>
             <EntryRow entry={item} kind={kind} tags={tags.data ?? []} onOpen={() => setOpenRow(item)} onDelete={() => del(item)} />
-          </Animated.View>
+          </View>
         )}
         ListEmptyComponent={list.data && !list.error ? <Empty kind={kind} filtered={Boolean(search || tagId || oneTime)} year={year} month={month} /> : null}
         ListFooterComponent={list.isFetchingNextPage ? <ActivityIndicator style={{ marginVertical: metrics.space.md }} /> : null}
         contentContainerStyle={{ paddingBottom: 96 }}
       />
+      </SwipeResetScope>
 
       <Pressable
         testID={`finance-${kind}-add`}
@@ -213,7 +229,15 @@ export function Ledger({ kind, header }: { kind: Kind; header?: ReactNode }) {
       </Pressable>
 
       <TagPicker open={picking} tags={tags.data ?? []} selected={tagId ? [tagId] : []} single onChange={(ids) => setTagId(ids[0] ?? null)} onClose={() => setPicking(false)} testID={`finance-${kind}-filter-picker`} />
-      <EntrySheet entry={openRow} kind={kind} onClose={() => setOpenRow(null)} onDelete={del} />
+      <EntrySheet
+        entry={sheetRow}
+        kind={kind}
+        onClose={() => {
+          setOpenRow(null);
+          setLinkClosed(true);
+        }}
+        onDelete={del}
+      />
       <UndoToast offer={offer} onDone={clearOffer} testID="finance-undo" bottom={64} />
     </View>
   );
@@ -225,22 +249,8 @@ function EntryRow({ entry, kind, tags, onOpen, onDelete }: { entry: Entry; kind:
   const metrics = useMetrics();
   const { t } = useTranslation();
   const money = useMoney();
-  const dx = useRef(new RNAnimated.Value(0)).current;
-  const [swiping, setSwiping] = useState(false);
-  const onDeleteRef = useRef(onDelete);
-  onDeleteRef.current = onDelete;
-  const pan = useRef(
-    PanResponder.create({
-      onMoveShouldSetPanResponder: (_e, g) => g.dx < -12 && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
-      onPanResponderGrant: () => setSwiping(true),
-      onPanResponderMove: (_e, g) => dx.setValue(Math.min(0, g.dx)),
-      onPanResponderRelease: (_e, g) => {
-        RNAnimated.spring(dx, { toValue: 0, useNativeDriver: true, bounciness: 4 }).start(() => setSwiping(false));
-        if (g.dx <= -96) onDeleteRef.current();
-      },
-      onPanResponderTerminate: () => RNAnimated.spring(dx, { toValue: 0, useNativeDriver: true }).start(() => setSwiping(false)),
-    }),
-  ).current;
+  // A partial swipe opens on Delete, only a long one deletes (components/swipeRow.tsx).
+  const swipe = useSwipeRow({ id: entry.id, onLeft: onDelete });
   const catIndex = Math.max(0, tags.filter((x) => x.parentId == null).findIndex((x) => x.id === entry.tagId));
   const category = entry.tag?.name ?? null;
   const extra = entry.labels.filter((l) => l.id !== entry.tagId && l.id !== ("subcategoryId" in entry ? entry.subcategoryId : null)).map((l) => l.name);
@@ -249,15 +259,17 @@ function EntryRow({ entry, kind, tags, onOpen, onDelete }: { entry: Entry; kind:
   const pending = "status" in entry && entry.status === "pending";
   return (
     <View style={{ borderRadius: metrics.radius.md, overflow: "hidden" }}>
-      {swiping ? (
-        <View style={{ ...FILL, backgroundColor: colors.danger, alignItems: "flex-end", justifyContent: "center", paddingHorizontal: metrics.space.xl }}>
-          <Trash2 size={22} color="#ffffff" />
+      {swipe.side ? (
+        <View style={{ ...FILL, backgroundColor: colors.danger, flexDirection: "row", justifyContent: "flex-end" }}>
+          <Pressable testID={`finance-${kind}-row-${entry.id}-swipe-delete`} onPress={swipe.actOpen} disabled={!swipe.open} accessibilityRole="button" accessibilityLabel={t("common.delete")} style={{ width: REVEAL, alignItems: "center", justifyContent: "center" }}>
+            <Trash2 size={22} color="#ffffff" />
+          </Pressable>
         </View>
       ) : null}
-      <RNAnimated.View {...pan.panHandlers} style={{ transform: [{ translateX: dx }] }}>
+      <RNAnimated.View {...swipe.panHandlers} onLayout={swipe.onLayout} style={{ transform: [{ translateX: swipe.dx }] }}>
         <Pressable
           testID={`finance-${kind}-row-${entry.id}`}
-          onPress={onOpen}
+          onPress={swipe.open ? swipe.close : onOpen}
           accessibilityRole="button"
           accessibilityLabel={t("finance.ledger.openEntry", { name: nameOf(entry), amount: money(entry.amount, entry.currency) })}
           accessibilityActions={[{ name: "activate" }, { name: "delete", label: t("common.delete") }]}
@@ -355,7 +367,7 @@ function Empty({ kind, filtered, year, month }: { kind: Kind; filtered: boolean;
         {filtered ? <Filter size={36} color={colors.ink} /> : kind === "expense" ? <Receipt size={36} color={colors.ink} /> : <Wallet size={36} color={colors.ink} />}
       </View>
       <Text variant="title" style={{ fontSize: 20, textAlign: "center" }}>
-        {filtered ? t("finance.ledger.noMatch") : kind === "expense" ? t("finance.ledger.noExpenses", { when }) : t("finance.ledger.noIncome", { when })}
+        {filtered ? t("finance.ledger.noMatch") : !year ? (kind === "expense" ? t("finance.ledger.noExpensesEver") : t("finance.ledger.noIncomeEver")) : kind === "expense" ? t("finance.ledger.noExpenses", { when }) : t("finance.ledger.noIncome", { when })}
       </Text>
       {filtered ? null : (
         <Text tone="muted" style={{ textAlign: "center" }}>

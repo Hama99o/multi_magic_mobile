@@ -18,6 +18,7 @@ export const tablesEn = {
   rowCount_other: "{{formatted}} rows",
   rowsOf: "{{shown}} of {{total}} rows",
   untitled: "Untitled",
+  loadingRest: "Loading the other columns…",
   openRowHint: "Opens the row",
   views: "Views",
   viewSwitch: "View: {{view}}. Change the view",

@@ -106,7 +106,6 @@ export default function TableScreen() {
       : calendarField && canNarrow
         ? { ...shared, match: "and" as const, filters: [...shared.filters, ...monthFilters(calendarField.id, month)] }
         : shared;
-  const queryKey = JSON.stringify(query);
 
   const [searching, setSearching] = useState(false);
   const [typed, setTyped] = useState<string | null>(null);
@@ -134,10 +133,35 @@ export default function TableScreen() {
     enabled: ready && Boolean(calendarField) && showUndated && canNarrow,
   });
 
+  const fields = table.data?.fields ?? [];
+  const title = table.data ? titleField(table.data) : null;
+  const shownFields = view && table.data ? cardFields(fields, table.data.primaryFieldId, view, layer).slice(0, Math.min(CARD_FIELDS, CARD_LINES[view.config.rowHeight])) : [];
+  const gallery = view?.viewType === "gallery";
+  const coverField = gallery ? (fields.find((f) => f.id === view?.config.coverFieldId) ?? fields.find((f) => f.fieldType === "attachments" || f.fieldType === "attachment") ?? null) : null;
+  const colorFieldId = layer.rowColorFieldId === undefined ? (view?.config.rowColorFieldId ?? null) : layer.rowColorFieldId;
+  const colorField = fields.find((f) => f.id === colorFieldId) ?? null;
+  const groupField = fields.find((f) => f.id === query?.groupBy) ?? null;
+  const { width: screenWidth, fontScale } = useWindowDimensions();
+  // Increment 9: the grid where the web shows one (720 dp and up, a grid view); cards below.
+  const grid = Boolean(view && showsGrid(screenWidth, view.viewType));
+  // The columns this screen draws, and only those, are asked of the server (`field_ids`, feat/mobile-gaps-2):
+  // the title, the card's fields (or every visible column on the grid), and the columns a board, a calendar,
+  // a group, a colour or a cover read. A row page opened from here reads the rest itself (record.tsx).
+  // Recomputed each render on purpose: it is cheap, and the cache key below is its JSON, a string.
+  const listFieldIds = ((): number[] | undefined => {
+    if (!view || !table.data) return undefined;
+    const ids = new Set<number>(table.data.primaryFieldId ? [table.data.primaryFieldId] : []);
+    for (const f of grid ? visibleFields(fields, view, layer) : shownFields) ids.add(f.id);
+    for (const f of [kanbanField, calendarField, groupField, colorField, coverField]) if (f) ids.add(f.id);
+    return [...ids].sort((a, b) => a - b);
+  })();
+  const listQuery = query && listFieldIds ? { ...query, fieldIds: listFieldIds } : query;
+  const queryKey = JSON.stringify(listQuery);
+
   const records = useInfiniteQuery({
     queryKey: tablesKeys.records(tableId, queryKey),
     initialPageParam: 0,
-    queryFn: ({ pageParam }) => tablesApi.records(tableId, query ?? {}, pageParam),
+    queryFn: ({ pageParam }) => tablesApi.records(tableId, listQuery ?? {}, pageParam),
     getNextPageParam: (last) => (last.hasMore ? last.offset + last.rows.length : undefined),
     enabled: ready && query !== null,
   });
@@ -153,15 +177,6 @@ export default function TableScreen() {
   }, [rows]);
   const known = useMemo(() => () => labels, [labels]);
 
-  const fields = table.data?.fields ?? [];
-  const title = table.data ? titleField(table.data) : null;
-  const shownFields = view && table.data ? cardFields(fields, table.data.primaryFieldId, view, layer).slice(0, Math.min(CARD_FIELDS, CARD_LINES[view.config.rowHeight])) : [];
-  const gallery = view?.viewType === "gallery";
-  const coverField = gallery ? (fields.find((f) => f.id === view?.config.coverFieldId) ?? fields.find((f) => f.fieldType === "attachments" || f.fieldType === "attachment") ?? null) : null;
-  const colorFieldId = layer.rowColorFieldId === undefined ? (view?.config.rowColorFieldId ?? null) : layer.rowColorFieldId;
-  const colorField = fields.find((f) => f.id === colorFieldId) ?? null;
-  const groupField = fields.find((f) => f.id === query?.groupBy) ?? null;
-  const { width: screenWidth, fontScale } = useWindowDimensions();
   const itemHeight = cardLayout(shownFields.length, Boolean(coverField), fontScale);
   const items = useMemo(() => listItems(rows, groupField, firstPage?.groups ?? null, folded), [rows, groupField, firstPage?.groups, folded]);
   const layout = useMemo(() => layoutOf(items, itemHeight), [items, itemHeight]);
@@ -177,8 +192,6 @@ export default function TableScreen() {
   const proofGroup = kanbanField ?? groupField;
   const newestShown = Boolean(query?.newestFirst && firstPage && newestProven(firstPage.rows, proofGroup ? (r) => groupKey(r, proofGroup) : undefined));
   const showOrderChip = newestShown || layer.newestFirst === false;
-  // Increment 9: the grid where the web shows one (720 dp and up, a grid view); cards below.
-  const grid = Boolean(view && showsGrid(screenWidth, view.viewType));
   const summary = useQuery({ queryKey: tablesKeys.summary(tableId, queryKey), queryFn: () => tablesApi.summary(tableId, query ?? {}), enabled: grid && Boolean(query) });
   // On a phone narrower than this the order chip is an icon, so the view's
   // NAME keeps its room (at 360 dp it shrank to an icon, at 411 to "G…").
@@ -256,10 +269,20 @@ export default function TableScreen() {
   /** One column, one value, every selected row; Undo writes each row's old value back. */
   const bulkApply = async (field: FieldDefinition, value: unknown) => {
     const ids = [...selected];
-    const before = ids.map((id) => ({ id, values: { [field.id]: scalar(rows.find((r) => r.id === id)?.values[field.id]) ?? null } }));
     setBulkBusy(true);
     setBulkError(null);
     try {
+      // Undo needs each row's old value. The list may not have loaded this column (`field_ids`): then
+      // it is read from each row first. A blank written back would erase real data (an absent cell
+      // and a column never asked for look the same).
+      const loaded = (r: RecordRow | undefined) => Boolean(r && (!r.loadedFieldIds || r.loadedFieldIds.includes(field.id)));
+      const before = await Promise.all(
+        ids.map(async (id) => {
+          const listed = rows.find((r) => r.id === id);
+          const source = loaded(listed) ? listed! : await tablesApi.record(id);
+          return { id, values: { [field.id]: scalar(source.values[field.id]) ?? null } };
+        }),
+      );
       await tablesApi.bulkSet(tableId, ids, field.id, value);
       setSheet(null);
       clearSelection();

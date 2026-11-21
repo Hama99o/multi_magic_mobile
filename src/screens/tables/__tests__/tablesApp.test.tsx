@@ -20,6 +20,7 @@ import i18n from "@/i18n";
 import { http, __resetTokenCache } from "@/api/http";
 import { __resetFingerprintCache } from "@/lib/fingerprint";
 import { testQueryClient } from "@/__tests__/queryClient";
+import { tablesKeys } from "@/api/keys";
 import { a11yFindings } from "@/__tests__/a11ySweep";
 
 import { router as mockedRouter } from "expo-router";
@@ -175,7 +176,8 @@ describe("a table (T1–T6)", () => {
     mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf, row(502, "Red hat")], { total_count: 2, table_total: 2 }));
     renderScreen(<TableScreen />);
     expect(await screen.findByText("Blue scarf")).toBeTruthy();
-    expect(recordCalls()[0]).toEqual({ offset: 0, limit: 100, sort: "-created_at" });
+    // field_ids: only the columns a card draws (title, then Status, Supplier, Photos at a tall row height).
+    expect(recordCalls()[0]).toEqual({ offset: 0, limit: 100, sort: "-created_at", field_ids: [1, 2, 3, 4] });
     // A tall row height: three fields under the title, label above value.
     const card = screen.getByTestId("tables-card-0");
     expect(within(card).getByText("Status")).toBeTruthy();
@@ -227,13 +229,14 @@ describe("a table (T1–T6)", () => {
     mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
     renderScreen(<TableScreen />);
     await screen.findByText("Blue scarf");
-    expect(recordCalls()[0]).toEqual({ offset: 0, limit: 100, sorts: JSON.stringify([{ field_id: 1, direction: "asc" }]) });
+    // A short row draws one column under the title: field_ids [title, Status].
+    expect(recordCalls()[0]).toEqual({ offset: 0, limit: 100, sorts: JSON.stringify([{ field_id: 1, direction: "asc" }]), field_ids: [1, 2] });
     expect(screen.queryByTestId("tables-order")).toBeNull();
   });
 
   it("loads the next page at the end, without a row twice, and keeps the rows when a page fails", async () => {
-    mock.onGet(`${B}/tables/10/records`, { params: { offset: 0, limit: 100, sort: "-created_at" } }).reply(200, page([scarf, row(502, "Red hat")], { has_more: true, total_count: 3, table_total: 3 }));
-    mock.onGet(`${B}/tables/10/records`, { params: { offset: 2, limit: 100, sort: "-created_at" } }).replyOnce(500);
+    mock.onGet(`${B}/tables/10/records`, { params: { offset: 0, limit: 100, sort: "-created_at", field_ids: [1, 2, 3, 4] } }).reply(200, page([scarf, row(502, "Red hat")], { has_more: true, total_count: 3, table_total: 3 }));
+    mock.onGet(`${B}/tables/10/records`, { params: { offset: 2, limit: 100, sort: "-created_at", field_ids: [1, 2, 3, 4] } }).replyOnce(500);
     renderScreen(<TableScreen />);
     await screen.findByText("Red hat");
     await act(async () => {
@@ -241,7 +244,7 @@ describe("a table (T1–T6)", () => {
     });
     expect(await screen.findByTestId("tables-page-retry")).toBeTruthy();
     expect(screen.getByText("Blue scarf")).toBeTruthy();
-    mock.onGet(`${B}/tables/10/records`, { params: { offset: 2, limit: 100, sort: "-created_at" } }).reply(200, { records: [row(502, "Red hat"), row(503, "Green bag")], meta: { offset: 2, limit: 100, has_more: false } });
+    mock.onGet(`${B}/tables/10/records`, { params: { offset: 2, limit: 100, sort: "-created_at", field_ids: [1, 2, 3, 4] } }).reply(200, { records: [row(502, "Red hat"), row(503, "Green bag")], meta: { offset: 2, limit: 100, has_more: false } });
     fireEvent.press(screen.getByTestId("tables-page-retry"));
     expect(await screen.findByText("Green bag")).toBeTruthy();
     expect(screen.getAllByText("Red hat")).toHaveLength(1);
@@ -276,6 +279,23 @@ describe("a row (R1, R2)", () => {
     mockParams.current = { table: "10", id: "501" };
     mock.onGet(`${B}/tables/10`).reply(200, tableBody());
     mock.onGet(`${B}/records/501`).reply(200, { record: scarf });
+  });
+
+  it("opened from a list that loaded only some columns: the rest says it is loading, never Empty, until the row arrives", async () => {
+    const client = testQueryClient();
+    // The list's copy: title and Status only (field_ids [1, 2]); Phone (5) was never asked for.
+    const partial = { id: 501, position: 501, createdAt: "2026-11-19T09:00:21.000Z", updatedAt: "x", values: { 1: { kind: "scalar", value: "Blue scarf" }, 2: { kind: "scalar", value: "in" } }, linkLabels: {}, linkCounts: {}, loadedFieldIds: [1, 2] };
+    client.setQueryData(tablesKeys.records(10, "QK"), { pages: [{ rows: [partial], unreadable: 0, offset: 0, hasMore: false, totalCount: 1, tableTotal: 1, groups: null }], pageParams: [0] });
+    mockParams.current = { table: "10", id: "501", q: "QK" };
+    let arrive: (v: [number, unknown]) => void = () => undefined;
+    mock.onGet(`${B}/records/501`).reply(() => new Promise((r) => (arrive = r)));
+    render(<QueryClientProvider client={client}><RecordScreen /></QueryClientProvider>);
+    expect(await screen.findByTestId("tables-record-loading-rest")).toBeTruthy();
+    expect(screen.getByTestId("tables-field-2")).toBeTruthy();
+    expect(screen.queryByTestId("tables-field-5")).toBeNull(); // not shown as an empty Phone
+    await act(async () => arrive([200, { record: scarf }]));
+    expect(await screen.findByTestId("tables-field-5")).toBeTruthy();
+    expect(screen.queryByTestId("tables-record-loading-rest")).toBeNull();
   });
 
   it("shows the title and every column; a blank reads as a dash, never as nothing", async () => {
@@ -1185,6 +1205,22 @@ describe("select rows, then edit or delete them together (increment 5)", () => {
     expect(screen.queryByTestId("tables-bulk-bar")).toBeNull();
     await act(async () => useTablesUndo.getState().offer?.undo?.());
     expect(JSON.parse(mock.history.post[1].data)).toEqual({ ids: [502, 501] });
+  });
+
+  it("a column the list did not load (field_ids): Undo writes back each row's REAL value, read first, never a blank", async () => {
+    // Phone (5) is not on the cards, so the list never loaded it: the old values come from each row.
+    mock.onGet(`${B}/records/502`).reply(200, { record: row(502, "Red hat", { "5": { scalar_value: "+93 70 000 0002" } }) });
+    mock.onGet(`${B}/records/501`).reply(200, { record: scarf });
+    mock.onPost(`${B}/tables/10/records/bulk_write`).reply(200, { result: { created: 0, updated: 2, ids: [502, 501] }, records: [] });
+    await selectBoth();
+    fireEvent.press(screen.getByTestId("tables-bulk-edit-open"));
+    fireEvent.press(await screen.findByTestId("tables-bulk-field-5"));
+    fireEvent.changeText(screen.getByTestId("tables-bulk-value"), "+93 70 999 9999");
+    fireEvent.press(screen.getByTestId("tables-bulk-edit-apply"));
+    await waitFor(() => expect(useTablesUndo.getState().offer?.message).toBe("2 rows changed"));
+    await act(async () => useTablesUndo.getState().offer?.undo?.());
+    const undo = JSON.parse(mock.history.post[mock.history.post.length - 1].data);
+    expect(undo).toEqual({ rows: [{ id: 502, values: { "5": "+93 70 000 0002" } }, { id: 501, values: { "5": "+93 70 123 4567" } }] });
   });
 
   it("sets one column on every selected row; Undo writes each row's own value back", async () => {

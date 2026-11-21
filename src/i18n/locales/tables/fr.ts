@@ -17,6 +17,7 @@ export const tablesFr = {
   rowCount_other: "{{formatted}} lignes",
   rowsOf: "{{shown}} lignes sur {{total}}",
   untitled: "Sans titre",
+  loadingRest: "Chargement des autres colonnes…",
   openRowHint: "Ouvre la ligne",
   views: "Vues",
   viewSwitch: "Vue : {{view}}. Changer de vue",

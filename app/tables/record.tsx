@@ -16,7 +16,7 @@
  * duplicates it, or deletes it to the trash with Undo. A viewer reads.
  */
 import { useMemo, useRef, useState } from "react";
-import { Alert, Image, Linking, PanResponder, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Alert, Image, Linking, PanResponder, Pressable, ScrollView, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
 import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
@@ -194,7 +194,9 @@ export default function RecordScreen() {
           <Text variant="title" testID="tables-record-title" style={{ marginVertical: metrics.space.sm }}>
             {titleText}
           </Text>
-          {fields.map((f) =>
+          {/* The list's copy may carry only the columns it drew (`field_ids`): those, and a loading line for
+              the rest until the row arrives. A column it never asked for is not shown as Empty. */}
+          {(row.loadedFieldIds ? fields.filter((f) => row.loadedFieldIds!.includes(f.id)) : fields).map((f) =>
             isTableLink(f) ? (
               <LinkFieldRow key={f.id} field={f} row={row} known={known} editable={editable} writes={writes} group={relations.data?.find((g) => g.fieldId === f.id)} />
             ) : (
@@ -204,6 +206,12 @@ export default function RecordScreen() {
               </View>
             ),
           )}
+          {row.loadedFieldIds ? (
+            <View testID="tables-record-loading-rest" accessibilityLiveRegion="polite" style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, minHeight: metrics.touch }}>
+              <ActivityIndicator color={colors.inkMuted} />
+              <Text tone="muted">{t("tables.loadingRest")}</Text>
+            </View>
+          ) : null}
           <Pressable
             testID="tables-record-activity"
             onPress={() => router.push({ pathname: "/tables/activity", params: { table: String(tableId), record: String(recordId) } })}

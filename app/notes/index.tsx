@@ -17,7 +17,7 @@
  * server addition in progress (multi_magic branch); voice and drawing notes
  * do not exist on the web (MISSING_FEATURES.md).
  */
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, Modal, Platform, Pressable, RefreshControl, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
 import { SheetFrame } from "@/components/SheetFrame";
 import { router } from "expo-router";
@@ -138,13 +138,21 @@ export default function NotesScreen() {
     const edit = NOTES_EDITOR_ENABLED && canEdit(note) && view !== "trash";
     router.push({ pathname: edit ? "/notes/edit" : "/notes/note", params: { id: String(note.id) } });
   };
+  // One note per tap burst: a second tap (or the other key) before the first
+  // create answers would make a second empty note and open a second editor.
+  // A ref, not `isPending`: both taps can land before that re-renders.
+  const creating = useRef(false);
   const create = async (html: string) => {
+    if (creating.current) return;
+    creating.current = true;
     setFailed(false);
     try {
       const made = await createNote.mutateAsync({ title: "", html, tagId: view === "notes" ? (label?.id ?? null) : null });
       router.push({ pathname: "/notes/edit", params: { id: String(made.id) } });
     } catch {
       setFailed(true);
+    } finally {
+      creating.current = false;
     }
   };
 

@@ -163,6 +163,21 @@ describe("creating (the bottom bar)", () => {
     expect(mockPush).toHaveBeenCalledWith({ pathname: "/notes/edit", params: { id: "99" } });
   });
 
+  // Hidden criterion (Hello, 2026-11-21): a double tap makes ONE note and opens
+  // ONE editor. Both taps land before the first create answers.
+  it("a double tap on + (or on the checklist key) makes one note", async () => {
+    open();
+    await screen.findByText("Pinned seed");
+    await act(async () => {
+      fireEvent.press(screen.getByTestId("notes-new"));
+      fireEvent.press(screen.getByTestId("notes-new"));
+      fireEvent.press(screen.getByTestId("notes-new-checklist"));
+    });
+    await waitFor(() => expect(mockPush).toHaveBeenCalled());
+    expect(mock.history.post).toHaveLength(1);
+    expect(mockPush).toHaveBeenCalledTimes(1);
+  });
+
   it("the checklist key creates a note that starts with one to-do, as the web writes it", async () => {
     open();
     await screen.findByText("Pinned seed");

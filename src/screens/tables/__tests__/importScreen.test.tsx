@@ -11,7 +11,15 @@ import type { ReactElement } from "react";
 import i18n from "@/i18n";
 import { http, __resetTokenCache } from "@/api/http";
 import { testQueryClient } from "@/__tests__/queryClient";
+import { a11yFindings } from "@/__tests__/a11ySweep";
+
 import { router as mockedRouter } from "expo-router";
+
+/** Two taps in the same frame, before any re-render: what a double tap is. */
+const doubleTap = (el: Parameters<typeof fireEvent.press>[0]) => {
+  fireEvent.press(el);
+  fireEvent.press(el);
+};
 
 const mockParams: { current: Record<string, string> } = { current: { table: "10" } };
 jest.mock("expo-router", () => ({
@@ -84,9 +92,9 @@ it("a paste, with the preview not deployed: read on the phone, mapped by name, a
   // "Price" matches the table's number column, and "free" would be refused there.
   expect(screen.getByTestId("tables-import-column-1-field-2").props.accessibilityState.selected).toBe(true);
   expect(screen.getByTestId("tables-import-column-1-refused").props.children).toBe("1 value would be refused (first: free)");
-  fireEvent.press(screen.getByTestId("tables-import-start"));
+  doubleTap(screen.getByTestId("tables-import-start"));
   await waitFor(() => expect(router.back).toHaveBeenCalled());
-  expect(mock.history.post.map((r) => r.url)).toEqual([`${B}/tables/10/imports/preview`, `${B}/tables/10/imports`]);
+  expect(mock.history.post.map((r) => r.url)).toEqual([`${B}/tables/10/imports/preview`, `${B}/tables/10/imports`]); // a double tap starts one import
 });
 
 it("through the server's preview: its sheets, and the import sent with its upload id", async () => {
@@ -113,6 +121,7 @@ it("through the server's preview: its sheets, and the import sent with its uploa
   expect(await screen.findByTestId("tables-import-summary")).toBeTruthy();
   expect(screen.getByTestId("tables-import-summary").props.children).toBe("1834 rows · 2 of 2 columns imported");
   expect(screen.getByTestId("tables-import-column-1-new-single_select").props.accessibilityState.selected).toBe(true); // a new select, the server's guess
+  expect(a11yFindings()).toEqual([]); // the mapping step: every control named
   fireEvent.press(screen.getByTestId("tables-import-start"));
   await waitFor(() => expect(router.back).toHaveBeenCalled());
   const sent = appended.filter(([f]) => f !== "file");
@@ -138,6 +147,19 @@ it("an upload past its hour sends the person back to choose the file again", asy
   expect(screen.getByTestId("tables-import-file")).toBeTruthy(); // back at the start, the file to choose again
   expect(screen.queryByTestId("tables-import-start")).toBeNull();
   expect(router.back).not.toHaveBeenCalled();
+});
+
+it("a table that does not load (offline) says so with Try again, instead of buttons busy for ever", async () => {
+  // The suite's beforeEach answers 200 first, and the adapter serves the first match: start over.
+  mock.resetHandlers();
+  mock.onGet(`${B}/tables/10`).networkErrorOnce();
+  mock.onGet(`${B}/tables/10`).reply(200, tableBody);
+  mock.onGet(`${B}/bases`).reply(200, bases);
+  renderScreen(<Import />);
+  expect(await screen.findByTestId("tables-import-failed")).toBeTruthy();
+  fireEvent.press(screen.getByText("Try again"));
+  await enabled("tables-import-file");
+  expect(screen.queryByTestId("tables-import-failed")).toBeNull();
 });
 
 it("an Excel file while the preview is not deployed says to use CSV or the web", async () => {

@@ -1,0 +1,100 @@
+# TABLES: the hidden-criteria sweep on a device (2026-11-21, Hello's list).
+#
+# Needs the fixture (`tables_fixture.py up`): base "[qa] Tables device",
+# table Items with 25 rows. The one row this flow adds goes with
+# `tables_fixture.py down`.
+#
+# RUN IT TWICE, once per font scale, set BEFORE the run and undone after
+# (force-stop and relaunch the app after each change: RN reads it at start):
+#   adb -s <serial> shell settings put system font_scale 1.0   (pass A)
+#   adb -s <serial> shell settings put system font_scale 2.0   (pass B, 200 %)
+# The screenshots of pass B are the clipping check (fontScale.test.tsx proves
+# the arithmetic; only pixels prove the pixels).
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: a double tap on Add a row makes ONE row (the count goes 25 → 26);
+# the exact-name delete refuses the name in the wrong case and with a
+# trailing space (opened and CANCELLED, nothing deleted); offline: the
+# import screen says it could not load, with Try again, and recovers when
+# the network is back; at 200 % the cards and the sheet, photographed.
+# NOTE on offline: the import screen reuses the table the table screen has
+# cached, so going offline HERE may show no failure at all (the cache holds).
+# The result must say which case ran: the failure seen, or only the recovery.
+# Jest proves the failure path (importScreen.test, "does not load (offline)").
+# CANNOT TELL YOU: TalkBack's actual speech (inspect_screen reads the
+# content-desc a reader would use, not the voice); iOS Dynamic Type above
+# 200 % (the app caps the fixed-height boxes at 200 %, FONT_CAP).
+appId: ${APP_ID}
+tags:
+  - tables
+  - writes-fixture
+  - hidden-criteria
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-tables"
+- tapOn: "\\[qa\\] Tables device"
+- extendedWaitUntil:
+    visible:
+      id: "tables-count"
+    timeout: 30000
+- assertVisible:
+    id: "tables-count"
+    text: "25 rows"
+- takeScreenshot: thc-01-cards
+# Double tap: one row, not two.
+- doubleTapOn:
+    id: "tables-add-row"
+- extendedWaitUntil:
+    visible:
+      id: "tables-record-title"
+    timeout: 30000
+- back
+- extendedWaitUntil:
+    visible:
+      id: "tables-count"
+      text: "26 rows"
+    timeout: 15000
+- takeScreenshot: thc-02-one-row-added
+# Exact name: wrong case, then a trailing space; Delete stays off. Cancelled.
+- tapOn:
+    id: "tables-menu"
+- tapOn:
+    id: "tables-options-deleteTable"
+- tapOn:
+    id: "tables-delete-table-input"
+- inputText: "items"
+- assertVisible:
+    id: "tables-delete-table-confirm"
+    enabled: false
+- eraseText
+- inputText: "Items "
+- assertVisible:
+    id: "tables-delete-table-confirm"
+    enabled: false
+- takeScreenshot: thc-03-name-refused
+- back
+- back
+# Offline: the import screen says so, and recovers.
+- setAirplaneMode: enabled
+- tapOn:
+    id: "tables-menu"
+- tapOn:
+    id: "tables-options-import"
+- takeScreenshot: thc-04-import-offline
+- setAirplaneMode: disabled
+- runFlow:
+    when:
+      visible:
+        id: "tables-import-failed"
+    commands:
+      - tapOn: "Try again"
+- extendedWaitUntil:
+    visible:
+      id: "tables-import-paste"
+      enabled: true
+    timeout: 30000
+- takeScreenshot: thc-05-import-back-online
+- back

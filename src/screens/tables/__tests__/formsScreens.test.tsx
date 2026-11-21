@@ -12,9 +12,17 @@ import type { ReactElement } from "react";
 import i18n from "@/i18n";
 import { http, __resetTokenCache } from "@/api/http";
 import { testQueryClient } from "@/__tests__/queryClient";
+import { a11yFindings } from "@/__tests__/a11ySweep";
+
 import { router as mockedRouter } from "expo-router";
 import FormsScreen from "../../../../app/tables/forms";
 import FormScreen from "../../../../app/tables/form";
+
+/** Two taps in the same frame, before any re-render: what a double tap is. */
+const doubleTap = (el: Parameters<typeof fireEvent.press>[0]) => {
+  fireEvent.press(el);
+  fireEvent.press(el);
+};
 
 const mockParams: { current: Record<string, string> } = { current: {} };
 jest.mock("expo-router", () => ({
@@ -56,8 +64,9 @@ it("lists the table's forms newest first; New form makes one and opens it", asyn
   render_(<FormsScreen />);
   expect(within(await screen.findByTestId("tables-forms-0")).getByText("New")).toBeTruthy();
   expect(within(screen.getByTestId("tables-forms-0")).getByText("Invited people · 0 answers · Not taking answers")).toBeTruthy();
-  fireEvent.press(screen.getByTestId("tables-forms-new"));
+  doubleTap(screen.getByTestId("tables-forms-new"));
   await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: "/tables/form", params: { id: "8", table: "10" } }));
+  expect(mock.history.post).toHaveLength(1); // a double tap makes one form
 });
 
 it("a question is added from an unused column; the title column's required switch is locked on", async () => {
@@ -90,6 +99,29 @@ it("who can fill it: invited; invitations name every address and send only on ye
   expect(alert.mock.calls[0][1]).toBe("To: a@x.test, b@y.test");
   await waitFor(() => expect(JSON.parse(mock.history.post[0].data)).toEqual({ emails: ["a@x.test", "b@y.test"] }));
   expect(await screen.findByTestId("tables-form-invite-1")).toBeTruthy();
+});
+
+it("answers that do not load say so, with Try again", async () => {
+  mockParams.current = { id: "7", table: "10" };
+  mock.onGet(`${B}/forms/7`).reply(200, { form: ownerView({ submissions_count: 1 }) });
+  mock.onGet(`${B}/forms/7/submissions`).networkErrorOnce();
+  render_(<FormScreen />);
+  fireEvent.press(await screen.findByText("Answers"));
+  expect(await screen.findByTestId("tables-form-answers-failed")).toBeTruthy();
+  mock.onGet(`${B}/forms/7/submissions`).reply(200, { submissions: [], meta: { total_count: 0, offset: 0, limit: 50 } });
+  fireEvent.press(screen.getByText("Try again"));
+  await waitFor(() => expect(screen.queryByTestId("tables-form-answers-failed")).toBeNull());
+});
+
+it("every tab of the builder names every control for a screen reader", async () => {
+  mockParams.current = { id: "7", table: "10" };
+  mock.onGet(`${B}/forms/7`).reply(200, { form: ownerView() });
+  mock.onGet(`${B}/forms/7/submissions`).reply(200, { submissions: [], meta: { total_count: 0, offset: 0, limit: 50 } });
+  render_(<FormScreen />);
+  for (const tab of ["Questions", "Page", "Share", "Answers"]) {
+    fireEvent.press(await screen.findByText(tab));
+    await waitFor(() => expect(a11yFindings()).toEqual([]));
+  }
 });
 
 it("an answer opens its row", async () => {

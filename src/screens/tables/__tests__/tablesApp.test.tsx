@@ -20,10 +20,18 @@ import i18n from "@/i18n";
 import { http, __resetTokenCache } from "@/api/http";
 import { __resetFingerprintCache } from "@/lib/fingerprint";
 import { testQueryClient } from "@/__tests__/queryClient";
+import { a11yFindings } from "@/__tests__/a11ySweep";
+
 import { router as mockedRouter } from "expo-router";
 import Bases from "../../../../app/tables";
 import TableScreen from "../../../../app/tables/table";
 import RecordScreen from "../../../../app/tables/record";
+
+/** Two taps in the same frame, before any re-render: what a double tap is. A guard that is only `disabled={isPending}` lets both through. */
+const doubleTap = (el: Parameters<typeof fireEvent.press>[0]) => {
+  fireEvent.press(el);
+  fireEvent.press(el);
+};
 
 const mockParams: { current: Record<string, string> } = { current: {} };
 jest.mock("expo-router", () => ({
@@ -381,8 +389,9 @@ describe("editing rows (increment 2)", () => {
     mock.onPost(`${B}/tables/10/records`).reply(201, { record: row(778, "") });
     renderScreen(<TableScreen />);
     await screen.findByText("Blue scarf");
-    fireEvent.press(await screen.findByTestId("tables-add-row"));
+    doubleTap(await screen.findByTestId("tables-add-row"));
     await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: "/tables/record", params: { table: "10", id: "778" } }));
+    expect(mock.history.post).toHaveLength(1); // a double tap makes one row
     expect(JSON.parse(mock.history.post[0].data)).toEqual({ record: { values: {} } });
   });
 
@@ -669,7 +678,7 @@ describe("manage the table's views (4b; the web's ViewSwitcher)", () => {
     fireEvent.changeText(await screen.findByTestId("tables-views-name"), "By status");
     fireEvent.press(screen.getByTestId("tables-views-type-kanban"));
     expect(screen.getByTestId("tables-views-column-2").props.accessibilityState.selected).toBe(true); // the only select, chosen for them
-    fireEvent.press(screen.getByTestId("tables-views-save"));
+    doubleTap(screen.getByTestId("tables-views-save"));
     await waitFor(() => expect(mock.history.post).toHaveLength(1));
     expect(JSON.parse(mock.history.post[0].data)).toEqual({ from_view_id: 70, view: { name: "By status", view_type: "kanban", config: { kanban_field_id: 2 } } });
     await waitFor(() => expect(router.setParams).toHaveBeenCalledWith({ view: "80" }));
@@ -751,7 +760,7 @@ describe("table and base admin (increment 6a; the web's tab menu and BaseForm)",
     fireEvent.press(await within(await openMenu()).findByText("Rename or describe the table"));
     fireEvent.changeText(await screen.findByTestId("tables-rename-name"), "Stock");
     fireEvent.changeText(screen.getByTestId("tables-rename-description"), "What is on the shelf");
-    fireEvent.press(screen.getByTestId("tables-rename-save"));
+    doubleTap(screen.getByTestId("tables-rename-save"));
     await waitFor(() => expect(mock.history.patch.map((r) => JSON.parse(r.data))).toEqual([{ table: { name: "Stock", description: "What is on the shelf" } }]));
   });
 
@@ -786,8 +795,9 @@ describe("table and base admin (increment 6a; the web's tab menu and BaseForm)",
     mock.onPost(`${B}/bases/3/tables`).reply(201, made);
     fireEvent.press(await within(await openMenu()).findByText("New table"));
     fireEvent.changeText(await screen.findByTestId("tables-new-table-name"), "Suppliers");
-    fireEvent.press(screen.getByTestId("tables-new-table-save"));
+    doubleTap(screen.getByTestId("tables-new-table-save"));
     await waitFor(() => expect(router.setParams).toHaveBeenCalledWith({ id: "13", view: undefined }));
+    expect(mock.history.post).toHaveLength(1);
     expect(JSON.parse(mock.history.post[0].data)).toEqual({ table: { name: "Suppliers" } });
   });
 
@@ -822,8 +832,9 @@ describe("table and base admin (increment 6a; the web's tab menu and BaseForm)",
     renderScreen(<Bases />);
     fireEvent.press(await screen.findByTestId("tables-new-base"));
     fireEvent.changeText(await screen.findByTestId("tables-new-base-sheet-name"), "Family budget");
-    fireEvent.press(screen.getByTestId("tables-new-base-sheet-save"));
+    doubleTap(screen.getByTestId("tables-new-base-sheet-save"));
     await waitFor(() => expect(router.push).toHaveBeenCalledWith({ pathname: "/tables/table", params: { id: "90", base: "9" } }));
+    expect(mock.history.post.filter((r) => r.url === `${B}/bases`)).toHaveLength(1);
     expect(JSON.parse(mock.history.post[0].data)).toEqual({ base: { name: "Family budget", color: "#10b981" } });
   });
 });
@@ -906,7 +917,7 @@ describe("the table's columns (increment 6b; the web's column menu)", () => {
     fireEvent.changeText(screen.getByTestId("tables-field-editor-option-1-label"), "Large");
     fireEvent.press(screen.getByTestId("tables-field-editor-option-1-up"));
     fireEvent.press(screen.getByText("Large", { exact: true }));
-    fireEvent.press(screen.getByTestId("tables-field-editor-save"));
+    doubleTap(screen.getByTestId("tables-field-editor-save"));
     await waitFor(() => expect(mock.history.post.filter((r) => r.url === `${B}/tables/10/fields`)).toHaveLength(1));
     const body = JSON.parse(mock.history.post.find((r) => r.url === `${B}/tables/10/fields`)!.data);
     expect(body.field).toMatchObject({ name: "Size", description: "", field_type: "single_select", default_value: "Large" });
@@ -956,8 +967,18 @@ describe("the tablet grid (increment 9)", () => {
     expect(within(screen.getByTestId("tables-grid-titles")).getByText("Red hat")).toBeTruthy();
     expect((await screen.findByTestId("tables-grid-summary-rows")).props.children).toBe("2 rows");
     expect(screen.getByTestId("tables-grid-summary-3").props.children).toBe("1 filled");
+    // Every control in the grid has a name a screen reader can say (the runtime sweep).
+    expect(a11yFindings()).toEqual([]);
     fireEvent.press(screen.getByTestId("tables-grid-row-1"));
     expect(router.push).toHaveBeenCalledWith(expect.objectContaining({ pathname: "/tables/record", params: expect.objectContaining({ id: "502" }) }));
+  });
+
+  it("an empty grid view on a tablet says it is empty, as the cards do, rather than drawing an empty grid", async () => {
+    tablet();
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([]));
+    renderScreen(<TableScreen />);
+    expect(await screen.findByTestId("tables-rows-empty")).toBeTruthy();
+    expect(screen.queryByTestId("tables-grid")).toBeNull();
   });
 
   it("a phone keeps the cards, and asks for no summary", async () => {
@@ -1066,7 +1087,7 @@ describe("delete a table or a base by its exact name (the owner, 2026-11-20)", (
     mock.onDelete(`${B}/tables/10`).reply(204);
     const input = await openDelete();
     fireEvent.changeText(input, "QA table");
-    fireEvent.press(screen.getByTestId("tables-delete-table-confirm"));
+    doubleTap(screen.getByTestId("tables-delete-table-confirm"));
     await waitFor(() => expect(mock.history.delete.map((r) => r.url)).toEqual([`${B}/tables/10`]));
     await waitFor(() => expect(useTablesUndo.getState().offer?.message).toBe("Table “QA table” deleted"));
     expect(router.setParams).toHaveBeenCalledWith({ id: "11", view: undefined });
@@ -1093,7 +1114,7 @@ describe("delete a table or a base by its exact name (the owner, 2026-11-20)", (
     fireEvent.changeText(input, "shop");
     expect(screen.getByTestId("tables-delete-base-confirm").props.accessibilityState?.disabled).toBe(true);
     fireEvent.changeText(input, "Shop");
-    fireEvent.press(screen.getByTestId("tables-delete-base-confirm"));
+    doubleTap(screen.getByTestId("tables-delete-base-confirm"));
     await waitFor(() => expect(mock.history.delete.length).toBe(1));
     expect(JSON.parse(mock.history.delete[0].data)).toEqual({ confirm_name: "Shop" });
   });
@@ -1124,8 +1145,9 @@ describe("select rows, then edit or delete them together (increment 5)", () => {
     mock.onPost(`${B}/tables/10/records/restore`).reply(200, {});
     jest.spyOn(Alert, "alert").mockImplementation((_t, _m, buttons) => buttons?.find((b) => b.text === "Delete")?.onPress?.());
     await selectBoth();
-    fireEvent.press(screen.getByTestId("tables-bulk-delete"));
+    doubleTap(screen.getByTestId("tables-bulk-delete"));
     await waitFor(() => expect(useTablesUndo.getState().offer?.message).toBe("2 rows deleted"));
+    expect(mock.history.post).toHaveLength(1);
     expect(JSON.parse(mock.history.post[0].data)).toEqual({ ids: [502, 501] });
     expect(screen.queryByTestId("tables-bulk-bar")).toBeNull();
     await act(async () => useTablesUndo.getState().offer?.undo?.());
@@ -1175,7 +1197,7 @@ describe("comments and history (increment 5)", () => {
     expect(mock.history.get.find((r) => r.url === `${B}/tables/10/comments`)?.params).toEqual({ record_id: 501 });
     fireEvent.changeText(screen.getByTestId("tables-comment-input"), "Can you check @Om");
     fireEvent.press(await screen.findByTestId("tables-mention-42"));
-    fireEvent.press(screen.getByTestId("tables-comment-send"));
+    doubleTap(screen.getByTestId("tables-comment-send"));
     await waitFor(() => expect(mock.history.post.length).toBe(1));
     expect(JSON.parse(mock.history.post[0].data)).toEqual({ comment: { body: "Can you check @Omar", record_id: 501, mention_ids: [42] } });
   });

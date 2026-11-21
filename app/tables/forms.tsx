@@ -21,6 +21,7 @@ import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { LoadFailure } from "@/components/LoadFailure";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { EmptyState } from "@/screens/flow/parts";
+import { useOneAtATime } from "@/screens/tables/useOneAtATime";
 
 export default function FormsScreen() {
   const colors = useColors();
@@ -32,6 +33,7 @@ export default function FormsScreen() {
   const forms = useQuery({ queryKey: tablesKeys.forms(tableId), queryFn: () => tableFormsApi.list(tableId), enabled: Number.isFinite(tableId) });
   // The server lists them oldest first; the phone shows the newest on top (the owner's rule for every list).
   const rows = [...(forms.data ?? [])].sort((a, b) => b.id - a.id);
+  const once = useOneAtATime(); // a double tap makes one form
   const create = useMutation({
     mutationFn: () => tableFormsApi.create(tableId),
     onSuccess: async (form) => {
@@ -50,7 +52,7 @@ export default function FormsScreen() {
         ItemSeparatorComponent={() => <View style={{ height: metrics.space.sm }} />}
         ListHeaderComponent={
           <View style={{ gap: metrics.space.xs, paddingBottom: metrics.space.sm }}>
-            <SheetButton testID="tables-forms-new" label={t("tables.forms.new")} disabled={create.isPending} busy={create.isPending} onPress={() => create.mutate()} />
+            <SheetButton testID="tables-forms-new" label={t("tables.forms.new")} disabled={create.isPending} busy={create.isPending} onPress={() => once(() => create.mutateAsync())} />
             {create.error ? (
               <Text tone="danger" accessibilityLiveRegion="polite">
                 {failureMessage(create.error, t("tables.forms.createFailed"))}

@@ -6,11 +6,11 @@
  * Reanimated here: the owner's rule for recycled list cells.
  */
 import { useState } from "react";
-import { Image, Pressable, View } from "react-native";
+import { Image, Pressable, useWindowDimensions, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { FieldDefinition } from "@/api/fields";
 import type { RecordRow } from "@/api/tables";
-import { CARD_LABEL_HEIGHT, CARD_VALUE_HEIGHT, CardValue } from "@/components/fields/CardValue";
+import { capScale, cardLabelHeight, cardValueHeight, CardValue, FONT_CAP } from "@/components/fields/CardValue";
 import { displayValue, optionsFor, type KnownRecords } from "@/components/fields/display";
 import { Text } from "@/components/reusables/text";
 import { Check } from "@/components/icons";
@@ -24,10 +24,12 @@ export const COVER_HEIGHT = 140;
 /** Space between two cards, inside the item so `getItemLayout` is exact. */
 export const CARD_SPACING = 8;
 
-/** The card's height for a view: fixed, whatever the row holds. */
-export function cardLayout(fieldCount: number, cover: boolean): number {
-  const fields = fieldCount * (CARD_LABEL_HEIGHT + CARD_VALUE_HEIGHT + CARD_GAP);
-  return CARD_PAD * 2 + CARD_TITLE + fields + (cover ? COVER_HEIGHT : 0) + CARD_SPACING;
+const titleHeight = (fontScale: number) => Math.ceil(CARD_TITLE * capScale(fontScale));
+
+/** The card's height for a view and the person's font size: fixed, whatever the row holds. */
+export function cardLayout(fieldCount: number, cover: boolean, fontScale = 1): number {
+  const fields = fieldCount * (cardLabelHeight(fontScale) + cardValueHeight(fontScale) + CARD_GAP);
+  return CARD_PAD * 2 + titleHeight(fontScale) + fields + (cover ? COVER_HEIGHT : 0) + CARD_SPACING;
 }
 
 export function RecordCard({
@@ -63,6 +65,7 @@ export function RecordCard({
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
   const [pressed, setPressed] = useState(false);
+  const { fontScale } = useWindowDimensions();
   const titleText = (title && displayValue(title, row.values[title.id], known, i18n.language)) || t("tables.untitled");
   const bar = colorField ? colorHex(optionsFor(colorField, row.values[colorField.id])[0]?.color) : null;
   const coverValue = coverField ? row.values[coverField.id] : undefined;
@@ -98,7 +101,7 @@ export function RecordCard({
                   {selected ? <Check size={14} color={colors.onAccent} /> : null}
                 </View>
               ) : null}
-              <Text variant="label" numberOfLines={1} style={{ flex: 1, height: CARD_TITLE, fontSize: 16, lineHeight: 22 }}>
+              <Text variant="label" numberOfLines={1} maxFontSizeMultiplier={FONT_CAP} style={{ flex: 1, height: titleHeight(fontScale), fontSize: 16, lineHeight: 22 }}>
                 {titleText}
               </Text>
             </View>

@@ -30,6 +30,7 @@ import { canEditRows } from "@/screens/tables/logic";
 import { readForImport } from "@/screens/tables/importFlow";
 import { defaultTarget, IMPORT_TYPES, importColumns, type ImportType, type Target } from "@/screens/tables/importSheet";
 import { explainPick, pickDocuments } from "@/screens/pages/addFiles";
+import { LoadFailure } from "@/components/LoadFailure";
 
 type Step = { kind: "source" } | { kind: "paste" } | { kind: "reading" } | { kind: "map"; sheet: Sheet; targets: Target[]; upsert: number | null };
 
@@ -127,6 +128,8 @@ export default function ImportScreen() {
   return (
     <Screen measure header={<AppHeader app="tables" back title={t("tables.import.title", { table: table.data?.name ?? "" })} />}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: metrics.space.sm, paddingBottom: metrics.space.xl }}>
+        {/* Offline, or the table gone: said, with Try again, rather than buttons busy for ever (the sweep, 2026-11-21). */}
+        <LoadFailure error={table.error ?? bases.error} loadFailed={t("tables.tableLoadFailed")} hasData={false} updatedAt={0} onRetry={() => void (table.error ? table.refetch() : bases.refetch())} testID="tables-import-failed" padded={false} />
         {step.kind === "source" ? (
           <>
             <Text tone="muted">{t("tables.import.intro")}</Text>

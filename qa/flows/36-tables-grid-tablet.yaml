@@ -5,6 +5,12 @@
 # this flow (React Native caches the window size at startup: CLAUDE.md, QA).
 # READ-ONLY on the fixture (`tables_fixture.py up`): 25 rows, a Price column.
 #
+# DEVICE PASSES (the hidden-criteria sweep, 2026-11-21): run once as is, once
+# with `adb shell settings put system font_scale 2.0` and once in dark mode
+# (`adb shell cmd uimode night yes`), force-stopping the app after each
+# change. Same screenshots, three sets: clipping and contrast are judged on
+# them, not asserted (no layout or colour engine in Maestro or Jest).
+#
 # ── FLOW_REGISTER note ─────────────────────────────────────────────────────
 # COVERS: a grid view drawn as the grid; the header; the summary bar
 # ("25 rows", filled per column, the Price sum); the columns scrolled

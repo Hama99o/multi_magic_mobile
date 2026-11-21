@@ -27,6 +27,7 @@ import { explainPick } from "@/screens/pages/addFiles";
 import { DateValue } from "./FilterSortSheet";
 import { FORM_LANGUAGES, moveQuestion, parseEmails, questionFor, requiredState, TAKES_PLACEHOLDER, unusedFields } from "./formBuilder";
 import { OPTION_PALETTE } from "./palette";
+import { LoadFailure } from "@/components/LoadFailure";
 
 type Save = (c: FormChanges) => void;
 
@@ -352,7 +353,7 @@ export function AnswersTab({ form }: { form: TableForm }) {
         {t("tables.forms.answers", { count: total })}
       </Text>
       {answers.data && rows.length === 0 ? <Text tone="muted">{t("tables.form.noAnswers")}</Text> : null}
-      {answers.error ? <Text tone="danger">{t("tables.form.answersFailed")}</Text> : null}
+      <LoadFailure error={answers.error} loadFailed={t("tables.form.answersFailed")} hasData={Boolean(answers.data)} updatedAt={answers.dataUpdatedAt} onRetry={() => void answers.refetch()} testID="tables-form-answers-failed" padded={false} />
       {rows.map((a, i) => (
         <Pressable key={a.id} testID={`tables-form-answer-${i}`} disabled={!a.recordId} onPress={() => a.recordId && router.push({ pathname: "/tables/record", params: { table: String(form.tableId), id: String(a.recordId) } })} accessibilityRole="button" accessibilityLabel={`${a.recordTitle ?? t("tables.form.untitled")}, ${a.submitterName ?? a.submitterEmail ?? t("tables.form.anonymous")}`} style={{ minHeight: 56, justifyContent: "center", borderBottomWidth: 1, borderBottomColor: colors.border }}>
           <Text variant="label" numberOfLines={1}>

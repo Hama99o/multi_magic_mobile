@@ -6,6 +6,12 @@
 # NEVER invites: invitations send real email (the owner's rule). The Share tab
 # is opened and photographed; the invite field is not typed into.
 #
+# DEVICE PASSES (the hidden-criteria sweep, 2026-11-21): run once as is, once
+# with `adb shell settings put system font_scale 2.0` and once in dark mode
+# (`adb shell cmd uimode night yes`), force-stopping the app after each
+# change. Same screenshots, three sets: clipping and contrast are judged on
+# them, not asserted (no layout or colour engine in Maestro or Jest).
+#
 # ── FLOW_REGISTER note ─────────────────────────────────────────────────────
 # COVERS: Forms from the menu; New form (on top: newest first); a question
 # added from a column; the four tabs; the public link shown; Delete with its

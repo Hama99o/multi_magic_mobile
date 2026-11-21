@@ -29,8 +29,9 @@
  * `income`, `expenses`, `incomes` and `loan` open Finance (2026-11-20, parity
  * F-X3): an expense or income on its tab with its sheet open, a loan on its
  * own screen. `flow_project` and `flow_card` open Flow's board and card
- * (2026-11-20). The table keys still return null: this app has no screen for
- * them yet, so they open the preview sheet and from there the web. **Adding a key here is a claim that this app has that
+ * (2026-11-20), and `table_app_table` / `table_app_record` open Tables
+ * (2026-11-20). A key not here opens the preview sheet and from there the
+ * web. **Adding a key here is a claim that this app has that
  * screen.**
  *
  * `routeForWebPath` is the same table read by PATH alone, for what carries no
@@ -58,6 +59,7 @@ const SCREENS = {
   notes: "/notes",
   contacts: "/contacts",
   todos: "/todos",
+  tables: "/tables",
 } as const satisfies Record<string, AppRoute>;
 
 /** Keys whose record is read from the path; the list screen when the path has no id. */
@@ -76,6 +78,8 @@ const BY_PATH: Record<string, AppRoute> = {
   loan: "/finance",
   flow_project: "/flow",
   flow_card: "/flow",
+  table_app_table: "/tables",
+  table_app_record: "/tables",
 };
 
 const DIGITS = /^\d+$/;
@@ -162,6 +166,19 @@ export function routeForWebPath(path: string | null | undefined, label?: string 
     const card = id("card");
     if (card) return { pathname: "/flow/card", params: { projectId: flowBoard[1], id: card } };
     return query.has("card") ? null : { pathname: "/flow/board", params: { id: flowBoard[1] } };
+  }
+  if (pathname === "/tables") return "/tables";
+  // `/tables/:base/:table`, `?record=` opens the row and `?view=` the view
+  // (frontend_routes.rb `table_app_table`, `table_app_record`). `?export=` is
+  // a download the web saves: the table opens, the file does not.
+  const table = pathname.match(/^\/tables\/(\d+)\/(\d+)$/);
+  if (table) {
+    if (query.has("record")) {
+      const record = id("record");
+      return record ? { pathname: "/tables/record", params: { table: table[2], id: record } } : null;
+    }
+    const view = id("view");
+    return { pathname: "/tables/table", params: view ? { id: table[2], base: table[1], view } : { id: table[2], base: table[1] } };
   }
   if (pathname === "/profile/me/api-keys") return "/ai-keys";
   if (pathname === "/ai") return "/chat";

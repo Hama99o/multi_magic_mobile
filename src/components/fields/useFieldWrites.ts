@@ -18,6 +18,25 @@ export interface FieldTarget {
   touched: QueryKey[];
   /** Change this record's values in every cache that holds them. */
   edit: (client: QueryClient, change: (values: FieldValues) => FieldValues) => void;
+  /**
+   * How this record's values are SENT; the core endpoints (`fieldsApi`) when
+   * absent, which is Flow's case. Only `run` differs: the optimistic guess,
+   * its correction and the rollback are the same for both apps.
+   *
+   * Tables sets it (agreed with Flow's session, 2026-11-20), and it must stay
+   * set: a table row written through `core/field_values#batch_update` skips
+   * `TableApp::RecordWriter` (Tables' own value checks) and the table's
+   * history (`row.updated`), and a link made through core selections skips
+   * `records#link`'s history and its cardinality answer, the "Replace" the
+   * web offers when a one-link column is already full. So it is not a
+   * duplicate of the core path to be simplified away.
+   */
+  send?: {
+    setValues?: (values: Record<number, unknown>) => Promise<unknown>;
+    /** Must resolve to the real selection: `done` swaps the optimistic guess for it. */
+    link?: (field: FieldDefinition, recordId: number) => Promise<Selection>;
+    unlink?: (field: FieldDefinition, selection: Selection) => Promise<unknown>;
+  };
 }
 
 type OnError = (error: unknown) => void;
@@ -26,7 +45,7 @@ export function useFieldWrites(target: FieldTarget, onError?: OnError) {
   const touched = () => target.touched;
 
   const setScalar = useOptimistic({
-    run: ({ field, value }: { field: FieldDefinition; value: unknown }) => fieldsApi.setValues(target.record, { [field.id]: value }),
+    run: ({ field, value }: { field: FieldDefinition; value: unknown }) => target.send?.setValues?.({ [field.id]: value }) ?? fieldsApi.setValues(target.record, { [field.id]: value }),
     touched,
     apply: (client, { field, value }) => target.edit(client, (values) => ({ ...values, [field.id]: { kind: "scalar", value } })),
     onError,
@@ -34,7 +53,7 @@ export function useFieldWrites(target: FieldTarget, onError?: OnError) {
 
   /** A single-record field holds one link: the server replaces it, and so does the guess. */
   const link = useOptimistic({
-    run: ({ field, recordId }: { field: FieldDefinition; recordId: number }) => fieldsApi.addSelection(field, target.record, recordId),
+    run: ({ field, recordId }: { field: FieldDefinition; recordId: number }) => target.send?.link?.(field, recordId) ?? fieldsApi.addSelection(field, target.record, recordId),
     touched,
     apply: (client, { field, recordId }) =>
       target.edit(client, (values) => {
@@ -53,7 +72,7 @@ export function useFieldWrites(target: FieldTarget, onError?: OnError) {
   });
 
   const unlink = useOptimistic({
-    run: ({ selection }: { field: FieldDefinition; selection: Selection }) => fieldsApi.removeSelection(selection.selectionId),
+    run: ({ field, selection }: { field: FieldDefinition; selection: Selection }) => target.send?.unlink?.(field, selection) ?? fieldsApi.removeSelection(selection.selectionId),
     touched,
     apply: (client, { field, selection }) =>
       target.edit(client, (values) => {

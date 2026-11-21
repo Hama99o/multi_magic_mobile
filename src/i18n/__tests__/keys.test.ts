@@ -184,6 +184,37 @@ const COMPOSED = [
   // t(`fields.recordClasses.${key}`) over RECORD_CLASS_KEY.
   ...["text", "rich_text", "integer", "decimal", "boolean", "date", "datetime", "single_select", "multi_select", "single_record", "multi_record", "attachment", "attachments", "long_text", "phone", "email", "url", "created_time", "last_modified_time", "lookup", "rollup"].map((v) => `fields.types.${v}`),
   ...["user", "tag", "card", "sprint", "record"].map((v) => `fields.recordClasses.${v}`),
+  // Tables (app/tables): t(`tables.baseSort.${s}`) over BASE_SORTS and
+  // t(`tables.viewTypes.${v}`) over VIEW_TYPES (api/tables.ts).
+  ...["created_at_desc", "updated_at_desc", "name_asc"].map((v) => `tables.baseSort.${v}`),
+  ...["grid", "kanban", "calendar", "gallery"].map((v) => `tables.viewTypes.${v}`),
+  // t(`tables.ops.${op}`) over ALL_OPERATORS and t(`tables.sortDir.${set}.${dir}`)
+  // over directionSet (screens/tables/filters.ts).
+  ...["contains", "not_contains", "is", "is_not", "gt", "gte", "lt", "lte", "empty", "not_empty", "before", "after", "on_or_before", "on_or_after", "any_of", "all_of", "none_of"].map((v) => `tables.ops.${v}`),
+  ...["text", "number", "date", "boolean", "option"].flatMap((v) => [`tables.sortDir.${v}.asc`, `tables.sortDir.${v}.desc`]),
+  // history.ts: t(lineKey(action)) over HISTORY_ACTIONS, and the roles a share line names.
+  ...["row_created", "row_updated", "rows_deleted", "rows_restored", "rows_written", "rows_updated", "column_added", "column_updated", "column_deleted", "column_restored", "columns_reordered", "link_added", "link_removed", "share_added", "share_changed", "share_removed", "view_created", "view_renamed", "view_deleted", "table_renamed", "table_duplicated", "import_done", "import_failed", "import_cancelled"].map((v) => `tables.history.lines.${v}`),
+  ...["editor", "viewer"].map((v) => `tables.share.roles.${v}`),
+  ...["editor", "viewer"].map((v) => `tables.share.roleHints.${v}`),
+  // activity.tsx: the history kinds (HISTORY_KINDS + "all") and the two badged sources.
+  ...["all", "rows", "columns", "imports", "links", "sharing", "table"].map((v) => `tables.history.kinds.${v}`),
+  ...["assistant", "import"].map((v) => `tables.history.sources.${v}`),
+  // A new view's column label and empty note, by type (`ViewsSheet.tsx`).
+  ...["kanban", "calendar", "gallery"].flatMap((v) => [`tables.viewsSheet.column.${v}`, `tables.viewsSheet.noColumn.${v}`]),
+  // Reordering a card within its column (`table.tsx`, MoveWithin).
+  ...["top", "up", "down"].map((v) => `tables.kanban.within.${v}`),
+  // Why an import could not read its file (`importFlow.ts` ReadOutcome, `tableImports.ts` PreviewRefusal).
+  ...["too_large", "unsupported_type", "unreadable", "empty", "no_sheet", "needs_server", "missing", "other"].map((v) => `tables.import.refused.${v}`),
+  // The access modes of a form (`tableForms.ts` ACCESS_MODES): each name and hint.
+  ...["public", "signed_in", "only_me", "invited"].flatMap((v) => [`tables.forms.access.${v}`, `tables.form.accessHint.${v}`]),
+  // The column editor (`FieldEditorSheet.tsx`): relations, rollup functions, why Save is off.
+  ...["one_to_many", "many_to_one", "one_to_one", "many_to_many"].flatMap((v) => [`tables.fieldEditor.relations.${v}.label`, `tables.fieldEditor.relations.${v}.sentence`]),
+  ...["count", "sum", "avg", "min", "max"].map((v) => `tables.fieldEditor.functions.${v}`),
+  ...["name", "options", "linkTable", "linkColumn", "target"].map((v) => `tables.fieldEditor.blocked.${v}`),
+  // A refused comment file (`commentFiles.ts` CommentFileRefusal["why"]), t(`tables.activity.refused.${why}`).
+  ...["type", "size", "count"].map((v) => `tables.activity.refused.${v}`),
+  // t(`tables.find.${q.key}`) over the date filter's quick days (FilterSortSheet.tsx DateValue).
+  ...["yesterday", "today", "tomorrow"].map((v) => `tables.find.${v}`),
   // Finance: the five tabs (app/finance/index.tsx) and the Help sheet's sections (HelpSheet.tsx).
   ...["overview", "expenses", "income", "loans", "budgets"].map((v) => `finance.tabs.${v}`),
   ...["overview", "expenses", "recurring", "income", "loans", "budgets", "reports", "categories"].flatMap((v) => [`finance.help.${v}.title`, `finance.help.${v}.body`]),
@@ -191,6 +222,34 @@ const COMPOSED = [
 
 /** Plurals live as `key_one` / `key_other`; the call site asks for `key`. */
 const PLURAL = new Set([
+  "fields.more",
+  "tables.rowCount",
+  "tables.tableCount",
+  "tables.find.showCount",
+  "tables.bulk.selected",
+  "tables.admin.cleared",
+  "tables.import.summary",
+  "tables.import.wouldRefuse",
+  "tables.import.start",
+  "tables.forms.answers",
+  "tables.form.inviteN",
+  "tables.form.inviteTitle",
+  "tables.columns.deleteFilled",
+  "tables.columns.trashedLine",
+  "tables.bulk.editTitle",
+  "tables.bulk.hint",
+  "tables.bulk.apply",
+  "tables.bulk.edited",
+  "tables.bulk.deleteTitle",
+  "tables.bulk.deleteBody",
+  "tables.bulk.deleted",
+  "tables.remove.rowsN",
+  "tables.remove.columnsN",
+  "tables.remove.linksFrom",
+  "tables.remove.baseImpact",
+  "tables.history.lines.rows_deleted",
+  "tables.history.lines.rows_restored",
+  "tables.history.lines.rows_updated",
   "shell.chatsWaiting",
   "shell.notificationsUnread",
   "finance.ledger.entries",

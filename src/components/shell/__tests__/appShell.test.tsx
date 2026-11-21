@@ -63,7 +63,7 @@ const ORDER = ["header-chats", "header-notifications", "header-ai", "header-apps
 describe("the registry (M5)", () => {
   it("lists every mobile app once, in the web's order, Home first", () => {
     expect(APP_REGISTRY.map((a) => a.key)).toEqual([
-      "home", "safezone", "notes", "todos", "pages", "finance", "flow", "chats",
+      "home", "safezone", "notes", "todos", "pages", "finance", "flow", "tables", "chats",
       "contacts", "calendar", "assistant", "notifications", "conversations",
     ]);
   });

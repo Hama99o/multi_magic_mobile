@@ -7,8 +7,8 @@
  * The order is the web's (`multi_magic` `lib/apps.ts` `APP_REGISTRY`), keeping
  * the apps mobile has, with Home first so it is one tap away in the switcher,
  * and the two mobile-only places (Notifications, past Conversations) last.
- * Doc Tools and Tables have no mobile app yet (owner, 2026-11-17: LATER);
- * Flow arrived 2026-11-20 (owner: "Flow, then Tables, then Doc").
+ * Doc Tools has no mobile app yet (owner, 2026-11-17: LATER); Flow and
+ * Tables arrived 2026-11-20 (owner: "Flow, then Tables, then Doc").
  */
 import { router, type Href } from "expo-router";
 import {
@@ -18,6 +18,7 @@ import {
   FolderOpen,
   House,
   Kanban,
+  Table2,
   ListChecks,
   MessageSquareText,
   NotebookPen,
@@ -52,6 +53,7 @@ export const APP_REGISTRY: readonly AppEntry[] = [
   { key: "pages", route: "/pages", icon: FolderOpen, labelKey: "pages.title", lineKey: "home.pagesBody" },
   { key: "finance", route: "/finance", icon: Wallet, labelKey: "finance.title", lineKey: "home.financeBody" },
   { key: "flow", route: "/flow", icon: Kanban, labelKey: "flow.title", lineKey: "home.flowBody" },
+  { key: "tables", route: "/tables", icon: Table2, labelKey: "tables.title", lineKey: "home.tablesBody" },
   { key: "chats", route: "/chats", icon: Users, labelKey: "chats.title", lineKey: "home.chatsBody" },
   { key: "contacts", route: "/contacts", icon: BookUser, labelKey: "contacts.title", lineKey: "home.contactsBody" },
   { key: "calendar", route: "/calendar", icon: CalendarDays, labelKey: "chat.calendar", lineKey: "home.calendarBody" },

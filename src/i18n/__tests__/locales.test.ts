@@ -62,6 +62,50 @@ const SAME_IN_BOTH = new Set([
   "flow.sprints.namePlaceholder",
   "fields.types.date",
   "fields.recordClasses.sprint",
+  // Tables (2026-11-20): "Tables", "table(s)" and "Kanban" are French words
+  // too (the web's French keeps them); "A–Z", "WhatsApp", "+3" and "3 / 25"
+  // are letters, a name and numbers.
+  "tables.title",
+  "tables.baseSort.name_asc",
+  "tables.tableCount_one",
+  "tables.tableCount_other",
+  "tables.viewTypes.kanban",
+  "tables.position",
+  "tables.whatsapp",
+  // "Photos", one word in both (the comment composer's attach menu).
+  "tables.activity.attachPhotos",
+  // "Type", the same word in both (the new view sheet).
+  "tables.viewsSheet.type",
+  // "Description", the same word in both (the admin sheets).
+  "tables.admin.description",
+  "tables.fieldEditor.description",
+  "tables.fieldEditor.type",
+  "tables.fieldEditor.options",
+  "tables.fieldEditor.optionLabel",
+  // A file format's name, the same in both.
+  "tables.export.xlsx",
+  "tables.export.csv",
+  // Words the same in both (the form builder).
+  "tables.form.label",
+  "tables.form.intro",
+  "tables.form.tabs.questions",
+  "tables.form.tabs.page",
+  "fields.more_one",
+  "fields.more_other",
+  // Signs and letters (the web's French keeps them): >, ≥, <, ≤, A → Z, 1 → 9.
+  "tables.ops.gt",
+  "tables.ops.gte",
+  "tables.ops.lt",
+  "tables.ops.lte",
+  "tables.sortDir.text.asc",
+  "tables.sortDir.text.desc",
+  "tables.sortDir.number.asc",
+  "tables.sortDir.number.desc",
+  // "Assistant", "Import(s)" and "Table" are French words too.
+  "tables.history.sources.assistant",
+  "tables.history.sources.import",
+  "tables.history.kinds.table",
+  "tables.history.kinds.imports",
   "pages.searchChips.type",
   // "Pause" is the French word too (a player button).
   "pages.view.pause",

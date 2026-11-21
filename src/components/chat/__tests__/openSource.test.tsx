@@ -36,9 +36,10 @@ function Host({ link }: { link: MessageLink }) {
 }
 
 const aiKeys: MessageLink = { label: "AI keys", path: "/profile/me/api-keys", key: "ai_keys" };
-// A Flow card: the web has a board, this app does not (loans were the example
-// here until 2e1dfb1 gave them a screen).
-const note: MessageLink = { label: "Sprint plan", path: "/flow/3/cards/9", key: "flow_card" };
+// A key this app has no screen for. It is deliberately not a real app's key:
+// loans (until 2e1dfb1) and then Flow cards (until the Flow app) were the
+// example here, and each went red the day its app arrived on the phone.
+const note: MessageLink = { label: "Sprint plan", path: "/someday/3", key: "not_on_the_phone" };
 
 beforeEach(() => mockPush.mockClear());
 

@@ -1,6 +1,7 @@
 import { accountFr } from "./account/fr";
 import { financeFr } from "./finance/fr";
 import { flowFr, fieldsFr } from "./flow/fr";
+import { tablesFr } from "./tables/fr";
 import { loansFr } from "./finance/loans.fr";
 import { manageFr } from "./finance/manage.fr";
 /**
@@ -1395,6 +1396,7 @@ export const fr: Translations = {
     todosBody: "Vos listes et ce qui arrive",
     financeBody: "Dépenses, revenus, prêts et budgets",
     flowBody: "Tableaux de projet, cartes et sprints",
+    tablesBody: "Bases de lignes et de colonnes",
     safezoneBody: "Mots de passe, cartes et papiers, derrière votre code",
     calendarBody: "Ce qui arrive",
     conversationsBody: "Vos questions passées",
@@ -1501,6 +1503,7 @@ export const fr: Translations = {
   },
   finance: { ...financeFr, loans: loansFr, manage: manageFr },
   flow: flowFr,
+  tables: tablesFr,
   fields: fieldsFr,
   richText: {
     done: "OK",

@@ -1,0 +1,81 @@
+# TABLES, browse (increment 1, 2026-11-20, docs/design/tables/inc-1/MANIFEST.md).
+#
+# Arrives as a user does: Home's Tables tile. READ-ONLY: it opens the QA
+# account's first base, its table, the first row, steps to the next row, and
+# goes back. It writes nothing, so it deletes nothing. Increment 1 has no
+# write to make.
+#
+# The QA account may have no base at all: that is a legitimate state, not a
+# pass (CLAUDE.md, "an empty list is a legitimate state"). The run reaches it,
+# takes a screenshot, and stops there; the result must say which case ran.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: the Home tile; the bases list (or its empty state); a table's card
+# list; the view switch sheet (opened and closed); the record page; next row.
+# CANNOT TELL YOU: newest first (needs rows made in a known order: the jest
+# suite asserts the parameter), a personal filter (increment 3), any write,
+# a viewer's base (needs a second account), a big table's paging.
+appId: ${APP_ID}
+tags:
+  - tables
+  - read-only
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-tables"
+- extendedWaitUntil:
+    visible:
+      id: "tables-bases-sort"
+    timeout: 60000
+- takeScreenshot: tables-01-bases
+- runFlow:
+    when:
+      visible:
+        id: "tables-empty"
+    commands:
+      - takeScreenshot: tables-01b-no-bases
+- runFlow:
+    when:
+      visible:
+        id: "tables-base-0"
+    commands:
+      - tapOn:
+          id: "tables-base-0"
+      - extendedWaitUntil:
+          visible:
+            id: "tables-view-switch"
+          timeout: 30000
+      - takeScreenshot: tables-02-table
+      - tapOn:
+          id: "tables-view-switch"
+      - extendedWaitUntil:
+          visible:
+            id: "tables-views"
+          timeout: 10000
+      - takeScreenshot: tables-03-views
+      - back
+      - runFlow:
+          when:
+            visible:
+              id: "tables-card-0"
+          commands:
+            - tapOn:
+                id: "tables-card-0"
+            - extendedWaitUntil:
+                visible:
+                  id: "tables-record-title"
+                timeout: 30000
+            - takeScreenshot: tables-04-row
+            - runFlow:
+                when:
+                  visible:
+                    id: "tables-record-next"
+                    enabled: true
+                commands:
+                  - tapOn:
+                      id: "tables-record-next"
+                  - takeScreenshot: tables-05-next-row
+            - back
+      - back

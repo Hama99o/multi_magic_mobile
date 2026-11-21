@@ -111,3 +111,27 @@ Found by the parity audit (`docs/MOBILE_PARITY_2026-11-20.md`, `docs/parity/`) a
 - **Now:** `GET /contact_app/contacts/family_members` sends `family_label` as an English word built by `ContactApp::Family#label_for` (LABELS by gender, QUALIFIED "step-%s"/"half-%s"/"adoptive %s"/"%s-in-law", and "former %s"). A French phone, and the French web, show English.
 - **Ask:** send the parts instead of the sentence, `family_kind` (`parent`, `child`, … `child_in_law`), `family_qualifier` (`step`/`half`/`adoptive`/null) and `family_former` (boolean), next to `family_label` for old clients.
 - **Phone meanwhile:** `src/screens/contacts/familyLabel.ts` reads the English word back to a key over the server's whole vocabulary (55 words) and says it in the app's language. A word outside that table is shown as sent.
+
+## 6 · Tables: newest first (2026-11-20)
+
+From the Tables spec (`docs/design/tables/SPEC.md` C3), approved by Hello on 2026-11-20. **DEPLOYED** (multi_magic `9730a4f7`, live about 15:45 on 2026-11-20, per Hello; built by multi-magic-9c). Both changes are backward compatible. The fallbacks below are kept for an older server, which ignores the parameter.
+
+### 6.1 · Rows by their own creation time
+
+`GET /api/v1/table_app/tables/:table_id/records`
+- **Newest first:** `sort=created_at desc`, `sort=-created_at`, or `sort=created_at&direction=desc` orders by the row's own `created_at`, with no "Created time" column needed. `sort=created_at` is oldest first. `updated_at` works the same way.
+- **The same inside `sorts`:** `[{"column":"created_at","direction":"desc"}]` (an entry with `column` and no `field_id`).
+- **Order of precedence:** `sort`, then the column `sorts`, then position and id as the tie-break. `group_by` still groups first.
+- **Without `sort`:** the table's own order, exactly as before. An unknown column is ignored.
+- **Paging:** unchanged.
+- **Phone:** the personal layer (C1) starts on `sort=-created_at` when the view has no sort of its own, and "Table order" drops it.
+- **Before the deploy:** a `created_time` field's sort where the table has one; otherwise the view's order, with a new row pinned on top.
+
+### 6.2 · Bases newest first
+
+`GET /api/v1/table_app/bases`
+- **Default:** now `created_at desc`, so a base just created is on top. The web reads the same list, so it changes too (the owner's rule).
+- **Other orders:** `sort=created_at_desc | created_at_asc | updated_at_desc | updated_at_asc | name_asc | name_desc`. An unknown value gives the default.
+- **Tables inside a base** keep their tab order (position) on purpose. That is the user's own arrangement.
+- **Response shape:** unchanged, `{ bases: [...] }`.
+- **Phone:** no param needed for the default. A sort chip offers Newest · Recently changed · A–Z.

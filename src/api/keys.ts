@@ -211,6 +211,40 @@ export const flowKeys = {
 };
 
 /**
+ * Tables (`src/api/tables.ts`). `records` is keyed by the EFFECTIVE query
+ * (the shared view with the person's layer over it, SPEC C1), so a personal
+ * filter is its own cache entry and switching back is instant. `rows(tableId)`
+ * is the prefix of every query of one table, for a write to refetch them all.
+ */
+export const tablesKeys = {
+  all: ["tables"] as const,
+  bases: <S extends string>(sort: S) => ["tables", "bases", sort] as const,
+  baseLists: () => ["tables", "bases"] as const,
+  table: <T extends number>(tableId: T) => ["tables", "table", tableId] as const,
+  /** A table's comments, or one row's (`recordId` 0 = the table's own), paged by cursor. */
+  comments: <T extends number, R extends number>(tableId: T, recordId: R) => ["tables", "comments", tableId, recordId] as const,
+  /** Every history list of one table, as one prefix. */
+  historyAll: <T extends number>(tableId: T) => ["tables", "history", tableId] as const,
+  /** `person` is the account whose changes are shown, 0 for everyone. */
+  history: <T extends number, R extends number, K extends string, P extends number>(tableId: T, recordId: R, kind: K, person: P) => ["tables", "history", tableId, recordId, kind, person] as const,
+  members: <B extends number>(baseId: B) => ["tables", "members", baseId] as const,
+  /** What a delete would take with it (`tables#impact`), read when the delete sheet opens. */
+  impact: <T extends number>(tableId: T) => ["tables", "impact", tableId] as const,
+  /** A table's forms, one form, its answers (increment 8). */
+  forms: <T extends number>(tableId: T) => ["tables", "forms", tableId] as const,
+  form: <F extends number>(formId: F) => ["tables", "form", formId] as const,
+  formAnswers: <F extends number>(formId: F) => ["tables", "form", formId, "answers"] as const,
+  /** The running or last import of a table (`imports#latest`, increment 7): the banner. */
+  imports: <T extends number>(tableId: T) => ["tables", "imports", tableId] as const,
+  /** The column trash (`fields#trashed`, increment 6b). */
+  trashedFields: <T extends number>(tableId: T) => ["tables", "trashed", tableId] as const,
+  rows: <T extends number>(tableId: T) => ["tables", "rows", tableId] as const,
+  records: <T extends number, Q extends string>(tableId: T, query: Q) => ["tables", "rows", tableId, query] as const,
+  /** The calendar's "No date" rows: ONE page, not infinite, so a key of its own shape. */
+  undated: <T extends number, Q extends string>(tableId: T, query: Q) => ["tables", "rows", tableId, "undated", query] as const,
+};
+
+/**
  * Custom fields (`src/api/fields.ts`), shared by Flow and Tables: keyed by the
  * OWNER (a project, a table), never by app.
  */

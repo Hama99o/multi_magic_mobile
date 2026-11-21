@@ -319,6 +319,9 @@ export const flowEn = {
 };
 
 export const fieldsEn = {
+  yes: "Yes",
+  more_one: "+{{count}}",
+  more_other: "+{{count}}",
   empty: "Empty",
   required: "Required",
   requiredError: "This field is required.",

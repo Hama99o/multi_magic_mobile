@@ -27,7 +27,7 @@ import { FINANCE_TABS } from "@/screens/finance/tabs/names";
 import type { AppKey } from "./registry";
 
 /** The apps a place can be in: every app with a root of its own, and Home (left on Home → Home). */
-export const PLACE_APPS = ["home", "safezone", "notes", "todos", "pages", "finance", "chats", "contacts", "calendar", "notifications", "flow"] as const;
+export const PLACE_APPS = ["home", "safezone", "notes", "todos", "pages", "finance", "chats", "contacts", "calendar", "notifications", "flow", "tables"] as const;
 export type PlaceApp = (typeof PLACE_APPS)[number];
 
 const ROOTS: Record<PlaceApp, string> = {
@@ -42,6 +42,7 @@ const ROOTS: Record<PlaceApp, string> = {
   calendar: "/calendar",
   notifications: "/notifications",
   flow: "/flow",
+  tables: "/tables",
 };
 
 /**
@@ -52,7 +53,7 @@ const ROOTS: Record<PlaceApp, string> = {
 const NOT_PLACES = [
   "/finance/entry", "/finance/loan-edit", "/finance/recurring-edit", "/todos/template", "/calendar/edit",
   "/contacts/edit", "/notes/edit", "/notes/note", "/safezone/item", "/safezone/edit", "/pages/view", "/pages/save",
-  "/flow/card",
+  "/flow/card", "/tables/record",
 ] as const;
 const PAGES_TABS = ["starred", "shared", "files"] as const;
 const pagesRoot = (tab: string | undefined) => ((PAGES_TABS as readonly string[]).includes(tab ?? "") ? `/pages?tab=${tab}` : "/pages");

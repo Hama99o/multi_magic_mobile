@@ -113,3 +113,6 @@ credentials.json
 # Frame-timing runs (qa/gfxinfo.sh): one box, one boot, one load. Comparison
 # data for the session that took them, never a property of the app.
 qa/reports/gfxinfo/
+
+# eslint --cache (Hello, 2026-11-21: lint changed files only, cached)
+.eslintcache

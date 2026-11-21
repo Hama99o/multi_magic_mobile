@@ -36,8 +36,20 @@ describe("inAppRoute", () => {
   });
 
   it("records the app has no screen for stay on the web", () => {
-    expect(inAppRoute({ key: "flow_card", path: "/flow/3/cards/9", label: null })).toBeNull();
+    expect(inAppRoute({ key: "not_on_the_phone", path: "/someday/9", label: null })).toBeNull();
     expect(inAppRoute({ key: null, path: null, label: null })).toBeNull();
+  });
+
+  // Tables (2026-11-20, increment 1). Paths per `frontend_routes.rb`.
+  it("a table opens on its screen, a row on its page, a view by its id", () => {
+    expect(inAppRoute({ key: "tables", path: "/tables", label: null })).toBe("/tables");
+    expect(inAppRoute({ key: "table_app_table", path: "/tables/2/5", label: null })).toEqual({ pathname: "/tables/table", params: { id: "5", base: "2" } });
+    expect(inAppRoute({ key: "table_app_record", path: "/tables/2/5?record=9", label: null })).toEqual({ pathname: "/tables/record", params: { table: "5", id: "9" } });
+    expect(routeForWebPath("/tables/2/5?view=70")).toEqual({ pathname: "/tables/table", params: { id: "5", base: "2", view: "70" } });
+    // An export link opens the table; the file is the web's to save.
+    expect(routeForWebPath("/tables/2/5?export=9")).toEqual({ pathname: "/tables/table", params: { id: "5", base: "2" } });
+    // A damaged row id falls back to the bases list, never a wrong row.
+    expect(inAppRoute({ key: "table_app_record", path: "/tables/2/5?record=x", label: null })).toBe("/tables");
   });
 
   // Finance (2026-11-20, parity F-X3). Paths per `frontend_routes.rb`:
@@ -157,7 +169,6 @@ describe("routeForWebPath", () => {
   });
 
   it("Tables, forms and anything unknown have no screen here", () => {
-    expect(routeForWebPath("/tables/2/5?export=9")).toBeNull();
     expect(routeForWebPath("/tables/2")).toBeNull();
     expect(routeForWebPath("/f/abc?invite=tok")).toBeNull();
     expect(routeForWebPath("/conversations?conversation_id=abc")).toBeNull();

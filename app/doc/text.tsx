@@ -33,7 +33,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { familyFor } from "@/theme/fonts";
 import { FILL } from "@/theme/fill";
-import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake, useRetry } from "@/screens/doc/ui";
+import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake, useRetry, useKeepUnsaved } from "@/screens/doc/ui";
 import { PdfPage, inspectionProblem, useInspect } from "@/screens/doc/pdf";
 import { Chip, SectionLabel, Stepper, Swatches } from "@/screens/doc/controls";
 import {
@@ -121,6 +121,8 @@ export default function TextEditorScreen() {
   const outlines = (doc?.outlines ?? []).filter((o) => o.page === page);
   const rotated = Boolean(geometry && geometry.rotation % 360 !== 0);
   const edits = useMemo(() => buildEdits(drafts, byKey), [drafts, byKey]);
+  // Work in progress asks before Change or Back drops it (review 88, D3).
+  const { guard } = useKeepUnsaved(edits.length > 0);
   const warning = doc ? loadWarning(doc) : null;
   const pageCount = doc?.pages.length ?? 0;
 
@@ -174,7 +176,7 @@ export default function TextEditorScreen() {
               file={file}
               note={doc ? t("doc.file.pages", { count: pageCount }) : null}
               right={
-                <Pressable onPress={intake.openSheet} accessibilityRole="button" accessibilityLabel={t("doc.intake.change")} style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }} testID="doc-text-change">
+                <Pressable onPress={guard(intake.openSheet)} accessibilityRole="button" accessibilityLabel={t("doc.intake.change")} style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }} testID="doc-text-change">
                   <Text variant="label" tone="accent">
                     {t("doc.intake.change")}
                   </Text>

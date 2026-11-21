@@ -11,6 +11,7 @@
  */
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, Pressable, View } from "react-native";
+import { useNavigation } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Image as ExpoImage } from "expo-image";
 import { DocError, type CallOptions, type DocFile, type DocResult, type Progress } from "@/api/doc";
@@ -273,6 +274,39 @@ export function useDocTask() {
   const clearError = useCallback(() => setState((s) => ({ ...s, error: null })), []);
 
   return { ...state, run, cancel, clearError };
+}
+
+/**
+ * Work in progress is not dropped without asking (review 88, D3, 2026-11-21).
+ * While `dirty` (pages turned, text edited, signatures placed), leaving the
+ * screen (Back, a swipe: `beforeRemove`) and `guard(fn)` (Change: another file)
+ * ask first; nothing changed, they go at once.
+ */
+export function useKeepUnsaved(dirty: boolean) {
+  const { t } = useTranslation();
+  const navigation = useNavigation();
+  const leaving = useRef(false);
+  const ask = useCallback(
+    (go: () => void) =>
+      Alert.alert(t("doc.unsaved.title"), t("doc.unsaved.body"), [
+        { text: t("doc.unsaved.keep"), style: "cancel" },
+        { text: t("doc.unsaved.leave"), style: "destructive", onPress: go },
+      ]),
+    [t],
+  );
+  useEffect(() => {
+    if (!dirty) return;
+    return navigation.addListener("beforeRemove", (e) => {
+      if (leaving.current) return;
+      e.preventDefault();
+      ask(() => {
+        leaving.current = true;
+        navigation.dispatch(e.data.action);
+      });
+    });
+  }, [dirty, navigation, ask]);
+  const guard = useCallback((fn: () => void) => () => (dirty ? ask(fn) : fn()), [dirty, ask]);
+  return { guard };
 }
 
 /**

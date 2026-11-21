@@ -34,6 +34,7 @@ export const docEn = {
     remove: "Remove {{name}}",
     checking: "Checking…",
   },
+  unsaved: { title: "Leave without saving?", body: "What you changed in this document will be lost.", keep: "Keep editing", leave: "Leave" },
   busy: {
     uploading: "Sending… {{percent}}%",
     working: "Working on it…",

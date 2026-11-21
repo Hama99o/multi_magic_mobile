@@ -36,6 +36,7 @@ export const docFr: typeof docEn = {
     remove: "Retirer {{name}}",
     checking: "Vérification…",
   },
+  unsaved: { title: "Quitter sans enregistrer ?", body: "Ce que vous avez modifié dans ce document sera perdu.", keep: "Continuer", leave: "Quitter" },
   busy: {
     uploading: "Envoi… {{percent}} %",
     working: "Traitement en cours…",

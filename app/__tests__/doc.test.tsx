@@ -31,6 +31,8 @@ import CompressScreen from "../doc/compress";
 import * as DocumentPicker from "expo-document-picker";
 
 jest.mock("expo-router", () => ({
+  // Doc tools listen for beforeRemove (unsaved work, review 88 D3).
+  useNavigation: () => ({ addListener: () => () => undefined, dispatch: jest.fn() }),
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: () => true, dismissTo: jest.fn() },
   useLocalSearchParams: () => ({}),
   usePathname: () => "/doc",

@@ -466,3 +466,31 @@ finding of 88's review of ff's (runs 10 and 12).
 | `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
 
 **Run 13: 0 failures** at 7188716.
+
+## Run 14 — 2026-11-21/22, ee's fixes from 88's review (tonight's device tree)
+
+| Branch @ head | Owner | What is new | Merge |
+|---|---|---|---|
+| `feat/doc-tools` @ ab9b2e6 | ee | D3–D6 (to 91318b4), then unsaved work asks before Change/Back (dac50f8), a signature edit never duplicates (ab9b2e6) | clean |
+| `feat/pages-parity` @ 671fd65 | ee | P4–P7, S2, S3 | 3 files, below |
+
+- `app/pages/edit.tsx`, `view.tsx`, `folder.tsx`: Pages' new guards met
+  pane-nav's imports. rerere replayed ee's resolution (recorded in its slot
+  tree): pane-nav's `useNav`/`useNavParams` kept, `useNavigation` added for
+  `beforeRemove`, `Alert` in edit.tsx, folder.tsx deps `[spaceId, parentId,
+  t, router, client]`. Checked file by file against ee's description first.
+- **One merge-only lint failure, fixed in integration (126dcae):** ee's
+  `goBack` calls `router.back()`; on its branch `router` is the singleton,
+  after pane-nav it is `useNav()`'s value, so `react-hooks/exhaustive-deps`
+  wants it in the deps. Added; full eslint re-run: 0.
+- Not in it, by design: `feat/workspace-w1` (G1). Its pane swap would not fire
+  `beforeRemove` (ee's question): a ship blocker in W1's SPEC §H (88).
+
+| Gate (guarded.sh, Jest 1 worker, node 22.19.0) | Result |
+|---|---|
+| tsc | 0 errors |
+| eslint, 417 changed files | 1 warning (above) → fixed → **0** |
+| Jest, full | 353 suites passed; **4209 / 4209 tests passed, 0 failed** |
+| `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
+
+**Run 14: 0 failures** at 126dcae. **The device tree for tonight's MM slots.**

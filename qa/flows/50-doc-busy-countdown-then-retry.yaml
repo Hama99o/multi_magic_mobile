@@ -1,0 +1,72 @@
+# Readiness "States" for Doc, the server-busy state (docs/RELEASE_READINESS.md):
+# multi-magic-83 holds :3020's one Doc slot (pg_advisory_lock on
+# DocApp::HeavyJob::KEY, no real job) when pinged "hold slot", and says when it
+# was held and released. A compress preview then waits 20 s and gets
+# 503 { reason: "busy" } with Retry-After: 10.
+#
+# Run it right after 83 confirms the hold (`qa/doc-readiness.sh busy`).
+#
+# COVERS: the busy sentence, the countdown with Retry disabled, Retry enabled
+# after it, and a result once the slot is free (Retry tapped as often as the
+# hold lasts, at most 8 times).
+# CANNOT TELL YOU: the French sentence (en here), or a merge/convert busy.
+appId: ${APP_ID}
+tags: [doc, readiness, busy]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-doc"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-doc"
+- tapOn:
+    id: "doc-tool-compress"
+- tapOn:
+    id: "doc-compress-intake-add"
+- tapOn:
+    id: "doc-intake-files"
+- extendedWaitUntil:
+    visible: "sdk_gphone.*"
+    timeout: 20000
+- tapOn: "sdk_gphone.*"
+- tapOn: "Download"
+- tapOn: "qa-doc.pdf"
+# The preview waits up to 20 s for the slot, then the busy answer.
+- extendedWaitUntil:
+    visible: "Server busy, try again in a moment."
+    timeout: 60000
+- assertVisible: "Retry in .* s"
+- takeScreenshot: reports/50-doc-busy-countdown
+- extendedWaitUntil:
+    visible:
+      id: "doc-error-retry"
+      enabled: true
+    timeout: 20000
+- takeScreenshot: reports/50-doc-busy-retry-ready
+- repeat:
+    times: 8
+    while:
+      notVisible:
+        id: "doc-compress-outcome"
+    commands:
+      - extendedWaitUntil:
+          visible:
+            id: "doc-error-retry"
+            enabled: true
+          timeout: 40000
+      - tapOn:
+          id: "doc-error-retry"
+      # A retry inside the hold waits its 20 s and is busy again; outside it,
+      # the outcome comes.
+      - extendedWaitUntil:
+          visible:
+            id: "doc-compress-outcome"
+          timeout: 30000
+          optional: true  # lint: optional-ok — the loop's own exit test; the assert after the loop is the point
+- assertVisible:
+    id: "doc-compress-outcome"
+- takeScreenshot: reports/50-doc-busy-then-done

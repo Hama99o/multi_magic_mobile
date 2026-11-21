@@ -59,8 +59,8 @@ appId: ${APP_ID}
     commands:
       # lint: anchored-ok — Expo Go's own developer-menu button, whose whole
       # node is "Continue" (native, English-only, not an app string). The app's
-      # French "Continuer à modifier" (doc.creator.keep) contains it, which is
-      # what the linter sees; a `.*` here would match that too, so it stays exact.
+      # French "Continuer à modifier" contains it, which is what the linter
+      # sees; a `.*` here would match that too, so it stays exact.
       - tapOn: "Continue"
 
 # AND THE DEV CLIENT'S MENU, which is a different menu with different words.
@@ -78,6 +78,17 @@ appId: ${APP_ID}
 - runFlow:
     when:
       visible: "Element inspector"
+    commands:
+      - pressKey: Back
+
+# AND THE CURRENT DEV CLIENT'S OWN MENU SHEET (2026-11-21, qa_phone, SDK 57):
+# a bottom sheet with "Runtime version: exposdk:…", Reload, Go home and Tools,
+# opened over the app at launch. Neither guard above matches its words, and it
+# swallowed every tap: the smoke flow failed "profile-open-theme not found"
+# with the sheet up. Back closes it.
+- runFlow:
+    when:
+      visible: "Runtime version.*"
     commands:
       - pressKey: Back
 

@@ -1,0 +1,51 @@
+# Readiness "Kbd" for Doc (docs/RELEASE_READINESS.md): the Text tool's edit
+# sheet with the keyboard up. Its sheet was on KeyboardAvoidingView "height"
+# (fixed 0c5c012, the shape measured leaving Save under the keyboard in Pages,
+# flow 33); this is the device check owed. The PDF is pushed by
+# `doc-readiness.sh device` (one page, the line "Trip to Lyon").
+#
+# COVERS: the field AND its Done visible while the keyboard is up.
+# CANNOT TELL YOU: anything the server does with the edit (SPEC §F).
+appId: ${APP_ID}
+tags: [doc, readiness]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-doc"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-doc"
+- tapOn:
+    id: "doc-tool-text"
+- tapOn:
+    id: "doc-text-intake-add"
+- tapOn:
+    id: "doc-intake-files"
+# The system picker opens on its last place: storage root, then Download.
+- extendedWaitUntil:
+    visible: "sdk_gphone.*"
+    timeout: 20000
+- tapOn: "sdk_gphone.*"
+- tapOn: "Download"
+- tapOn: "qa-doc.pdf"
+- extendedWaitUntil:
+    visible:
+      id: "doc-text-line"
+    timeout: 60000
+- tapOn:
+    id: "doc-text-line"
+- tapOn:
+    id: "doc-text-input"
+- extendedWaitUntil:
+    visible:
+      id: "doc-text-done"
+    timeout: 10000
+- assertVisible:
+    id: "doc-text-input"
+- takeScreenshot: reports/48-doc-text-keyboard
+- tapOn:
+    id: "doc-text-done"

@@ -1,0 +1,31 @@
+# Readiness pictures for Doc: the hub and the Text tool's intake at the
+# label `doc-readiness.sh` passes in ${SHOT} (360, 411, 800, 411-dark,
+# 411-font200), after a relaunch per setting.
+#
+# COVERS: nothing asserted beyond arriving; the shots are for a person.
+# CANNOT TELL YOU: anything a screenshot is not read for.
+appId: ${APP_ID}
+tags: [doc, readiness, shots]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-doc"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-doc"
+- extendedWaitUntil:
+    visible:
+      id: "doc-tools"
+    timeout: 30000
+- takeScreenshot: reports/49-doc-hub-${SHOT}
+- tapOn:
+    id: "doc-tool-text"
+- extendedWaitUntil:
+    visible:
+      id: "doc-text-intake"
+    timeout: 20000
+- takeScreenshot: reports/49-doc-text-${SHOT}

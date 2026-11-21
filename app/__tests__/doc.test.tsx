@@ -232,7 +232,7 @@ it("a busy server is said plainly and Retry runs the same compress again (Hello,
   (DocumentPicker.getDocumentAsync as jest.Mock).mockResolvedValue({ canceled: false, assets: [{ uri: "file:///cache/Scan.pdf", name: "Scan.pdf", mimeType: "application/pdf", size: 1000 }] });
   mock
     .onPost("/api/v1/doc_app/compress")
-    .replyOnce(503, { reason: "busy", message: "Another document is being processed." }, { "retry-after": "5" })
+    .replyOnce(503, { reason: "busy", message: "Another document is being processed." }, { "retry-after": "1" })
     .onPost("/api/v1/doc_app/compress")
     .replyOnce(200, new ArrayBuffer(8), { "x-original-size": "1000", "x-compressed-size": "500", "content-type": "application/pdf" });
   show(<CompressScreen />);
@@ -240,6 +240,9 @@ it("a busy server is said plainly and Retry runs the same compress again (Hello,
   fireEvent.press(await screen.findByTestId("doc-intake-files"));
   expect(await screen.findByText("Server busy, try again in a moment.", {}, { timeout: 3000 })).toBeTruthy();
   expect(mock.history.post.filter((r) => r.url?.endsWith("/compress"))).toHaveLength(1);
+  // Retry-After: 1. Locked first, then Retry.
+  expect(screen.getByText("Retry in 1 s")).toBeTruthy();
+  await waitFor(() => expect(screen.getByText("Retry")).toBeTruthy(), { timeout: 3000 });
   fireEvent.press(screen.getByTestId("doc-error-retry"));
   await waitFor(() => expect(mock.history.post.filter((r) => r.url?.endsWith("/compress"))).toHaveLength(2));
   await waitFor(() => expect(screen.queryByText("Server busy, try again in a moment.")).toBeNull());

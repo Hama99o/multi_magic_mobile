@@ -32,3 +32,31 @@ describe("ErrorLine", () => {
     expect(screen.queryByTestId("doc-error-retry")).toBeNull();
   });
 });
+
+describe("Retry-After is honoured", () => {
+  it("Retry waits the seconds the server asked for, counting down, then runs", () => {
+    jest.useFakeTimers();
+    try {
+      const onRetry = jest.fn();
+      render(<ErrorLine error={new DocError("busy", null, 10)} onRetry={onRetry} />);
+      const button = screen.getByTestId("doc-error-retry");
+      expect(screen.getByText("Retry in 10 s")).toBeTruthy();
+      expect(button.props.accessibilityState).toMatchObject({ disabled: true });
+      fireEvent.press(button);
+      expect(onRetry).not.toHaveBeenCalled();
+      act(() => jest.advanceTimersByTime(4000));
+      expect(screen.getByText("Retry in 6 s")).toBeTruthy();
+      act(() => jest.advanceTimersByTime(6000));
+      expect(screen.getByText("Retry")).toBeTruthy();
+      fireEvent.press(screen.getByTestId("doc-error-retry"));
+      expect(onRetry).toHaveBeenCalledTimes(1);
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("a server that names no wait gets Retry at once", () => {
+    render(<ErrorLine error={new DocError("busy")} onRetry={jest.fn()} />);
+    expect(screen.getByText("Retry")).toBeTruthy();
+  });
+});

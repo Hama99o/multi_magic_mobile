@@ -74,6 +74,7 @@ export const docEn = {
     rate_limited: "Too many requests in a minute. Wait a moment and try again.",
     busy: "Server busy, try again in a moment.",
     retry: "Retry",
+    retryIn: "Retry in {{seconds}} s",
     offline: "MultiMagic could not be reached, or stopped answering. Check your connection and try again.",
     unknown: "That did not work. Try again.",
     named: "{{name}}: {{reason}}",

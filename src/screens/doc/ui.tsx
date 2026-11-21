@@ -330,6 +330,16 @@ export function ErrorLine({ error, name, onDismiss, onRetry }: { error: DocError
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
+  // Retry-After (multi-magic-83's lock sends 10): Retry waits the seconds the
+  // server asked for, counting down, so a tap cannot join the queue it just left.
+  const [wait, setWait] = useState(0);
+  useEffect(() => {
+    const seconds = error?.reason === "busy" && error.retryAfter ? error.retryAfter : 0;
+    setWait(seconds);
+    if (!seconds) return;
+    const id = setInterval(() => setWait((w) => (w <= 1 ? (clearInterval(id), 0) : w - 1)), 1000);
+    return () => clearInterval(id);
+  }, [error]);
   if (!error) return null;
   // Our own words for every known reason (both languages); the server's
   // sentence only where it is the sole explanation (`invalid`, an unknown).
@@ -340,9 +350,9 @@ export function ErrorLine({ error, name, onDismiss, onRetry }: { error: DocError
         {text}
       </Text>
       {onRetry && error.reason === "busy" ? (
-        <Pressable onPress={onRetry} accessibilityRole="button" testID="doc-error-retry" style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }}>
-          <Text variant="label" tone="accent">
-            {t("doc.errors.retry")}
+        <Pressable onPress={onRetry} disabled={wait > 0} accessibilityRole="button" accessibilityState={{ disabled: wait > 0 }} testID="doc-error-retry" style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }}>
+          <Text variant="label" tone={wait > 0 ? "muted" : "accent"}>
+            {wait > 0 ? t("doc.errors.retryIn", { seconds: wait }) : t("doc.errors.retry")}
           </Text>
         </Pressable>
       ) : null}

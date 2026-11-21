@@ -76,6 +76,7 @@ export const docFr: typeof docEn = {
     rate_limited: "Trop de demandes en une minute. Patientez un instant et réessayez.",
     busy: "Serveur occupé, réessayez dans un instant.",
     retry: "Réessayer",
+    retryIn: "Réessayer dans {{seconds}} s",
     offline: "MultiMagic est injoignable ou a cessé de répondre. Vérifiez votre connexion et réessayez.",
     unknown: "Cela n’a pas fonctionné. Réessayez.",
     named: "{{name}} : {{reason}}",

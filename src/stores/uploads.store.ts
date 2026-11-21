@@ -539,7 +539,13 @@ export const useUploads = create<UploadsState>((set, get) => {
             ? { ...item, status: "queued" as const, attempts: 0, retryAt: 0 }
             : item,
       );
-      set({ items, hydrated: true });
+      // MERGED, not replaced: a share that arrived while AsyncStorage was read
+      // (a cold start from the share sheet) is already queued, and replacing
+      // the list dropped its row, then the sweep deleted its copy (review 88, S2).
+      set((state) => {
+        const known = new Set(items.map((item) => item.id));
+        return { items: [...items, ...state.items.filter((item) => !known.has(item.id))], hydrated: true };
+      });
       sweepCopies(stored.filter((item) => item.status === "preparing").map((item) => item.id), get().items);
       if (!appStateWired) {
         appStateWired = true;

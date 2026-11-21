@@ -234,3 +234,33 @@ ready and was not waited for (Hello). `feat/pages-parity` has moved since
 | `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
 
 **Run 4: 0 failures.** The base for 88's W0 (useNav).
+
+## Run 5 — 2026-11-21, run 4 plus the keyboard work and the sweeps' follow-ups
+
+| Branch @ head | Owner | What is new | Merge |
+|---|---|---|---|
+| `fix/kav-height` @ 990d723 | ee | new: a lint rule refusing KeyboardAvoidingView "height" | 2 files, below |
+| `feat/tables` @ b5dfdf9 | 88 | the device pass's three findings | clean |
+| `feat/doc-tools` @ 0c5c012 | ee | the text sheet rises with KeyboardPadding | clean |
+| `feat/pages-parity` @ 5958fde | ee | keyboard fixes, the spaceEdit flake fix, login.yaml | clean |
+| `feat/sheet-frame` @ 59670cd | ff | the unused `Modal` imports (found by 88's lint) | clean |
+
+- `eslint-fixtures/clean.tsx`: hygiene's `EmptyFade` and kav-height's
+  `PaddingIsFine` are both legitimate forms. **Both kept.**
+- `src/__tests__/eslintRules.test.ts`: the clean-fixture test's title, "all
+  nine" against "every rule". **kav-height's**, which does not go stale.
+- No KeyboardAvoidingView "height" anywhere in the merged tree (grep); every
+  one is "padding".
+
+**The gates now include eslint** (88 found a warning no other gate sees): `--cache
+--max-warnings 0` on every `.ts`/`.tsx` the integration changes against
+origin/main.
+
+| Gate (guarded.sh, Jest 1 worker, node 22.19.0) | Result |
+|---|---|
+| tsc | 0 errors |
+| eslint, 329 changed files | 0 errors, 0 warnings |
+| Jest, full | 323 suites passed; **4078 / 4078 tests passed, 0 failed** |
+| `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
+
+**Run 5: 0 failures** at 73d14ad (code); docs after it: the release table.

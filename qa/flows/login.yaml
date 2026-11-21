@@ -81,6 +81,17 @@ appId: ${APP_ID}
     commands:
       - pressKey: Back
 
+# AND THE CURRENT DEV CLIENT'S OWN MENU SHEET (2026-11-21, qa_phone, SDK 57):
+# a bottom sheet with "Runtime version: exposdk:…", Reload, Go home and Tools,
+# opened over the app at launch. Neither guard above matches its words, and it
+# swallowed every tap: the smoke flow failed "profile-open-theme not found"
+# with the sheet up. Back closes it.
+- runFlow:
+    when:
+      visible: "Runtime version.*"
+    commands:
+      - pressKey: Back
+
 # The assistant left open OVER something (it is an overlay now): close it.
 - runFlow:
     when:

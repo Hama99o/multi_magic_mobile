@@ -16,7 +16,7 @@
  * Every write goes through the data layer (api/queries.ts), which writes the
  * server's note into the open note and the cards, and refreshes both.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, TextInput, View } from "react-native";
 import { SheetFrame } from "@/components/SheetFrame";
 import { useTranslation } from "react-i18next";
@@ -64,6 +64,19 @@ export function NoteShareSheet({ visible, note, onClose }: { visible: boolean; n
       setFailed(failureMessage(e, t("notes.share.failed")));
       return false;
     }
+  };
+  // One reminder per intent: each tap emails a real person, and two taps land
+  // before `isPending` re-renders the bell disabled (review N2, 88; the same
+  // shape as the + latch in 887b603). Held until the send settles.
+  const reminding = useRef(false);
+  const sendReminder = (userId: number, name: string) => {
+    if (reminding.current) return;
+    reminding.current = true;
+    void run(() => remind.mutateAsync({ id: note.id, userId }))
+      .then((ok) => ok && setReminded(name))
+      .finally(() => {
+        reminding.current = false;
+      });
   };
 
   const invite = async () => {
@@ -171,7 +184,7 @@ export function NoteShareSheet({ visible, note, onClose }: { visible: boolean; n
                 </Pressable>
                 <Pressable
                   testID={`note-share-user-${u.id}-remind`}
-                  onPress={() => void run(() => remind.mutateAsync({ id: note.id, userId: u.id })).then((ok) => ok && setReminded(u.name))}
+                  onPress={() => sendReminder(u.id, u.name)}
                   disabled={remind.isPending}
                   accessibilityRole="button"
                   accessibilityLabel={t("notes.share.remindNamed", { name: u.name })}

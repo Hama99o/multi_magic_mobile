@@ -234,10 +234,15 @@ describe("the callback it calls", () => {
   it("is the one from the latest render, not the one from the first", async () => {
     const first = jest.fn();
     const second = jest.fn();
-    const { rerender } = renderHook(({ cb }: { cb: (t: string) => void }) => useSpeechToText(cb), {
+    const { rerender, result } = renderHook(({ cb }: { cb: (t: string) => void }) => useSpeechToText(cb), {
       initialProps: { cb: first as (t: string) => void },
     });
     await settle(native.isRecognitionAvailable);
+    // Results reach only the instance that STARTED listening (review N1, 88,
+    // 2026-11-21: they used to reach every mounted one), so this starts first.
+    await act(async () => {
+      await result.current.start();
+    });
 
     rerender({ cb: second as (t: string) => void });
     act(() => handlers.result({ isFinal: true, results: [{ transcript: "la banque" }] }));

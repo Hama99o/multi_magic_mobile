@@ -97,6 +97,15 @@ try {
 
 const ExpoSpeechRecognitionModule = speech?.ExpoSpeechRecognitionModule ?? null;
 /** A no-op subscription when there is no module, so the hook order is stable. */
+/** The hook instance that started the one native recogniser (see `me` below). */
+let speechOwner: symbol | null = null;
+/**
+ * Each mounted instance's way back to idle. A second instance claiming the
+ * recogniser calls the first one's, or the first keeps a live mic that no
+ * longer hears anything (review N1c, 88).
+ */
+const toIdle = new Map<symbol, () => void>();
+
 const useSpeechRecognitionEvent: SpeechModule["useSpeechRecognitionEvent"] =
   speech?.useSpeechRecognitionEvent ?? (() => {});
 
@@ -316,6 +325,38 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
   /** A cancel must suppress the final result that is already on its way. */
   const cancelledRef = useRef(false);
 
+  /**
+   * WHICH hook instance owns the one native recogniser. Its events are
+   * module-wide: every mounted instance hears every result. The note editor
+   * opens on top of the assistant, which stays mounted, so dictating in a note
+   * also appended each phrase to the composer's saved draft (review N1a, 88,
+   * 2026-11-21). `start` claims it, every handler checks it, and a second
+   * instance starting takes it (the recogniser is now its).
+   */
+  const me = useRef<symbol>(Symbol("speech"));
+  const mine = () => speechOwner === me.current;
+
+  // Leaving while listening stops the recogniser: `continuous: true` never
+  // ends by itself, and the next screen's instance would hear everything said
+  // (review N1b). Only the owner aborts; another instance's session is left.
+  useEffect(() => {
+    const token = me.current;
+    toIdle.set(token, () => {
+      setListening(false);
+      setInterim("");
+    });
+    return () => {
+      toIdle.delete(token);
+      if (speechOwner !== token) return;
+      speechOwner = null;
+      try {
+        ExpoSpeechRecognitionModule?.abort();
+      } catch {
+        // Already stopped.
+      }
+    };
+  }, []);
+
   useEffect(() => {
     void (async () => {
       try {
@@ -344,7 +385,7 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
   }, []);
 
   useSpeechRecognitionEvent("result", (event) => {
-    if (cancelledRef.current) return;
+    if (!mine() || cancelledRef.current) return;
     const transcript = event.results?.[0]?.transcript ?? "";
     if (!transcript) return;
 
@@ -358,12 +399,16 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
   });
 
   useSpeechRecognitionEvent("end", () => {
+    if (!mine()) return;
+    speechOwner = null;
     setListening(false);
     setInterim("");
     cancelledRef.current = false;
   });
 
   useSpeechRecognitionEvent("error", (event) => {
+    if (!mine()) return;
+    speechOwner = null;
     setListening(false);
     setInterim("");
     // "not-allowed" is a refusal; the rest are ordinary failures (no speech
@@ -398,6 +443,8 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
       setRefused(false);
       setInterim("");
       setListening(true);
+      if (speechOwner && speechOwner !== me.current) toIdle.get(speechOwner)?.();
+      speechOwner = me.current;
       ExpoSpeechRecognitionModule.start({
         lang,
         interimResults: true,
@@ -442,6 +489,7 @@ export function useSpeechToText(onFinal: (text: string) => void): UseSpeechToTex
 
   const cancel = useCallback(() => {
     cancelledRef.current = true;
+    if (mine()) speechOwner = null;
     setInterim("");
     setListening(false);
     if (!ExpoSpeechRecognitionModule) return;

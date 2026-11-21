@@ -29,6 +29,7 @@ const view = (config: Partial<View["config"]> = {}): View => ({
     coverFieldId: null,
     kanbanFieldId: null,
     calendarFieldId: null,
+    columnWidths: {},
     ...config,
   },
 });

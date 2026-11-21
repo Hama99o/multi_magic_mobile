@@ -50,6 +50,8 @@ import { ViewsSheet } from "@/screens/tables/ViewsSheet";
 import { useTableAdmin } from "@/screens/tables/useTableAdmin";
 import { useTableExport } from "@/screens/tables/useTableExport";
 import { ImportBanner } from "@/screens/tables/ImportBanner";
+import { GridView } from "@/screens/tables/GridView";
+import { showsGrid } from "@/screens/tables/grid";
 import { DeleteByNameSheet } from "@/screens/tables/DeleteByNameSheet";
 import { BulkEditSheet } from "@/screens/tables/BulkEditSheet";
 import { ShareSheet } from "@/screens/tables/ShareSheet";
@@ -171,6 +173,9 @@ export default function TableScreen() {
   // On a phone narrower than this the order chip is an icon, so the view's
   // NAME keeps its room (at 360 dp it shrank to an icon, at 411 to "G…").
   const { width: screenWidth } = useWindowDimensions();
+  // Increment 9: the grid where the web shows one (720 dp and up, a grid view); cards below.
+  const grid = Boolean(view && showsGrid(screenWidth, view.viewType));
+  const summary = useQuery({ queryKey: tablesKeys.summary(tableId, queryKey), queryFn: () => tablesApi.summary(tableId, query ?? {}), enabled: grid && Boolean(query) });
   const compactToolbar = screenWidth < 420;
   const count = countLine(firstPage, t, i18n.language);
 
@@ -518,6 +523,21 @@ export default function TableScreen() {
           }}
           folded={layer.foldedColumns}
           onToggleFold={(key) => change({ foldedColumns: toggleFolded(layer.foldedColumns, key) })}
+        />
+      ) : grid && view && table.data ? (
+        <GridView
+          rows={rows}
+          title={title}
+          fields={visibleFields(fields, view, layer).filter((f) => f.id !== table.data?.primaryFieldId)}
+          primaryFieldId={table.data.primaryFieldId}
+          widths={view.config.columnWidths}
+          known={known}
+          summary={summary.data ?? null}
+          totalRows={firstPage?.totalCount ?? null}
+          onOpen={openRow}
+          onEndReached={() => {
+            if (records.hasNextPage && !records.isFetchingNextPage && !records.error) void records.fetchNextPage();
+          }}
         />
       ) : calendarField ? (
         <CalendarView

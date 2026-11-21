@@ -230,6 +230,8 @@ export const tablesKeys = {
   members: <B extends number>(baseId: B) => ["tables", "members", baseId] as const,
   /** What a delete would take with it (`tables#impact`), read when the delete sheet opens. */
   impact: <T extends number>(tableId: T) => ["tables", "impact", tableId] as const,
+  /** The grid's summary bar for one query (increment 9). */
+  summary: <T extends number, Q extends string>(tableId: T, query: Q) => ["tables", "rows", tableId, "summary", query] as const,
   /** A table's forms, one form, its answers (increment 8). */
   forms: <T extends number>(tableId: T) => ["tables", "forms", tableId] as const,
   form: <F extends number>(formId: F) => ["tables", "form", formId] as const,

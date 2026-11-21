@@ -100,6 +100,8 @@ export interface ViewConfig {
   coverFieldId: number | null;
   kanbanFieldId: number | null;
   calendarFieldId: number | null;
+  /** Widths set on the web (`column_widths`, { column id: px }); the tablet grid uses them (increment 9). */
+  columnWidths: Record<string, number>;
 }
 
 export interface View {
@@ -233,6 +235,7 @@ export function parseViewConfig(raw: unknown): ViewConfig {
     hiddenFieldIds: ids(c.hidden_field_ids),
     fieldOrder: ids(c.field_order),
     rowHeight: pick(c.row_height, ROW_HEIGHTS, "short"),
+    columnWidths: c.column_widths && typeof c.column_widths === "object" && !Array.isArray(c.column_widths) ? Object.fromEntries(Object.entries(c.column_widths as Record<string, unknown>).filter(([, w]) => typeof w === "number")) as Record<string, number> : {},
     rowColorFieldId: optId(c.row_color_field_id),
     coverFieldId: optId(c.cover_field_id),
     kanbanFieldId: optId(c.kanban_field_id),
@@ -434,6 +437,29 @@ function parseExport(raw: unknown): TableExport {
 
 /** A file name the cache accepts: no path separators or control characters. */
 const safeName = (name: string) => name.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "_").slice(0, 120);
+
+export interface SummaryCell {
+  filled: number;
+  sum: number | null;
+  avg: number | null;
+}
+
+/** `records#summary`: `{ id: { filled, sum?, avg? } }` for plain columns, `{ id: count }` for links, files and computed ones. */
+export function parseSummary(raw: unknown): Record<number, SummaryCell> {
+  const out: Record<number, SummaryCell> = {};
+  if (!raw || typeof raw !== "object") return out;
+  for (const [key, v] of Object.entries(raw as Record<string, unknown>)) {
+    const fid = Number(key);
+    if (!Number.isFinite(fid)) continue;
+    if (typeof v === "number") out[fid] = { filled: v, sum: null, avg: null };
+    else if (v && typeof v === "object") {
+      const c = v as Record<string, unknown>;
+      const num = (x: unknown) => (typeof x === "number" ? x : typeof x === "string" && x.trim() !== "" && Number.isFinite(Number(x)) ? Number(x) : null);
+      out[fid] = { filled: num(c.filled) ?? 0, sum: num(c.sum), avg: num(c.avg) };
+    }
+  }
+  return out;
+}
 
 export interface FieldUsage {
   filledCount: number;
@@ -686,6 +712,18 @@ export const tablesApi = {
   },
 
   /** Many rows to the trash at once; `restore` with the ids brings them back. */
+  /** The summary bar (increment 9; `records#summary`): per column, how many rows are filled, a number's sum and average, over the whole view. */
+  async summary(tableId: number, query: { search?: string; filters?: FilterCondition[]; match?: "and" | "or" }): Promise<Record<number, SummaryCell>> {
+    const params: Record<string, string> = {};
+    if (query.search?.trim()) params.search = query.search.trim();
+    if (query.filters?.length) {
+      params.filters = JSON.stringify(query.filters.map((f) => ({ field_id: f.fieldId, op: f.op, value: f.value })));
+      if (query.match) params.match = query.match;
+    }
+    const { data } = await http.get(`${BASE}/tables/${tableId}/records/summary`, { params });
+    return parseSummary(obj(data, "summary response").summary);
+  },
+
   /** These rows in this order, in the positions they already held (the web's kanban reorder). Editors only. */
   async reorderRecords(tableId: number, ids: number[]): Promise<void> {
     await http.post(`${BASE}/tables/${tableId}/records/reorder`, { ids });

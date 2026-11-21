@@ -232,6 +232,8 @@ const PLURAL = new Set([
   "tables.import.wouldRefuse",
   "tables.import.start",
   "tables.forms.answers",
+  "tables.grid.rows",
+  "tables.grid.filled",
   "tables.form.inviteN",
   "tables.form.inviteTitle",
   "tables.columns.deleteFilled",

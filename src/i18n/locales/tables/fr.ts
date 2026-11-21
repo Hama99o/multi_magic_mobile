@@ -132,6 +132,14 @@ export const tablesFr = {
     colorBy: "Colorer les cartes selon",
     noColor: "Sans couleur",
   },
+  grid: {
+    rows_one: "1 ligne",
+    rows_other: "{{count}} lignes",
+    filled_one: "1 remplie",
+    filled_other: "{{count}} remplies",
+    sum: "Σ {{sum}} · moy. {{avg}}",
+    openRow: "Ouvrir la ligne {{row}}",
+  },
   forms: {
     title: "Formulaires",
     hint: "Des pages à remplir pour ajouter des lignes",

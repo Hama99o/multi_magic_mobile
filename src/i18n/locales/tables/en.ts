@@ -133,6 +133,14 @@ export const tablesEn = {
     colorBy: "Colour the cards by",
     noColor: "No colour",
   },
+  grid: {
+    rows_one: "1 row",
+    rows_other: "{{count}} rows",
+    filled_one: "1 filled",
+    filled_other: "{{count}} filled",
+    sum: "Σ {{sum}} · avg {{avg}}",
+    openRow: "Open row {{row}}",
+  },
   forms: {
     title: "Forms",
     hint: "Pages people fill to add rows",

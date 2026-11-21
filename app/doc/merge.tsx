@@ -24,7 +24,7 @@ import { Button } from "@/components/reusables/button";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { checkMerge, kindOf, moveItem } from "@/screens/doc/files";
-import { AddMoreRow, BusyCard, ErrorLine, IntakeCard, ResultSheet, reasonText, useDocTask, useIntake } from "@/screens/doc/ui";
+import { AddMoreRow, BusyCard, ErrorLine, IntakeCard, ResultSheet, reasonText, useDocTask, useIntake, useRetry } from "@/screens/doc/ui";
 import { inspectionProblem, usePageImage } from "@/screens/doc/pdf";
 import { formatBytes } from "@/screens/pages/parts";
 
@@ -43,6 +43,7 @@ export default function MergeScreen() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [results, setResults] = useState<DocResult[] | null>(null);
   const task = useDocTask();
+  const { remember, retry } = useRetry();
 
   const intake = useIntake("any", true, (files) => setItems((now) => [...now, ...files.map(keyed)]));
 
@@ -66,10 +67,10 @@ export default function MergeScreen() {
   const anyProblem = items.some((_, i) => infoOf(i).problem);
   const limit = useMemo(() => checkMerge(items.map((i) => i.file)), [items]);
 
-  const merge = async () => {
+  const merge = remember(async () => {
     const result = await task.run((opts) => docApi.merge(items.map((i) => i.file), opts));
     if (result) setResults([result]);
-  };
+  });
 
   const clearAll = () =>
     Alert.alert(t("doc.merge.clearTitle"), t("doc.merge.clearBody"), [
@@ -160,7 +161,7 @@ export default function MergeScreen() {
               <Text tone="muted">{t("doc.merge.needTwo")}</Text>
             ) : null}
             <BusyCard task={task} />
-            <ErrorLine error={task.error} onDismiss={task.clearError} />
+            <ErrorLine error={task.error} onDismiss={task.clearError} onRetry={retry} />
             <Button testID="doc-merge-go" label={t("doc.merge.merge")} disabled={items.length < 2 || anyProblem || Boolean(limit) || task.busy} onPress={() => void merge()} />
           </>
         )}

@@ -127,7 +127,7 @@ export default function CompressScreen() {
               </View>
             ) : null}
             <BusyCard task={busy} label={t("doc.compress.previewing")} />
-            <ErrorLine error={previewError} name={file.name} />
+            <ErrorLine error={previewError} name={file.name} onRetry={() => void preview.refetch()} />
             {outcome ? (
               <View testID="doc-compress-outcome" style={{ gap: metrics.space.sm }}>
                 <View style={{ flexDirection: "row", gap: metrics.space.sm }}>

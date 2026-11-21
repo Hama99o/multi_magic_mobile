@@ -69,6 +69,8 @@ export type DocReason =
   | "no_signature"
   | "invalid"
   | "rate_limited"
+  /** 503: the server's one-at-a-time lock waited too long (Hello, 2026-11-21). Retry is offered. */
+  | "busy"
   /** Phone-side only: BMP, ICO, JPEG 2000, SVG, refused by the server on purpose. */
   | "unsupported_format"
   | "offline"
@@ -93,6 +95,8 @@ export class DocError extends Error {
     readonly reason: DocReason,
     /** The server's own sentence (it names the file), when it sent one. */
     readonly serverMessage: string | null = null,
+    /** Seconds the server asked us to wait (Retry-After), when it said a number. */
+    readonly retryAfter: number | null = null,
   ) {
     super(serverMessage ?? reason);
     this.name = "DocError";
@@ -209,6 +213,12 @@ export function docError(error: unknown): DocError {
   const response = (error as { response?: { status?: number; data?: unknown } })?.response;
   if (!response) return new DocError("offline");
   if (response.status === 429) return new DocError("rate_limited");
+  if (response.status === 503) {
+    // Any 503, the lock's {reason:"busy"} or a proxy's bare page: "busy, try again" is true of both.
+    const raw = (response as { headers?: Record<string, unknown> }).headers?.["retry-after"];
+    const seconds = typeof raw === "string" && /^\d+$/.test(raw.trim()) ? Number(raw.trim()) : typeof raw === "number" ? raw : null;
+    return new DocError("busy", null, seconds);
+  }
   let body: unknown = response.data;
   if (body instanceof ArrayBuffer) body = utf8(new Uint8Array(body));
   if (typeof body === "string") {

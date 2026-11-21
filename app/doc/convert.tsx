@@ -19,7 +19,7 @@ import { Text } from "@/components/reusables/text";
 import { useMetrics } from "@/hooks/useColors";
 import { convertTargets, kindOf, needsServerPreview, type ConvertTarget } from "@/screens/doc/files";
 import { Chip, SectionLabel } from "@/screens/doc/controls";
-import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake } from "@/screens/doc/ui";
+import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake, useRetry } from "@/screens/doc/ui";
 import { inspectionProblem, useInspect } from "@/screens/doc/pdf";
 
 const FORMAT_LABEL: Record<ConvertTarget, string> = {
@@ -36,6 +36,7 @@ export default function ConvertScreen() {
   const [target, setTarget] = useState<ConvertTarget | null>(null);
   const [results, setResults] = useState<DocResult[] | null>(null);
   const task = useDocTask();
+  const { remember, retry } = useRetry();
   const intake = useIntake("any", false, (files) => {
     setFile(files[0]);
     setTarget(null);
@@ -47,7 +48,7 @@ export default function ConvertScreen() {
   const pages = inspect.data?.pages ?? 0;
   const targets = file ? convertTargets(file) : [];
 
-  const convert = async () => {
+  const convert = remember(async () => {
     if (!file || !target) return;
     const base = baseName(file.name);
     const out = await task.run(async (opts): Promise<DocResult[]> => {
@@ -63,7 +64,7 @@ export default function ConvertScreen() {
       return files;
     });
     if (out) setResults(out);
-  };
+  });
 
   return (
     <Screen measure>
@@ -94,7 +95,7 @@ export default function ConvertScreen() {
                   </Text>
                 ) : null}
                 <BusyCard task={task} />
-                <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} />
+                <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} onRetry={retry} />
                 <Button testID="doc-convert-go" label={t("doc.convert.convert")} disabled={!target || task.busy} onPress={() => void convert()} />
               </>
             ) : null}

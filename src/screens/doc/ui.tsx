@@ -40,6 +40,7 @@ const REASON_KEYS: Partial<Record<string, string>> = {
   no_signature: "doc.errors.no_signature",
   invalid: "doc.errors.invalid",
   rate_limited: "doc.errors.rate_limited",
+  busy: "doc.errors.busy",
   unsupported_format: "doc.errors.unsupported_format",
   offline: "doc.errors.offline",
 };
@@ -266,6 +267,26 @@ export function useDocTask() {
   return { ...state, run, cancel, clearError };
 }
 
+/**
+ * Retry for a busy server (Hello, 2026-11-21): `remember(handler)` records the
+ * last submit WITH its arguments (pages' save("extract"), sign's save("pdf")),
+ * and `retry()` runs exactly that again, so its result lands where the first
+ * one would have. The handler is the screen's own, so nothing is re-wired.
+ */
+export function useRetry() {
+  const last = useRef<(() => unknown) | null>(null);
+  const remember = useCallback(
+    <A extends unknown[], R>(fn: (...args: A) => R) =>
+      (...args: A): R => {
+        last.current = () => fn(...args);
+        return fn(...args);
+      },
+    [],
+  );
+  const retry = useCallback(() => void last.current?.(), []);
+  return { remember, retry };
+}
+
 /** What a slow call is doing, and the way out of it. */
 export function BusyCard({ task, label }: { task: TaskState & { cancel: () => void }; label?: string }) {
   const colors = useColors();
@@ -305,7 +326,7 @@ export function BusyCard({ task, label }: { task: TaskState & { cancel: () => vo
 }
 
 /** A failure, said in place (not a toast that vanishes before it is read). */
-export function ErrorLine({ error, name, onDismiss }: { error: DocError | null; name?: string; onDismiss?: () => void }) {
+export function ErrorLine({ error, name, onDismiss, onRetry }: { error: DocError | null; name?: string; onDismiss?: () => void; onRetry?: () => void }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -318,6 +339,13 @@ export function ErrorLine({ error, name, onDismiss }: { error: DocError | null; 
       <Text tone="danger" style={{ flex: 1 }}>
         {text}
       </Text>
+      {onRetry && error.reason === "busy" ? (
+        <Pressable onPress={onRetry} accessibilityRole="button" testID="doc-error-retry" style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }}>
+          <Text variant="label" tone="accent">
+            {t("doc.errors.retry")}
+          </Text>
+        </Pressable>
+      ) : null}
       {onDismiss ? (
         <Pressable onPress={onDismiss} accessibilityRole="button" accessibilityLabel={t("common.close")} style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}>
           <X size={18} color={colors.inkMuted} />

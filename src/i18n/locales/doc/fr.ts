@@ -74,6 +74,8 @@ export const docFr: typeof docEn = {
     invalid: "Un élément de la demande n’était pas correct.",
     unsupported_format: "Les fichiers BMP, ICO, JPEG 2000 et SVG ne sont pas acceptés. Enregistrez-le en JPEG ou PNG et réessayez.",
     rate_limited: "Trop de demandes en une minute. Patientez un instant et réessayez.",
+    busy: "Serveur occupé, réessayez dans un instant.",
+    retry: "Réessayer",
     offline: "MultiMagic est injoignable ou a cessé de répondre. Vérifiez votre connexion et réessayez.",
     unknown: "Cela n’a pas fonctionné. Réessayez.",
     named: "{{name}} : {{reason}}",

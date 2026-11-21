@@ -27,7 +27,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { APP_COLORS } from "@/theme/appColors";
 import { kindOf, needsServerPreview } from "@/screens/doc/files";
-import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake } from "@/screens/doc/ui";
+import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake, useRetry } from "@/screens/doc/ui";
 import { PdfPage, inspectionProblem, useInspect } from "@/screens/doc/pdf";
 import { StampBar, StampView, placeAt, resize, toPlacements, turn, type Stamp } from "@/screens/doc/Placement";
 import { useSignatures } from "@/screens/doc/useSignatures";
@@ -51,6 +51,7 @@ export default function SignScreen() {
   const [nativeFailed, setNativeFailed] = useState(false);
   const [results, setResults] = useState<DocResult[] | null>(null);
   const task = useDocTask();
+  const { remember, retry } = useRetry();
 
   const signatures = useSignatures();
   const rows = useMemo(() => signatures.data?.rows ?? [], [signatures.data]);
@@ -116,7 +117,7 @@ export default function SignScreen() {
   const shownStamps = stamps.filter((s) => s.page === (kind === "pdf" ? pageIndex : 0));
   const selectedStamp = stamps.find((s) => s.key === selected) ?? null;
 
-  const save = async (output: "same" | "pdf") => {
+  const save = remember(async (output: "same" | "pdf") => {
     if (!file) return;
     if (stamps.length === 0) {
       setHint(t("doc.sign.placeFirst"));
@@ -138,7 +139,7 @@ export default function SignScreen() {
       return last;
     });
     if (result) setResults([result]);
-  };
+  });
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -228,7 +229,7 @@ export default function SignScreen() {
                     </Text>
                   ) : null}
                   <BusyCard task={task} />
-                  <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} />
+                  <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} onRetry={retry} />
                   <Button testID="doc-sign-save" label={t("doc.sign.save")} disabled={task.busy} onPress={() => void save("same")} />
                   {kind === "image" ? <Button testID="doc-sign-save-pdf" tone="neutral" label={t("doc.sign.saveAsPdf")} disabled={task.busy} onPress={() => void save("pdf")} /> : null}
                 </>

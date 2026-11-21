@@ -72,6 +72,8 @@ export const docEn = {
     invalid: "Something in the request was not right.",
     unsupported_format: "BMP, ICO, JPEG 2000 and SVG files cannot be used. Save it as JPEG or PNG and try again.",
     rate_limited: "Too many requests in a minute. Wait a moment and try again.",
+    busy: "Server busy, try again in a moment.",
+    retry: "Retry",
     offline: "MultiMagic could not be reached, or stopped answering. Check your connection and try again.",
     unknown: "That did not work. Try again.",
     named: "{{name}}: {{reason}}",

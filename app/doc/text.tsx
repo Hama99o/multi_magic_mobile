@@ -32,7 +32,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { familyFor } from "@/theme/fonts";
 import { FILL } from "@/theme/fill";
-import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake } from "@/screens/doc/ui";
+import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake, useRetry } from "@/screens/doc/ui";
 import { PdfPage, inspectionProblem, useInspect } from "@/screens/doc/pdf";
 import { Chip, SectionLabel, Stepper, Swatches } from "@/screens/doc/controls";
 import {
@@ -90,6 +90,7 @@ export default function TextEditorScreen() {
   const [results, setResults] = useState<DocResult[] | null>(null);
   const [said, setSaid] = useState<string[]>([]);
   const task = useDocTask();
+  const { remember, retry } = useRetry();
 
   const intake = useIntake("pdf", false, (files) => {
     setFile(files[0]);
@@ -144,7 +145,7 @@ export default function TextEditorScreen() {
       { text: t("doc.text.discard"), style: "destructive", onPress: () => setDrafts({}) },
     ]);
 
-  const save = async () => {
+  const save = remember(async () => {
     if (!file || edits.length === 0) return;
     const out = await task.run((opts) => docApi.pdfEdit(file, edits, opts));
     if (!out) return;
@@ -157,7 +158,7 @@ export default function TextEditorScreen() {
       ].filter((x): x is string => Boolean(x)),
     );
     setResults([out.result]);
-  };
+  });
 
   const editingRun = editing ? byKey.get(editing) : undefined;
 
@@ -273,7 +274,7 @@ export default function TextEditorScreen() {
                   </Text>
                 ) : null}
                 <BusyCard task={task} />
-                <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} />
+                <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} onRetry={retry} />
                 <Button testID="doc-text-save" label={t("doc.text.save")} disabled={edits.length === 0 || task.busy} onPress={() => void save()} />
                 {edits.length ? <Button testID="doc-text-discard" tone="neutral" label={t("doc.text.discard")} onPress={discard} /> : null}
 

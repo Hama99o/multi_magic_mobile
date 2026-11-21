@@ -158,6 +158,18 @@ describe("refusals", () => {
     }
   });
 
+  it("503 is busy, with the server's Retry-After in seconds when it sends one (Hello, 2026-11-21: the global lock answers 503 {reason:'busy'})", () => {
+    const e = docError({ response: { status: 503, data: { reason: "busy", message: "Another document is being processed." }, headers: { "retry-after": "7" } } });
+    expect(e.reason).toBe("busy");
+    expect(e.retryAfter).toBe(7);
+    // A 503 from anything in front of the server (no body, no header) is still "busy, try again".
+    const bare = docError({ response: { status: 503, data: "" } });
+    expect(bare.reason).toBe("busy");
+    expect(bare.retryAfter).toBeNull();
+    // A Retry-After that is an HTTP date, or nonsense, is not a number of seconds.
+    expect(docError({ response: { status: 503, data: {}, headers: { "retry-after": "soon" } } }).retryAfter).toBeNull();
+  });
+
   it("an unknown reason stays unknown, with the server's sentence", () => {
     const e = docError({ response: { status: 422, data: { message: "pages: entry 4 is past the end", reason: "invalid" } } });
     expect(e.reason).toBe("invalid");

@@ -25,7 +25,7 @@ import { Button } from "@/components/reusables/button";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { APP_COLORS } from "@/theme/appColors";
-import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake } from "@/screens/doc/ui";
+import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake, useRetry } from "@/screens/doc/ui";
 import { inspectionProblem, useInspect, useThumbnails } from "@/screens/doc/pdf";
 import { HISTORY, entriesFor, moveSelected, remove, rotate, splitName, toServer, type Entry } from "@/screens/doc/pageOps";
 
@@ -40,6 +40,7 @@ export default function PagesScreen() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [results, setResults] = useState<DocResult[] | null>(null);
   const task = useDocTask();
+  const { remember, retry } = useRetry();
 
   const intake = useIntake("pdf", false, (files) => {
     setFile(files[0]);
@@ -76,13 +77,13 @@ export default function PagesScreen() {
   const thumbOf = (source: number) => thumbs.data?.pages.find((p) => p.index === source);
 
   const base = file ? baseName(file.name) : "document";
-  const save = async (which: "all" | "extract") => {
+  const save = remember(async (which: "all" | "extract") => {
     if (!file) return;
     const list = which === "all" ? entries : entries.filter((e) => selected.has(e.key));
     const result = await task.run((opts) => docApi.pages(file, toServer(list), false, which === "extract" ? { ...opts, as: `${base}-pages.pdf` } : opts));
     if (result) setResults([result]);
-  };
-  const split = async () => {
+  });
+  const split = remember(async () => {
     if (!file) return;
     const list = entries;
     const out = await task.run(async (opts) => {
@@ -95,7 +96,7 @@ export default function PagesScreen() {
       return files;
     });
     if (out) setResults(out);
-  };
+  });
 
   const sel = selected;
   const toggle = (key: string) =>
@@ -194,7 +195,7 @@ export default function PagesScreen() {
                   </View>
                 )}
                 <BusyCard task={task} />
-                <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} />
+                <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} onRetry={retry} />
                 <Button testID="doc-pages-save" label={t("doc.pages.saveAll")} disabled={task.busy || entries.length === 0} onPress={() => void save("all")} />
                 <Button
                   testID="doc-pages-extract"

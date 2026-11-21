@@ -85,3 +85,37 @@ it("the search field at the top of Home opens global search", () => {
   fireEvent.press(screen.getByTestId("home-search"));
   expect(mockPush).toHaveBeenCalledWith("/search");
 });
+
+// Hidden criterion (Hello, 2026-11-21; device: qa_phone at a 200 % system
+// font, Home showed "SafeZ…", "Finan…", "Doc T…"). The rule: NEVER cut an
+// app's name. Android scales the name's 16 sp by the system font scale, so a
+// 3-column phone tile (~100 dp) cannot hold it at 200 %. Jest measures no
+// text, so this pins the two parts of the fix; the device shot proves it.
+describe("app names at a large system font", () => {
+  const RN = require("react-native");
+  const at = (width: number, fontScale: number) =>
+    jest.spyOn(RN, "useWindowDimensions").mockReturnValue({ width, height: 900, scale: 2.6, fontScale });
+  const tileWidth = () => (screen.getByTestId("home-tile-safezone").props.style as { width: number }).width;
+  afterEach(() => jest.restoreAllMocks());
+
+  it("a phone keeps 3 columns at 100 %", () => {
+    at(360, 1);
+    renderHome();
+    expect(tileWidth()).toBe(Math.floor((360 - 32 - 2 * 10) / 3));
+  });
+
+  it("a phone takes 2 columns from 150 %, so a name has room", () => {
+    at(360, 2);
+    renderHome();
+    expect(tileWidth()).toBe(Math.floor((360 - 32 - 10) / 2));
+  });
+
+  it("a name is never ellipsized: one line that shrinks to fit, never under 60 %", () => {
+    at(360, 2);
+    renderHome();
+    const name = screen.getByText("SafeZone");
+    expect(name.props.numberOfLines).toBe(1);
+    expect(name.props.adjustsFontSizeToFit).toBe(true);
+    expect(name.props.minimumFontScale).toBeGreaterThanOrEqual(0.6);
+  });
+});

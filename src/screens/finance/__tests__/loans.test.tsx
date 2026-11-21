@@ -29,6 +29,12 @@ import { LoansTab } from "../tabs/Loans";
 import LoanDetail from "../../../../app/finance/loan";
 import LoanEdit from "../../../../app/finance/loan-edit";
 
+/** Two taps in the same frame, before any re-render: what a double tap is (hidden-criteria sweep). */
+const doubleTap = (el: Parameters<typeof fireEvent.press>[0]) => {
+  fireEvent.press(el);
+  fireEvent.press(el);
+};
+
 const mockParams: { current: Record<string, string> } = { current: {} };
 jest.mock("expo-router", () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) },
@@ -289,7 +295,7 @@ describe("a loan", () => {
     fireEvent.press(await screen.findByTestId("finance-loan-add-payment"));
     fireEvent.press(screen.getByTestId("finance-payment-rest"));
     expect(screen.getByTestId("finance-payment-amount")).toHaveTextContent("€150");
-    fireEvent.press(screen.getByTestId("finance-payment-save"));
+    doubleTap(screen.getByTestId("finance-payment-save"));
     await waitFor(() => expect(bodies("post", `${B}/loans/31/create_payment`)).toEqual([{ loan_payment: { amount: 150, payment_date: TODAY } }]));
     await waitFor(() => expect(screen.getByTestId("finance-loan-paid-badge")).toBeTruthy());
     expect(screen.queryByTestId("finance-loan-add-payment")).toBeNull();
@@ -364,7 +370,7 @@ describe("the loan form", () => {
     fireEvent.press(await screen.findByTestId("finance-loan-form-tagpicker-tag-4"));
     fireEvent.press(screen.getByTestId("finance-loan-form-tagpicker-done"));
     fireEvent.changeText(screen.getByTestId("finance-loan-form-description"), "Train tickets");
-    fireEvent.press(screen.getByTestId("finance-loan-form-save"));
+    doubleTap(screen.getByTestId("finance-loan-form-save"));
     await waitFor(() => expect(router.back).toHaveBeenCalled());
     expect(bodies("post", `${B}/loans`)).toEqual([
       {

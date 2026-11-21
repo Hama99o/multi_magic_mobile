@@ -714,6 +714,7 @@ released, Metro stopped.
 | `800-dark-en` | **NOT ATTEMPTED** |
 | `360-light-fr` | **NOT ATTEMPTED** |
 | `360-dark-fr` | **NOT ATTEMPTED** |
+| `38-finance-hidden-criteria.yaml` | **NOT MEASURED (written 2026-11-21).** QA account on :3001, invented amounts, cleanup by id (`finance_sweep_fixture.py`). In passes A–E (100 %, 200 %, dark, 360/800 dp, slow network): a double tap on Save makes one expense (counted through the API); the keypad, and Save with the keyboard up; a Dari-named expense drawn; a future month's empty state; offline refresh, then Try again; kill and relaunch back into Finance. | Typing Dari through Maestro (the row is made by the fixture); a runtime permission (Finance asks none); slow-network timing beyond the list arriving. |
 
 360 and 411 are trustworthy: shot after the force-stop moved to the right side
 of the configuration change, and spot-checked against a clean manual relaunch.

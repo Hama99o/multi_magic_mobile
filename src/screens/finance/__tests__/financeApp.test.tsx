@@ -23,6 +23,12 @@ import { IncomeTab } from "../tabs/Income";
 import { OverviewTab } from "../tabs/Overview";
 import Entry from "../../../../app/finance/entry";
 
+/** Two taps in the same frame, before any re-render: what a double tap is (hidden-criteria sweep). */
+const doubleTap = (el: Parameters<typeof fireEvent.press>[0]) => {
+  fireEvent.press(el);
+  fireEvent.press(el);
+};
+
 const mockParams: { current: Record<string, string> } = { current: {} };
 jest.mock("expo-router", () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
@@ -293,7 +299,7 @@ describe("the entry sheet", () => {
     fireEvent.press(screen.getByTestId("finance-entry-all-tags"));
     fireEvent.press(await screen.findByTestId("finance-entry-tags-tag-4"));
     fireEvent.press(screen.getByTestId("finance-entry-tags-done"));
-    fireEvent.press(screen.getByTestId("finance-entry-save"));
+    doubleTap(screen.getByTestId("finance-entry-save"));
     await until(() => router.back.mock.calls.length > 0);
     expect(router.back).toHaveBeenCalled();
     expect(bodies("post", `${B}/expenses`)).toEqual([

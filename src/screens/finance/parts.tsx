@@ -182,7 +182,15 @@ export function AmountPad({ value, onChange, testID = "finance-pad" }: { value: 
           android_ripple={{ color: colors.surface, borderless: false }}
           style={{ width: "33.33%", height: 56, alignItems: "center", justifyContent: "center", borderRadius: metrics.radius.md }}
         >
-          {k === "del" ? <Delete size={24} color={colors.ink} /> : <Text style={{ fontSize: 26, fontWeight: "500" }}>{k === "." ? mark : k}</Text>}
+          {k === "del" ? (
+            <Delete size={24} color={colors.ink} />
+          ) : (
+            // Its own line height (the body's 22 sat under the 26 font) and a 150 % cap: at 200 % a digit
+            // would outgrow its fixed 56 dp key, and at 26 it is already the screen's largest text.
+            <Text maxFontSizeMultiplier={1.5} style={{ fontSize: 26, lineHeight: 32, fontWeight: "500" }}>
+              {k === "." ? mark : k}
+            </Text>
+          )}
         </Pressable>
       ))}
     </View>

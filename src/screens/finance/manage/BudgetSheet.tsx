@@ -23,6 +23,7 @@ import { ChevronDown, Tag as TagIcon, X } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import { useOneAtATime } from "@/hooks/useOneAtATime";
 import { FILL } from "@/theme/fill";
 import { ChoiceSheet } from "@/screens/calendar/ChoiceSheet";
 import { FChip, Field, TagPicker } from "@/screens/finance/parts";
@@ -54,6 +55,7 @@ export function BudgetSheet({ budget, onClose }: { budget: Budget | null; onClos
   const [choosingCurrency, setChoosingCurrency] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const save = useSaveBudget({ onDone: onClose, onError: (e) => setError(refusal(e, t)) });
+  const once = useOneAtATime(); // a double tap saves once
   const remove = useDeleteBudget({ onError: (e) => setError(apiErrorMessage(e) ?? t("finance.manage.failed")) });
   const value = Number(amount || "0");
   const tagName = tagId == null ? null : (tags.data?.find((x) => x.id === tagId)?.name ?? budget?.tag?.name ?? null);
@@ -126,7 +128,7 @@ export function BudgetSheet({ budget, onClose }: { budget: Budget | null; onClos
                 {error}
               </Text>
             ) : null}
-            <Button testID="finance-budget-save" label={t("common.save")} busy={save.isPending} disabled={value <= 0} onPress={() => save.mutate({ id: budget?.id ?? null, input: { amount: value, currency, period, tagId } })} />
+            <Button testID="finance-budget-save" label={t("common.save")} busy={save.isPending} disabled={value <= 0} onPress={() => once(() => save.mutateAsync({ id: budget?.id ?? null, input: { amount: value, currency, period, tagId } }))} />
             {budget ? <Button testID="finance-budget-delete" label={t("common.delete")} tone="danger" onPress={confirmDelete} /> : null}
           </ScrollView>
         </View>

@@ -32,6 +32,12 @@ import Categories from "../../../../app/finance/categories";
 import Reports from "../../../../app/finance/reports";
 import Trash from "../../../../app/finance/trash";
 
+/** Two taps in the same frame, before any re-render: what a double tap is (hidden-criteria sweep). */
+const doubleTap = (el: Parameters<typeof fireEvent.press>[0]) => {
+  fireEvent.press(el);
+  fireEvent.press(el);
+};
+
 const mockParams: { current: Record<string, string> } = { current: {} };
 jest.mock("expo-router", () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) },
@@ -260,7 +266,7 @@ describe("budgets", () => {
     fireEvent.press(screen.getByTestId("finance-budget-amount-currency"));
     fireEvent.press(screen.getByTestId("finance-budget-currencies-usd"));
     fireEvent.press(screen.getByTestId("finance-budget-period-yearly"));
-    fireEvent.press(screen.getByTestId("finance-budget-save"));
+    doubleTap(screen.getByTestId("finance-budget-save"));
     expect(await screen.findByText("$0.00 of $250.00")).toBeTruthy();
     expect(screen.queryByTestId("finance-budget-sheet")).toBeNull();
     expect(bodies("post", `${B}/budgets`)).toEqual([{ budget: { amount: 250, currency: "usd", period: "yearly", tag_id: 3 } }]);
@@ -414,7 +420,7 @@ describe("a recurring rule's form", () => {
     fireEvent.press(screen.getByTestId("finance-recurring-edit-category"));
     fireEvent.press(await screen.findByTestId("finance-recurring-edit-tags-tag-3"));
     fireEvent.changeText(screen.getByTestId("finance-recurring-edit-description"), "Downtown");
-    fireEvent.press(screen.getByTestId("finance-recurring-edit-save"));
+    doubleTap(screen.getByTestId("finance-recurring-edit-save"));
     await waitFor(() => expect(router.back).toHaveBeenCalled());
     expect(bodies("post", `${B}/recurring_expenses`)).toEqual([
       { recurring_expense: { item: "Gym", amount: 45.5, currency: "eur", frequency: "weekly", interval_count: 3, start_date: addDays(TODAY, -1), description: "Downtown", tag_id: 3 } },

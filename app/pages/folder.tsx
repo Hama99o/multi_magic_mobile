@@ -210,6 +210,9 @@ export default function Folder() {
       setPageError(null);
       try {
         const made = await pagesApi.createPage(spaceId, parentId, name);
+        // The folder stays mounted under the editor: list the new page now,
+        // not after a pull to refresh (review 88, P3; lists are newest first).
+        void client.invalidateQueries({ queryKey: pagesKeys.all });
         setNamingPage(false);
         router.push({ pathname: "/pages/edit", params: { spaceId: String(spaceId), nodeId: String(made.id), title: made.title } });
       } catch (e) {
@@ -218,7 +221,7 @@ export default function Folder() {
         setPageBusy(false);
       }
     },
-    [spaceId, parentId, t],
+    [spaceId, parentId, t, client],
   );
   const importZip = useCallback(async () => {
     try {

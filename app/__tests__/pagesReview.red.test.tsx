@@ -144,12 +144,14 @@ describe("the page editor", () => {
     mockApi.node.mockImplementation(() => new Promise((r) => (answer = r)));
     mockApi.savePage.mockImplementation(async (_s: number, _n: number, html: string) => node({ html }));
     wrap(<PageEdit />, client);
-    await screen.findByTestId("engine-b");
+    // (ee, 2026-11-21) The fix waits for this fetch before opening the editor
+    // at all, so the editor is looked for after the answer, not before it.
     await waitFor(() => expect(mockApi.node).toHaveBeenCalled());
     await act(async () => {
       answer(node({ html: "<p>Newer web edit</p>" }));
       await new Promise((r) => setTimeout(r, 20));
     });
+    await screen.findByTestId("engine-b");
     await waitFor(() => expect(client.getQueryData<{ html: string }>(pagesKeys.node(3, 9))?.html).toBe("<p>Newer web edit</p>"));
     // He types, and the autosave goes out: it must not put the old body back.
     act(() => typed(" typed"));

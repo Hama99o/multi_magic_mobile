@@ -15,7 +15,7 @@
  * A page over the size the phone can edit (EDIT_SIZE_LIMIT) is read-only.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { ActivityIndicator, Alert, View } from "react-native";
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -58,14 +58,18 @@ export default function PageEditorScreen() {
   const spaceId = Number(params.spaceId);
   const nodeId = Number(params.nodeId);
 
-  const page = useQuery({ queryKey: pagesKeys.node(spaceId, nodeId), queryFn: () => pagesApi.node(spaceId, nodeId), enabled: Number.isFinite(spaceId) && Number.isFinite(nodeId) });
+  // refetchOnMount "always": the cache may hold the body the viewer showed
+  // before an edit on the web, and the first autosave would put it back over
+  // the newer one (review 88, P2). The editor opens on the server's body now.
+  const page = useQuery({ queryKey: pagesKeys.node(spaceId, nodeId), queryFn: () => pagesApi.node(spaceId, nodeId), enabled: Number.isFinite(spaceId) && Number.isFinite(nodeId), refetchOnMount: "always" });
+  const fresh = page.isFetchedAfterMount && !page.isFetching;
   const html = page.data?.html ?? null;
 
   // Opened once per loaded body: the engine is not re-created under the person's typing.
   const [openedHtml, setOpenedHtml] = useState<string | null>(null);
   useEffect(() => {
-    if (openedHtml == null && html != null) setOpenedHtml(html);
-  }, [html, openedHtml]);
+    if (openedHtml == null && html != null && fresh) setOpenedHtml(html);
+  }, [html, openedHtml, fresh]);
 
   const engine = useMemo(() => {
     if (openedHtml == null) return null;
@@ -105,31 +109,34 @@ export default function PageEditorScreen() {
     },
   });
 
-  const saveNow = useCallback(async () => {
+  /** True when what is on screen is on the server (saved now, or nothing to send). */
+  const saveNow = useCallback(async (): Promise<boolean> => {
     if (timer.current) {
       clearTimeout(timer.current);
       timer.current = null;
     }
-    if (!engine?.session) return;
+    if (!engine?.session) return true;
     const json = editorRef.current?.getContentJson() ?? engineDocRef.current;
-    if (!json) return;
+    if (!json) return true;
     engineDocRef.current = json as DocNode;
     const out = saveFromEngine(json as DocNode, engine.session);
     if (!out.ok) {
       setState("invalid");
-      return;
+      return false;
     }
     if (out.html === (lastSent.current ?? openedHtml)) {
       setState("saved");
-      return;
+      return true;
     }
     setState("saving");
     try {
       await saving.mutateAsync(out.html);
       lastSent.current = out.html;
       setState("saved");
+      return true;
     } catch {
       setState("failed");
+      return false;
     }
   }, [engine, openedHtml, saving]);
 
@@ -139,12 +146,48 @@ export default function PageEditorScreen() {
     timer.current = setTimeout(() => void saveNow(), SAVE_AFTER_MS);
   };
 
-  // Leaving by any way saves what is pending first.
+  // Leaving by any way saves what is pending first, and only leaves once it
+  // is saved: offline, a failed save used to leave anyway and the typing was
+  // gone (review 88, P1). If it cannot be saved, he chooses.
   const saveRef = useRef(saveNow);
   useEffect(() => {
     saveRef.current = saveNow;
   }, [saveNow]);
-  useEffect(() => navigation.addListener("beforeRemove", () => void saveRef.current()), [navigation]);
+  const leaving = useRef(false);
+  const askToLeave = useCallback(
+    (leave: () => void) =>
+      Alert.alert(t("pages.edit.discardTitle"), t("pages.edit.discardBody"), [
+        { text: t("pages.edit.keep"), style: "cancel" },
+        { text: t("pages.edit.discard"), style: "destructive", onPress: leave },
+      ]),
+    [t],
+  );
+  useEffect(
+    () =>
+      navigation.addListener("beforeRemove", (e) => {
+        if (leaving.current) return;
+        e.preventDefault();
+        void saveRef.current().then((ok) => {
+          const go = () => {
+            leaving.current = true;
+            navigation.dispatch(e.data.action);
+          };
+          if (ok) go();
+          else askToLeave(go);
+        });
+      }),
+    [navigation, askToLeave],
+  );
+  const goBack = useCallback(() => {
+    void saveNow().then((ok) => {
+      const go = () => {
+        leaving.current = true;
+        router.back();
+      };
+      if (ok) go();
+      else askToLeave(go);
+    });
+  }, [saveNow, askToLeave]);
 
   // ── Toolbar ───────────────────────────────────────────────────────────────
   const barRef = useRef<View | null>(null);
@@ -303,7 +346,7 @@ export default function PageEditorScreen() {
     // avoidKeyboard, as the note editor (app/notes/edit.tsx): without it the
     // toolbar sat under the keyboard (measured on qa_phone, flow 36, 2026-11-21).
     <Screen measure scroll={false} avoidKeyboard>
-      <PagesHeader title={title} subtitle={engine?.handle ? status : null} onBack={() => void saveNow().finally(() => router.back())} />
+      <PagesHeader title={title} subtitle={engine?.handle ? status : null} onBack={goBack} />
       {page.isPending || (html != null && !engine) ? (
         <ActivityIndicator color={colors.inkMuted} style={{ marginTop: metrics.space.xl }} />
       ) : page.isError ? (

@@ -106,14 +106,21 @@ export function routeForWebPath(path: string | null | undefined, label?: string 
     const on = query.get("on");
     return { pathname: "/calendar/event", params: on && /^\d{4}-\d{2}-\d{2}$/.test(on) ? { id: event, on } : { id: event } };
   }
-  const page = pathname.match(/^\/pages\/(\d+)$/);
+  // `/pages/:space` (notifications, `frontend_routes.rb`) and `/explorer/:space`
+  // (global search's Pages hits, `services/search/sources.rb`): the same space.
+  const page = pathname.match(/^\/(?:pages|explorer)\/(\d+)$/);
   if (page) {
     const spaceId = page[1];
     const title = label ?? "";
-    // `?preview=` from a share notification, `?node=` from `frontend_routes.rb`.
+    // `?preview=` from a share notification or a search hit, `?node=` from `frontend_routes.rb`.
     const nodeId = id("preview") ?? id("node");
     if (nodeId) return { pathname: "/pages/view", params: { spaceId, nodeId, title } };
     if (query.has("preview") || query.has("node")) return null;
+    // `?folder=` (a folder hit): that folder, not the space's root.
+    if (query.has("folder")) {
+      const parentId = id("folder");
+      return parentId ? { pathname: "/pages/folder", params: { spaceId, parentId, title } } : null;
+    }
     return { pathname: "/pages/folder", params: { spaceId, title } };
   }
   const note = pathname.match(/^\/notes\/(\d+)$/);

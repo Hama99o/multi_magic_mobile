@@ -115,6 +115,9 @@ export default function TableScreen() {
   const [bulkBusy, setBulkBusy] = useState(false);
   const [bulkError, setBulkError] = useState<string | null>(null);
   const selecting = selected.size > 0;
+  // Another table on the same mounted screen (`switchTable` is `router.setParams`): its rows are not these.
+  // The table only, as the web (`TableScreen.tsx` resets on `tableId`, and keeps the selection across a search).
+  useEffect(() => setSelected(new Set()), [tableId]);
   const [deleting, setDeleting] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [folded, setFolded] = useState<Set<string>>(() => new Set());
@@ -210,10 +213,12 @@ export default function TableScreen() {
   });
 
   const move = useMoveRow(tableId, {
-    onMoved: (row, before) => {
+    // The Undo's own "before" is where the card was moved TO: if the Undo is refused the card goes back there,
+    // and the Undo that follows it moves it again, never to null (ee's review, L4).
+    onMoved: (row, before, after) => {
       const field = kanbanField;
       if (!field) return;
-      offerUndo(t("tables.kanban.moved"), () => move.mutate({ row, field, value: before, before: null }));
+      offerUndo(t("tables.kanban.moved"), () => move.mutate({ row, field, value: before, before: after }));
     },
     onError: (e) => setFailure(failureMessage(e, t("tables.kanban.moveFailed"))),
   });
@@ -258,7 +263,12 @@ export default function TableScreen() {
                 dropRows(client, tableId, gone);
                 clearSelection();
                 void client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) });
-                offerUndo(t("tables.bulk.deleted", { count: gone.length }), () => void tablesApi.restore(tableId, gone).then(() => client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) })));
+                offerUndo(t("tables.bulk.deleted", { count: gone.length }), () =>
+                  void tablesApi
+                    .restore(tableId, gone)
+                    .then(() => client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) }))
+                    .catch((e: unknown) => setFailure(failureMessage(e, t("tables.undoFailed")))),
+                );
               })
               .catch((e: unknown) => setFailure(failureMessage(e, t("tables.deleteFailed")))),
           ),
@@ -283,11 +293,23 @@ export default function TableScreen() {
           return { id, values: { [field.id]: scalar(source.values[field.id]) ?? null } };
         }),
       );
-      await tablesApi.bulkSet(tableId, ids, field.id, value);
+      const result = await tablesApi.bulkSet(tableId, ids, field.id, value);
+      void client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) });
+      // A 200 can still refuse rows (`result.failed`): none changed is an error, some is said with the count.
+      const refused = result.failed.length;
+      if (refused >= ids.length) {
+        setBulkError(t("tables.bulk.failed"));
+        return;
+      }
       setSheet(null);
       clearSelection();
-      void client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) });
-      offerUndo(t("tables.bulk.edited", { count: ids.length }), () => void tablesApi.bulkWrite(tableId, before).then(() => client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) })));
+      const changed = ids.length - refused;
+      offerUndo(refused ? t("tables.bulk.editedPartial", { count: changed, failed: refused }) : t("tables.bulk.edited", { count: changed }), () =>
+        void tablesApi
+          .bulkWrite(tableId, before)
+          .then(() => client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) }))
+          .catch((e: unknown) => setFailure(failureMessage(e, t("tables.undoFailed")))),
+      );
     } catch (e) {
       setBulkError(failureMessage(e, t("tables.bulk.failed")));
     } finally {

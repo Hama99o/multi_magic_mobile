@@ -244,6 +244,7 @@ const PLURAL = new Set([
   "tables.bulk.hint",
   "tables.bulk.apply",
   "tables.bulk.edited",
+  "tables.bulk.editedPartial",
   "tables.bulk.deleteTitle",
   "tables.bulk.deleteBody",
   "tables.bulk.deleted",

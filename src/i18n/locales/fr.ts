@@ -125,6 +125,18 @@ export const fr: Translations = {
   },
 
   chat: {
+    memoryReview: {
+      title: "Est-ce toujours vrai ?",
+      hint: "Ce que je retiens de vous et qui a peut-être changé. Aidez-moi à rester juste.",
+      stillTrue: "Toujours vrai",
+      askLater: "Redemander plus tard",
+      notTrue: "Plus maintenant",
+      removed: "Retiré de ce que je retiens",
+      failed: "Cela n’a pas abouti. Réessayez.",
+      stillTrueOf: "Toujours vrai : {{fact}}",
+      askLaterOf: "Redemander plus tard : {{fact}}",
+      notTrueOf: "Plus maintenant : {{fact}}",
+    },
     gone: "Cette conversation a été supprimée sur un autre appareil. Ouvrez Conversations pour en choisir une autre.",
     scrollToBottom: "Aller au message le plus récent",
     title: "Assistant",

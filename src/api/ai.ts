@@ -346,6 +346,33 @@ function parseDocument(payload: unknown): AiDocument {
   };
 }
 
+/** A fact the assistant remembers that may have changed (`Ai::MemoryReview`). */
+export interface ReviewFact {
+  id: string;
+  text: string;
+}
+
+export const memoryReviewApi = {
+  /** Three at most, oldest first; none when there is nothing to ask. */
+  async list(): Promise<ReviewFact[]> {
+    const res = await http.get("/api/v1/ai/memory_review");
+    const facts = (res.data as { facts?: unknown } | null)?.facts;
+    if (!Array.isArray(facts)) return [];
+    return facts.flatMap((f) => {
+      const o = f as { id?: unknown; text?: unknown };
+      return o && (typeof o.id === "string" || typeof o.id === "number") && typeof o.text === "string" ? [{ id: String(o.id), text: o.text }] : [];
+    });
+  },
+  /** Still true for good (`confirmed`), or ask again in a month (`kept`). */
+  async answer(id: string, state: "confirmed" | "kept"): Promise<void> {
+    await http.patch(`/api/v1/ai/memory_review/${encodeURIComponent(id)}`, { state });
+  },
+  /** Not true any more: out of what the assistant remembers. */
+  async remove(id: string): Promise<void> {
+    await http.delete(`/api/v1/ai/memory_review/${encodeURIComponent(id)}`);
+  },
+};
+
 export const aiApi = {
   /**
    * Which session to open at launch. One integer — see this file's header.

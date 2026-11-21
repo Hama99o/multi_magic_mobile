@@ -10,12 +10,12 @@
  * A tap on a row opens its page, where every column edits (`record.tsx`).
  */
 import { useRef } from "react";
-import { FlatList, Pressable, ScrollView, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
+import { FlatList, Pressable, ScrollView, useWindowDimensions, View, type NativeScrollEvent, type NativeSyntheticEvent } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { FieldDefinition } from "@/api/fields";
 import type { RecordRow } from "@/api/tables";
 import type { KnownRecords } from "@/components/fields/display";
-import { CardValue } from "@/components/fields/CardValue";
+import { capScale, cardValueHeight, CardValue, FONT_CAP } from "@/components/fields/CardValue";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { columnWidth, type SummaryCell } from "./grid";
@@ -23,6 +23,15 @@ import { columnWidth, type SummaryCell } from "./grid";
 const ROW = 44;
 const HEADER = 40;
 const SUMMARY = 36;
+/** 6 dp above and below the line: a row, the header and the summary grow with the font, never below their own height. */
+const PAD = 12;
+export function gridHeights(fontScale: number) {
+  return {
+    row: Math.max(ROW, cardValueHeight(fontScale) + PAD),
+    header: Math.max(HEADER, Math.ceil(18 * capScale(fontScale)) + PAD), // the label's line
+    summary: Math.max(SUMMARY, Math.ceil(17 * capScale(fontScale)) + PAD), // the caption's line
+  };
+}
 
 export function GridView({
   rows,
@@ -52,9 +61,11 @@ export function GridView({
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
   const left = useRef<FlatList<RecordRow>>(null);
+  const { fontScale } = useWindowDimensions();
+  const { row: ROW_H, header: HEADER_H, summary: SUMMARY_H } = gridHeights(fontScale);
   const titleWidth = title ? columnWidth(title, primaryFieldId, widths) : 0;
   const width = (f: FieldDefinition) => columnWidth(f, primaryFieldId, widths);
-  const layout = (_: unknown, index: number) => ({ length: ROW, offset: ROW * index, index });
+  const layout = (_: unknown, index: number) => ({ length: ROW_H, offset: ROW_H * index, index });
   const follow = (e: NativeSyntheticEvent<NativeScrollEvent>) => left.current?.scrollToOffset({ offset: e.nativeEvent.contentOffset.y, animated: false });
   const cellBorder = { borderRightWidth: 1, borderBottomWidth: 1, borderColor: colors.border };
   const num = (n: number) => n.toLocaleString(i18n.language);
@@ -69,8 +80,8 @@ export function GridView({
     <View testID="tables-grid" style={{ flex: 1, flexDirection: "row", borderTopWidth: 1, borderLeftWidth: 1, borderColor: colors.border }}>
       {title ? (
         <View style={{ width: titleWidth }}>
-          <View style={[{ height: HEADER, justifyContent: "center", paddingHorizontal: metrics.space.sm, backgroundColor: colors.surface }, cellBorder]}>
-            <Text variant="label" numberOfLines={1}>
+          <View style={[{ height: HEADER_H, justifyContent: "center", paddingHorizontal: metrics.space.sm, backgroundColor: colors.surface }, cellBorder]}>
+            <Text variant="label" numberOfLines={1} maxFontSizeMultiplier={FONT_CAP}>
               {title.name}
             </Text>
           </View>
@@ -82,14 +93,14 @@ export function GridView({
             scrollEnabled={false}
             getItemLayout={layout}
             renderItem={({ item, index }) => (
-              <Pressable testID={`tables-grid-row-${index}-title`} onPress={() => onOpen(item)} accessibilityRole="button" accessibilityLabel={t("tables.grid.openRow", { row: index + 1 })} style={[{ height: ROW, justifyContent: "center", paddingHorizontal: metrics.space.sm, backgroundColor: colors.ground }, cellBorder]}>
-                <CardValue field={title} value={item.values[title.id]} known={known} testID={`tables-grid-${index}-f${title.id}`} />
+              <Pressable testID={`tables-grid-row-${index}-title`} onPress={() => onOpen(item)} accessibilityRole="button" accessibilityLabel={t("tables.grid.openRow", { row: index + 1 })} style={[{ height: ROW_H, justifyContent: "center", paddingHorizontal: metrics.space.sm, backgroundColor: colors.ground }, cellBorder]}>
+                <CardValue field={title} value={item.values[title.id]} known={known} testID={`tables-grid-${index}-f${title.id}`} bare />
               </Pressable>
             )}
           />
           {summary ? (
-            <View style={[{ height: SUMMARY, justifyContent: "center", paddingHorizontal: metrics.space.sm, backgroundColor: colors.surface }, cellBorder]}>
-              <Text variant="caption" tone="muted" testID="tables-grid-summary-rows">
+            <View style={[{ height: SUMMARY_H, justifyContent: "center", paddingHorizontal: metrics.space.sm, backgroundColor: colors.surface }, cellBorder]}>
+              <Text variant="caption" tone="muted" numberOfLines={1} maxFontSizeMultiplier={FONT_CAP} testID="tables-grid-summary-rows">
                 {t("tables.grid.rows", { count: totalRows ?? rows.length })}
               </Text>
             </View>
@@ -97,10 +108,10 @@ export function GridView({
         </View>
       ) : null}
       <ScrollView horizontal testID="tables-grid-scroll" showsHorizontalScrollIndicator contentContainerStyle={{ flexDirection: "column" }}>
-        <View style={{ flexDirection: "row", height: HEADER, backgroundColor: colors.surface }}>
+        <View style={{ flexDirection: "row", height: HEADER_H, backgroundColor: colors.surface }}>
           {fields.map((f) => (
             <View key={f.id} style={[{ width: width(f), justifyContent: "center", paddingHorizontal: metrics.space.sm }, cellBorder]}>
-              <Text variant="label" numberOfLines={1}>
+              <Text variant="label" numberOfLines={1} maxFontSizeMultiplier={FONT_CAP}>
                 {f.name}
               </Text>
             </View>
@@ -116,20 +127,20 @@ export function GridView({
           onEndReached={onEndReached}
           onEndReachedThreshold={0.6}
           renderItem={({ item, index }) => (
-            <Pressable testID={`tables-grid-row-${index}`} onPress={() => onOpen(item)} accessibilityRole="button" accessibilityLabel={t("tables.grid.openRow", { row: index + 1 })} style={{ flexDirection: "row", height: ROW }}>
+            <Pressable testID={`tables-grid-row-${index}`} onPress={() => onOpen(item)} accessibilityRole="button" accessibilityLabel={t("tables.grid.openRow", { row: index + 1 })} style={{ flexDirection: "row", height: ROW_H }}>
               {fields.map((f) => (
                 <View key={f.id} style={[{ width: width(f), justifyContent: "center", paddingHorizontal: metrics.space.sm, overflow: "hidden" }, cellBorder]}>
-                  <CardValue field={f} value={item.values[f.id]} known={known} testID={`tables-grid-${index}-f${f.id}`} />
+                  <CardValue field={f} value={item.values[f.id]} known={known} testID={`tables-grid-${index}-f${f.id}`} bare />
                 </View>
               ))}
             </Pressable>
           )}
         />
         {summary ? (
-          <View testID="tables-grid-summary" style={{ flexDirection: "row", height: SUMMARY, backgroundColor: colors.surface }}>
+          <View testID="tables-grid-summary" style={{ flexDirection: "row", height: SUMMARY_H, backgroundColor: colors.surface }}>
             {fields.map((f) => (
               <View key={f.id} style={[{ width: width(f), justifyContent: "center", paddingHorizontal: metrics.space.sm }, cellBorder]}>
-                <Text variant="caption" tone="muted" numberOfLines={1} testID={`tables-grid-summary-${f.id}`}>
+                <Text variant="caption" tone="muted" numberOfLines={1} maxFontSizeMultiplier={FONT_CAP} testID={`tables-grid-summary-${f.id}`}>
                   {summaryText(f)}
                 </Text>
               </View>

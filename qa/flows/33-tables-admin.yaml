@@ -3,6 +3,12 @@
 # Needs the fixture (`tables_fixture.py up`). Everything it makes or clears is
 # inside "[qa] Tables device", deleted by `tables_fixture.py down`.
 #
+# DEVICE PASSES (the hidden-criteria sweep, 2026-11-21): run once as is, once
+# with `adb shell settings put system font_scale 2.0` and once in dark mode
+# (`adb shell cmd uimode night yes`), force-stopping the app after each
+# change. Same screenshots, three sets: clipping and contrast are judged on
+# them, not asserted (no layout or colour engine in Maestro or Jest).
+#
 # ── FLOW_REGISTER note ─────────────────────────────────────────────────────
 # COVERS: rename the table; duplicate it (columns only); a new table; the
 # columns sheet, a new decimal column through the field editor; clear every

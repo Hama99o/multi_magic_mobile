@@ -4,6 +4,12 @@
 # Items table with a single-select Status). Everything this flow makes lives in
 # that base and goes with `tables_fixture.py down`.
 #
+# DEVICE PASSES (the hidden-criteria sweep, 2026-11-21): run once as is, once
+# with `adb shell settings put system font_scale 2.0` and once in dark mode
+# (`adb shell cmd uimode night yes`), force-stopping the app after each
+# change. Same screenshots, three sets: clipping and contrast are judged on
+# them, not asserted (no layout or colour engine in Maestro or Jest).
+#
 # ── FLOW_REGISTER note ─────────────────────────────────────────────────────
 # COVERS: a new kanban view on Status; fold a column and unfold it; reorder a
 # card within its column ("Move up"); rename the view; duplicate it; delete

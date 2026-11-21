@@ -3,6 +3,12 @@
 # Needs the fixture (`tables_fixture.py up`). The 2 pasted rows land in
 # "[qa] Tables device" and go with `tables_fixture.py down`.
 #
+# DEVICE PASSES (the hidden-criteria sweep, 2026-11-21): run once as is, once
+# with `adb shell settings put system font_scale 2.0` and once in dark mode
+# (`adb shell cmd uimode night yes`), force-stopping the app after each
+# change. Same screenshots, three sets: clipping and contrast are judged on
+# them, not asserted (no layout or colour engine in Maestro or Jest).
+#
 # ── FLOW_REGISTER note ─────────────────────────────────────────────────────
 # COVERS: Import… from the menu; a 3-line paste (header + 2 rows) read
 # through the server's preview; Name mapped by name; Start; the banner until

@@ -52,6 +52,7 @@ import { useTableExport } from "@/screens/tables/useTableExport";
 import { ImportBanner } from "@/screens/tables/ImportBanner";
 import { GridView } from "@/screens/tables/GridView";
 import { showsGrid } from "@/screens/tables/grid";
+import { useOneAtATime } from "@/screens/tables/useOneAtATime";
 import { DeleteByNameSheet } from "@/screens/tables/DeleteByNameSheet";
 import { BulkEditSheet } from "@/screens/tables/BulkEditSheet";
 import { ShareSheet } from "@/screens/tables/ShareSheet";
@@ -157,7 +158,8 @@ export default function TableScreen() {
   const colorFieldId = layer.rowColorFieldId === undefined ? (view?.config.rowColorFieldId ?? null) : layer.rowColorFieldId;
   const colorField = fields.find((f) => f.id === colorFieldId) ?? null;
   const groupField = fields.find((f) => f.id === query?.groupBy) ?? null;
-  const itemHeight = cardLayout(shownFields.length, Boolean(coverField));
+  const { width: screenWidth, fontScale } = useWindowDimensions();
+  const itemHeight = cardLayout(shownFields.length, Boolean(coverField), fontScale);
   const items = useMemo(() => listItems(rows, groupField, firstPage?.groups ?? null, folded), [rows, groupField, firstPage?.groups, folded]);
   const layout = useMemo(() => layoutOf(items, itemHeight), [items, itemHeight]);
   const finding = Boolean(shared && (shared.filters.length || shared.groupBy || layer.sorts !== undefined));
@@ -170,12 +172,11 @@ export default function TableScreen() {
   // 2026-11-20). Unproven, the screen shows the order and claims nothing.
   const newestShown = Boolean(query?.newestFirst && firstPage && newestProven(firstPage.rows));
   const showOrderChip = newestShown || layer.newestFirst === false;
-  // On a phone narrower than this the order chip is an icon, so the view's
-  // NAME keeps its room (at 360 dp it shrank to an icon, at 411 to "G…").
-  const { width: screenWidth } = useWindowDimensions();
   // Increment 9: the grid where the web shows one (720 dp and up, a grid view); cards below.
   const grid = Boolean(view && showsGrid(screenWidth, view.viewType));
   const summary = useQuery({ queryKey: tablesKeys.summary(tableId, queryKey), queryFn: () => tablesApi.summary(tableId, query ?? {}), enabled: grid && Boolean(query) });
+  // On a phone narrower than this the order chip is an icon, so the view's
+  // NAME keeps its room (at 360 dp it shrank to an icon, at 411 to "G…").
   const compactToolbar = screenWidth < 420;
   const count = countLine(firstPage, t, i18n.language);
 
@@ -222,6 +223,8 @@ export default function TableScreen() {
   const clearSelection = () => setSelected(new Set());
 
   /** Many rows to the trash; one Undo brings them all back (`records#restore`). */
+  // A double tap makes one row and deletes once (`useOneAtATime`: `disabled` alone lets the second tap through).
+  const once = useOneAtATime();
   const bulkDelete = () => {
     const ids = [...selected];
     Alert.alert(t("tables.bulk.deleteTitle", { count: ids.length }), t("tables.bulk.deleteBody", { count: ids.length }), [
@@ -230,15 +233,17 @@ export default function TableScreen() {
         text: t("tables.delete"),
         style: "destructive",
         onPress: () =>
-          void tablesApi
-            .bulkDestroy(tableId, ids)
-            .then((gone) => {
-              dropRows(client, tableId, gone);
-              clearSelection();
-              void client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) });
-              offerUndo(t("tables.bulk.deleted", { count: gone.length }), () => void tablesApi.restore(tableId, gone).then(() => client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) })));
-            })
-            .catch((e: unknown) => setFailure(failureMessage(e, t("tables.deleteFailed")))),
+          once(() =>
+            tablesApi
+              .bulkDestroy(tableId, ids)
+              .then((gone) => {
+                dropRows(client, tableId, gone);
+                clearSelection();
+                void client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) });
+                offerUndo(t("tables.bulk.deleted", { count: gone.length }), () => void tablesApi.restore(tableId, gone).then(() => client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) })));
+              })
+              .catch((e: unknown) => setFailure(failureMessage(e, t("tables.deleteFailed")))),
+          ),
       },
     ]);
   };
@@ -524,7 +529,7 @@ export default function TableScreen() {
           folded={layer.foldedColumns}
           onToggleFold={(key) => change({ foldedColumns: toggleFolded(layer.foldedColumns, key) })}
         />
-      ) : grid && view && table.data ? (
+      ) : grid && view && table.data && rows.length > 0 ? (
         <GridView
           rows={rows}
           title={title}
@@ -658,7 +663,7 @@ export default function TableScreen() {
       {editable && table.data && !kanbanField && !calendarField && !selecting ? (
         <Pressable
           testID="tables-add-row"
-          onPress={() => create.mutate(undefined)}
+          onPress={() => once(() => create.mutateAsync(undefined))}
           disabled={create.isPending}
           accessibilityRole="button"
           accessibilityLabel={t("tables.addRow")}

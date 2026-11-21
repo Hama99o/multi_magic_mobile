@@ -83,6 +83,11 @@ const SAME_IN_BOTH = new Set([
   // A file format's name, the same in both.
   "tables.export.xlsx",
   "tables.export.csv",
+  // Words the same in both (the form builder).
+  "tables.form.label",
+  "tables.form.intro",
+  "tables.form.tabs.questions",
+  "tables.form.tabs.page",
   "fields.more_one",
   "fields.more_other",
   // Signs and letters (the web's French keeps them): >, ≥, <, ≤, A → Z, 1 → 9.

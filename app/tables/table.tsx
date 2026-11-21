@@ -40,7 +40,7 @@ import { calendarable, columnValue, kanbanable, kanbanColumns, monthFilters, mov
 import { scalar } from "@/components/fields/display";
 import { todayKey } from "@/screens/calendar/dates";
 import type { FieldDefinition } from "@/api/fields";
-import { ArrowDown, ArrowRightLeft, ArrowUp, CalendarDays, Kanban, MessageSquareText, Trash2, Upload, Users } from "@/components/icons";
+import { ArrowDown, ArrowRightLeft, ArrowUp, CalendarDays, ClipboardList, Kanban, MessageSquareText, Trash2, Upload, Users } from "@/components/icons";
 import type { ViewType } from "@/api/tables";
 import type { LucideIcon } from "lucide-react-native";
 import { FilterSortSheet } from "@/screens/tables/FilterSortSheet";
@@ -273,6 +273,8 @@ export default function TableScreen() {
     ...(personal && editable ? [{ key: "save", label: t("tables.saveView.title"), hint: t("tables.saveView.hint"), icon: Save, onPress: () => setTimeout(() => setSheet("save"), 320) }] : []),
     ...(personal ? [{ key: "reset", label: t("tables.backToShared"), hint: t("tables.backToSharedHint"), icon: RotateCcw, onPress: reset }] : []),
     ...(exporter.action ? [exporter.action] : []),
+    // Increment 8: the table's forms (people who edit the base build them).
+    ...(editable ? [{ key: "forms", label: t("tables.forms.title"), hint: t("tables.forms.hint"), icon: ClipboardList, onPress: () => router.push({ pathname: "/tables/forms", params: { table: String(tableId) } }) }] : []),
     // Increment 7: a file or a paste into this table (people who edit it).
     ...(editable ? [{ key: "import", label: t("tables.import.action"), hint: t("tables.import.actionHint"), icon: Upload, onPress: () => router.push({ pathname: "/tables/import", params: { table: String(tableId) } }) }] : []),
     ...admin.actions,

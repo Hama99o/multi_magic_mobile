@@ -136,6 +136,7 @@ import HashIcon from "lucide-react-native/dist/esm/icons/hash";
 import TypeIcon from "lucide-react-native/dist/esm/icons/type";
 import PaperclipIcon from "lucide-react-native/dist/esm/icons/paperclip";
 import FoldHorizontalIcon from "lucide-react-native/dist/esm/icons/fold-horizontal";
+import ClipboardListIcon from "lucide-react-native/dist/esm/icons/clipboard-list";
 import CircleDotIcon from "lucide-react-native/dist/esm/icons/circle-dot";
 import ToggleLeftIcon from "lucide-react-native/dist/esm/icons/toggle-left";
 import KanbanIcon from "lucide-react-native/dist/esm/icons/kanban";
@@ -275,6 +276,8 @@ export const Type: LucideIcon = TypeIcon;
 export const Paperclip: LucideIcon = PaperclipIcon;
 /** A kanban column folded away (Tables 4b). */
 export const FoldHorizontal: LucideIcon = FoldHorizontalIcon;
+/** A table's forms (Tables increment 8). */
+export const ClipboardList: LucideIcon = ClipboardListIcon;
 export const CircleDot: LucideIcon = CircleDotIcon;
 export const ToggleLeft: LucideIcon = ToggleLeftIcon;
 export const Kanban: LucideIcon = KanbanIcon;

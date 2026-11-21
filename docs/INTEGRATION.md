@@ -447,3 +447,22 @@ ff's branch gates now include `src/__tests__` and `src/i18n/__tests__`.
 | `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
 
 **Run 12: 0 failures** at 6838d18.
+
+## Run 13 — 2026-11-21, ee's remaining leads on 88's branches
+
+| Branch @ head | Owner | What is new | Merge |
+|---|---|---|---|
+| `fix/finance-sweep` @ 4c30030 | 88 | ee's Finance and Contacts leads: privacy clear on sign-out, confirm-at-0, Undo only into its own lists, the family-tie confirm, the export filter, trash refetches | clean |
+| `feat/tables-field-ids` @ 0d482c9 | 88 | + feat/tables 789c30b: one row per double tap on board/calendar +, fresh base delete count, import's new columns shown, form edits saved in order | clean |
+
+With these, every lead of ee's review of 88's branches is in, as is every
+finding of 88's review of ff's (runs 10 and 12).
+
+| Gate (guarded.sh, Jest 1 worker, node 22.19.0) | Result |
+|---|---|
+| tsc | 0 errors |
+| eslint, 407 changed files | 0 errors, 0 warnings |
+| Jest, full | 346 suites passed; **4189 / 4189 tests passed, 0 failed** |
+| `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
+
+**Run 13: 0 failures** at 7188716.

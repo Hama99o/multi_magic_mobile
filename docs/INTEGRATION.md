@@ -214,3 +214,23 @@ block. No new heads from ee.
 
 **Run 3: 0 failures.** `integration/mm-mobile-next` @ 6da137b is the base
 for 88's W0 (useNav).
+
+## Run 4 — 2026-11-21, run 3 plus the hidden-criteria sweeps
+
+| Branch @ head | Owner | What is new | Merge |
+|---|---|---|---|
+| `feat/flow-app` @ 8b9f29b | ff | tiles grow with the system font (025020e); sprint pills on theme tokens `success`/`info` (8b9f29b) | clean |
+| `feat/tables` @ b52e5df | 88 | the Tables sweep (useOneAtATime, font scale, flows 32–37) | clean |
+| `feat/notes-parity` @ 887b603 | ff | a double tap on + makes one note | clean |
+
+Merged on top of run 3 (head 7605190). ee's spaceEdit flake fix was not
+ready and was not waited for (Hello). `feat/pages-parity` has moved since
+(75175d4, the login flow's Home fix): run 5.
+
+| Gate (guarded.sh, Jest 1 worker, node 22.19.0) | Result |
+|---|---|
+| tsc | 0 errors |
+| Jest, full | 322 suites passed; **4069 / 4069 tests passed, 0 failed** |
+| `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
+
+**Run 4: 0 failures.** The base for 88's W0 (useNav).

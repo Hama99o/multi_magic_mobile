@@ -4,6 +4,7 @@
  * the Undo appears where the person lands. Not persisted.
  */
 import { create } from "zustand";
+import { onSessionEnd } from "@/lib/sessionEnd";
 
 export interface TrashedContact {
   id: number;
@@ -20,3 +21,6 @@ export const useContactsUndo = create<UndoState>((set) => ({
   trashed: null,
   set: (trashed) => set({ trashed }),
 }));
+
+// The previous account's: sign-out takes it away (ee's review; SafeZone's lock does the same).
+onSessionEnd(() => useContactsUndo.getState().set(null));

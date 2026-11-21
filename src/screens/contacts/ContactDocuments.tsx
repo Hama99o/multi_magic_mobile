@@ -62,7 +62,7 @@ export function ContactDocuments({
       );
     }
     if (!ready.length) return;
-    upload.mutate(ready, { onError: (e) => Alert.alert(t("contacts.documents.uploadFailed"), failureMessage(e, t("contacts.documents.uploadFailed"))) });
+    upload.mutate(ready); // a failure is said by the hook, even after this card has closed
   };
 
   const open = (doc: ContactDocument) =>
@@ -74,7 +74,7 @@ export function ContactDocuments({
       {
         text: t("common.delete"),
         style: "destructive",
-        onPress: () => remove.mutate(doc.id, { onError: (e) => Alert.alert(t("contacts.documents.deleteFailed"), failureMessage(e, t("contacts.documents.deleteFailed"))) }),
+        onPress: () => remove.mutate(doc.id), // a failure is said by the hook
       },
     ]);
 

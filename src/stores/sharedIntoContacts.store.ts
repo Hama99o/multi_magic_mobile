@@ -5,6 +5,7 @@
  * a second visit to the form must not be filled with an old share.
  */
 import { create } from "zustand";
+import { onSessionEnd } from "@/lib/sessionEnd";
 import type { ParsedCard } from "@/screens/contacts/shareIn";
 
 export type SharedIntoContacts =
@@ -27,3 +28,6 @@ export const useSharedIntoContacts = create<State>((set, get) => ({
     return pending;
   },
 }));
+
+// The previous account's: sign-out takes it away (ee's review; SafeZone's lock does the same).
+onSessionEnd(() => useSharedIntoContacts.getState().set(null));

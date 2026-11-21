@@ -11,7 +11,10 @@
  * "wife") is computed by the server from the kind and the relative's gender,
  * so a guess would flash the wrong word; the card refetches instead.
  */
+import { Alert } from "react-native";
+import { useTranslation } from "react-i18next";
 import { useMutation, useQueryClient, type QueryClient, type QueryKey } from "@tanstack/react-query";
+import { failureMessage } from "@/api/failure";
 import { contactsApi, displayName, type Contact, type Gender, type Qualifier, type Relation, type RelationKind, type RelationTarget } from "@/api/contacts";
 import { contactsKeys } from "@/api/keys";
 import { useContactsUndo } from "@/stores/contactsUndo.store";
@@ -59,6 +62,14 @@ export function useFavourite(opts: { onError?: (e: unknown) => void } = {}) {
   });
 }
 
+/** What a contact going to the trash, or coming back, changes: every list it
+ *  is in, the birthdays, My family, the family trees and the duplicates (the
+ *  last three were left stale, ee's review). */
+const trashMoves: QueryKey[] = [
+  contactsKeys.list(), contactsKeys.searches(), contactsKeys.trash(), contactsKeys.allBirthdays(),
+  contactsKeys.familyMembers(), contactsKeys.families(), contactsKeys.duplicates(),
+];
+
 /** Delete = to the trash, with Undo (the list's bar). */
 export function useTrashContact(opts: { onDone?: (c: Contact) => void; onError?: (e: unknown) => void } = {}) {
   const client = useQueryClient();
@@ -78,8 +89,7 @@ export function useTrashContact(opts: { onDone?: (c: Contact) => void; onError?:
       restore(client, ctx?.saved);
       opts.onError?.(e);
     },
-    onSettled: (_r, _e, c) =>
-      settle(client, [contactsKeys.list(), contactsKeys.searches(), contactsKeys.trash(), contactsKeys.detail(c.id), contactsKeys.allBirthdays()]),
+    onSettled: (_r, _e, c) => settle(client, [...trashMoves, contactsKeys.detail(c.id)]),
   });
 }
 
@@ -97,8 +107,7 @@ export function useRestoreContact(opts: { onError?: (e: unknown) => void } = {})
       restore(client, ctx?.saved);
       opts.onError?.(e);
     },
-    onSettled: (_r, _e, id) =>
-      settle(client, [contactsKeys.list(), contactsKeys.searches(), contactsKeys.trash(), contactsKeys.detail(id), contactsKeys.allBirthdays()]),
+    onSettled: (_r, _e, id) => settle(client, [...trashMoves, contactsKeys.detail(id)]),
   });
 }
 
@@ -126,15 +135,18 @@ export function useUnlinkRelative(contactId: number, opts: { onError?: (e: unkno
     mutationFn: (relationId: number) => contactsApi.removeRelation(contactId, relationId),
     onMutate: async (relationId) => {
       const saved = await snapshot(client, [contactsKeys.detail(contactId)]);
+      const relativeId = client.getQueryData<Contact>(contactsKeys.detail(contactId))?.relations.find((r) => r.id === relationId)?.relative.id;
       client.setQueryData<Contact | undefined>(contactsKeys.detail(contactId), (c) => (c ? { ...c, relations: c.relations.filter((r) => r.id !== relationId) } : c));
-      return { saved };
+      return { saved, relativeId };
     },
     onError: (e, _r, ctx) => {
       restore(client, ctx?.saved);
       opts.onError?.(e);
     },
-    // The relative's card shows the tie from the other side.
-    onSettled: () => settle(client, [contactsKeys.detail(contactId), contactsKeys.list()]),
+    // The relative's card shows the tie from the other side, and the trees
+    // draw it (both were left stale, ee's review).
+    onSettled: (_r, _e, _id, ctx) =>
+      settle(client, [contactsKeys.detail(contactId), ...(ctx?.relativeId != null ? [contactsKeys.detail(ctx.relativeId)] : []), contactsKeys.list(), contactsKeys.families()]),
   });
 }
 
@@ -243,6 +255,10 @@ export function useMergeIntoContact() {
  */
 export function useContactDocuments(contactId: number) {
   const client = useQueryClient();
+  const { t } = useTranslation();
+  // Said at the hook, not at `mutate`: a mutate-level onError never fires once
+  // the card has unmounted, so leaving during an upload hid its failure (ee's review).
+  const failed = (title: string) => (e: unknown) => Alert.alert(title, failureMessage(e, title));
   const done = (saved: Contact) => {
     client.setQueryData<Contact>(contactsKeys.detail(contactId), saved);
     return settle(client, [contactsKeys.detail(contactId)]);
@@ -250,6 +266,7 @@ export function useContactDocuments(contactId: number) {
   const upload = useMutation({
     mutationFn: (files: Parameters<typeof contactsApi.uploadDocuments>[1]) => contactsApi.uploadDocuments(contactId, files),
     onSuccess: done,
+    onError: failed(t("contacts.documents.uploadFailed")),
   });
   const rename = useMutation({
     mutationFn: ({ documentId, filename }: { documentId: number; filename: string }) => contactsApi.renameDocument(contactId, documentId, filename),
@@ -258,6 +275,7 @@ export function useContactDocuments(contactId: number) {
   const remove = useMutation({
     mutationFn: (documentId: number) => contactsApi.removeDocument(contactId, documentId),
     onSuccess: done,
+    onError: failed(t("contacts.documents.deleteFailed")),
   });
   return { upload, rename, remove };
 }

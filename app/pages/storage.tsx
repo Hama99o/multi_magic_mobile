@@ -59,8 +59,7 @@ export default function StorageScreen() {
   const full = (data?.percentUsed ?? 0) >= FULL_THRESHOLD;
 
   return (
-    <Screen measure>
-      <AppHeader app="pages" title={t("pages.storage.title")} back />
+    <Screen measure header={<AppHeader app="pages" title={t("pages.storage.title")} back />}>
       {usage.isPending ? (
         <RowsSkeleton />
       ) : !data ? (

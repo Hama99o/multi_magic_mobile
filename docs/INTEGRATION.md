@@ -312,3 +312,12 @@ path is left; the pane-nav codemod changes 0 files.
 | `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
 
 **Run 7: 0 failures** at 6eb7245.
+
+## Held off integration
+
+- `feat/workspace-w1` (88, 64c3926 on 9cc29da): **not merged** (Hello for the
+  owner, 2026-11-21). Workspace waits on the owner's landscape decision (G1),
+  and its 13 one-line width changes would touch screens that carry device
+  evidence: the TestFlight tree is the tree that was QA'd. Trial-merged in a
+  scratch branch only (`trial/workspace-w1`): clean at 9cc29da. Re-trialled
+  when integration moves; conflicts go to 88.

@@ -281,6 +281,14 @@ function parseVersion(payload: unknown): NodeVersion {
   };
 }
 
+export interface SpreadsheetPreview {
+  filename: string;
+  sheets: { index: number; name: string }[];
+  sheet: number;
+  rows: string[][];
+  truncated: boolean;
+}
+
 export const pagesApi = {
   /** Spaces this user can open — owned and shared as a whole. */
   /**
@@ -493,6 +501,29 @@ export const pagesApi = {
     return parseNode(obj(res.data, "create page").node);
   },
   /** A page's body, saved (parity #50; the web's autosave payload). */
+  /**
+   * An XLSX/ODS/CSV file read by the server for the viewer (parity #46;
+   * multi-magic-83, `docs/table_app/SPREADSHEET_PREVIEW.md`): at most 500 rows
+   * x 50 columns, header row included, formulas as their cached value, dates
+   * as "2026-11-21". A refusal (unreadable, empty, no_sheet, too_large) comes
+   * back as an error with the server's own sentence in the reader's language.
+   */
+  spreadsheetPreview: async (nodeId: number, sheet: number): Promise<SpreadsheetPreview> => {
+    const res = await http.get(`/api/v1/page_app/nodes/${nodeId}/spreadsheet_preview`, { params: { sheet } });
+    const body = obj(res.data, "spreadsheet preview");
+    const cell = (v: unknown) => (v == null ? "" : String(v));
+    return {
+      filename: typeof body.filename === "string" ? body.filename : "",
+      sheets: (Array.isArray(body.sheets) ? body.sheets : []).map((x, i) => {
+        const r = (typeof x === "object" && x !== null ? x : {}) as { index?: unknown; name?: unknown };
+        return { index: typeof r.index === "number" ? r.index : i, name: typeof r.name === "string" ? r.name : String(i + 1) };
+      }),
+      sheet: typeof body.sheet === "number" ? body.sheet : sheet,
+      rows: (Array.isArray(body.rows) ? body.rows : []).map((row) => (Array.isArray(row) ? row.map(cell) : [])),
+      truncated: body.truncated === true,
+    };
+  },
+
   savePage: async (spaceId: number, nodeId: number, html: string): Promise<PageNode> => {
     const res = await http.patch(`/api/v1/page_app/spaces/${spaceId}/nodes/${nodeId}`, { node: { content: { html } } });
     return parseNode(obj(res.data, "save page").node);

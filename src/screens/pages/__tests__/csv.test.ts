@@ -27,8 +27,8 @@ it("caps a big sheet for the preview and says it did", () => {
   expect(out.truncated).toBe(true);
 });
 
-it("a CSV opens as a sheet, by type or by name; an .xlsx is not read on the phone", () => {
+it("a CSV opens as a sheet, by type or by name; an .xlsx is read by the server, not parsed on the phone", () => {
   expect(modeFor({ kind: "file", mimeType: "text/csv", title: "a.csv" }, "android")).toBe("sheet");
   expect(modeFor({ kind: "file", mimeType: "application/octet-stream", title: "a.tsv" }, "android")).toBe("sheet");
-  expect(modeFor({ kind: "file", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", title: "a.xlsx" }, "android")).toBe("other");
+  expect(modeFor({ kind: "file", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", title: "a.xlsx" }, "android")).toBe("workbook"); // WorkbookView, spreadsheet_preview
 });

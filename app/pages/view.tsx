@@ -21,7 +21,7 @@
  * html are current, not whatever the list had.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, FlatList, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -54,6 +54,8 @@ import { useMoveNodes, useRenameNode, useStarNodes, useTrashNodes } from "@/scre
 import { HeaderButton, NodeGlyph, PagesHeader, metaLine } from "@/screens/pages/parts";
 import { modeFor, pageDocument } from "@/screens/pages/viewerModes";
 import { MAX_COLUMNS, MAX_ROWS, parseDelimited } from "@/screens/pages/csv";
+import { SheetTable } from "@/screens/pages/SheetTable";
+import { WorkbookView } from "@/screens/pages/WorkbookView";
 import { pagesKeys } from "@/api/keys";
 
 /**
@@ -242,18 +244,8 @@ function TextFile({ uri, markdown, node, canWrite }: { uri: string; markdown: bo
 }
 
 /** Wide enough for a date or an amount; one line each, so every row is the same height. */
-const CELL_WIDTH = 132;
-const CELL_HEIGHT = 40;
-
-/**
- * A CSV or TSV as a table (parity #46). Rows are virtualised (a FlatList of
- * fixed-height rows inside a horizontal scroll), the first row reads as the
- * header, and a sheet past the preview's size says so.
- */
 function SheetFile({ uri, title }: { uri: string; title: string }) {
   const { t } = useTranslation();
-  const colors = useColors();
-  const metrics = useMetrics();
   const { data, error, isLoading } = useQuery({
     queryKey: pagesKeys.text(uri),
     queryFn: async () => {
@@ -265,35 +257,7 @@ function SheetFile({ uri, title }: { uri: string; title: string }) {
   const sheet = useMemo(() => (data == null ? null : parseDelimited(data, title)), [data, title]);
   if (isLoading) return <ActivityIndicator style={{ marginTop: 32 }} />;
   if (error || !sheet) return <Text tone="muted">{t("pages.view.textFailed")}</Text>;
-  const columns = Math.max(1, ...sheet.rows.map((r) => r.length));
-  return (
-    <View style={{ flex: 1, gap: metrics.space.sm }} testID="pages-sheet">
-      {sheet.truncated ? (
-        <Text variant="caption" tone="muted" testID="pages-sheet-truncated">
-          {t("pages.view.sheetTruncated", { rows: MAX_ROWS, columns: MAX_COLUMNS })}
-        </Text>
-      ) : null}
-      <ScrollView horizontal>
-        <FlatList
-          data={sheet.rows}
-          keyExtractor={(_, i) => String(i)}
-          getItemLayout={(_, index) => ({ length: CELL_HEIGHT, offset: CELL_HEIGHT * index, index })}
-          initialNumToRender={30}
-          renderItem={({ item, index }) => (
-            <View style={{ flexDirection: "row", height: CELL_HEIGHT, backgroundColor: index === 0 ? colors.surface : "transparent" }}>
-              {Array.from({ length: columns }, (_, c) => (
-                <View key={c} style={{ width: CELL_WIDTH, height: CELL_HEIGHT, justifyContent: "center", paddingHorizontal: 8, borderRightWidth: 1, borderBottomWidth: 1, borderColor: colors.border }}>
-                  <Text numberOfLines={1} variant={index === 0 ? "label" : "body"} style={{ fontSize: 14 }}>
-                    {item[c] ?? ""}
-                  </Text>
-                </View>
-              ))}
-            </View>
-          )}
-        />
-      </ScrollView>
-    </View>
-  );
+  return <SheetTable rows={sheet.rows} truncated={sheet.truncated} limits={{ rows: MAX_ROWS, columns: MAX_COLUMNS }} />;
 }
 
 export default function Viewer() {
@@ -423,7 +387,7 @@ export default function Viewer() {
   const location = [space.data?.title ?? current?.space?.title ?? "", ...(current?.ancestors ?? []).map((a) => a.title)].filter(Boolean).join(" / ");
 
   return (
-    <Screen measure={mode === "page" || mode === "text" || mode === "markdown" || mode === "sheet" || mode === "other"}>
+    <Screen measure={mode === "page" || mode === "text" || mode === "markdown" || mode === "sheet" || mode === "workbook" || mode === "other"}>
       <PagesHeader
         title={current?.title ?? params.title ?? ""}
         subtitle={current ? metaLine(current, t, i18n.language) : null}
@@ -504,6 +468,8 @@ export default function Viewer() {
             <TextFile uri={node.attachmentUrl} markdown={mode === "markdown"} node={node} canWrite={rights.canWrite} />
           ) : mode === "sheet" && node.attachmentUrl ? (
             <SheetFile uri={node.attachmentUrl} title={node.title} />
+          ) : mode === "workbook" ? (
+            <WorkbookView nodeId={node.id} />
           ) : mode === "pdf" && node.attachmentUrl ? (
             <PdfView node={node} onShare={() => void share()} sharing={sharing} />
           ) : mode === "document" && node.attachmentUrl ? (

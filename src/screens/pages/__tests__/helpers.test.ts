@@ -19,7 +19,13 @@ describe("modeFor — the web's NodeViewer, by type", () => {
     [node("file", "audio/mpeg"), "ios", "media"],
     [node("file", "text/markdown"), "ios", "markdown"],
     [node("file", "application/octet-stream", "notes.md"), "android", "markdown"],
-    [node("file", "text/csv"), "android", "sheet"], // a table since parity #46 (M6), not raw text
+    [node("file", "text/csv"), "android", "sheet"],
+    // XLSX and ODS: the server reads them (spreadsheet_preview) on Android; iOS keeps QuickLook.
+    [node("file", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"), "android", "workbook"],
+    [node("file", "application/vnd.oasis.opendocument.spreadsheet"), "android", "workbook"],
+    [node("file", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"), "ios", "document"],
+    // .xls is refused by the server on purpose (no GPL parser): it stays with the system viewer.
+    [node("file", "application/vnd.ms-excel"), "android", "other"], // a table since parity #46 (M6), not raw text
     [node("file", "application/zip"), "ios", "other"],
   ] as const)("%o on %s is %s", (n, os, mode) => {
     expect(modeFor(n, os)).toBe(mode);

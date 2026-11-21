@@ -14,9 +14,8 @@
  */
 import { useCallback, useState } from "react";
 import { Linking, Modal, Pressable, ScrollView, View } from "react-native";
-import { FILL } from "@/theme/fill";
+import { SheetFrame } from "@/components/SheetFrame";
 import { router } from "expo-router";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { X } from "@/components/icons";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
@@ -70,7 +69,6 @@ export function SourceSheet({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
 
   if (!source) return null;
@@ -80,76 +78,50 @@ export function SourceSheet({
   const webUrl = source.path ? `${API_URL}${source.path}` : null;
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      {/* THE SCRIM IS A SIBLING, NOT A PARENT — docs/ACCESSIBILITY.md N1.
-          A named accessibility element groups its children, so a labelled
-          Pressable WRAPPING the sheet made the whole modal read as one "Close"
-          button and every row inside it unreachable. Behind the content it
-          dismisses exactly as before and names only itself. */}
-      <View style={{ flex: 1, justifyContent: "flex-end" }}>
+    <SheetFrame
+      visible
+      onClose={onClose}
+      closeLabel={t("common.close")}
+      testID="source-sheet"
+      maxHeight="70%"
+      style={{ backgroundColor: colors.ground, padding: metrics.space.lg, gap: metrics.space.lg }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.md }}>
+        <View style={{ flex: 1 }}>
+          <Text variant="label" tone="muted">
+            {t("sources.sheetLabel")}
+          </Text>
+          <Text variant="title" numberOfLines={2}>
+            {source.label ?? t("sources.record")}
+          </Text>
+        </View>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("common.close")}
+          hitSlop={10}
           onPress={onClose}
-          style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.5)" }}
-        />
-        {/* A sibling scrim cannot be reached through the content, so nothing
-            needs to stop a tap here any more. */}
-        <View
-          style={{
-            backgroundColor: colors.ground,
-            borderTopLeftRadius: metrics.radius.lg,
-            borderTopRightRadius: metrics.radius.lg,
-            padding: metrics.space.lg,
-            // "Open in MultiMagic" is the last row; keep it above the home
-            // indicator.
-            paddingBottom: metrics.space.lg + insets.bottom,
-            gap: metrics.space.lg,
-            maxHeight: "70%",
-            width: "100%",
-            maxWidth: metrics.maxMeasure,
-            alignSelf: "center",
-          }}
-          testID="source-sheet"
+          style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+          testID="source-sheet-close"
         >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.md }}>
-            <View style={{ flex: 1 }}>
-              <Text variant="label" tone="muted">
-                {t("sources.sheetLabel")}
-              </Text>
-              <Text variant="title" numberOfLines={2}>
-                {source.label ?? t("sources.record")}
-              </Text>
-            </View>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("common.close")}
-              hitSlop={10}
-              onPress={onClose}
-              style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
-              testID="source-sheet-close"
-            >
-              <X size={22} color={colors.inkMuted} />
-            </Pressable>
-          </View>
-
-          <ScrollView>
-            {/* The excerpt the serializer does not send yet. Saying so is
-                better than an empty panel that looks broken — and it keeps the
-                sheet honest about being a preview rather than the record. */}
-            <Text tone="muted">{t("sources.body")}</Text>
-          </ScrollView>
-
-          {webUrl ? (
-            <Button
-              label={t("sources.openInWeb")}
-              tone="neutral"
-              onPress={() => void Linking.openURL(webUrl)}
-              testID="source-sheet-open"
-            />
-          ) : null}
-        </View>
+          <X size={22} color={colors.inkMuted} />
+        </Pressable>
       </View>
-    </Modal>
+
+      <ScrollView>
+        {/* The excerpt the serializer does not send yet. Saying so is
+            better than an empty panel that looks broken — and it keeps the
+            sheet honest about being a preview rather than the record. */}
+        <Text tone="muted">{t("sources.body")}</Text>
+      </ScrollView>
+
+      {webUrl ? (
+        <Button
+          label={t("sources.openInWeb")}
+          tone="neutral"
+          onPress={() => void Linking.openURL(webUrl)}
+          testID="source-sheet-open"
+        />
+      ) : null}
+    </SheetFrame>
   );
 }

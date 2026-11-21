@@ -1,0 +1,34 @@
+# M9 restart cleanup (Hello, 2026-11-21): the app killed while a picked file
+# is still being copied in. On relaunch the row says the file is no longer on
+# this phone, and the driver's listing shows no copy left behind
+# (`pages-parity.sh run` lists Documents/pages-uploads before and after).
+#
+# COVERS: the row reaching "Preparing…", the kill, the relaunch, the row's
+# missing-file wording.
+# CANNOT TELL YOU: on its own, the disk (the driver's listing is the proof).
+appId: ${APP_ID}
+tags: [pages, parity, kill]
+---
+- runFlow: pages-open-trip.yaml
+- tapOn:
+    id: "pages-add"
+- tapOn:
+    id: "pages-new-files"
+- tapOn: "qa-big.bin"
+- extendedWaitUntil:
+    visible: "Preparing…"
+    timeout: 20000
+- killApp
+- launchApp:
+    stopApp: false
+- runFlow: pages-open-trip.yaml
+- tapOn:
+    id: "pages-menu"
+- tapOn:
+    id: "pages-menu-uploads"
+- extendedWaitUntil:
+    visible: "The file is no longer on this phone."
+    timeout: 30000
+- takeScreenshot: reports/40-after-kill-mid-copy
+- tapOn:
+    id: "pages-upload-cancel"

@@ -1,0 +1,25 @@
+# M10 (parity #46): an .xlsx is read by the server and drawn as a table, a
+# tab per sheet (Android; iOS keeps QuickLook).
+#
+# COVERS: c-budget.xlsx opens as a workbook; "Lyon" on sheet Trips; the
+# Notes tab shows "Bring a charger".
+# CANNOT TELL YOU: iOS (QuickLook, by hand); a 500-row cut.
+appId: ${APP_ID}
+tags: [pages, parity]
+---
+- runFlow: pages-open-trip.yaml
+- tapOn: "c-budget.xlsx"
+- extendedWaitUntil:
+    visible:
+      id: "pages-workbook"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: "Lyon"
+    timeout: 30000
+- takeScreenshot: reports/38-workbook-trips
+- tapOn:
+    id: "pages-workbook-sheet-1"
+- extendedWaitUntil:
+    visible: "Bring a charger"
+    timeout: 30000
+- takeScreenshot: reports/38-workbook-notes

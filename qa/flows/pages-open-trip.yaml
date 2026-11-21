@@ -1,0 +1,29 @@
+# SUBFLOW for 30–42: signed in, then Home → Pages → Files → "QA Parity" →
+# "Trip", the way a person arrives (no deep link past the navigation).
+# The fixtures are made by `qa/pages-parity.sh seed` on the :3020 sandbox.
+appId: ${APP_ID}
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-pages"
+- extendedWaitUntil:
+    visible:
+      id: "pages-home-list"
+    timeout: 30000
+- tapOn:
+    id: "pages-tab-files"
+- extendedWaitUntil:
+    visible: "QA Parity"
+    timeout: 30000
+- tapOn: "QA Parity"
+- extendedWaitUntil:
+    # lint: anchored-ok — the seeded folder "Trip" is a whole row title in the space
+    visible: "Trip"
+    timeout: 30000
+# lint: anchored-ok — the seeded folder "Trip" is a whole row title in the space
+- tapOn: "Trip"
+- extendedWaitUntil:
+    visible: "a-notes.txt"
+    timeout: 30000

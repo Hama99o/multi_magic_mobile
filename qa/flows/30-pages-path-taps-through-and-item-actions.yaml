@@ -1,0 +1,52 @@
+# M1 (parity #8, #17, #18, #30, #36, #38): the path above a folder taps
+# through; the "Pages" type chip lists pages only; Select all; Copy link;
+# Show location; Details names "Manage access".
+#
+# COVERS: the space crumb opens the space; the Pages chip hides files and
+# shows the page "Plan"; Select all fills the count; Copy link says it was
+# copied; Details opens with Manage access.
+# CANNOT TELL YOU: what the clipboard holds (Maestro cannot read it); a
+# crumb between space and folder (its testID is a database id: DBID).
+appId: ${APP_ID}
+tags: [pages, parity]
+---
+- runFlow: pages-open-trip.yaml
+- assertVisible:
+    id: "pages-folder-path"
+- takeScreenshot: reports/30-path
+- tapOn:
+    id: "pages-type-pages"
+- extendedWaitUntil:
+    notVisible: "a-notes.txt"
+    timeout: 15000
+# lint: anchored-ok — the seeded page "Plan" is a whole row title; the Pages filter shows nothing else
+- assertVisible: "Plan"
+- tapOn:
+    id: "pages-type-all"
+- longPressOn: "a-notes.txt"
+- tapOn:
+    id: "pages-select-all"
+- assertVisible:
+    id: "pages-select-count"
+- takeScreenshot: reports/30-select-all
+- tapOn:
+    id: "pages-select-clear"
+- tapOn: "More actions for a-notes.txt"
+- tapOn:
+    id: "pages-action-copy-link"
+- takeScreenshot: reports/30-copied
+- tapOn: "More actions for a-notes.txt"
+- tapOn:
+    id: "pages-action-details"
+- extendedWaitUntil:
+    visible:
+      id: "pages-details-manage-access"
+    timeout: 10000
+- takeScreenshot: reports/30-details
+- back
+- tapOn:
+    id: "pages-crumb-space"
+- extendedWaitUntil:
+    visible: "Trip"
+    timeout: 15000
+- assertNotVisible: "a-notes.txt"

@@ -1,0 +1,37 @@
+# M4 (parity #37, #39, #49): a replaced file lists its earlier version;
+# restore and delete ask first (opened and cancelled); a text file is
+# edited and saved.
+#
+# COVERS: Versions sheet with one row (the seed replaced a-notes.txt once);
+# the restore confirm opened and cancelled; editing a-notes.txt and saving
+# (the edited text shows after save).
+# CANNOT TELL YOU: Replace file's picker (system UI, by hand); restore and
+# delete actually run (destructive: opened and cancelled only).
+appId: ${APP_ID}
+tags: [pages, parity]
+---
+- runFlow: pages-open-trip.yaml
+- tapOn: "More actions for a-notes.txt"
+- tapOn:
+    id: "pages-action-versions"
+- extendedWaitUntil:
+    visible:
+      id: "pages-version-row"
+    timeout: 20000
+- takeScreenshot: reports/33-versions
+- tapOn: "Restore the version from .*"
+- assertVisible: "Restore this version?"
+- tapOn: "Cancel"
+- back
+- tapOn: "a-notes.txt"
+- tapOn:
+    id: "pages-text-edit"
+- tapOn:
+    id: "pages-text-editor"
+- inputText: " QA"
+- tapOn:
+    id: "pages-text-save"
+- extendedWaitUntil:
+    visible: ".*QA.*"
+    timeout: 20000
+- takeScreenshot: reports/33-text-saved

@@ -1,0 +1,29 @@
+# M6 (parity #43, #46): the viewer steps to the next and previous file of the
+# folder; a CSV opens as a table.
+#
+# COVERS: a-notes.txt → next → b-sheet.csv drawn as a table (its "Lyon"
+# cell) → previous → back on a-notes.txt.
+# CANNOT TELL YOU: swipe between files (buttons only); a 200-row cut.
+appId: ${APP_ID}
+tags: [pages, parity]
+---
+- runFlow: pages-open-trip.yaml
+- tapOn: "a-notes.txt"
+- extendedWaitUntil:
+    visible:
+      id: "pages-view-stepper"
+    timeout: 20000
+- tapOn:
+    id: "pages-view-next"
+- extendedWaitUntil:
+    visible:
+      id: "pages-sheet"
+    timeout: 20000
+- assertVisible: "Lyon"
+- takeScreenshot: reports/35-csv-table
+- tapOn:
+    id: "pages-view-prev"
+- extendedWaitUntil:
+    notVisible:
+      id: "pages-sheet"
+    timeout: 20000

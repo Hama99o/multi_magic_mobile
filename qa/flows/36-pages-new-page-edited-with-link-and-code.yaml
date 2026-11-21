@@ -1,0 +1,58 @@
+# M7 + M8 (parity #22, #50): a new page is named, opens in the editor, takes
+# text, a link and a code block with a language, and saves itself.
+#
+# COVERS: New > New page > name "QA page" > the editor; typing; "Saved"
+# after the one-second autosave; the link dialog opened, filled and saved on a
+# selection; a code block made and its language sheet choosing Ruby.
+# CANNOT TELL YOU: Insert > Image (the system photo picker, by hand); how
+# the saved page looks on the web (another client).
+appId: ${APP_ID}
+tags: [pages, parity]
+---
+- runFlow: pages-open-trip.yaml
+- tapOn:
+    id: "pages-add"
+- tapOn:
+    id: "pages-new-page"
+- tapOn:
+    id: "pages-name-input"
+- inputText: "QA page"
+- tapOn:
+    id: "pages-name-confirm"
+- extendedWaitUntil:
+    visible:
+      id: "note-toolbar"
+    timeout: 30000
+- inputText: "Hello from the phone"
+- extendedWaitUntil:
+    visible: "Saved"
+    timeout: 15000
+- takeScreenshot: reports/36-page-typed
+# A selection, then Link.
+- doubleTapOn: "Hello from the phone"
+- tapOn:
+    id: "tb-link"
+- tapOn:
+    id: "page-link-input"
+- inputText: "example.com"
+- tapOn:
+    id: "page-link-save"
+- extendedWaitUntil:
+    visible: "Saved"
+    timeout: 15000
+# A code block with a language.
+- tapOn:
+    id: "tb-format"
+- tapOn:
+    id: "tb-block:codeBlock"
+- tapOn:
+    id: "tb-codeLanguage"
+- tapOn:
+    id: "page-code-language-search"
+- inputText: "ruby"
+- tapOn:
+    id: "page-code-language-ruby"
+- extendedWaitUntil:
+    visible: "Saved"
+    timeout: 15000
+- takeScreenshot: reports/36-page-link-code

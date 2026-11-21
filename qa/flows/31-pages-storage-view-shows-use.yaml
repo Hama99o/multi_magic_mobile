@@ -1,0 +1,23 @@
+# M2 (parity #6): Storage, from the Pages menu: used of quota, by app,
+# what the trash holds, the largest files.
+#
+# COVERS: the menu entry; the used line and bar; the "what uses it" list;
+# the largest-files list holding the seeded xlsx.
+# CANNOT TELL YOU: that the numbers equal the web's (another client).
+appId: ${APP_ID}
+tags: [pages, parity]
+---
+- runFlow: pages-open-trip.yaml
+- tapOn:
+    id: "pages-menu"
+- tapOn:
+    id: "pages-menu-storage"
+- extendedWaitUntil:
+    visible:
+      id: "pages-storage-used"
+    timeout: 20000
+- assertVisible:
+    id: "pages-storage-bar"
+- assertVisible:
+    id: "pages-storage-largest"
+- takeScreenshot: reports/31-storage

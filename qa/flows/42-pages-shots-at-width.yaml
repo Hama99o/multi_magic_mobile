@@ -1,0 +1,27 @@
+# The three DONE screenshots (docs/design/README.md: 360, 411, 800 dp), taken
+# by `pages-parity.sh widths` once per width after a relaunch. ${WIDTH} names
+# the file.
+#
+# COVERS: the folder, the workbook and the storage view at that width.
+# CANNOT TELL YOU: anything a pixel shows that a screenshot is not read for;
+# these are for a person to look at (the contact sheet).
+appId: ${APP_ID}
+tags: [pages, parity, shots]
+---
+- runFlow: pages-open-trip.yaml
+- takeScreenshot: reports/42-folder-${WIDTH}
+- tapOn: "c-budget.xlsx"
+- extendedWaitUntil:
+    visible: "Lyon"
+    timeout: 30000
+- takeScreenshot: reports/42-workbook-${WIDTH}
+- back
+- tapOn:
+    id: "pages-menu"
+- tapOn:
+    id: "pages-menu-storage"
+- extendedWaitUntil:
+    visible:
+      id: "pages-storage-used"
+    timeout: 20000
+- takeScreenshot: reports/42-storage-${WIDTH}

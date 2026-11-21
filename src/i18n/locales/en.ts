@@ -540,6 +540,8 @@ export const en = {
 
   thread: {
     search: "Search in this chat",
+    ask: "Ask the assistant about this conversation",
+    askQuestion: "About my conversation with {{name}}: ",
     closeSearch: "Close search",
     noMatches: "Nothing matches that.",
     searchFailed: "Could not search this conversation.",

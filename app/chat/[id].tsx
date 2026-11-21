@@ -43,7 +43,8 @@ import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode
 import { Alert, FlatList, Pressable, View, type ViewStyle } from "react-native";
 import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
-import { ChevronLeft, Search, Trash2, Users } from "@/components/icons";
+import { ChevronLeft, Search, Sparkles, Trash2, Users } from "@/components/icons";
+import { useAsk } from "@/screens/flow/useAsk";
 import * as Clipboard from "expo-clipboard";
 import * as Haptics from "expo-haptics";
 import { useMutation, useQuery, useQueryClient, type InfiniteData, type QueryClient } from "@tanstack/react-query";
@@ -266,6 +267,7 @@ export default function PersonThread() {
   const conversationId = Number(params.id);
   const isGroup = params.isGroup === "1";
   const title = params.name ?? t("thread.chat");
+  const ask = useAsk();
 
   /**
    * `mergeMessage`, never `addPending` — and the difference is a poll storm.
@@ -821,6 +823,18 @@ export default function PersonThread() {
           style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
         >
           <Search size={20} color={searching ? colors.accent : colors.inkMuted} />
+        </Pressable>
+        {/* Ask the assistant about this conversation (parity audit, Chats, old P2): COMPOSED in its box,
+            never sent, as every "ask" in this app (useAsk). */}
+        <Pressable
+          testID="thread-ask"
+          onPress={() => ask(t("thread.askQuestion", { name: title }))}
+          accessibilityRole="button"
+          accessibilityLabel={t("thread.ask")}
+          hitSlop={8}
+          style={{ width: 40, height: 40, alignItems: "center", justifyContent: "center" }}
+        >
+          <Sparkles size={20} color={colors.inkMuted} />
         </Pressable>
         {detail?.isGroup ? (
           <Pressable

@@ -556,6 +556,8 @@ export const fr: Translations = {
 
   thread: {
     search: "Rechercher dans cette discussion",
+    ask: "Demander à l’assistant à propos de cette conversation",
+    askQuestion: "À propos de ma conversation avec {{name}} : ",
     closeSearch: "Fermer la recherche",
     noMatches: "Aucun résultat.",
     searchFailed: "Impossible de rechercher dans cette discussion.",

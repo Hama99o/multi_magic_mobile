@@ -21,6 +21,13 @@ export interface RecentHit {
 
 const keyFor = (userId: number) => `mm.search.recents.${userId}`;
 
+/**
+ * SafeZone kinds are never kept (their subtitles are secrets: review S2, 88).
+ * A list stored before that rule is cleaned on load.
+ */
+const SECRET_KINDS = ["password:", "paymentCard:", "identity:"];
+const isSecret = (r: RecentHit) => SECRET_KINDS.some((k) => r.id.startsWith(k));
+
 function readable(value: string | null): RecentHit[] {
   try {
     const parsed: unknown = value ? JSON.parse(value) : [];
@@ -37,7 +44,18 @@ export function useSearchRecents(userId: number | null) {
     if (userId == null) return;
     let live = true;
     AsyncStorage.getItem(keyFor(userId))
-      .then((v) => live && setRecents(readable(v)))
+      .then((v) => {
+        if (!live) return;
+        const stored = readable(v);
+        const clean = stored.filter((r) => !isSecret(r));
+        // A tap that landed before this read is kept, AND the stored list is
+        // not overwritten by it (review S3): taps first, then the stored ones.
+        setRecents((early) => {
+          const merged = [...early, ...clean.filter((r) => !early.some((e) => e.id === r.id))].slice(0, MAX_RECENTS);
+          if (early.length || clean.length !== stored.length) void AsyncStorage.setItem(keyFor(userId), JSON.stringify(merged)).catch(() => undefined);
+          return merged;
+        });
+      })
       .catch(() => undefined);
     return () => {
       live = false;
@@ -46,6 +64,7 @@ export function useSearchRecents(userId: number | null) {
 
   const remember = useCallback(
     (hit: Omit<RecentHit, "at">) => {
+      if (isSecret({ ...hit, at: 0 })) return;
       setRecents((prev) => {
         const next = [{ ...hit, at: Date.now() }, ...prev.filter((r) => r.id !== hit.id)].slice(0, MAX_RECENTS);
         if (userId != null) void AsyncStorage.setItem(keyFor(userId), JSON.stringify(next)).catch(() => undefined);

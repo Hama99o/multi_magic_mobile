@@ -160,8 +160,11 @@ export default function SearchScreen() {
     setDraft(text);
     router.push("/chat");
   };
-  const openRecord = (r: { id: string; title: string; subtitle: string | null; to: string }, kind?: string) => {
-    remember({ id: r.id, title: r.title, subtitle: r.subtitle, to: r.to });
+  const openRecord = (r: { id: string; title: string; subtitle: string | null; to: string; group?: string }, kind?: string) => {
+    // A SafeZone hit is NEVER remembered: its subtitle is a username, an email
+    // or a document number (`sources.rb`), and the recents are plaintext on the
+    // phone, shown to anyone holding it, outside the PIN (review S2, 88).
+    if (r.group !== "safezone") remember({ id: r.id, title: r.title, subtitle: r.subtitle, to: r.to });
     const route = routeForWebPath(r.to, r.title);
     if (route) router.push(route);
     else ask(t("search.askAbout", { title: r.title, kind: kind ?? "" }));

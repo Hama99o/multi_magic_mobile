@@ -212,3 +212,17 @@ describe("routeForWebPath: the search hits for finance and SafeZone", () => {
     expect(routeForWebPath("/doc/sign")).toBeNull();
   });
 });
+
+// Review (88, 2026-11-21, S1): global search sends Pages hits as /explorer/:space,
+// and a folder hit as ?folder=:id. Before the fix /explorer/ was a dead end and
+// /pages/:space?folder= opened the space's root, not the folder.
+describe("Pages hits from global search", () => {
+  it("?folder= opens that folder, on /explorer/ and /pages/ alike", () => {
+    expect(routeForWebPath("/explorer/4?folder=12", "Photos")).toEqual({ pathname: "/pages/folder", params: { spaceId: "4", parentId: "12", title: "Photos" } });
+    expect(routeForWebPath("/pages/4?folder=12", "Photos")).toEqual({ pathname: "/pages/folder", params: { spaceId: "4", parentId: "12", title: "Photos" } });
+  });
+
+  it("a ?folder= that is not an id is no route (not the root, silently)", () => {
+    expect(routeForWebPath("/explorer/4?folder=abc", "Photos")).toBeNull();
+  });
+});

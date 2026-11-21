@@ -21,7 +21,7 @@ import { RowsSkeleton } from "@/components/reusables/skeleton";
 import { LoadFailure } from "@/components/LoadFailure";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { EmptyState } from "@/screens/flow/parts";
-import { useOneAtATime } from "@/screens/tables/useOneAtATime";
+import { useOneAtATime } from "@/hooks/useOneAtATime";
 
 export default function FormsScreen() {
   const colors = useColors();

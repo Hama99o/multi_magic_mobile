@@ -24,6 +24,7 @@ import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { LoadFailure } from "@/components/LoadFailure";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import { useOneAtATime } from "@/hooks/useOneAtATime";
 import { todayKey } from "@/screens/calendar/dates";
 import { ChoiceSheet } from "@/screens/calendar/ChoiceSheet";
 import { DayChooser, Field, TagPicker } from "@/screens/finance/parts";
@@ -75,6 +76,7 @@ function Form({ kind, existing }: { kind: Kind; existing: Recurring | null }) {
   const [error, setError] = useState<string | null>(null);
   const failed = (e: unknown) => setError(apiErrorMessage(e) ?? t("finance.manage.failed"));
   const save = useSaveRecurring(kind, { onDone: () => router.back(), onError: failed });
+  const once = useOneAtATime(); // a double tap saves once
   const remove = useDeleteRecurring(kind, { onError: failed });
   const field = { borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, paddingHorizontal: metrics.space.md, color: colors.ink, backgroundColor: colors.surface, fontSize: 16 } as const;
   const value = Number(amount || "0");
@@ -188,10 +190,12 @@ function Form({ kind, existing }: { kind: Kind; existing: Recurring | null }) {
           busy={save.isPending}
           disabled={!ready}
           onPress={() =>
-            save.mutate({
-              id: existing?.id ?? null,
-              input: { name: name.trim(), amount: value, currency, frequency, intervalCount: interval, startDate, description: description.trim() || null, tagId },
-            })
+            once(() =>
+              save.mutateAsync({
+                id: existing?.id ?? null,
+                input: { name: name.trim(), amount: value, currency, frequency, intervalCount: interval, startDate, description: description.trim() || null, tagId },
+              }),
+            )
           }
         />
       </View>

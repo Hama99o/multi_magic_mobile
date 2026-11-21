@@ -1,0 +1,105 @@
+# FINANCE: the hidden-criteria sweep on a device (2026-11-21, Hello: the Finance readiness row).
+#
+# The QA account on :3001 (credentials by name from .env, as qa/run.sh exports them). Invented
+# amounts only. `finance_sweep_fixture.py up` makes "QA RTL کتاب درسی" (an expense with a Dari name)
+# before the run; `… check-double` counts the "QA double tap" rows this flow made (must be 1);
+# `… down` deletes everything named "QA …" that the run or the fixture made, BY ID, and logs it.
+#
+# RUN IT in passes, each set BEFORE the run, the app force-stopped after each change:
+#   A  font_scale 1.0, light, 411 dp      (the default)
+#   B  font_scale 2.0                     (200 %: the keypad, the list, the sheet)
+#   C  `cmd uimode night yes`             (dark)
+#   D  `wm size 1080x2400` + `wm density 480` (360 dp)   and   `wm size 1600x2560` + `wm density 320` (800 dp)
+# Slow network: `adb emu network speed gsm` + `network delay gprs` for one pass of the list (E).
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: double tap on Save makes ONE expense (counted by the API after the run); the amount
+# keypad and the Save button with the keyboard up on the name field; a Dari name renders (RTL
+# text); an empty month (a future period) shows the empty state; offline: pull to refresh says it
+# could not refresh, Try again recovers; kill and relaunch returns to Finance, signed in.
+# CANNOT TELL YOU: typing Dari through Maestro (non-ASCII input is unreliable, so the RTL row is
+# made by the fixture and only READ here); a runtime permission (Finance asks none: N/A); a slow
+# network's timing beyond "the list arrives" (pass E only).
+appId: ${APP_ID}
+tags:
+  - finance
+  - writes-qa-account
+  - hidden-criteria
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-finance"
+- tapOn:
+    id: "finance-tab-button-expenses"
+- extendedWaitUntil:
+    visible:
+      id: "finance-expenses-list"
+    timeout: 30000
+# RTL text: the fixture's Dari-named expense is drawn (read, never typed).
+- assertVisible: "QA RTL .*"
+- takeScreenshot: fin-01-list
+# Double tap on Save: one expense (the runner counts it through the API afterwards).
+- tapOn:
+    id: "finance-expenses-add"
+- tapOn:
+    id: "finance-entry-pad-1"
+- tapOn:
+    id: "finance-entry-pad-2"
+- takeScreenshot: fin-02-keypad
+- tapOn:
+    id: "finance-entry-name"
+- inputText: "QA double tap"
+# Keyboard up on the name: Save is still there (pinned above the keyboard).
+- assertVisible:
+    id: "finance-entry-save"
+- takeScreenshot: fin-03-keyboard
+- hideKeyboard
+- doubleTapOn:
+    id: "finance-entry-save"
+- extendedWaitUntil:
+    visible:
+      id: "finance-expenses-list"
+    timeout: 15000
+- assertVisible: "QA double tap"
+- takeScreenshot: fin-04-after-double-tap
+# Empty state: a month ahead has nothing.
+- tapOn:
+    id: "finance-expenses-period-next"
+- tapOn:
+    id: "finance-expenses-period-next"
+- extendedWaitUntil:
+    visible:
+      id: "finance-expenses-empty"
+    timeout: 15000
+- takeScreenshot: fin-05-empty
+- tapOn:
+    id: "finance-expenses-period-prev"
+- tapOn:
+    id: "finance-expenses-period-prev"
+# Offline: a refresh says it could not, and Try again recovers when the network is back.
+- setAirplaneMode: enabled
+- swipe:
+    from:
+      id: "finance-expenses-list"
+    direction: DOWN
+- extendedWaitUntil:
+    visible:
+      id: "finance-expenses-load-failed"
+    timeout: 30000
+- takeScreenshot: fin-06-offline
+- setAirplaneMode: disabled
+- tapOn: "Try again"
+- extendedWaitUntil:
+    notVisible:
+      id: "finance-expenses-load-failed"
+    timeout: 30000
+# Kill and relaunch: back in Finance, still signed in.
+- stopApp
+- openLink: ${DEEP_LINK}
+- extendedWaitUntil:
+    visible:
+      id: "finance-tab-button-expenses"
+    timeout: 60000
+- takeScreenshot: fin-07-relaunched

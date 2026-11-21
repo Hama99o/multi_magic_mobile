@@ -52,7 +52,7 @@ import { useTableExport } from "@/screens/tables/useTableExport";
 import { ImportBanner } from "@/screens/tables/ImportBanner";
 import { GridView } from "@/screens/tables/GridView";
 import { showsGrid } from "@/screens/tables/grid";
-import { useOneAtATime } from "@/screens/tables/useOneAtATime";
+import { useOneAtATime } from "@/hooks/useOneAtATime";
 import { DeleteByNameSheet } from "@/screens/tables/DeleteByNameSheet";
 import { BulkEditSheet } from "@/screens/tables/BulkEditSheet";
 import { ShareSheet } from "@/screens/tables/ShareSheet";

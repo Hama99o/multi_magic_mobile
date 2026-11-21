@@ -8,7 +8,7 @@
  * requests. This keeps the guard in a ref, which the second press reads at
  * once, and releases it only when the work has finished, so pass
  * `mutateAsync` (or any promise), not `mutate`. The pattern is the one
- * `app/contacts/edit.tsx` and `app/calendar/edit.tsx` already use.
+ * `app/contacts/edit.tsx` and `app/calendar/edit.tsx` already use. Shared by Tables and Finance.
  */
 import { useCallback, useRef } from "react";
 

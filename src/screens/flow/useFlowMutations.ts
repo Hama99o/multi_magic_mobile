@@ -54,11 +54,13 @@ export function editCards(client: QueryClient, projectId: number, edit: (cards: 
 
 /** `editCards`, only in the board scopes `keep` accepts (key: ["flow","board",P,scope]). */
 function editCardsIn(client: QueryClient, projectId: number, keep: (scope: unknown) => boolean, edit: (cards: Card[]) => Card[]) {
-  for (const [key, data] of client.getQueriesData<InfiniteData<Board>>({ queryKey: flowKeys.boards(projectId) })) {
-    if (!data?.pages?.length || !keep(key[3])) continue;
+  // A key FACTORY plus a predicate, never a key read back from the cache: the
+  // query-key gate (src/__tests__/queryKeys.test.ts) reads every write's key.
+  client.setQueriesData<InfiniteData<Board>>({ queryKey: flowKeys.boards(projectId), predicate: (q) => keep(q.queryKey[3]) }, (data) => {
+    if (!data?.pages?.length) return data;
     const all = edit(data.pages.flatMap((p) => p.cards));
-    client.setQueryData<InfiniteData<Board>>(key, { ...data, pages: data.pages.map((p, i) => ({ ...p, cards: i === 0 ? all : [] })) });
-  }
+    return { ...data, pages: data.pages.map((p, i) => ({ ...p, cards: i === 0 ? all : [] })) };
+  });
 }
 
 /** The board's own parts (columns, sprints, the project), in every board of the project. */

@@ -11,7 +11,7 @@
  * column scrolls without rows jumping or overlapping.
  */
 import { useState, type ReactNode } from "react";
-import { Pressable, View } from "react-native";
+import { Pressable, View, useWindowDimensions } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { Card, FlowRole, Person } from "@/api/flow";
 import type { FieldDefinition, Tag } from "@/api/fields";
@@ -20,7 +20,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { APP_COLORS } from "@/theme/appColors";
 import { formatDay } from "@/screens/calendar/dates";
-import { TILE, assigneesOf, colorHex, dueOf, initials, isOverdue, labelsOf, priorityOf, tileHeight, tileShape } from "./logic";
+import { TILE, assigneesOf, colorHex, dueOf, initials, isOverdue, labelsOf, priorityOf, textScale, tileHeight, tileShape } from "./logic";
 
 export const FLOW_COLOR = APP_COLORS.flow;
 /** The dark glyph every app badge uses on its solid colour (`appColors.ts` GLYPH). */
@@ -57,7 +57,7 @@ export function Avatar({ name, size = 24, ring }: { name: string; size?: number;
 
 export function Pill({ label, color, testID }: { label: string; color: string; testID?: string }) {
   return (
-    <View testID={testID} style={{ paddingHorizontal: 8, height: 22, justifyContent: "center", borderRadius: 11, backgroundColor: `${color}26`, borderWidth: 1, borderColor: `${color}66` }}>
+    <View testID={testID} style={{ paddingHorizontal: 8, minHeight: 22, justifyContent: "center", borderRadius: 11, backgroundColor: `${color}26`, borderWidth: 1, borderColor: `${color}66` }}>
       <Text numberOfLines={1} style={{ fontSize: 12, lineHeight: 16, fontWeight: "600", color }}>
         {label}
       </Text>
@@ -105,6 +105,8 @@ export function CardTile({
   const labels = labelsOf(card, fields, tagsByCategory);
   const assignees = assigneesOf(card, fields, people);
   const shape = tileShape(card, fields, tagsByCategory, people);
+  const { fontScale } = useWindowDimensions();
+  const k = textScale(fontScale);
   const pending = card.id < 0;
 
   const parts = [
@@ -129,7 +131,7 @@ export function CardTile({
       accessibilityLabel={parts.join(". ")}
       accessibilityHint={onLongPress ? t("flow.tile.hint") : undefined}
       style={{
-        height: tileHeight(shape),
+        height: tileHeight(shape, fontScale),
         padding: TILE.pad,
         gap: TILE.gap,
         borderRadius: metrics.radius.md,
@@ -140,10 +142,10 @@ export function CardTile({
       }}
     >
       {shape.badges ? (
-      <View style={{ flexDirection: "row", gap: 4, height: TILE.badges, overflow: "hidden" }}>
+      <View style={{ flexDirection: "row", gap: 4, height: TILE.badges * k, overflow: "hidden" }}>
         {priority ? <Pill label={priority.label} color={priority.color ?? colors.inkMuted} /> : null}
         {labels.slice(0, 3).map((l) => (
-          <View key={l.id} style={{ paddingHorizontal: 6, height: TILE.badges, justifyContent: "center", borderRadius: 4, backgroundColor: `${l.color ?? colors.inkMuted}33` }}>
+          <View key={l.id} style={{ paddingHorizontal: 6, height: TILE.badges * k, justifyContent: "center", borderRadius: 4, backgroundColor: `${l.color ?? colors.inkMuted}33` }}>
             <Text numberOfLines={1} style={{ fontSize: 11, lineHeight: 14, fontWeight: "600", color: colors.ink, maxWidth: 90 }}>
               {l.label}
             </Text>
@@ -151,11 +153,11 @@ export function CardTile({
         ))}
       </View>
       ) : null}
-      <Text numberOfLines={2} style={{ fontWeight: "600", fontSize: 15, lineHeight: 20, height: TILE.title }}>
+      <Text numberOfLines={2} style={{ fontWeight: "600", fontSize: 15, lineHeight: 20, height: TILE.title * k }}>
         {card.title}
       </Text>
       {shape.meta ? (
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, height: TILE.meta }}>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, height: TILE.meta * k }}>
         {due ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <Calendar size={13} color={late ? colors.danger : colors.inkMuted} />

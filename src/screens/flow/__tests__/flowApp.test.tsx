@@ -99,6 +99,22 @@ describe("the projects list", () => {
     expect(bodies("post", `${B}/projects`)).toEqual([{ project: { title: "[qa] Made", description: null, color: "green" } }]);
   });
 
+  // Hidden criterion (Hello, 2026-11-21): a double tap creates ONE. Two taps
+  // in one frame both land before `isPending` re-renders the button busy.
+  it("creates ONE project when Create is tapped twice in one frame", async () => {
+    mock.onGet(`${B}/projects`).reply(200, { projects: [], meta: { pagy: { page: 1, pages: 1 } } });
+    mock.onPost(`${B}/projects`).reply(201, { project: project(12, "[qa] Once") });
+    renderScreen(<Flow />);
+    await screen.findByTestId("flow-empty");
+    fireEvent.press(screen.getByTestId("flow-empty-create"));
+    fireEvent.changeText(screen.getByTestId("flow-project-title"), "[qa] Once");
+    const save = screen.getByTestId("flow-project-save");
+    fireEvent.press(save);
+    fireEvent.press(save);
+    await waitFor(() => expect(router.push).toHaveBeenCalled());
+    expect(bodies("post", `${B}/projects`)).toHaveLength(1);
+  });
+
   it("offers Delete only to the owner, and asks first, naming the project", async () => {
     mock.onGet(`${B}/projects`).reply(200, { projects: [project(7, "[qa] Mine"), project(8, "[qa] Theirs", "admin")], meta: { pagy: { page: 1, pages: 1 } } });
     mock.onDelete(`${B}/projects/7`).reply(204);

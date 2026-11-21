@@ -11,8 +11,7 @@
  * the limit with no warning is a surprise.
  */
 import { Modal, Pressable, View } from "react-native";
-import { FILL } from "@/theme/fill";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { SheetFrame } from "@/components/SheetFrame";
 import { useTranslation } from "react-i18next";
 import { Camera, FileText, Image as ImageIcon } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
@@ -41,7 +40,6 @@ export function AttachSheet({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
 
   if (!visible) return null;
@@ -53,89 +51,66 @@ export function AttachSheet({
   ];
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      {/* THE SCRIM IS A SIBLING, NOT A PARENT — docs/ACCESSIBILITY.md N1.
-          A named accessibility element groups its children, so a labelled
-          Pressable WRAPPING the sheet made the whole modal read as one "Close"
-          button and every row inside it unreachable. Behind the content it
-          dismisses exactly as before and names only itself. */}
-      <View style={{ flex: 1, justifyContent: "flex-end" }}>
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("common.close")}
-          onPress={onClose}
-          style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.5)" }}
-        />
-        <View
-          style={{
-            backgroundColor: colors.ground,
-            borderTopLeftRadius: metrics.radius.lg,
-            borderTopRightRadius: metrics.radius.lg,
-            padding: metrics.space.lg,
-            // Measured on a device: the last row sat under the gesture bar.
-            paddingBottom: metrics.space.lg + insets.bottom,
-            gap: metrics.space.sm,
-            width: "100%",
-            maxWidth: metrics.maxMeasure,
-            alignSelf: "center",
-          }}
-          testID="attach-sheet"
-        >
-          <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
-            <Text variant="label" tone="muted">
-              {t("files.addToConversation")}
-            </Text>
-            {/* Shown while filling up, not only at refusal. */}
-            {fileCount > 0 ? (
-              <Text variant="caption" tone="muted" testID="attach-count">
-                {t("files.ofFiles", { count: fileCount, max: LIMITS.maxFilesPerSession })}
-              </Text>
-            ) : null}
-          </View>
-
-          {/* The limits, BEFORE the picker opens. A person who picks a 14 MB
-              scan and is then told "under 10 MB" has done the work twice;
-              the sentence costs one line and the server enforces every word
-              of it (`AiDocument::MAX_BYTES`, `MAX_PER_CONVERSATION`,
-              `ALLOWED_EXTENSIONS`). */}
-          <Text variant="caption" tone="muted" testID="attach-limits">
-            {t("files.limits", {
-              max: LIMITS.maxFilesPerSession,
-              mb: LIMITS.maxFileBytes / (1024 * 1024),
-              types: describeAllowedTypes(),
-            })}
+    <SheetFrame
+      visible
+      onClose={onClose}
+      closeLabel={t("common.close")}
+      testID="attach-sheet"
+      style={{ backgroundColor: colors.ground, padding: metrics.space.lg, gap: metrics.space.sm }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "baseline", justifyContent: "space-between" }}>
+        <Text variant="label" tone="muted">
+          {t("files.addToConversation")}
+        </Text>
+        {/* Shown while filling up, not only at refusal. */}
+        {fileCount > 0 ? (
+          <Text variant="caption" tone="muted" testID="attach-count">
+            {t("files.ofFiles", { count: fileCount, max: LIMITS.maxFilesPerSession })}
           </Text>
-
-          {rows.map((row) => (
-            <Pressable
-              key={row.label}
-              accessibilityRole="button"
-              accessibilityLabel={`${row.label}. ${row.hint}`}
-              onPress={() => {
-                onClose();
-                row.onPress();
-              }}
-              style={{
-                flexDirection: "row",
-                alignItems: "center",
-                gap: metrics.space.lg,
-                minHeight: metrics.touch + 8,
-                paddingHorizontal: metrics.space.md,
-                borderRadius: metrics.radius.md,
-              }}
-              testID={row.testID}
-            >
-              <row.icon size={22} color={colors.accent} />
-              <View>
-                <Text>{row.label}</Text>
-                <Text variant="caption" tone="muted">
-                  {row.hint}
-                </Text>
-              </View>
-            </Pressable>
-          ))}
-        </View>
+        ) : null}
       </View>
-    </Modal>
+
+      {/* The limits, BEFORE the picker opens. A person who picks a 14 MB
+          scan and is then told "under 10 MB" has done the work twice;
+          the sentence costs one line and the server enforces every word
+          of it (`AiDocument::MAX_BYTES`, `MAX_PER_CONVERSATION`,
+          `ALLOWED_EXTENSIONS`). */}
+      <Text variant="caption" tone="muted" testID="attach-limits">
+        {t("files.limits", {
+          max: LIMITS.maxFilesPerSession,
+          mb: LIMITS.maxFileBytes / (1024 * 1024),
+          types: describeAllowedTypes(),
+        })}
+      </Text>
+
+      {rows.map((row) => (
+        <Pressable
+          key={row.label}
+          accessibilityRole="button"
+          accessibilityLabel={`${row.label}. ${row.hint}`}
+          onPress={() => {
+            onClose();
+            row.onPress();
+          }}
+          style={{
+            flexDirection: "row",
+            alignItems: "center",
+            gap: metrics.space.lg,
+            minHeight: metrics.touch + 8,
+            paddingHorizontal: metrics.space.md,
+            borderRadius: metrics.radius.md,
+          }}
+          testID={row.testID}
+        >
+          <row.icon size={22} color={colors.accent} />
+          <View>
+            <Text>{row.label}</Text>
+            <Text variant="caption" tone="muted">
+              {row.hint}
+            </Text>
+          </View>
+        </Pressable>
+      ))}
+    </SheetFrame>
   );
 }

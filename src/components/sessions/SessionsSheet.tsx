@@ -16,8 +16,8 @@
  */
 import { useState } from "react";
 import { ActivityIndicator, Modal, Pressable, ScrollView, Switch, View } from "react-native";
+import { SheetFrame } from "@/components/SheetFrame";
 import { FILL } from "@/theme/fill";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { X } from "@/components/icons";
 import { useTranslation } from "react-i18next";
@@ -52,7 +52,6 @@ export function SessionsSheet({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
-  const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
   const { t } = useTranslation();
   const [pending, setPending] = useState<Pending>(null);
@@ -237,141 +236,115 @@ export function SessionsSheet({
     );
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: "flex-end" }}>
-        {/* THE SCRIM IS A SIBLING, NOT A PARENT — docs/ACCESSIBILITY.md N1,
-            the same shape as AttachSheet. It was a plain View, so a tap
-            outside the sheet did nothing (owner's report, 2026-09-24); now it
-            closes, and names only itself to a screen reader. */}
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel={t("common.close")}
-          onPress={onClose}
-          style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.5)" }}
-          testID="sessions-scrim"
-        />
-        <View
-          style={{
-            backgroundColor: colors.ground,
-            borderTopLeftRadius: metrics.radius.lg,
-            borderTopRightRadius: metrics.radius.lg,
-            paddingTop: metrics.space.lg,
-            paddingHorizontal: metrics.space.lg,
-            // The same measurement AttachSheet already carries: without the
-            // inset the LAST row — which here is "Sign out" — sits under the
-            // gesture bar on Android and under the 34 pt home indicator on
-            // every iPhone since the X.
-            paddingBottom: metrics.space.xl + insets.bottom,
-            gap: metrics.space.lg,
-            maxHeight: "85%",
-            width: "100%",
-            maxWidth: metrics.maxMeasure,
-            alignSelf: "center",
-          }}
-          testID="sessions-sheet"
-        >
-          <View style={{ flexDirection: "row", alignItems: "center" }}>
-            <Text variant="title" style={{ flex: 1 }}>
-              {t("sessions.title")}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("common.close")}
-              hitSlop={10}
-              onPress={onClose}
-              style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
-              testID="sessions-close"
-            >
-              <X size={22} color={colors.inkMuted} />
-            </Pressable>
-          </View>
+    <>
+      <SheetFrame
+        visible
+        onClose={onClose}
+        closeLabel={t("common.close")}
+        testID="sessions-sheet"
+        style={{ backgroundColor: colors.ground, paddingTop: metrics.space.lg, paddingHorizontal: metrics.space.lg, paddingBottom: metrics.space.xl, gap: metrics.space.lg }}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text variant="title" style={{ flex: 1 }}>
+            {t("sessions.title")}
+          </Text>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("common.close")}
+            hitSlop={10}
+            onPress={onClose}
+            style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
+            testID="sessions-close"
+          >
+            <X size={22} color={colors.inkMuted} />
+          </Pressable>
+        </View>
 
-          {error ? (
-            <Text variant="caption" tone="danger" testID="sessions-error">
-              {error}
+        {error ? (
+          <Text variant="caption" tone="danger" testID="sessions-error">
+            {error}
+          </Text>
+        ) : null}
+
+        {/* ── ONE SCROLL, LIST AND TAIL TOGETHER ────────────────────────
+            The list used to be a ScrollView with NO `flex`, above a tail
+            that was pinned and about 340 dp tall — the primary, a divider,
+            Appearance, Language, an Account heading and three rows. A
+            child with no flex takes what is left, so at `maxHeight: "85%"`
+            the list got roughly three rows on a 360 x 800 phone and **under
+            one on a 360 x 640**, sliced through the middle of its glyphs.
+            The one part of the sheet the sheet exists for absorbed the
+            whole squeeze, silently, because a ScrollView clips its last row
+            rather than reporting it had no room.
+
+            Photographed in `ours/360-light-fr-sessions.png` and confirmed
+            language-independent against the `-en-` shot at the same width —
+            and it had been sitting in `ours/` as DONE evidence for a day.
+
+            THE TRADE, because two written decisions could not both survive:
+            Cleo's take-away (§Sources) is New conversation as a **pinned**
+            primary, and it is no longer pinned — you reach it by scrolling
+            when the list is long. What it protects instead is HIS
+            instruction, twice: "Sign out lives at the bottom of this sheet"
+            and Appearance/Account "under a divider at the bottom". Rule
+            Zero — the reference is the check, not the authority — so when a
+            Mobbin take-away and his instruction cannot both hold, his wins
+            and the loss gets written down rather than absorbed.
+
+            `flexShrink: 1` because RN defaults it to 0: without it this
+            would push the sheet past its own `maxHeight` instead of
+            scrolling inside it. The bottom inset is untouched — it stays on
+            the sheet View, where `sheets.insets.test.tsx` asserts it. */}
+        {/* The indicator is SHOWN here, unlike every other list in this app.
+            Elsewhere hiding it is right — those lists usually fit, and a
+            bar that appears and fades on a list with nothing below it is
+            noise. Here the scroll is the whole point, and hiding it left a
+            half-clipped glyph at the bottom edge as the ONLY thing telling
+            anybody there was more. That is an accident doing an
+            affordance's job. Hiding it was copied from the other lists
+            without asking whether the reason came with it. */}
+        <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: metrics.space.lg }}>
+          {isLoading ? (
+            <ActivityIndicator color={colors.accent} />
+          ) : loadError ? (
+            <View testID="sessions-load-failed" style={{ gap: metrics.space.sm }}>
+              <Text tone="muted">{failureMessage(loadError, t("sessions.loadFailed"))}</Text>
+              <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
+                <Text tone="accent">{t("common.tryAgain")}</Text>
+              </Pressable>
+            </View>
+          ) : (
+            groups.map((entry) => group(entry.label, entry.rows))
+          )}
+
+          <View style={{ gap: metrics.space.sm }}>
+          {atLimit ? (
+            <Text variant="caption" tone="muted" testID="sessions-at-limit">
+              {t("sessions.atLimit", { max: LIMITS.maxSessions })}
             </Text>
           ) : null}
+          <Button
+            label={t("sessions.newConversation")}
+            busy={create.isPending}
+            disabled={atLimit || loadError != null}
+            onPress={() => create.mutate()}
+            testID="sessions-new"
+          />
 
-          {/* ── ONE SCROLL, LIST AND TAIL TOGETHER ────────────────────────
-              The list used to be a ScrollView with NO `flex`, above a tail
-              that was pinned and about 340 dp tall — the primary, a divider,
-              Appearance, Language, an Account heading and three rows. A
-              child with no flex takes what is left, so at `maxHeight: "85%"`
-              the list got roughly three rows on a 360 x 800 phone and **under
-              one on a 360 x 640**, sliced through the middle of its glyphs.
-              The one part of the sheet the sheet exists for absorbed the
-              whole squeeze, silently, because a ScrollView clips its last row
-              rather than reporting it had no room.
+          {/* ── ACCOUNT ─────────────────────────────────────────────────
+              Under its own heading and BELOW a divider, deliberately apart
+              from the conversation list above it.
 
-              Photographed in `ours/360-light-fr-sessions.png` and confirmed
-              language-independent against the `-en-` shot at the same width —
-              and it had been sitting in `ours/` as DONE evidence for a day.
-
-              THE TRADE, because two written decisions could not both survive:
-              Cleo's take-away (§Sources) is New conversation as a **pinned**
-              primary, and it is no longer pinned — you reach it by scrolling
-              when the list is long. What it protects instead is HIS
-              instruction, twice: "Sign out lives at the bottom of this sheet"
-              and Appearance/Account "under a divider at the bottom". Rule
-              Zero — the reference is the check, not the authority — so when a
-              Mobbin take-away and his instruction cannot both hold, his wins
-              and the loss gets written down rather than absorbed.
-
-              `flexShrink: 1` because RN defaults it to 0: without it this
-              would push the sheet past its own `maxHeight` instead of
-              scrolling inside it. The bottom inset is untouched — it stays on
-              the sheet View, where `sheets.insets.test.tsx` asserts it. */}
-          {/* The indicator is SHOWN here, unlike every other list in this app.
-              Elsewhere hiding it is right — those lists usually fit, and a
-              bar that appears and fades on a list with nothing below it is
-              noise. Here the scroll is the whole point, and hiding it left a
-              half-clipped glyph at the bottom edge as the ONLY thing telling
-              anybody there was more. That is an accident doing an
-              affordance's job. Hiding it was copied from the other lists
-              without asking whether the reason came with it. */}
-          <ScrollView style={{ flexShrink: 1 }} contentContainerStyle={{ gap: metrics.space.lg }}>
-            {isLoading ? (
-              <ActivityIndicator color={colors.accent} />
-            ) : loadError ? (
-              <View testID="sessions-load-failed" style={{ gap: metrics.space.sm }}>
-                <Text tone="muted">{failureMessage(loadError, t("sessions.loadFailed"))}</Text>
-                <Pressable onPress={() => void refetch()} accessibilityRole="button" hitSlop={8}>
-                  <Text tone="accent">{t("common.tryAgain")}</Text>
-                </Pressable>
-              </View>
-            ) : (
-              groups.map((entry) => group(entry.label, entry.rows))
-            )}
-
-            <View style={{ gap: metrics.space.sm }}>
-            {atLimit ? (
-              <Text variant="caption" tone="muted" testID="sessions-at-limit">
-                {t("sessions.atLimit", { max: LIMITS.maxSessions })}
-              </Text>
-            ) : null}
-            <Button
-              label={t("sessions.newConversation")}
-              busy={create.isPending}
-              disabled={atLimit || loadError != null}
-              onPress={() => create.mutate()}
-              testID="sessions-new"
-            />
-
-            {/* ── ACCOUNT ─────────────────────────────────────────────────
-                Under its own heading and BELOW a divider, deliberately apart
-                from the conversation list above it.
-
-                Two rows from here sits "delete a conversation", which is safe
-                by construction: the confirm exists to say that notes, contacts,
-                loans and money are untouched. Deleting the ACCOUNT is the
-                opposite — it is those records. They must not read as siblings,
-                so this one does not live inside the list of conversations; it
-                lives under a heading that names what it is about, and it opens
-                its own SCREEN rather than a dialog. */}
-            </View>
-          </ScrollView>
-        </View>
-      </View>
+              Two rows from here sits "delete a conversation", which is safe
+              by construction: the confirm exists to say that notes, contacts,
+              loans and money are untouched. Deleting the ACCOUNT is the
+              opposite — it is those records. They must not read as siblings,
+              so this one does not live inside the list of conversations; it
+              lives under a heading that names what it is about, and it opens
+              its own SCREEN rather than a dialog. */}
+          </View>
+        </ScrollView>
+      </SheetFrame>
 
       {/* The row menu. Clear FIRST — see the header. */}
       {pending?.kind === "menu" ? (
@@ -539,6 +512,6 @@ export function SessionsSheet({
           if (pending) destroy.mutate(pending.session.id);
         }}
       />
-    </Modal>
+    </>
   );
 }

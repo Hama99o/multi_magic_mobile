@@ -1,0 +1,16 @@
+# THE SMOKE FLOW, run alone before any batch (Hello, 2026-11-21): sign in and
+# photograph Home, then STOP for a person to look at the shot. A batch is run
+# only on a start someone has seen working; never 50 minutes of flows on a
+# broken one (slot 2 rerun: every flow stopped on the dev client's launcher).
+#
+# COVERS: the bundle loads, sign-in works, Home renders.
+# CANNOT TELL YOU: anything past Home.
+appId: ${APP_ID}
+tags: [smoke]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- assertVisible:
+    id: "home-tile-pages"
+- takeScreenshot: reports/00-smoke-home

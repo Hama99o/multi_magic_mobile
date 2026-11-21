@@ -5,6 +5,8 @@
 #   qa/pages-parity.sh device     push the test folder and files onto the device
 #   qa/pages-parity.sh run        every flow below, in order, with the kill tests
 #   qa/pages-parity.sh widths     the screenshots at 360, 411 and 800 dp
+#   qa/pages-parity.sh smoke      FIRST: open the bundle, sign in, shoot Home;
+#                                 look at the shot before running anything else
 #   qa/pages-parity.sh columns    readiness columns: empty, RTL, 2×tap, offline,
 #                                 dark, 200% font (docs/RELEASE_READINESS.md)
 #   qa/pages-parity.sh clean      delete what seed and the flows made
@@ -116,6 +118,22 @@ fps_off() {
   echo "fps_debug after: $(adb -s "$SERIAL" shell run-as "$APP_ID" grep -o 'fps_debug" value="[a-z]*' "$prefs" 2>/dev/null || echo absent)"
 }
 
+# OPEN THE BUNDLE BEFORE ANY FLOW (measured 2026-11-21, slot 2 rerun): on a
+# device whose dev client last showed its launcher, Maestro's openLink did not
+# load the bundle and every flow stopped on "Development servers" for 50 min.
+# `am start` with the package does load it. So: open it, wait for the JS to
+# run, and stop here as NOT MEASURED (exit 3) if it never does.
+prime() {
+  adb -s "$SERIAL" logcat -c
+  adb -s "$SERIAL" shell am start -a android.intent.action.VIEW -d "$1" "$APP_ID" >/dev/null
+  local i
+  for i in $(seq 1 90); do
+    adb -s "$SERIAL" logcat -d | grep -q 'Running "main"' && { echo "prime: bundle running"; return 0; }
+    sleep 2
+  done
+  echo "NOT MEASURED: the dev client never ran the bundle from $1"; exit 3
+}
+
 flow() { # flow <file> : one flow, its own log, and the verdict line
   local f=$1 n; n=$(basename "$f" .yaml)
   MAESTRO_QA_EMAIL="$QA_EMAIL" MAESTRO_QA_PASSWORD="$QA_PASSWORD" \
@@ -124,7 +142,7 @@ flow() { # flow <file> : one flow, its own log, and the verdict line
 }
 
 run() {
-  need_pw
+  need_pw; prime "$PP_DEEP_LINK"
   : > "$OUT/verdicts.txt"
   for f in 30 31 32 33 34 35 36 37 38 39; do flow "$(ls "$DIR"/flows/${f}-*.yaml)"; done
   # The kill tests: the copies listed before, between and after.
@@ -138,6 +156,7 @@ run() {
 
 widths() { # the same three screens at 360, 411 and 800 dp
   local w px d
+  prime "$PP_DEEP_LINK"
   for w in 360 411 800; do
     case $w in 360) px=1080x2280; d=480;; 411) px=1080x2400; d=420;; 800) px=1600x2560; d=320;; esac
     adb -s "$SERIAL" shell wm size $px; adb -s "$SERIAL" shell wm density $d
@@ -155,7 +174,7 @@ shot42() { # shot42 <label> : flow 42's three shots after a relaunch, named <lab
 }
 
 columns() { # the readiness columns this rig can set (docs/RELEASE_READINESS.md)
-  need_pw
+  need_pw; prime "$PP_DEEP_LINK"
   flow "$DIR/flows/47-pages-empty-folder-state.yaml"
   flow "$DIR/flows/44-pages-persian-titles-list-and-grid.yaml"
   flow "$DIR/flows/43-pages-double-tap-makes-one-folder.yaml"
@@ -184,7 +203,8 @@ clean() {
 }
 
 case "${1:-}" in
+  smoke) need_pw; prime "$PP_DEEP_LINK"; flow "$DIR/flows/00-smoke-signed-in.yaml"; echo "LOOK: $OUT/00-smoke-signed-in (00-smoke-home.png) before the batch";;
   seed) seed;; device) device;; run) run;; widths) widths;; columns) columns;; clean) clean;;
   all) seed && device && run; widths; columns; clean;;
-  *) sed -n 2,11p "$0"; exit 2;;
+  *) sed -n 2,13p "$0"; exit 2;;
 esac

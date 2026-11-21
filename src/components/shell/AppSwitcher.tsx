@@ -15,7 +15,7 @@
 import { useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { Search, Sparkles } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
@@ -72,6 +72,7 @@ export function AppSwitcher({
   onOpen: (key: AppKey) => void;
   onClose: () => void;
 }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const scheme = useScheme();

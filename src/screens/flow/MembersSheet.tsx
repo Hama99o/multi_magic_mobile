@@ -13,7 +13,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, Pressable, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { flowKeys } from "@/api/keys";
@@ -34,6 +34,7 @@ import { useAddMember, useMemberRole, useRemoveMember, useResendInvite } from ".
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export function MembersSheet({ project, onClose }: { project: Project; onClose: () => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

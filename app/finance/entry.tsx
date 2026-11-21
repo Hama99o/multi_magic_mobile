@@ -12,7 +12,7 @@
  */
 import { useState } from "react";
 import { Keyboard, Pressable, ScrollView, TextInput, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
@@ -33,7 +33,7 @@ import { useFinanceUndo } from "@/stores/financeUndo.store";
 type Kind = "expense" | "income";
 
 export default function EntryScreen() {
-  const params = useLocalSearchParams<{ kind?: string; id?: string }>();
+  const params = useNavParams<{ kind?: string; id?: string }>();
   const kind: Kind = params.kind === "income" ? "income" : "expense";
   const editId = params.id ? Number(params.id) : null;
   const existing = useQuery({
@@ -48,6 +48,7 @@ export default function EntryScreen() {
 }
 
 function Form({ initialKind, existing, defaultCurrency, remember }: { initialKind: Kind; existing: Expense | Income | null; defaultCurrency: Currency; remember: (c: Currency) => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();

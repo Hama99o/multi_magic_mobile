@@ -8,7 +8,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { Alert, TextInput, View, useWindowDimensions } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { GestureHandlerRootView, ScrollView } from "react-native-gesture-handler";
 import type { SignatureInput, Stroke } from "@/api/doc";
@@ -29,11 +29,12 @@ const FONT_MAX = 120;
 const FONT_STEP = 8;
 
 export default function SignatureCreator() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const { width } = useWindowDimensions();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useNavParams<{ id?: string }>();
   const editingId = params.id ? Number(params.id) : null;
   const list = useSignatures();
   const editing = useMemo(() => (editingId ? (list.data?.rows.find((s) => s.id === editingId) ?? null) : null), [editingId, list.data]);

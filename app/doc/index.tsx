@@ -7,7 +7,8 @@
  * Save. The one thing kept is the signatures, reached from Sign.
  */
 import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
-import { router, type Href } from "expo-router";
+import { type Href } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { Combine, FileSignature, Layers, RefreshCw, Shrink, Type, type LucideIcon } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
@@ -26,6 +27,7 @@ export const DOC_TOOLS: { key: string; icon: LucideIcon; route: Href; title: str
 ];
 
 export default function DocHub() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

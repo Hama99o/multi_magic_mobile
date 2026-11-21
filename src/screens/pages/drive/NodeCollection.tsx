@@ -18,7 +18,7 @@ import { Text } from "@/components/reusables/text";
 import { useTranslation } from "react-i18next";
 import { CheckCheck, Download, FolderInput, Star, Trash2 } from "@/components/icons";
 import * as Clipboard from "expo-clipboard";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { nodeLink } from "../links";
 import { useQueryClient } from "@tanstack/react-query";
 import { pagesKeys } from "@/api/keys";
@@ -88,6 +88,7 @@ export function NodeCollection({
   onSelectingChange?: (selecting: boolean) => void;
   testID: string;
 }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -184,7 +185,7 @@ export function NodeCollection({
       pathname: "/pages/folder",
       params: node.parentId == null ? { spaceId: String(node.spaceId), title: node.space?.title ?? "" } : { spaceId: String(node.spaceId), parentId: String(node.parentId) },
     });
-  }, []);
+  }, [router]);
 
   // ── Actions ───────────────────────────────────────────────────────────────
 

@@ -10,7 +10,7 @@
  */
 import type { ReactNode } from "react";
 import { Alert, I18nManager, Pressable, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
@@ -18,6 +18,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { t as translate } from "@/i18n";
 
 export function AccountHeader({ title }: { title: string }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

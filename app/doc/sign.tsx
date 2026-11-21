@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, View, useWindowDimensions } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { Gesture, GestureDetector, GestureHandlerRootView, ScrollView } from "react-native-gesture-handler";
 import { Image as ExpoImage } from "expo-image";
@@ -266,6 +266,7 @@ function PagerButton({ label, disabled, onPress, icon }: { label: string; disabl
 
 /** The library as a strip: pick one, add one, manage them. */
 function SignatureStrip({ rows, loading, failed, selected, onSelect, onAspect }: { rows: Signature[]; loading: boolean; failed: boolean; selected: number | null; onSelect: (id: number) => void; onAspect: (id: number, aspect: number) => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

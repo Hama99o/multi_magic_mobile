@@ -17,7 +17,8 @@
  */
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { router } from "expo-router";
+import { useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
@@ -103,7 +104,7 @@ export default function SearchScreen() {
   const { setDraft } = useDraft(sessionId ?? null);
 
   // What was typed in the Apps sheet before coming here, searched at once.
-  const params = useLocalSearchParams<{ q?: string }>();
+  const params = useNavParams<{ q?: string }>();
   const [query, setQuery] = useState(() => (typeof params.q === "string" ? params.q : ""));
   const [debounced, setDebounced] = useState("");
   useEffect(() => {

@@ -14,7 +14,7 @@
 import { useState } from "react";
 import { View } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
@@ -66,6 +66,7 @@ function Snippet({ title, hint, value, testID }: { title: string; hint: string; 
 }
 
 export default function ConnectClaude() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

@@ -26,7 +26,7 @@
  * after.
  */
 import { Pressable, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Trash2 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
@@ -35,6 +35,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { ACCOUNT_DELETION_AVAILABLE } from "@/api/account";
 
 export default function Account() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

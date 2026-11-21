@@ -11,7 +11,7 @@
  */
 import { useMemo, useState } from "react";
 import { Alert, FlatList, Linking, Pressable, TextInput, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tablesKeys } from "@/api/keys";
@@ -48,7 +48,7 @@ function basePeople(data: { owner: { id: number; name: string }; members: { pend
 export default function ActivityScreen() {
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ table: string; record?: string; tab?: string }>();
+  const params = useNavParams<{ table: string; record?: string; tab?: string }>();
   const tableId = Number(params.table);
   const recordId = params.record ? Number(params.record) : undefined;
   const [tab, setTab] = useState<Tab>(params.tab === "history" ? "history" : "comments");

@@ -13,7 +13,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { AccessibilityInfo, ActivityIndicator, Pressable, RefreshControl, ScrollView, SectionList, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -77,6 +77,7 @@ function layoutOf(sections: Section[]) {
  * highlighted.
  */
 function ContactsList({ pane = false, openId = null, onOpen }: { pane?: boolean; openId?: number | null; onOpen?: (id: number) => void }) {
+  const router = useNav();
   const open = (id: number) => (onOpen ? onOpen(id) : router.push({ pathname: "/contacts/contact", params: { id: String(id) } }));
   const colors = useColors();
   const metrics = useMetrics();

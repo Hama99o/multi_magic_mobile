@@ -41,7 +41,7 @@
  */
 import { memo, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Alert, FlatList, Pressable, View, type ViewStyle } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, Search, Trash2, Users } from "@/components/icons";
 import * as Clipboard from "expo-clipboard";
@@ -251,11 +251,12 @@ export function lastKnownMessages(client: QueryClient, conversationId: number, n
 }
 
 export default function PersonThread() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const queryClient = useQueryClient();
-  const params = useLocalSearchParams<{
+  const params = useNavParams<{
     id: string;
     name?: string;
     isGroup?: string;

@@ -20,7 +20,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { CLOSENESS, EMAIL_LABELS, GENDERS, PHONE_LABELS, SOCIAL_LABELS } from "@/api/contacts";
 import { DateWheels } from "@/screens/calendar/pickers";
 import { ContactAvatar } from "./ContactAvatar";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { RichText } from "@/components/RichText";
 import { useRichTextSession } from "@/stores/richTextSession.store";
 import { ActionSheet } from "./ActionSheet";
@@ -76,6 +76,7 @@ export function ContactForm({
   /** Above the form, under the header: e.g. "already in your contacts". */
   notice?: ReactNode;
 }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();

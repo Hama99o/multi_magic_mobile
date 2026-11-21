@@ -20,7 +20,7 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { create } from "zustand";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import {
   ArrowDown,
   ArrowUp,
@@ -184,6 +184,7 @@ export const useFolderSort = create<FolderSort>((set) => ({
 // (docs/design/app-shell/SPEC.md §C), so the pill keeps search and ⋮.
 
 export function SearchPill({ onMenu }: { onMenu?: () => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -511,6 +512,7 @@ export function SelectionBar({ count, onClose, children }: { count: number; onCl
 // ── The bottom upload bar (Drive: "Uploading 1 item" above the tabs) ───────
 
 export function UploadBar() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

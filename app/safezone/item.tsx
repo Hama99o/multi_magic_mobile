@@ -9,7 +9,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Pressable, ScrollView, View } from "react-native";
-import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
+import { useFocusEffect } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import * as Clipboard from "expo-clipboard";
 import { Copy, ExternalLink, Eye, EyeOff, Pencil, Trash2 } from "@/components/icons";
@@ -53,6 +54,7 @@ export default function SafeZoneItemScreen() {
 
 /** Edit opens the same form as Add, prefilled (owner, 2026-11-15). */
 function EditKey() {
+  const router = useNav();
   const colors = useColors();
   const { t } = useTranslation();
   const params = useParams();
@@ -74,7 +76,7 @@ function EditKey() {
 }
 
 function useParams(): { kind: SafeZoneKind; id: number } | null {
-  const params = useLocalSearchParams<{ kind?: string; id?: string }>();
+  const params = useNavParams<{ kind?: string; id?: string }>();
   const kind = SAFEZONE_KINDS.find((k) => k === params.kind);
   const id = Number(params.id);
   return kind && Number.isInteger(id) && id > 0 ? { kind, id } : null;
@@ -90,6 +92,7 @@ function token(): string {
 }
 
 function Item({ onTitle }: { onTitle: (title: string | null) => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();

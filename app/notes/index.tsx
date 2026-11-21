@@ -20,7 +20,7 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, Modal, Platform, Pressable, RefreshControl, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
 import { SheetFrame } from "@/components/SheetFrame";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 
 import { Screen } from "@/components/ScreenContainer";
@@ -59,6 +59,7 @@ const EMPTY_CHECKLIST =
 const GAP = 8;
 
 export default function NotesScreen() {
+  const router = useNav();
   const colors = useColors();
   const scheme = useScheme();
   const metrics = useMetrics();

@@ -27,7 +27,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -274,10 +274,11 @@ function SheetFile({ uri, title }: { uri: string; title: string }) {
 }
 
 export default function Viewer() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
-  const params = useLocalSearchParams<{ spaceId: string; nodeId: string; title?: string }>();
+  const params = useNavParams<{ spaceId: string; nodeId: string; title?: string }>();
   const spaceId = Number(params.spaceId);
   const nodeId = Number(params.nodeId);
   const [sharing, setSharing] = useState(false);
@@ -315,7 +316,7 @@ export default function Viewer() {
     if (node?.kind === "folder") {
       router.replace({ pathname: "/pages/folder", params: { spaceId: String(node.spaceId), parentId: String(node.id), title: node.title } });
     }
-  }, [node]);
+  }, [node, router]);
   const shownRef = useRef<PageNode | null>(null);
 
   const share = useCallback(async () => {

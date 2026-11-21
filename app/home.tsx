@@ -18,7 +18,7 @@ import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Haptics from "expo-haptics";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { ASSISTANT_GRADIENT, HOME_APPS, tileColors, type HomeApp } from "@/theme/appColors";
@@ -127,6 +127,7 @@ function timeLabel(occurrence: Occurrence, t: (k: string) => string, lang: strin
 }
 
 function ComingUp() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
@@ -185,6 +186,7 @@ function ComingUp() {
  * room for the web's search key below a tablet, so Home opens it from here.
  */
 function SearchField() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -205,6 +207,7 @@ function SearchField() {
 }
 
 function AskBox() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

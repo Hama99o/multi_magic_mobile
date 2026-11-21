@@ -24,7 +24,7 @@
  */
 import { useState } from "react";
 import { Pressable, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "@/components/icons";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -43,6 +43,7 @@ import { KeyboardTarget } from "@/components/keyboardTarget";
 
 
 export default function ChangePassword() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

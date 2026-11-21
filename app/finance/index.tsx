@@ -8,7 +8,7 @@
  */
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { CircleHelp, FileSpreadsheet, MoreVertical, Repeat, Tag as TagIcon, Trash2 } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
@@ -26,12 +26,13 @@ import { LoansTab } from "@/screens/finance/tabs/Loans";
 import { BudgetsTab } from "@/screens/finance/tabs/Budgets";
 
 export default function FinanceScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
   // `entry` opens one expense or income on its sheet: a link from search, a
   // notification or the assistant (`src/lib/inAppRoute.ts`, parity F-X3).
-  const params = useLocalSearchParams<{ tab?: string; entry?: string }>();
+  const params = useNavParams<{ tab?: string; entry?: string }>();
   const entryId = params.entry && /^\d+$/.test(params.entry) ? Number(params.entry) : undefined;
   const [tab, setTab] = useState<FinanceTab>(FINANCE_TABS.find((x) => x === params.tab) ?? "overview");
   const [menu, setMenu] = useState(false);

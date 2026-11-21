@@ -9,7 +9,7 @@
  * `rest` is how many the bridge left there (`ShareIntentBridge.tsx`).
  */
 import { Pressable, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { FolderOpen } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
@@ -17,6 +17,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { usePendingImport } from "@/screens/pages/addFiles";
 
 export function SharedRestToPages({ rest }: { rest: string | undefined }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

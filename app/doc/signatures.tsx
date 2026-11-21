@@ -6,7 +6,7 @@
  * click, and a mis-tap on a phone costs more (parity audit §2.1, deliberate).
  */
 import { Alert, FlatList, Pressable, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { Image as ExpoImage } from "expo-image";
 import type { Signature } from "@/api/doc";
@@ -24,6 +24,7 @@ import { useDeleteSignature, useSignatures } from "@/screens/doc/useSignatures";
 const ROW_HEIGHT = 88;
 
 export default function SignaturesScreen() {
+  const router = useNav();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const list = useSignatures();

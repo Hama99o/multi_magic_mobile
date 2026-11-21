@@ -14,7 +14,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, View } from "react-native";
-import { router, useLocalSearchParams, useNavigation } from "expo-router";
+import { useNavigation } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import * as ImagePicker from "expo-image-picker";
@@ -68,8 +69,9 @@ function parseId(raw: string | undefined): number | null {
 }
 
 export default function EditContact() {
+  const router = useNav();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ id?: string; shared?: string; rest?: string }>();
+  const params = useNavParams<{ id?: string; shared?: string; rest?: string }>();
   const contactId = parseId(params.id);
   const colors = useColors();
   const metrics = useMetrics();
@@ -184,7 +186,7 @@ export default function EditContact() {
       inFlight.current = false;
       setSaving(false);
     }
-  }, [draft, contactId, photo, saver, t]);
+  }, [draft, contactId, photo, saver, t, router]);
 
   if (!draft) {
     return (

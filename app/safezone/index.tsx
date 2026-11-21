@@ -5,7 +5,7 @@
  */
 import { useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, type InfiniteData, type UseInfiniteQueryResult } from "@tanstack/react-query";
 import { ChevronRight, Lock, Plus, Search, ShieldCheck, TriangleAlert, X } from "@/components/icons";
@@ -52,6 +52,7 @@ function VaultActions() {
 
 /** The PIN's settings (change it, turn it off), as the web's profile card (audit #27). */
 function SettingsButton() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -156,6 +157,7 @@ function Vault() {
 }
 
 function Lists({ kind, list, search, typed, setTyped }: { kind: SafeZoneKind; list: VaultList; search: string; typed: string; setTyped: (v: string) => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -244,6 +246,7 @@ function EmptyState({ kind, searching }: { kind: SafeZoneKind; searching: boolea
 }
 
 function Row({ row }: { row: SafeZoneRow }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();

@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { RichTextEditor, createNativeEditorDocumentHandle } from "@apollohg/react-native-rich-text-editor";
 import { Screen } from "@/components/ScreenContainer";
@@ -29,6 +29,7 @@ import type { DocNode } from "@/vendor/tiptop-schema";
 type EngineRef = { getContentJson(): unknown; blur?(): void };
 
 export default function RichTextScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -39,7 +40,7 @@ export default function RichTextScreen() {
 
   useEffect(() => {
     if (!session) router.back();
-  }, [session]);
+  }, [session, router]);
 
   const engine = useMemo(() => {
     if (!session) return null;

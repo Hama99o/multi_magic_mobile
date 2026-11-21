@@ -34,7 +34,7 @@
  */
 import { useState } from "react";
 import { Pressable, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, TriangleAlert } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
@@ -45,6 +45,7 @@ import { apiErrorMessage, isNetworkFailure, isUnauthorized } from "@/api/http";
 import { KeyboardTarget } from "@/components/keyboardTarget";
 
 export default function DeleteAccount() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

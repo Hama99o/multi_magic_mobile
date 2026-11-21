@@ -10,7 +10,7 @@
 import { createElement, type ReactNode } from "react";
 import { Pressable, View } from "react-native";
 import { Image as ExpoImage } from "expo-image";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import {
   ChevronLeft,
@@ -101,6 +101,7 @@ export function PagesHeader({
   right?: ReactNode;
   onBack?: () => void;
 }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

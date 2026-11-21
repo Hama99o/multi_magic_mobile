@@ -12,7 +12,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { FlatList, Modal, Pressable, ScrollView, TextInput, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
@@ -41,7 +41,7 @@ import { APP_CURRENCY, useLastCurrency } from "@/screens/finance/lastCurrency";
 export default function LoanEditScreen() {
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useNavParams<{ id?: string }>();
   const loanId = params.id ? Number(params.id) : null;
   const query = useQuery({ queryKey: financeKeys.loan(loanId ?? 0), queryFn: () => financeApi.loans.show(loanId ?? 0), enabled: loanId != null });
   if (loanId != null && !query.data) {
@@ -58,6 +58,7 @@ export default function LoanEditScreen() {
 }
 
 function Form({ existing }: { existing: Loan | null }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();

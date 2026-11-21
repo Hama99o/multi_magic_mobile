@@ -17,7 +17,7 @@
  */
 import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, Linking, Platform, Pressable, ScrollView, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Bell, CalendarDays, ExternalLink, LogOut, MapPin, MessageSquareText, NotebookPen, Pencil, Repeat, Trash2, Users } from "@/components/icons";
@@ -61,10 +61,11 @@ function mapsUrl(location: string): string {
 }
 
 export default function EventDetail() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
-  const params = useLocalSearchParams<{ id?: string; on?: string }>();
+  const params = useNavParams<{ id?: string; on?: string }>();
   const eventId = params.id && /^\d+$/.test(params.id) ? Number(params.id) : 0;
   const setTrashed = useCalendarUndo((state) => state.set);
   const [actionError, setActionError] = useState<string | null>(null);

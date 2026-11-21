@@ -11,7 +11,7 @@
  */
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { flowKeys } from "@/api/keys";
@@ -38,10 +38,11 @@ type Tab = "projects" | "backlog";
 const SEARCH_DELAY_MS = 400;
 
 export default function FlowScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ tab?: string; new?: string }>();
+  const params = useNavParams<{ tab?: string; new?: string }>();
   const [tab, setTab] = useState<Tab>(params.tab === "backlog" ? "backlog" : "projects");
   const [searching, setSearching] = useState(false);
   const [typed, setTyped] = useState("");
@@ -134,6 +135,7 @@ export default function FlowScreen() {
 }
 
 function ProjectsTab({ term, onNew, onEdit, onEmpty }: { term: string; onNew: () => void; onEdit: (p: Project) => void; onEmpty: (empty: boolean) => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -220,6 +222,7 @@ function ProjectsTab({ term, onNew, onEdit, onEmpty }: { term: string; onNew: ()
 }
 
 function ProjectRow({ project, meId, onMenu }: { project: Project; meId: number | undefined; onMenu: () => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

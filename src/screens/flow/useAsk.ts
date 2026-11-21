@@ -4,13 +4,14 @@
  * the person can change it first. The assistant already reads and changes
  * boards server-side (`McpServer::FlowTools`, `Ai::Records::Flow`).
  */
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useQuery } from "@tanstack/react-query";
 import { aiApi } from "@/api/ai";
 import { aiKeys } from "@/api/keys";
 import { useDraft } from "@/hooks/useDraft";
 
 export function useAsk() {
+  const router = useNav();
   const { data: sessionId } = useQuery({ queryKey: aiKeys.currentSession(), queryFn: aiApi.currentSessionId });
   const { setDraft } = useDraft(sessionId ?? null);
   return (question: string) => {

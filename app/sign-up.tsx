@@ -25,7 +25,8 @@
  */
 import { useState } from "react";
 import { Pressable, View } from "react-native";
-import { Link, router } from "expo-router";
+import { Link } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -113,6 +114,7 @@ export function serverErrors(error: unknown): {
 }
 
 export default function SignUp() {
+  const router = useNav();
   const metrics = useMetrics();
   const { t } = useTranslation();
 
@@ -273,6 +275,7 @@ export default function SignUp() {
  * (`app/privacy.tsx`, the web's /privacy), so it is one tap away here.
  */
 function TermsBox({ checked, onToggle }: { checked: boolean; onToggle: () => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

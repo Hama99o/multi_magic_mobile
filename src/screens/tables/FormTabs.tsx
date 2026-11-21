@@ -12,7 +12,7 @@
 import { useEffect, useState } from "react";
 import { Alert, Linking, Pressable, Share, Switch, TextInput, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { tablesKeys } from "@/api/keys";
@@ -332,6 +332,7 @@ function LinkButton({ testID, icon: Icon, label, onPress }: { testID: string; ic
 // ── Answers ────────────────────────────────────────────────────────────────
 
 export function AnswersTab({ form }: { form: TableForm }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

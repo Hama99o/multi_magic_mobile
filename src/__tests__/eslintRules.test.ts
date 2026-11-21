@@ -119,6 +119,12 @@ const CASES: Case[] = [
     times: 3,
   },
   {
+    rule: "a screen importing expo-router's router or useLocalSearchParams (pane-nav)",
+    fixture: "pane-nav.tsx",
+    says: /moves with useNav\(\)/,
+    times: 2,
+  },
+  {
     // FOUR, one per branch of the compound selector — a compound selector can
     // have dead branches and still look alive, which is this file's subject.
     rule: "a bare worded string in an accessibility attribute",

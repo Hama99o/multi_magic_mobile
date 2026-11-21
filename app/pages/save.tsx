@@ -24,7 +24,7 @@
  */
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import { ActivityIndicator, FlatList, Keyboard, Pressable, ScrollView, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Image as ExpoImage } from "expo-image";
@@ -168,6 +168,7 @@ type HomeItem =
   | { key: string; type: "share"; share: SharedItem; canWrite: boolean };
 
 export default function SaveToPages() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
@@ -294,14 +295,14 @@ export default function SaveToPages() {
     clearPending();
     setBusy(false);
     router.replace("/pages/uploads");
-  }, [place, files, parentId, canWriteHere, enqueue, onDone, clearPending]);
+  }, [place, files, parentId, canWriteHere, enqueue, onDone, clearPending, router]);
 
   const cancel = useCallback(() => {
     onDone?.();
     clearPending();
     if (router.canGoBack?.()) router.back();
     else router.replace("/pages");
-  }, [onDone, clearPending]);
+  }, [onDone, clearPending, router]);
 
   // ── The first screen: Recent, My spaces, Shared with me ──────────────────
   const homeItems = useMemo<HomeItem[]>(() => {

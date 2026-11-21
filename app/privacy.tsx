@@ -19,7 +19,7 @@
  * is a build that went out without his approval.
  */
 import { Pressable, ScrollView, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
@@ -29,6 +29,7 @@ import { PRIVACY_IS_DRAFT, PRIVACY_TEXT } from "@/content/privacy.generated";
 import { Markdown } from "@/screens/account/Markdown";
 
 export default function Privacy() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

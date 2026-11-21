@@ -10,7 +10,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import * as Haptics from "expo-haptics";
@@ -28,7 +28,7 @@ import { SafeZoneGate } from "@/screens/safezone/SafeZoneGate";
 import { FORM_FIELDS, emptyForm, formFromItem, generatePassword, toPayload, validateForm, type FormField, type FormValues } from "@/screens/safezone/forms";
 
 function useParams(): { kind: SafeZoneKind; id: number | null } | null {
-  const params = useLocalSearchParams<{ kind?: string; id?: string }>();
+  const params = useNavParams<{ kind?: string; id?: string }>();
   const kind = SAFEZONE_KINDS.find((k) => k === params.kind);
   if (!kind) return null;
   const id = params.id ? Number(params.id) : null;
@@ -36,6 +36,7 @@ function useParams(): { kind: SafeZoneKind; id: number | null } | null {
 }
 
 export default function SafeZoneEditScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -66,6 +67,7 @@ function token(): string {
 }
 
 function Form({ kind, id }: { kind: SafeZoneKind; id: number | null }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

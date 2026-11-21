@@ -6,7 +6,7 @@
  */
 import { useEffect } from "react";
 import { ActivityIndicator, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -14,11 +14,12 @@ import { Text } from "@/components/reusables/text";
 const GIVE_UP_MS = 4000;
 
 export default function ShareLanding() {
+  const router = useNav();
   const { t } = useTranslation();
   useEffect(() => {
     const timer = setTimeout(() => router.replace("/"), GIVE_UP_MS);
     return () => clearTimeout(timer);
-  }, []);
+  }, [router]);
   return (
     <Screen>
       <View testID="share-landing" style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: 12 }}>

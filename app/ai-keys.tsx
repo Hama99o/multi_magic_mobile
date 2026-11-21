@@ -30,7 +30,7 @@
  */
 import { useState } from "react";
 import { Alert, Pressable, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import type { TFunction } from "i18next";
 import { Check, ChevronLeft, KeyRound, Trash2 } from "@/components/icons";
@@ -76,6 +76,7 @@ function refusalText(code: string, provider: string, t: TFunction): string {
 }
 
 export default function AiKeys() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

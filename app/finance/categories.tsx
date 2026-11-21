@@ -12,7 +12,7 @@
  */
 import { useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
@@ -30,10 +30,11 @@ import { EmptyState, Fab } from "@/screens/finance/manage/common";
 import { newestFirst, SortChip } from "@/screens/finance/parts";
 
 export default function CategoriesScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ parent?: string }>();
+  const params = useNavParams<{ parent?: string }>();
   const parentId = params.parent ? Number(params.parent) : null;
   const tags = useQuery({ queryKey: financeKeys.tags(), queryFn: financeApi.tags.all });
   const [dialog, setDialog] = useState<{ mode: "add" } | { mode: "rename"; tag: Tag } | null>(null);

@@ -17,7 +17,7 @@
 import { useState, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
@@ -34,6 +34,7 @@ import { loanTone, useDueLabel } from "./Loans";
 const period = (year: number, month: number) => (month ? { year, month } : { year });
 
 export function OverviewTab({ onOpen }: { onOpen: (tab: FinanceTab) => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
@@ -184,6 +185,7 @@ export function OverviewTab({ onOpen }: { onOpen: (tab: FinanceTab) => void }) {
 
 /** The web's "Active loans": the first five unpaid, who, which way, what is left of what. Tap opens the loan. */
 function ActiveLoans({ onAll }: { onAll: () => void }) {
+  const router = useNav();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
   const dueLabel = useDueLabel();

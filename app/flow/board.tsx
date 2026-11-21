@@ -19,7 +19,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { flowKeys } from "@/api/keys";
@@ -53,7 +53,7 @@ const TABLET_COLUMN = 300;
 const COLUMN_GAP = 10;
 
 export default function BoardScreen() {
-  const params = useLocalSearchParams<{ id?: string; sprint?: string }>();
+  const params = useNavParams<{ id?: string; sprint?: string }>();
   const projectId = Number(params.id);
   if (!Number.isInteger(projectId) || projectId <= 0) return <BadLink />;
   return <Board projectId={projectId} initialScope={scopeFromParam(params.sprint)} />;
@@ -74,6 +74,7 @@ function BadLink() {
 }
 
 function Board({ projectId, initialScope }: { projectId: number; initialScope: SprintScope }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

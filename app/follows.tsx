@@ -9,7 +9,7 @@
  */
 import { useState } from "react";
 import { Pressable, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
@@ -55,7 +55,7 @@ export default function Follows() {
   const metrics = useMetrics();
   const { t } = useTranslation();
   const client = useQueryClient();
-  const params = useLocalSearchParams<{ tab?: string }>();
+  const params = useNavParams<{ tab?: string }>();
   const [tab, setTab] = useState<Tab>(params.tab === "following" ? "following" : "followers");
   const [failure, setFailure] = useState<string | null>(null);
 

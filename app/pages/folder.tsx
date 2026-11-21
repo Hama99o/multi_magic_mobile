@@ -14,7 +14,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { crumbsFor } from "@/screens/pages/links";
@@ -80,12 +80,13 @@ function Chip({ label, selected, onPress, testID }: { label: string; selected: b
 }
 
 export default function Folder() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
   const { t, i18n } = useTranslation();
   const client = useQueryClient();
-  const params = useLocalSearchParams<{ spaceId: string; parentId?: string; title?: string; trail?: string }>();
+  const params = useNavParams<{ spaceId: string; parentId?: string; title?: string; trail?: string }>();
   const spaceId = Number(params.spaceId);
   const parentId = params.parentId ? Number(params.parentId) : null;
   // The folder's own record (its path, and its name when it was opened by
@@ -218,7 +219,7 @@ export default function Folder() {
         setPageBusy(false);
       }
     },
-    [spaceId, parentId, t],
+    [spaceId, parentId, t, router],
   );
   const importZip = useCallback(async () => {
     try {

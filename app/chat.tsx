@@ -17,7 +17,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AccessibilityInfo, FlatList, Pressable, View, type ViewStyle } from "react-native";
 import { Bell, CalendarDays, MessageSquareText, Users, X } from "@/components/icons";
-import { router, useLocalSearchParams, useNavigation } from "expo-router";
+import { useNavigation } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
@@ -161,6 +162,7 @@ export function docPoll(
 }
 
 export default function Chat() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -185,7 +187,7 @@ export default function Chat() {
   // Home's "Conversations" tile ("Your past questions") opens the assistant ON
   // its history (`?sessions=1`); it used to open the same plain assistant as
   // the "Assistant" tile (docs/QA_FULL.md F2).
-  const { sessions: openOnSessions } = useLocalSearchParams<{ sessions?: string }>();
+  const { sessions: openOnSessions } = useNavParams<{ sessions?: string }>();
   const [sessionsOpen, setSessionsOpen] = useState(openOnSessions === "1");
 
   // Read once into a plain local rather than depending on `user?.id` in two

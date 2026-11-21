@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -51,6 +51,7 @@ const SPACE_SORTS: SpaceSortBy[] = ["created_at", "updated_at", "name"];
 const ownsSpace = (space: Space) => space.permission == null || space.permission === "owner";
 
 function SpaceRow({ space, mode, width, onMore }: { space: Space; mode: "list" | "grid"; width: number; onMore: (space: Space) => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -99,6 +100,7 @@ function SpaceRow({ space, mode, width, onMore }: { space: Space; mode: "list" |
 }
 
 function SharedRow({ item }: { item: SharedItem }) {
+  const router = useNav();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const title = item.node ? item.node.title : item.space.title;
@@ -124,13 +126,14 @@ function SharedRow({ item }: { item: SharedItem }) {
 }
 
 export default function PagesHome() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const [tab, setTab] = useState<PagesTab>("home");
   // A tab tapped inside a folder comes back here as `?tab=` (`folder.tsx`).
-  const params = useLocalSearchParams<{ tab?: string }>();
+  const params = useNavParams<{ tab?: string }>();
   useEffect(() => {
     if (params.tab === "home" || params.tab === "starred" || params.tab === "shared" || params.tab === "files") setTab(params.tab);
   }, [params.tab]);

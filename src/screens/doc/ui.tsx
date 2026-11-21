@@ -276,22 +276,29 @@ export function useDocTask() {
 }
 
 /**
- * Retry for a busy server (Hello, 2026-11-21): `remember(handler)` records the
- * last submit WITH its arguments (pages' save("extract"), sign's save("pdf")),
- * and `retry()` runs exactly that again, so its result lands where the first
- * one would have. The handler is the screen's own, so nothing is re-wired.
+ * Retry for a busy server (Hello, 2026-11-21): `remember(name, handler)`
+ * records WHICH action was last submitted and its arguments (pages'
+ * save("extract"), sign's save("pdf")); `retry(handlers)` runs that action
+ * again from the handlers of the render the tap happens in, so it sends the
+ * screen as it is NOW. It used to replay the closure of the first submit: a
+ * page turned while the error showed was sent unturned (review 88, D2).
  */
 export function useRetry() {
-  const last = useRef<(() => unknown) | null>(null);
+  const last = useRef<{ name: string; args: unknown[] } | null>(null);
   const remember = useCallback(
-    <A extends unknown[], R>(fn: (...args: A) => R) =>
+    <A extends unknown[], R>(name: string, fn: (...args: A) => R) =>
       (...args: A): R => {
-        last.current = () => fn(...args);
+        last.current = { name, args };
         return fn(...args);
       },
     [],
   );
-  const retry = useCallback(() => void last.current?.(), []);
+  const retry = useCallback((handlers: Record<string, (...args: never[]) => unknown>) => {
+    const was = last.current;
+    if (!was) return;
+    const fn = handlers[was.name] as ((...args: unknown[]) => unknown) | undefined;
+    void fn?.(...was.args);
+  }, []);
   return { remember, retry };
 }
 

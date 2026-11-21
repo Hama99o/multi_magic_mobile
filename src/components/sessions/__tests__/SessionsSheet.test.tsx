@@ -54,7 +54,9 @@ describe("outside the sheet", () => {
   it("closes it", async () => {
     const onClose = jest.fn();
     renderSheet({ onClose });
-    const scrim = await screen.findByTestId("sessions-scrim");
+    // SheetFrame's scrim (docs/design/app-shell/SHEETS.md): hidden from a screen
+    // reader by the card's accessibilityViewIsModal; a finger still taps it.
+    const scrim = await screen.findByTestId("sessions-sheet-scrim", { includeHiddenElements: true });
     // COVERS the screen, not merely exists: a zero-sized scrim still presses
     // by testID, which is how one with no size shipped (`src/theme/fill.ts`).
     expect(StyleSheet.flatten(scrim.props.style)).toMatchObject({

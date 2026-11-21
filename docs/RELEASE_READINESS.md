@@ -38,7 +38,7 @@ the Assistant, Chats, SafeZone · **ff** Flow, Notes, Search, the shell
 | Notes (ff) | NOT MEASURED | NOT MEASURED | NOT MEASURED | PASS 11-21 [N-dark] | PASS 11-13 [N-rtl] | PASS 11-21 [N-2x] | PASS 11-13 [N-kbd] | PASS 11-21 [N-360] | PASS 11-21 [N-411] | PASS 11-21 [N-800] | NOT MEASURED | NOT MEASURED (microphone, dictation) | NOT MEASURED |
 | Search (ff) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | N/A: search writes nothing | NOT MEASURED | NOT MEASURED | PASS 11-21 fr [S-411] | NOT MEASURED | PASS 11-21 empty [S-empty]; loading, error NOT MEASURED | N/A: no permission | NOT MEASURED |
 | Shell: Home, header, Apps sheet, sheet frame (ff) | NOT MEASURED | NOT MEASURED | **FAIL 11-21** [H-200] | NOT MEASURED | N/A: no user text | N/A | N/A | NOT MEASURED | NOT MEASURED | PASS 11-20 header slot [H-800] | NOT MEASURED | N/A | NOT MEASURED |
-| Tables (88) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
+| Tables (88) | PASS 11-21 flow 37: offline failure, then Try again recovers [T-man] | NOT MEASURED | **FAIL 11-21** table-tab pills cut at the bottom at 411 dp; fixed b5dfdf9, device re-check owed (88). Cards and delete sheet fit [T-man] | NOT MEASURED (only the 800 dp grid seen dark, flow 36) | NOT MEASURED | PASS 11-21 flow 37: a double tap on Add a row made one row, 25 → 26 [T-man] | PASS 11-21 delete-by-name sheet and field editor, keyboard up [T-man] | NOT MEASURED | PASS 11-21 flows 33, 35 (:3001), 37 [T-man] | **FAIL 11-21** + button covered the grid summary's last cell; fixed b5dfdf9, re-check owed (88). Grid, header, summary pass light and dark, flow 36 [T-man] | NOT MEASURED on device beyond the offline error (Jest: import, answers, empty grid) | NOT MEASURED (a viewer needs a 2nd account; two-person checks wait for demo.env) | NOT MEASURED |
 | Contacts (ff) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
 | Finance (88) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
 | Doc (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | **FAIL 11-21** inferred, not device-measured: text edit sheet on KAV "height"; fix 0c5c012, re-run owed (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
@@ -72,9 +72,12 @@ right (a known dev-client toggle, not the app; to be off from the next slot).
 - **[S-411]** `docs/release/evidence/2026-11-21-ff/45-411-light-fr-open.png`, `-hits.png`.
 - **[S-empty]** `docs/release/evidence/2026-11-21-ff/45-411-light-fr-empty.png`.
 - **[H-200]** `docs/release/evidence/2026-11-21-ff/46-font200-411-home.png`: Home's tiles cut app names at 200% ("SafeZ…", "Finan…", "Doc T…"); the rule is never cut an app's name. Owner ff; fix red-first.
+- **[T-man]** `docs/design/tables/sweep/MANIFEST.md`, "Device pass 4" (pass 5 to be added by 88).
 - **[H-800]** `docs/design/app-shell/ours/800-header-slot-contact-sheet.png`.
 
 ## Notes from owners
+
+- 88 (11-21): Contacts and Finance are all NOT MEASURED on the 13 columns. Finance's device pass 3 proved swipe reveal/delete, no stale offset on Loans, Expense Undo restoring row and total (`docs/design/hygiene-step0/MANIFEST.md` rows 124-126), none of them a column here. Contacts: My family and the who-is-it sheet are Jest only; the keyboard over that sheet is ⚠ in the manifest (C2).
 
 - ee (11-21): Jest covers parts of Doc and Pages (both schemes in `screens.render`, the offline upload queue, Doc's busy/Retry in `busy.test.tsx`); named here, not PASS.
 

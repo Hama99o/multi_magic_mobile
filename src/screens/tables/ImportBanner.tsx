@@ -32,8 +32,13 @@ export function ImportBanner({ tableId, canEdit }: { tableId: number; canEdit: b
   const imp = latest.data;
   const wasActive = useRef(false);
   useEffect(() => {
-    // Running → finished: the rows it wrote show now, not on the next pull.
-    if (wasActive.current && imp && !isActive(imp)) void client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) });
+    // Running → finished: the rows it wrote show now, not on the next pull; so do the columns it made
+    // (the table itself) and the base's row count (ee's review, M2b).
+    if (wasActive.current && imp && !isActive(imp)) {
+      void client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) });
+      void client.invalidateQueries({ queryKey: tablesKeys.table(tableId) });
+      void client.invalidateQueries({ queryKey: tablesKeys.baseLists() });
+    }
     wasActive.current = isActive(imp);
   }, [imp, client, tableId]);
 

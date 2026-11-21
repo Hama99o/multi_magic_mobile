@@ -232,7 +232,8 @@ export default function TableScreen() {
   const clearSelection = () => setSelected(new Set());
 
   /** Many rows to the trash; one Undo brings them all back (`records#restore`). */
-  // A double tap makes one row and deletes once (`useOneAtATime`: `disabled` alone lets the second tap through).
+  // A double tap makes one row and deletes once (`useOneAtATime`: `disabled` alone lets the second tap through);
+  // the board's and the calendar's + go through it too (ee's review, M1).
   const once = useOneAtATime();
   const bulkDelete = () => {
     const ids = [...selected];
@@ -319,6 +320,11 @@ export default function TableScreen() {
     ...(base?.role === "owner" ? [{ key: "deleteBase", label: t("tables.remove.baseAction"), icon: Trash2, danger: true, onPress: () => setTimeout(() => setSheet("deleteBase"), 320) }] : []),
   ];
 
+  // The base's row count is the bases list's, which a row added, deleted or imported here does not refresh:
+  // it is read again when the sheet opens, so the count it asks the person to accept is today's (ee's review, M2a).
+  useEffect(() => {
+    if (sheet === "deleteBase") void client.invalidateQueries({ queryKey: tablesKeys.baseLists() });
+  }, [sheet, client]);
   const impact = useQuery({ queryKey: tablesKeys.impact(tableId), queryFn: () => tablesApi.tableImpact(tableId), enabled: sheet === "deleteTable" });
   const impactLine = impact.data
     ? [
@@ -548,7 +554,7 @@ export default function TableScreen() {
           editable={editable}
           onOpen={openRow}
           onMenu={(row, column) => setMoving({ row, column })}
-          onAdd={(column) => create.mutate({ [kanbanField.id]: columnValue(column.key) })}
+          onAdd={(column) => once(() => create.mutateAsync({ [kanbanField.id]: columnValue(column.key) }))}
           onEndReached={() => {
             if (records.hasNextPage && !records.isFetchingNextPage && !records.error) void records.fetchNextPage();
           }}
@@ -592,7 +598,7 @@ export default function TableScreen() {
           }}
           onToggleUndated={() => setShowUndated((u) => !u)}
           onOpen={openRow}
-          onAdd={(d) => create.mutate({ [calendarField.id]: d })}
+          onAdd={(d) => once(() => create.mutateAsync({ [calendarField.id]: d }))}
         />
       ) : (
         <FlatList

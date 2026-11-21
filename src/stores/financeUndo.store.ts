@@ -5,6 +5,7 @@
  */
 import { create } from "zustand";
 import type { UndoOffer } from "@/components/UndoToast";
+import { onSessionEnd } from "@/lib/sessionEnd";
 
 interface FinanceUndoState {
   offer: UndoOffer | null;
@@ -17,3 +18,6 @@ export const useFinanceUndo = create<FinanceUndoState>((set) => ({
   offerUndo: (message, undo) => set({ offer: { message, undo, at: Date.now() } }),
   clear: () => set({ offer: null }),
 }));
+
+// An Undo is the previous account's: sign-out takes it away (ee's review).
+onSessionEnd(() => useFinanceUndo.getState().clear());

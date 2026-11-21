@@ -171,6 +171,14 @@ export function ContactCard({
       { text: t("common.delete"), style: "destructive", onPress: () => remove.mutate(contact) },
     ]);
 
+  // Like every other delete in Contacts, it asks first: one tap used to take
+  // the tie off both cards with nothing to undo it (ee's review).
+  const confirmUnlink = (r: Relation) =>
+    Alert.alert(t("contacts.family.removeTitle", { name: r.relative.name }), t("contacts.family.removeBody", { name: r.relative.name }), [
+      { text: t("common.cancel"), style: "cancel" },
+      { text: t("contacts.family.removeConfirm"), style: "destructive", onPress: () => unlink.mutate(r.id) },
+    ]);
+
   const ask = () => {
     setDraft(t("contacts.detail.question", { name }));
     router.push("/chat");
@@ -468,7 +476,7 @@ export function ContactCard({
                   <IconButton testID={`contact-relation-${r.id}-edit`} label={t("contacts.family.edit", { name: r.relative.name })} onPress={() => setEditing({ step: "menu", relation: r })}>
                     <Pencil size={18} color={colors.inkMuted} />
                   </IconButton>
-                  <IconButton testID={`contact-relation-${r.id}-remove`} label={t("contacts.family.remove", { name: r.relative.name })} onPress={() => unlink.mutate(r.id)}>
+                  <IconButton testID={`contact-relation-${r.id}-remove`} label={t("contacts.family.remove", { name: r.relative.name })} onPress={() => confirmUnlink(r)}>
                     <X size={18} color={colors.inkMuted} />
                   </IconButton>
                 </Row>

@@ -14,6 +14,7 @@
  */
 import { useMutation, useQueryClient, type InfiniteData, type QueryClient, type QueryKey } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
+import { onSessionEnd } from "@/lib/sessionEnd";
 import {
   financeApi,
   type Budget,
@@ -68,35 +69,47 @@ function shiftFirst<T>(pages: Page<T>[], row: Money, sign: 1 | -1): Page<T>[] {
  * are newest first) and the refetch after the Undo puts it in its exact place.
  */
 const placeIn = new WeakMap<object, { page: number; index: number }>();
-const removedRows = new Map<string, Money>();
+/** The deleted row, and the lists it actually left: an Undo goes back into
+ *  those only, never into another month's list it was never in (ee's review). */
+const removedRows = new Map<string, { row: Money; from: QueryKey[] }>();
 const removedKey = (prefix: QueryKey, rowId: number) => `${JSON.stringify(prefix)}#${rowId}`;
+// A deleted row is the previous account's data: an Undo after sign-out must
+// not put it into the next account's list (ee's review; SafeZone's lock does the same).
+onSessionEnd(() => removedRows.clear());
+
+type Rows = InfiniteData<Page<{ id: number }>>;
 
 /** Take one row out of every page of every list under `prefix`, with its count and its amount. */
 function dropRow(client: QueryClient, prefix: QueryKey, row: Money) {
-  removedRows.set(removedKey(prefix, row.id), row);
-  client.setQueriesData<InfiniteData<Page<{ id: number }>>>({ queryKey: prefix }, (data) => {
-    if (!data?.pages) return data;
+  const from: QueryKey[] = [];
+  for (const [queryKey, data] of client.getQueriesData<Rows>({ queryKey: prefix })) {
+    if (!data?.pages) continue;
     const page = data.pages.findIndex((p) => p.rows.some((r) => r.id === row.id));
-    if (page === -1) return data;
+    if (page === -1) continue;
     const index = data.pages[page].rows.findIndex((r) => r.id === row.id);
     const pages = data.pages.map((p, i) => (i === page ? { ...p, rows: p.rows.filter((r) => r.id !== row.id) } : p));
     const next = { ...data, pages: shiftFirst(pages, row, -1) };
     placeIn.set(next, { page, index });
-    return next;
-  });
+    client.setQueriesData<Rows>({ queryKey, exact: true }, next);
+    from.push(queryKey);
+  }
+  removedRows.set(removedKey(prefix, row.id), { row, from });
 }
 
 /** Undo: the row back where it was in every list it left, with its count and amount. The server's refetch follows. */
 function putBack(client: QueryClient, prefix: QueryKey, rowId: number) {
-  const row = removedRows.get(removedKey(prefix, rowId));
-  if (!row) return;
+  const removed = removedRows.get(removedKey(prefix, rowId));
+  if (!removed) return;
   removedRows.delete(removedKey(prefix, rowId));
-  client.setQueriesData<InfiniteData<Page<{ id: number }>>>({ queryKey: prefix }, (data) => {
-    if (!data?.pages?.length || data.pages.some((p) => p.rows.some((r) => r.id === rowId))) return data;
-    const at = placeIn.get(data) ?? { page: 0, index: 0 };
-    const pages = data.pages.map((p, i) => (i === at.page ? { ...p, rows: [...p.rows.slice(0, at.index), row as { id: number }, ...p.rows.slice(at.index)] } : p));
-    return { ...data, pages: shiftFirst(pages, row, 1) };
-  });
+  const { row } = removed;
+  for (const queryKey of removed.from) {
+    client.setQueriesData<Rows>({ queryKey, exact: true }, (data) => {
+      if (!data?.pages?.length || data.pages.some((p) => p.rows.some((r) => r.id === rowId))) return data;
+      const at = placeIn.get(data) ?? { page: 0, index: 0 };
+      const pages = data.pages.map((p, i) => (i === at.page ? { ...p, rows: [...p.rows.slice(0, at.index), row as { id: number }, ...p.rows.slice(at.index)] } : p));
+      return { ...data, pages: shiftFirst(pages, row, 1) };
+    });
+  }
 }
 
 /** Delete to the trash (soft), out of its lists at once. */

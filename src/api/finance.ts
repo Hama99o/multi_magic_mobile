@@ -462,8 +462,9 @@ export const financeApi = {
       const data = arr(body.data, "data");
       return arr(body.labels, "labels").map((label, i) => ({ label: String(label), amount: money(data[i]) }));
     },
-    export: (f: ListFilters, name: string): Promise<string> => {
-      const params = Object.fromEntries(Object.entries({ ...listParams(f), file_format: "xlsx" }).filter(([k]) => k !== "page" && k !== "per_page").map(([k, v]) => [k, String(v)]));
+    // The same filters as `list`, One-time included: the file is the list on screen.
+    export: (f: ListFilters & { oneTime?: boolean }, name: string): Promise<string> => {
+      const params = Object.fromEntries(Object.entries({ ...listParams(f), ...(f.oneTime ? { filter: "one_time" } : {}), file_format: "xlsx" }).filter(([k]) => k !== "page" && k !== "per_page").map(([k, v]) => [k, String(v)]));
       return download(`${B}/expenses/export`, params, `${name}.xlsx`);
     },
   },

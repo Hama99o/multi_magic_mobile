@@ -56,7 +56,8 @@ function PendingRow({ income, onFailed }: { income: Income; onFailed: () => void
   const confirm = useConfirmIncome({ onError: onFailed });
   const discard = useDiscardIncome({ onError: onFailed });
   const value = Number(amount.replace(",", "."));
-  const valid = Number.isFinite(value) && value >= 0;
+  // An emptied field is not 0: Number("") is, and confirmed the income at 0 (ee's review).
+  const valid = amount.trim() !== "" && Number.isFinite(value) && value >= 0;
   return (
     <View testID={`finance-pending-${income.id}`} style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, minHeight: 56 }}>
       <View style={{ flex: 1 }}>

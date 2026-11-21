@@ -137,6 +137,11 @@ export interface RecordRow {
   linkLabels: Record<number, string>;
   /** How many rows each link column holds, by field id (more than the titles sent). */
   linkCounts: Record<number, number>;
+  /**
+   * The columns this copy carries, when the list asked for only some (`field_ids`); absent = all.
+   * An empty cell is absent from `values` too, so this is the only way to tell "empty" from "not loaded".
+   */
+  loadedFieldIds?: number[];
 }
 
 /** One link column's rows, whole (`records#relations`): the record page's Relations section. */
@@ -169,6 +174,8 @@ export interface RecordsQuery {
   groupBy?: number | null;
   /** The row's own creation time, newest first, ahead of the column sorts (SPEC C3). */
   newestFirst?: boolean;
+  /** Only these columns in each row (`field_ids[]`, multi-magic-83's feat/mobile-gaps-2); the title always comes too. */
+  fieldIds?: number[];
 }
 
 const pick = <T extends string>(value: unknown, allowed: readonly T[], fallback: T): T =>
@@ -311,8 +318,8 @@ export function parseRecord(raw: unknown): RecordRow {
 }
 
 /** The request parameters for one page of rows: only what is set, in the server's names. */
-export function recordsParams(query: RecordsQuery, offset: number): Record<string, string | number> {
-  const params: Record<string, string | number> = { offset, limit: PAGE_SIZE };
+export function recordsParams(query: RecordsQuery, offset: number): Record<string, string | number | number[]> {
+  const params: Record<string, string | number | number[]> = { offset, limit: PAGE_SIZE };
   const search = query.search?.trim();
   if (search) params.search = search;
   if (query.filters?.length) params.filters = JSON.stringify(query.filters.map((f) => ({ field_id: f.fieldId, op: f.op, value: f.value })));
@@ -320,6 +327,8 @@ export function recordsParams(query: RecordsQuery, offset: number): Record<strin
   if (query.sorts?.length) params.sorts = JSON.stringify(query.sorts.map((s) => ({ field_id: s.fieldId, direction: s.direction })));
   if (query.groupBy) params.group_by = query.groupBy;
   if (query.newestFirst) params.sort = "-created_at";
+  // A card or a grid row draws a few columns: the server sends only those (an older server ignores it).
+  if (query.fieldIds?.length) params.field_ids = query.fieldIds;
   return params;
 }
 
@@ -954,7 +963,8 @@ export const tablesApi = {
     const { data } = await http.get(`${BASE}/tables/${tableId}/records`, { params: recordsParams(query, offset) });
     const body = obj(data, "records response");
     const meta = body.meta && typeof body.meta === "object" ? (body.meta as Record<string, unknown>) : {};
-    const { rows, unreadable } = readableRows(arr(body.records, "records"), parseRecord);
+    const { rows: read, unreadable } = readableRows(arr(body.records, "records"), parseRecord);
+    const rows = query.fieldIds?.length ? read.map((r) => ({ ...r, loadedFieldIds: query.fieldIds })) : read;
     return {
       rows,
       unreadable,

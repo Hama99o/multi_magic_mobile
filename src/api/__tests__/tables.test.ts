@@ -199,6 +199,9 @@ describe("recordsParams: the query the phone sends (never the view)", () => {
 
   it("newest first is the row's own creation time, ahead of any column sort", () => {
     expect(recordsParams({ newestFirst: true }, 0)).toEqual({ offset: 0, limit: 100, sort: "-created_at" });
+    // Only the columns a list draws (feat/mobile-gaps-2); none asked = every column, as before.
+    expect(recordsParams({ fieldIds: [1, 4] }, 0)).toEqual({ offset: 0, limit: 100, field_ids: [1, 4] });
+    expect(recordsParams({ fieldIds: [] }, 0)).toEqual({ offset: 0, limit: 100 });
   });
 });
 

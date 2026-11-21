@@ -46,7 +46,7 @@ export const CARD_FIELDS = 3;
 const sortsOf = (view: View, layer: PersonalLayer) => layer.sorts ?? view.config.sorts;
 
 /** The query the phone sends: the shared view, with the person's choices over it. */
-export function effectiveQuery(view: View, layer: PersonalLayer): Required<Omit<RecordsQuery, "groupBy">> & { groupBy: number | null } {
+export function effectiveQuery(view: View, layer: PersonalLayer): Required<Omit<RecordsQuery, "groupBy" | "fieldIds">> & { groupBy: number | null } {
   const sorts = sortsOf(view, layer);
   return {
     search: layer.search ?? view.config.search,

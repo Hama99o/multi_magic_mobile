@@ -24,9 +24,36 @@ appId: ${APP_ID}
 tags:
   - sweep
 ---
-- runFlow: login.yaml
-- tapOn:
-    id: "chat-close"
+# NOT login.yaml: at 200 % Home's Assistant tile is below the fold and
+# login's last step taps it (device, 2026-11-21 08:48). The driver signs in at
+# 100 % first (set-language), then sets 200 % and relaunches: the app reopens
+# signed in, on Home or inside the last app.
+- launchApp
+- openLink: ${DEEP_LINK}
+# The app reopens in its last place, maybe a pushed screen (a back arrow,
+# no Home button): Back until the Home button shows.
+- extendedWaitUntil:
+    visible:
+      id: "app-header"
+    timeout: 120000
+- repeat:
+    while:
+      notVisible:
+        id: "header-home"
+    times: 4
+    commands:
+      - back
+- runFlow:
+    when:
+      notVisible:
+        id: "home-tile-flow"
+    commands:
+      - tapOn:
+          id: "header-home"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-flow"
+- takeScreenshot: reports/46-font200-${W}-home
 
 # ── 1. Flow at 200 % ───────────────────────────────────────────────────────
 - tapOn:
@@ -35,36 +62,45 @@ tags:
     visible:
       id: "flow-tabs"
     timeout: 60000
+# Reuse "[qa] Font 200" if a stopped run left it (2026-11-21 09:11); else make it.
 - runFlow:
     when:
-      visible:
-        id: "flow-empty-create"
+      notVisible: "\\[qa\\] Font 200.*"
     commands:
+      - runFlow:
+          when:
+            visible:
+              id: "flow-empty-create"
+          commands:
+            - tapOn:
+                id: "flow-empty-create"
+      - runFlow:
+          when:
+            visible:
+              id: "flow-new-project"
+          commands:
+            - tapOn:
+                id: "flow-new-project"
       - tapOn:
-          id: "flow-empty-create"
-- runFlow:
-    when:
-      visible:
-        id: "flow-new-project"
-    commands:
+          id: "flow-project-title"
+      - inputText: "[qa] Font 200"
+      - takeScreenshot: reports/46-font200-${W}-project-sheet
       - tapOn:
-          id: "flow-new-project"
-- extendedWaitUntil:
-    visible:
-      id: "flow-project-sheet"
-    timeout: 10000
-- tapOn:
-    id: "flow-project-title"
-- inputText: "[qa] Font 200"
-- takeScreenshot: reports/46-font200-${W}-project-sheet
-- tapOn:
-    id: "flow-project-save"
+          id: "flow-project-save"
+      - extendedWaitUntil:
+          visible:
+            id: "flow-board-pager"
+          timeout: 60000
+      - back
+- tapOn: "\\[qa\\] Font 200.*"
 - extendedWaitUntil:
     visible:
       id: "flow-board-pager"
     timeout: 60000
-- tapOn:
-    id: "flow-column-1-add"
+# The empty first column's own "Add a card" (a column's ids are its POSITION,
+# which differs between servers, so its words: en or fr).
+# lint: regex-ok — an alternation on purpose: the words in en or fr.
+- tapOn: "(Add a card|Ajouter une carte)"
 - tapOn:
     id: "flow-quick-add-input"
 - inputText: "[qa] A title long enough to need its second line"
@@ -86,28 +122,27 @@ tags:
 - tapOn:
     id: "flow-quick-add-cancel"
 - takeScreenshot: reports/46-font200-${W}-board
-# Clean up: the project goes, with its confirm naming it.
+# Clean up by ids, not words: the project, with its confirm.
 - back
 - extendedWaitUntil:
     visible:
       id: "flow-tabs"
     timeout: 20000
 - longPressOn: "\\[qa\\] Font 200.*"
-- tapOn: "Delete project"
-- extendedWaitUntil:
-    visible: "Delete “\\[qa\\] Font 200”\\?"
-    timeout: 10000
-- tapOn: "Delete"
+- tapOn:
+    id: "flow-project-menu-delete"
+# lint: regex-ok — the alert's button, en or fr, either case (Android caps it).
+- tapOn: "(Delete|DELETE|Supprimer|SUPPRIMER)"
 - extendedWaitUntil:
     notVisible: "\\[qa\\] Font 200.*"
     timeout: 20000
 - back
 
 # ── 2. Notes: + tapped twice ───────────────────────────────────────────────
-- extendedWaitUntil:
-    visible:
+- scrollUntilVisible:
+    element:
       id: "home-tile-notes"
-    timeout: 20000
+    direction: UP
 - tapOn:
     id: "home-tile-notes"
 - extendedWaitUntil:

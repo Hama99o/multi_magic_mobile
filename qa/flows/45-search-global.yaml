@@ -23,9 +23,32 @@ appId: ${APP_ID}
 tags:
   - search
 ---
-- runFlow: login.yaml
-- tapOn:
-    id: "chat-close"
+# NOT login.yaml's last step: at 360 dp and at 200 % Home's Assistant tile is
+# below the fold and login taps it (device, 2026-11-21). The slot driver signs
+# in first (set-language), so the app reopens signed in: Home, or inside the
+# last app, whose header has the Home button.
+- launchApp
+- openLink: ${DEEP_LINK}
+# The app reopens in its last place, maybe a pushed screen (a back arrow,
+# no Home button): Back until the Home button shows.
+- extendedWaitUntil:
+    visible:
+      id: "app-header"
+    timeout: 120000
+- repeat:
+    while:
+      notVisible:
+        id: "header-home"
+    times: 4
+    commands:
+      - back
+- runFlow:
+    when:
+      notVisible:
+        id: "home-greeting"
+    commands:
+      - tapOn:
+          id: "header-home"
 - extendedWaitUntil:
     visible:
       id: "home-greeting"

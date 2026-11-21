@@ -1,0 +1,39 @@
+# Readiness "Kbd", Chats: in a person thread, the composer and its Send stay
+# above the keyboard. The draft is NEVER sent (a send reaches another person);
+# it is erased before leaving.
+#
+# COVERS: the field and Send visible with the keyboard up.
+# CANNOT TELL YOU: sending (deliberately not done).
+appId: ${APP_ID}
+tags: [chats, readiness]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-chats"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-chats"
+- extendedWaitUntil:
+    visible:
+      id: "chats-list"
+    timeout: 30000
+- runFlow:
+    when:
+      notVisible:
+        id: "chats-empty"
+    commands:
+      # lint: dbid-ok — any thread is the subject; the QA account's own list
+      - tapOn:
+          id: "chat-row-.*"
+          index: 0
+      - tapOn:
+          id: "people-composer-input"
+      - inputText: "[qa] draft, never sent"
+      - assertVisible:
+          id: "people-composer-send"
+      - takeScreenshot: reports/67-chats-keyboard
+      - eraseText: 40

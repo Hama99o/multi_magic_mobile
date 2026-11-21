@@ -1,0 +1,48 @@
+# Chats "ask the assistant" (88, 7773bdd), and readiness for Chats: from a
+# person thread, the header's Sparkles button opens the assistant with "About
+# my conversation with <name>: " composed and NOT sent. Nothing is sent to
+# anybody; the draft is cleared at the end.
+#
+# COVERS: thread → assistant with the question composed, unsent.
+# CANNOT TELL YOU: the answer (nothing is sent). An account with no thread
+# stops at the empty list, photographed.
+appId: ${APP_ID}
+tags: [chats, readiness]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-chats"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-chats"
+- extendedWaitUntil:
+    visible:
+      id: "chats-list"
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: "chats-empty"
+    commands:
+      - takeScreenshot: reports/66-chats-empty
+- runFlow:
+    when:
+      notVisible:
+        id: "chats-empty"
+    commands:
+      # lint: dbid-ok — any thread is the subject; the QA account's own list
+      - tapOn:
+          id: "chat-row-.*"
+          index: 0
+      - tapOn:
+          id: "thread-ask"
+      - extendedWaitUntil:
+          visible: "About my conversation with .*"
+          timeout: 15000
+      - takeScreenshot: reports/66-chats-ask-composed
+      - tapOn:
+          id: "composer-clear"

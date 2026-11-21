@@ -1,0 +1,17 @@
+# Readiness pictures, Assistant: the assistant (and the memory review card,
+# when the account has reviewable facts) at the label `ac-readiness.sh` passes
+# in ${SHOT} (360, 411, 800, 411-dark, 411-font200), a relaunch per setting.
+#
+# COVERS: arriving; the shots are for a person.
+# CANNOT TELL YOU: anything a screenshot is not read for.
+appId: ${APP_ID}
+tags: [assistant, readiness, shots]
+---
+- runFlow: login.yaml
+- takeScreenshot: reports/60-assistant-${SHOT}
+- runFlow:
+    when:
+      visible:
+        id: "memory-review"
+    commands:
+      - takeScreenshot: reports/60-assistant-memory-${SHOT}

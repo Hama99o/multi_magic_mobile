@@ -723,6 +723,15 @@ released, Metro stopped.
 | `360-dark-en` | **complete, 9 of 9** |
 | `411-light-en` | **complete, 9 of 9** |
 | `411-dark-en` | **complete, 9 of 9** |
+| `60-assistant-shots.yaml` | **UNRUN. PICTURES.** The assistant (and the memory card when there is one) at ${SHOT}: 360, 411, 800, 411 dark, 411 at 200 %. `qa/ac-readiness.sh shots`. | Asserts no behaviour. |
+| `61-assistant-offline-says-so.yaml` | **UNRUN.** Readiness Off: wifi and data off (driver); the composer shows `composer-offline`. | What happens to a question typed offline. |
+| `62-assistant-mic-refused.yaml` | **UNRUN.** Readiness Perm: RECORD_AUDIO revoked (driver), "Don't allow", then `composer-mic-refused`. | Dictation itself. |
+| `63-assistant-double-tap-sends-once.yaml` | **UNRUN. WRITES (QA account only), cleans up.** Readiness 2×tap: in its own renamed conversation, a double tap on Send shows ONE question; that conversation is then deleted by its title. | The server-side request count. |
+| `64-assistant-kill-mid-answer.yaml` | **UNRUN. WRITES (QA account only), cleans up.** Readiness Kill: ask, kill mid-answer, relaunch; the question is still in its conversation, which is then deleted by its title. | Whether the answer was generated twice. |
+| `65-assistant-memory-review-state.yaml` | **UNRUN.** Readiness States: the memory review card (88, 8a9488e) or its absence, photographed; nothing answered. | What an answer does. |
+| `66-chats-ask-the-assistant-from-a-thread.yaml` | **UNRUN. SENDS NOTHING.** Chats "ask the assistant" (88, 7773bdd): thread → assistant with "About my conversation with …" composed and unsent, then cleared. An empty list stops, photographed. | The answer. |
+| `67-chats-keyboard-draft-not-sent.yaml` | **UNRUN. SENDS NOTHING.** Readiness Kbd, Chats: the thread composer and Send above the keyboard; the draft is erased. | Sending (a send reaches another person). |
+| `68-chats-shots.yaml` | **UNRUN. PICTURES.** The chats list and the first thread at ${SHOT}. | Asserts no behaviour. |
 | `800-light-en` | **NOT ATTEMPTED — see below** |
 | `800-dark-en` | **NOT ATTEMPTED** |
 | `360-light-fr` | **NOT ATTEMPTED** |

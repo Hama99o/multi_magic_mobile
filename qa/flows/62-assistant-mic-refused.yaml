@@ -1,0 +1,22 @@
+# Readiness "Perm", Assistant: `ac-readiness.sh` revokes RECORD_AUDIO before
+# this flow. Tapping the mic asks; the flow says "Don't allow"; the composer
+# then explains the refusal instead of failing silently.
+#
+# COVERS: the denied-permission state, said on screen.
+# CANNOT TELL YOU: dictation itself.
+appId: ${APP_ID}
+tags: [assistant, readiness, permission]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "composer-mic"
+- runFlow:
+    when:
+      visible: "Don.t allow|DON.T ALLOW|Deny"
+    commands:
+      - tapOn: "Don.t allow|DON.T ALLOW|Deny"
+- extendedWaitUntil:
+    visible:
+      id: "composer-mic-refused"
+    timeout: 15000
+- takeScreenshot: reports/62-assistant-mic-refused

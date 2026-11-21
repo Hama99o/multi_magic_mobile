@@ -79,8 +79,7 @@ export default function ContactDocumentScreen() {
   const known = query.data?.documents != null;
 
   return (
-    <Screen measure={mode !== "image" && mode !== "pdf" && mode !== "document"}>
-      <AppHeader app="contacts" title={current?.title ?? t("contacts.documents.title")} back />
+    <Screen measure={mode !== "image" && mode !== "pdf" && mode !== "document"} header={<AppHeader app="contacts" title={current?.title ?? t("contacts.documents.title")} back />}>
       {current ? (
         // The document's own row, under the shared header: its size, and share.
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>

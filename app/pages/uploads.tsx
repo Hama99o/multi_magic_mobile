@@ -109,8 +109,7 @@ export default function Uploads() {
   const finished = items.filter((i) => i.status === "done").length;
 
   return (
-    <Screen measure>
-      <AppHeader app="pages" title={t("pages.uploads.title")} back />
+    <Screen measure header={<AppHeader app="pages" title={t("pages.uploads.title")} back />}>
       {/* The screen's own row, under the shared header: what is running, and clear. */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs, minHeight: metrics.touch }}>
         {active > 0 ? (

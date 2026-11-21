@@ -198,8 +198,7 @@ export default function PagesHome() {
   const empty = (title: string, testID: string, body?: string) => <EmptyLine title={title} body={body} testID={testID} />;
 
   return (
-    <Screen measure={false}>
-      <AppHeader app="pages" />
+    <Screen measure={false} header={<AppHeader app="pages" />}>
       <View style={{ flex: 1 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)}>
         {tab === "home" || tab === "starred" ? (
           <NodeCollection

@@ -131,16 +131,14 @@ export default function Drive() {
   }
   if (view === "trash") {
     return (
-      <Screen measure>
-        <AppHeader app="pages" title={titleFor(view, t)} back />
+      <Screen measure header={<AppHeader app="pages" title={titleFor(view, t)} back />}>
         <TrashView />
       </Screen>
     );
   }
 
   return (
-    <Screen measure>
-      <AppHeader app="pages" title={titleFor(view, t)} back />
+    <Screen measure header={<AppHeader app="pages" title={titleFor(view, t)} back />}>
 
       <UnreadableNotice
         count={view === "shared" ? (sharedQuery.data?.unreadable ?? 0) : (nodesQuery.data?.pages ?? []).reduce((n, p) => n + p.unreadable, 0)}

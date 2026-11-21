@@ -92,8 +92,7 @@ export default function TodosScreen() {
   );
 
   return (
-    <Screen measure>
-      <AppHeader app="todos" />
+    <Screen measure header={<AppHeader app="todos" />}>
       {/* The app's own row, under the shared header: search and templates. */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
         <Pressable

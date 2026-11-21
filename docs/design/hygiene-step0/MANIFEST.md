@@ -113,3 +113,26 @@ New flows to write while the device is up, so this run can be repeated without a
 - `29-finance-overview.yaml` (F1, F3, F4);
 - `30-my-family.yaml` (C1, C2, opening and cancelling only).
 Each gets its row and its "does NOT cover" column in the register.
+
+### Pass 3 (2026-11-20 22:19–22:37, `qa_phone3` emulator-5556): Hello's decisions 1, 2 and 5
+
+The bundle was feat/tables @ `5fcd073` (this branch merged at `0b92918`), served by Metro `--clear` against multi-magic-83's :3020 (demo account, its own DB). Grepped first: `ACT_FRACTION` 5, `mm-language-pending` 2, `mm-doc/app` 0. Autofill was off. Free memory at boot was 9.8 GB and the swap-in rate 0/s. Shots and recordings are in `/data/e9-shots/p3`.
+
+| Decision | Result | Evidence |
+|---|---|---|
+| (5) The language follows `users.lang` | ☑ in 3 cases: a fresh install took the server's `fr`; the server set to `en` → relaunch in English; the server back to `fr` → the phone, whose English was confirmed, followed | `01`–`03`, `61` |
+| (2) Swipe: partial reveals, ≥ 60 % deletes | ☑ Tasks and Loans: a partial swipe opens Delete, 176 px = 88 dp, the row's exact height, the content's edge on the button's. A tap on the row closes it. The button deletes with Undo; a ≥ 60 % swipe deletes with Undo. Expenses: the long swipe deletes, total €198 → €176. | `11`–`14`, `30` |
+| (2) No stale offset on a recycled list | ☑ Loans (it scrolls): a row left open, 3 flings → the open row closed on the scroll; 8 rows at x = 32, each 196 px | `31`, `32-loans-fling.mp4` |
+| (1) Finance Undo restores the row and the total | ☑ recording at 8 fps: Undo tapped ≈ 5.5 s; €155 / 10 entries → €176 / 11 entries with the row back in place by 6.0 s | `25-exp-undo.mp4`, `26-undo-timeline.png` |
+| (1) …while the list is flinging | ⚠ NOT MEASURED: 12 expenses fit at density 320, so the flings scrolled nothing. Needs a longer list or density 480. | |
+| Newest first | ☑ Expenses (exp 12 on top) | `20` |
+
+Not shot: Expenses partial swipe; dark mode.
+
+| Kind (demo DB on :3020) | ids | Deleted |
+|---|---|---|
+| Expenses "[qa] p3 exp 1–12" | 1–12 | 22:36, trash then permanently: 12 |
+| Loans "[qa] p3 loan 1–8" | 1–8 | 22:36, permanently: 8 |
+| Tasks list "[qa] p3 swipe" (12 tasks) | 1 | 22:36 |
+| Tables base "[qa] p3 people" (shared with Sam; 2 rows; 1 comment with a file) | 6 | 22:36; a list call showed `bases_left: []` |
+| Server `users.lang` | Alex (demo) | set back to `fr`, as found |

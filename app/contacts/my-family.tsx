@@ -45,8 +45,7 @@ export default function MyFamily() {
   const open = (id: number) => router.push({ pathname: "/contacts/contact", params: { id: String(id) } });
 
   return (
-    <Screen measure>
-      <AppHeader app="contacts" title={t("contacts.myFamily.title")} back />
+    <Screen measure header={<AppHeader app="contacts" title={t("contacts.myFamily.title")} back />}>
       <LoadFailure error={family.error} loadFailed={t("contacts.myFamily.loadFailed")} hasData={Boolean(family.data)} updatedAt={family.dataUpdatedAt} onRetry={() => void family.refetch()} testID="my-family-load-failed" />
       {error ? (
         <Text testID="my-family-error" tone="danger" style={{ paddingBottom: metrics.space.sm }}>

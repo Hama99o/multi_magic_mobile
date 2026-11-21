@@ -9,7 +9,7 @@
  * The tab is local state rather than four routes: the shell is one screen
  * people come back to, and a folder or the viewer is pushed over it.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -19,12 +19,15 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
-import { Check, Folder, MoreVertical, Pencil, Share2, Trash2, Upload } from "@/components/icons";
+import { Check, FileArchive, Folder, HardDrive, MoreVertical, Pencil, Share2, Trash2, Upload } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { pagesApi, type SharedItem, type SortDir, type Space, type SpaceListOptions } from "@/api/pages";
 import { sortLabel } from "@/screens/pages/labels";
 import { NodeCollection } from "@/screens/pages/drive/NodeCollection";
-import { BottomSheet, NewSheet, SheetRow } from "@/screens/pages/drive/sheets";
+import { BottomSheet, NewSheet, SheetRow, SHEET_CLOSE_MS } from "@/screens/pages/drive/sheets";
+import { TransferSheet } from "@/screens/pages/TransferSheet";
+import { pickZip } from "@/screens/pages/transferFiles";
+import { transfersApi, type Transfer } from "@/api/transfers";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { IconButton, NewFab, PagesTabBar, SearchPill, SharedNodeGlyph, SortRow, UploadBar, useViewPrefs, type PagesTab } from "@/screens/pages/drive/ui";
 import { EmptyLine } from "@/screens/pages/parts";
@@ -147,6 +150,30 @@ export default function PagesHome() {
     ]);
   };
   const [menu, setMenu] = useState(false);
+  // A space as a ZIP (parity #12) and a ZIP as a new space (#25): both run
+  // in the background; the transfer sheet follows them.
+  const [transfer, setTransfer] = useState<Transfer | null>(null);
+  const exportSpace = useCallback(
+    async (space: Space) => {
+      setSpaceMenu(null);
+      try {
+        setTransfer(await transfersApi.exportSpace(space.id));
+      } catch (e) {
+        Alert.alert(failureMessage(e, t("pages.actions.failed")));
+      }
+    },
+    [t],
+  );
+  const importAsSpace = useCallback(async () => {
+    try {
+      const zip = await pickZip();
+      if (zip === "not-zip") return Alert.alert(t("pages.copy.notZip"));
+      if (!zip) return;
+      setTransfer(await transfersApi.importZip(zip, {}));
+    } catch (e) {
+      Alert.alert(failureMessage(e, t("pages.actions.failed")));
+    }
+  }, [t]);
   const [selecting, setSelecting] = useState(false);
   const [width, setWidth] = useState(0);
   const mode = useViewPrefs((s) => s.mode);
@@ -298,6 +325,7 @@ export default function PagesHome() {
         onSpace={() => setSpaceForm(true)}
       />
       <SpaceForm open={spaceForm} onClose={() => setSpaceForm(false)} />
+      <TransferSheet started={transfer} onClose={() => setTransfer(null)} />
       <SpaceForm open={editingSpace != null} space={editingSpace} onClose={() => setEditingSpace(null)} />
       <ShareSheet target={sharingSpace ? { spaceId: sharingSpace.id, nodeId: null, title: sharingSpace.title } : null} onClose={() => setSharingSpace(null)} />
       <BottomSheet open={spaceMenu != null} onClose={() => setSpaceMenu(null)} testID="pages-space-menu">
@@ -308,6 +336,7 @@ export default function PagesHome() {
             </Text>
             <SheetRow icon={Pencil} label={t("pages.spaceMenu.edit")} onPress={() => (setEditingSpace(spaceMenu), setSpaceMenu(null))} testID="pages-space-edit" />
             <SheetRow icon={Share2} label={t("pages.spaceMenu.share")} onPress={() => (setSharingSpace(spaceMenu), setSpaceMenu(null))} testID="pages-space-share" />
+            <SheetRow icon={FileArchive} label={t("pages.copy.exportSpace")} onPress={() => void exportSpace(spaceMenu)} testID="pages-space-export" />
             <SheetRow icon={Trash2} label={t("pages.spaceMenu.delete")} danger onPress={() => deleteSpace(spaceMenu)} testID="pages-space-delete" />
           </>
         ) : null}
@@ -342,6 +371,8 @@ export default function PagesHome() {
       <BottomSheet open={menu} onClose={() => setMenu(false)} testID="pages-menu-sheet">
         <SheetRow icon={Upload} label={t("pages.uploads.title")} onPress={() => (setMenu(false), router.push("/pages/uploads"))} testID="pages-menu-uploads" />
         <SheetRow icon={Trash2} label={t("pages.places.trash")} onPress={() => (setMenu(false), router.push({ pathname: "/pages/drive", params: { view: "trash" } }))} testID="pages-menu-trash" />
+        <SheetRow icon={HardDrive} label={t("pages.storage.title")} onPress={() => (setMenu(false), router.push("/pages/storage"))} testID="pages-menu-storage" />
+        <SheetRow icon={FileArchive} label={t("pages.copy.importAsSpace")} onPress={() => (setMenu(false), setTimeout(() => void importAsSpace(), SHEET_CLOSE_MS))} testID="pages-menu-import-zip" />
       </BottomSheet>
     </Screen>
   );

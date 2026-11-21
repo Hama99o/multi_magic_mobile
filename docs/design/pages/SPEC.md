@@ -4,6 +4,9 @@
 Android device (§7). **Outstanding:** `ours/` at 360, 411 and 800 dp (the run
 was at 411 only), and the iPhone-only checks in §8, which no emulator here can
 run.
+**2026-11-20, full parity (§6.1):** the web's remaining drive actions are built
+on `feat/pages-parity`. Jest and typecheck are green for M1–M5, and M6–M7 are
+not yet gated. Device QA has not run on any of them yet.
 
 His words, 2026-11-06: *"read the code and mm web api, also we see page app,
 we will add page app in mobile"*, then *"make sure all feature as web we has
@@ -177,15 +180,73 @@ notes, versions, share links, storage, zip export.
 |---|---|---|
 | 1 | Share-sheet import, multi-select, destination picker with today's folder, persistent background queue, browse, search, sort, type filter, viewer, trash restore, export via share sheet | **built** |
 | 1.1 | **Rule Zero done 2026-11-06:** Google Photos (`mobbin.com/screens/0f6bb976-efc8-4094-9d80-578e456c6f44`) is 3 square columns, 2 dp gaps, duration on the tile; Snapchat's camera roll (`…/0573366a-c36b-485a-9832-567a4f337ac5`) puts it bottom-left on a dark tint; CapCut (`…/43d12104-5be2-4862-b623-862eb5760f1b`) bottom-right. **Decided:** a list/grid toggle in the folder header, the grid 3 columns of square `thumbnail_url` tiles, folders and non-media files as glyph tiles with the name under them. **Durations in the folder grid need the server:** `node_serializer.rb` sends no `duration` (ActiveStorage keeps it in blob metadata only when the video analyzer ran), so that is a `multi_magic` change and his "oui"; the SAVE SHEET can show them, because the picker and the share extension both hand the duration over for local files. From the supervisor's read of the device screenshots (2026-11-06): a **grid view** (2–3 columns) for photo/video folders, Google Photos/Drive style; a **video frame + duration** in the save sheet's strip (today a glyph; images already show); an **edge fade** on the type chips (they clip "Documents" at 411 dp); a **progress pill** on the Pages header while uploads run (today: a count badge on the upload glyph and the banner on home and folder). Rule Zero applies to the grid. | not started |
-| 2 | Rename, move, copy, make a copy, star, trash, delete forever (opened and cancelled in flows), replace file, details, versions, multi-select actions | not started |
-| 3 | Page editing (TipTap-compatible, `@10play/tentap-editor`), markdown editing | not started |
-| 4 | Share with people, share links with expiry, redeem, note links | not started |
-| 5 | Zip export / import with live progress (`TransferChannel`), storage view | not started |
+| 2 | Rename, move, copy, make a copy, star, trash, delete forever (opened and cancelled in flows), replace file, details, versions, multi-select actions | **built** (§6.1) |
+| 3 | Page editing, markdown editing | **built** (§6.1): the notes engine and its whole toolbar, not tentap |
+| 4 | Share with people, share links with expiry, redeem, note links | **built**: note links in §6.1 |
+| 5 | Zip export / import with live progress, storage view | **built** (§6.1): polled every second, no socket |
 | follow-up | **Android uploads that survive the app being swiped away** (WorkManager or a foreground service). Today an Android upload runs while the process lives and is re-queued at the next launch | not started |
 | follow-up | Resumable uploads (server side: tus or chunked direct upload). Today a retry restarts the file from zero (`multi_magic` `PAGES_UX_2026.md` §10) | needs a server change, his "oui" |
 
 What a phone cannot do the web's way: **upload a folder** (iOS has no folder
 picker; a zip import covers it), keyboard shortcuts, drag and drop.
+
+---
+
+### 6.1 · Full parity, 2026-11-20 (`feat/pages-parity`)
+
+The inventory is `mm-parity-audit/docs/parity/safezone-notes-pages.md`, Pages
+rows. **No new Mobbin search:** every screen below follows a web screen 1:1, or
+reuses a sheet this app already has. Rule Zero's receipt is §1 and §6 phase 1.1.
+
+| # | Web | Here | Commit |
+|---|---|---|---|
+| 8 | Breadcrumb, every crumb taps | `crumbsFor` (`src/screens/pages/links.ts`), `app/pages/folder.tsx` | M1 |
+| 17, 18 | "Pages" type chip, Select all | `filters.ts`, `NodeCollection.tsx` | M1 |
+| 30, 36 | Copy link, Show location | `nodeLink` (`links.ts`), `ActionsSheet` | M1 |
+| 38 | Details: deleted at, manage access | `DetailsSheet` (`drive/sheets.tsx`) | M1 |
+| 6 | Storage view | `app/pages/storage.tsx`, `src/api/storage.ts` | M2 |
+| 12, 25, 28, 33, 34 | ZIP export / import, folder ZIP, make a copy, copy to | `src/api/transfers.ts`, `TransferSheet.tsx`, `transferFiles.ts`, `MoveSheet mode="copy"` | M3 |
+| 37, 39 | Replace file, versions | `VersionsSheet.tsx`, `pagesApi.replaceFile/versions/restoreVersion/deleteVersion` | M4 |
+| 49 | Edit a text / Markdown file | `view.tsx` `TextFile`, `pagesApi.updateText` | M4 |
+| 26, 51 | Link notes, linked notes | `LinkedNotesSheet.tsx`, `src/api/noteLinks.ts` | M5 |
+| 43 | Previous / next across every file | `neighbours.ts`, the viewer's bar | M6 |
+| 46 | CSV / TSV preview | `csv.ts` (200 rows, 20 columns), `viewerModes.ts` `"sheet"` | M6 |
+| 22, 50 | New page, edit a page | `app/pages/edit.tsx`, `pageEditor.ts`, `pagesApi.createPage/savePage` | M7 |
+| 24 | Upload a folder | `folderUpload.ts` (walk, room check, folders parent first), `pickFolder.ts`, `uploads.store.ts` `sweepCopies` | M9 |
+| 50 | Links, images, code blocks in a page | `PageEditorSheets.tsx`; the note screen's calls (`setLink`, `imagesApi.upload` + `imageNode`, `blockEdits.ts`) | M8 |
+
+**How a page saves:** as the web does, `PATCH {node:{content:{html}}}`, one
+second after the last change and at once on blur, back or leaving. The HTML
+comes from the note engine's codec (`openForEditing` / `saveFromEngine`). A
+change that cannot become valid HTML is not sent, and the screen says so. A
+page over `EDIT_SIZE_LIMIT`, or one the engine refuses, opens read-only with
+the reason shown.
+
+**A page's toolbar is the note's toolbar** (`forPage` in `pageEditor.ts`).
+Only the two note-record keys are left out: the note colour, and the note's ⋮
+menu (labels, reminder, lock, archive). A page has none of those. No native
+editor change was needed: everything else already runs through engine B in
+JavaScript.
+
+**Still open, sized (2026-11-20):**
+- **#46, XLSX preview, about half a day.** It needs a parser (SheetJS, about
+  1 MB minified, from its own CDN tarball; the npm `xlsx` package stopped at
+  0.18.5). Its first sheet would feed the CSV table that already exists
+  (`csv.ts` limits: 200 rows, 20 columns). **Blocker: a decision, not code.**
+  `node_modules` is one symlinked tree shared by every worktree on this box,
+  so adding a dependency changes every sibling's install. Until then an
+  `.xlsx` file goes to the system viewer.
+- **#24, upload a folder: built (M9), not yet on a device.** Every file is
+  copied into Documents when it is queued, so the queue never depends on a
+  picked folder's URI still opening after a restart. On relaunch, a half copy
+  from a kill and any copy no row names are deleted. Unproven until the
+  device run: the two kill tests (mid-copy, mid-upload), and on iOS whether a
+  picked folder's files can be read and copied at all (no iOS here).
+- **Server:** a big merge or a custom compress runs out of memory on a 2 GB
+  local box. That is a `multi_magic` fix (multi-magic-83), not a phone fix.
+
+**Not yet measured:** device QA, `ours/` at 360, 411 and 800 dp, and the
+contact sheet. The status above stays `IN PROGRESS` until those exist.
 
 ---
 
@@ -291,6 +352,12 @@ Every key comes from `pagesKeys` in `src/api/keys.ts`, never a literal
 | `pagesKeys.moveStart()` | `["pages", "moveStart", nodeId]` |
 | `pagesKeys.gallery()` | `["pages", "gallery", spaceId, parentId]` |
 | `pagesKeys.text()` | `["pages", "text", uri]` |
+| `pagesKeys.siblings()` | `["pages", "siblings", spaceId, parentId]` |
+| `pagesKeys.transfer()` | `["pages", "transfer", transferId]` |
+| `pagesKeys.versions()` | `["pages", "versions", spaceId, nodeId]` |
+| `pagesKeys.noteLinks()` | `["pages", "noteLinks", spaceId, nodeId]` |
+| `pagesKeys.notePicker()` | `["pages", "notePicker", query]` |
+| `storageKeys.usage()` | `["storage", "usage"]` |
 
 Writes: src/screens/pages/usePageMutations.ts. star, rename, trash (with Undo), restore, delete for ever, empty the trash and move are optimistic in EVERY cached list a node sits in; a new folder is not.
 

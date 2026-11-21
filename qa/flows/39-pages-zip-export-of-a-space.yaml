@@ -1,0 +1,28 @@
+# M3 (parity #12): a whole space exported as a ZIP from the space's menu.
+#
+# COVERS: Files > QA Parity's menu > Export as ZIP > the transfer done.
+# CANNOT TELL YOU: the ZIP's contents; import as a new space (by hand).
+appId: ${APP_ID}
+tags: [pages, parity]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-pages"
+- tapOn:
+    id: "pages-tab-files"
+- extendedWaitUntil:
+    visible: "QA Parity"
+    timeout: 30000
+- tapOn:
+    id: "pages-space-more"
+- tapOn:
+    id: "pages-space-export"
+- extendedWaitUntil:
+    visible:
+      id: "pages-transfer-done"
+    timeout: 120000
+- takeScreenshot: reports/39-space-zip
+- tapOn:
+    id: "pages-transfer-close"

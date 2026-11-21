@@ -121,12 +121,24 @@ export const pagesKeys = {
   moveFolders: <S extends number | undefined, P extends number | null>(spaceId: S, parentId: P) => ["pages", "folders", "move", spaceId, parentId] as const,
   moveStart: <N extends number>(nodeId: N) => ["pages", "moveStart", nodeId] as const,
   gallery: <S extends number, P extends number | null>(spaceId: S, parentId: P) => ["pages", "gallery", spaceId, parentId] as const,
+  /** Every file of a folder, by name, for the viewer's previous / next (parity #43). */
+  siblings: <S extends number, P extends number | null>(spaceId: S, parentId: P) => ["pages", "siblings", spaceId, parentId] as const,
   text: <U extends string>(uri: U) => ["pages", "text", uri] as const,
   /** Who a space (node null) or a node is shared with, and its links (audit #14);
    *  `sharing` is the prefix of both, invalidated after every change. */
   sharing: <S extends number, N extends number | null>(spaceId: S, nodeId: N) => ["pages", "sharing", spaceId, nodeId] as const,
   shares: <S extends number, N extends number | null>(spaceId: S, nodeId: N) => ["pages", "sharing", spaceId, nodeId, "people"] as const,
   shareLinks: <S extends number, N extends number | null>(spaceId: S, nodeId: N) => ["pages", "sharing", spaceId, nodeId, "links"] as const,
+  /** One background export, import or copy, followed until it finishes. */
+  transfer: <I extends number>(transferId: I) => ["pages", "transfer", transferId] as const,
+  /** One sheet of a spreadsheet, read by the server (parity #46). */
+  spreadsheet: <N extends number, S extends number>(nodeId: N, sheet: S) => ["pages", "spreadsheet", nodeId, sheet] as const,
+  /** A file's earlier versions (parity #39). */
+  versions: <S extends number, N extends number>(spaceId: S, nodeId: N) => ["pages", "versions", spaceId, nodeId] as const,
+  /** The notes linked to a node (parity #51). */
+  noteLinks: <S extends number, N extends number>(spaceId: S, nodeId: N) => ["pages", "noteLinks", spaceId, nodeId] as const,
+  /** Notes to link, as searched in the picker. */
+  notePicker: <Q extends string>(query: Q) => ["pages", "notePicker", query] as const,
 };
 
 export const todoKeys = {
@@ -273,4 +285,9 @@ export const docKeys = {
   text: <U extends string>(uri: U) => ["doc", "text", uri] as const,
   /** A picture the phone cannot draw, as the server's JPEG copy. */
   preview: <U extends string>(uri: U) => ["doc", "preview", uri] as const,
+};
+
+/** What the user stores, for the storage view in Pages (parity #6). */
+export const storageKeys = {
+  usage: () => ["storage", "usage"] as const,
 };

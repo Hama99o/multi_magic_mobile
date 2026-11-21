@@ -21,3 +21,15 @@ it("closes the sheet first, and starts the camera only once it is gone", () => {
   expect(onCamera).toHaveBeenCalled();
   jest.useRealTimers();
 });
+
+it("offers a new page only to whoever may write, and opens it after the sheet is gone (parity #22)", () => {
+  jest.useFakeTimers();
+  const onPage = jest.fn();
+  const { rerender } = render(<NewSheet open onClose={() => {}} onMedia={() => {}} onFiles={() => {}} onCamera={() => {}} />);
+  expect(screen.queryByTestId("pages-new-page")).toBeNull();
+  rerender(<NewSheet open onClose={() => {}} onMedia={() => {}} onFiles={() => {}} onCamera={() => {}} onPage={onPage} />);
+  fireEvent.press(screen.getByTestId("pages-new-page"));
+  act(() => jest.advanceTimersByTime(SHEET_CLOSE_MS));
+  expect(onPage).toHaveBeenCalledTimes(1);
+  jest.useRealTimers();
+});

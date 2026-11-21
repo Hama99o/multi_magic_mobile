@@ -16,7 +16,17 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactElement, t
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
 import { Text } from "@/components/reusables/text";
 import { useTranslation } from "react-i18next";
-import { Download, FolderInput, Star, Trash2 } from "@/components/icons";
+import { CheckCheck, Download, FolderInput, Star, Trash2 } from "@/components/icons";
+import * as Clipboard from "expo-clipboard";
+import { router } from "expo-router";
+import { nodeLink } from "../links";
+import { useQueryClient } from "@tanstack/react-query";
+import { pagesKeys } from "@/api/keys";
+import { pagesApi } from "@/api/pages";
+import { transfersApi, type Transfer } from "@/api/transfers";
+import { TransferSheet } from "../TransferSheet";
+import { VersionsSheet } from "../VersionsSheet";
+import { LinkedNotesSheet } from "../LinkedNotesSheet";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import type { PageNode } from "@/api/pages";
 import { failureMessage } from "@/api/failure";
@@ -112,6 +122,69 @@ export function NodeCollection({
   }, []);
 
   const press = useCallback((node: PageNode) => (selecting ? toggle(node) : onOpen(node)), [selecting, toggle, onOpen]);
+
+  // Select all (parity #18): everything loaded so far, as the web selects
+  // what it shows. A second tap, with all already chosen, clears.
+  const allChosen = nodes.length > 0 && nodes.every((n) => selected.has(n.id));
+  const selectAll = useCallback(() => setSelected(allChosen ? new Set() : new Set(nodes.map((n) => n.id))), [allChosen, nodes]);
+
+  // Copy link (parity #30): the web's URL, so it opens on a laptop.
+  const copyLink = useCallback(
+    async (node: PageNode) => {
+      try {
+        await Clipboard.setStringAsync(nodeLink(node));
+        Alert.alert(t("pages.actions.linkCopied"));
+      } catch (e) {
+        Alert.alert(failureMessage(e, t("pages.actions.failed")));
+      }
+    },
+    [t],
+  );
+
+  // Make a copy / Copy to (parity #33, #34) and a folder as a ZIP (#28). A
+  // small copy is made at once; a big one, and every ZIP, is a transfer the
+  // sheet follows to its end.
+  const client = useQueryClient();
+  const [copying, setCopying] = useState<PageNode[] | null>(null);
+  const [transfer, setTransfer] = useState<Transfer | null>(null);
+  const [versionsOf, setVersionsOf] = useState<{ node: PageNode; replace: boolean } | null>(null);
+  const [notesOf, setNotesOf] = useState<PageNode | null>(null);
+  const duplicate = useCallback(
+    async (node: PageNode, to?: { spaceId: number; parentId: number | null }, opts: { quiet?: boolean } = {}) => {
+      try {
+        const out = await pagesApi.duplicate(node.spaceId, node.id, to ? { targetSpaceId: to.spaceId, parentId: to.parentId } : {});
+        if ("transfer" in out) setTransfer(out.transfer);
+        else {
+          await client.invalidateQueries({ queryKey: pagesKeys.all });
+          Alert.alert(t("pages.copy.copied", { title: node.title }));
+        }
+      } catch (e) {
+        // From Copy to, the picker says it (and stays open to try again).
+        if (!opts.quiet) Alert.alert(failureMessage(e, t("pages.copy.failed")));
+        throw e;
+      }
+    },
+    [client, t],
+  );
+  const downloadZip = useCallback(
+    async (node: PageNode) => {
+      try {
+        setTransfer(await transfersApi.exportNode(node.spaceId, node.id));
+      } catch (e) {
+        Alert.alert(failureMessage(e, t("pages.actions.failed")));
+      }
+    },
+    [t],
+  );
+
+  // Show location (parity #36), in the drive-wide views: the folder it is in,
+  // or the space's root. The folder screen fetches its own name and path.
+  const showLocation = useCallback((node: PageNode) => {
+    router.push({
+      pathname: "/pages/folder",
+      params: node.parentId == null ? { spaceId: String(node.spaceId), title: node.space?.title ?? "" } : { spaceId: String(node.spaceId), parentId: String(node.parentId) },
+    });
+  }, []);
 
   // ── Actions ───────────────────────────────────────────────────────────────
 
@@ -263,6 +336,7 @@ export function NodeCollection({
     <View style={{ flex: 1 }} onLayout={(e) => setWidth(e.nativeEvent.layout.width)} testID={`${testID}-root`}>
       {selecting ? (
         <SelectionBar count={selected.size} onClose={() => setSelected(new Set())}>
+          <IconButton icon={CheckCheck} label={t("pages.actions.selectAll")} onPress={selectAll} tone="ink" testID="pages-select-all" />
           <IconButton
             icon={Download}
             label={t("pages.download.title")}
@@ -354,9 +428,22 @@ export function NodeCollection({
         onMove={(n) => setMoving([n])}
         onDetails={setDetailsFor}
         onTrash={(n) => trash([n])}
+        onCopyLink={(n) => void copyLink(n)}
+        onMakeCopy={(n) => void duplicate(n).catch(() => undefined)}
+        onCopyTo={(n) => setCopying([n])}
+        onDownloadZip={(n) => void downloadZip(n)}
+        onVersions={(n) => setVersionsOf({ node: n, replace: false })}
+        onReplace={(n) => setVersionsOf({ node: n, replace: true })}
+        onLinkedNotes={setNotesOf}
+        onShowLocation={showSpace ? showLocation : undefined}
         rights={actionsFor ? rightsOf(actionsFor) : null}
       />
-      <DetailsSheet node={detailsFor} location={detailsFor ? locationOf(detailsFor) : ""} onClose={() => setDetailsFor(null)} />
+      <DetailsSheet
+        node={detailsFor}
+        location={detailsFor ? locationOf(detailsFor) : ""}
+        onClose={() => setDetailsFor(null)}
+        onManageAccess={detailsFor && rightsOf(detailsFor).canShare ? (n) => setSharingWith({ spaceId: n.spaceId, nodeId: n.id, title: n.title }) : undefined}
+      />
       <ShareSheet target={sharingWith} onClose={() => setSharingWith(null)} />
       {trashed ? (
         <View
@@ -393,6 +480,17 @@ export function NodeCollection({
       ) : null}
 
       <MoveSheet nodes={moving} onClose={() => setMoving(null)} onMove={move} />
+      <MoveSheet
+        mode="copy"
+        nodes={copying}
+        onClose={() => setCopying(null)}
+        onMove={async (to) => {
+          if (copying?.[0]) await duplicate(copying[0], to, { quiet: true });
+        }}
+      />
+      <TransferSheet started={transfer} onClose={() => setTransfer(null)} />
+      <LinkedNotesSheet node={notesOf} canWrite={notesOf ? rightsOf(notesOf).canWrite : false} onClose={() => setNotesOf(null)} />
+      <VersionsSheet node={versionsOf?.node ?? null} replaceNow={versionsOf?.replace} canWrite={versionsOf ? rightsOf(versionsOf.node).canWrite : false} onClose={() => setVersionsOf(null)} />
       <NameDialog
         open={renaming != null}
         title={t("pages.actions.rename")}

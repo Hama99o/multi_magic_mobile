@@ -28,9 +28,10 @@
  * SIGNED blob URLs, so they load without the Authorization header, which is
  * why `expo-image` and the downloader can take them directly.
  */
-import { File, Paths } from "expo-file-system";
+import { Directory, File, Paths } from "expo-file-system";
 import { http } from "./http";
 import { absoluteUrl } from "./conversations";
+import { parseTransfer, type Transfer } from "./transfers";
 import { ApiShapeError, arr, bool, id, num, obj, optStr, readableRows, str } from "./parse";
 
 export type NodeKind = "folder" | "page" | "file";
@@ -255,6 +256,39 @@ function listParams(page: number, options: ListOptions): Record<string, string |
  *  `alreadyGoneIsDone` (multi_magic `page_app.api.ts`). */
 const alreadyGoneIsDone = (status: number): boolean => (status >= 200 && status < 300) || status === 404;
 
+export interface NodeVersion {
+  id: number;
+  createdAt: string;
+  byteSize: number | null;
+  contentType: string | null;
+  filename: string | null;
+  /** Absolute; null when the file is gone. */
+  url: string | null;
+  createdBy: string | null;
+}
+
+function parseVersion(payload: unknown): NodeVersion {
+  const r = obj(payload, "version");
+  const by = typeof r.created_by === "object" && r.created_by !== null ? (r.created_by as Record<string, unknown>) : null;
+  return {
+    id: id(r.id, "version.id"),
+    createdAt: optStr(r.created_at) ?? "",
+    byteSize: typeof r.byte_size === "number" ? r.byte_size : null,
+    contentType: optStr(r.content_type),
+    filename: optStr(r.filename),
+    url: absoluteUrl(optStr(r.url)),
+    createdBy: by ? optStr(by.fullname) : null,
+  };
+}
+
+export interface SpreadsheetPreview {
+  filename: string;
+  sheets: { index: number; name: string }[];
+  sheet: number;
+  rows: string[][];
+  truncated: boolean;
+}
+
 export const pagesApi = {
   /** Spaces this user can open — owned and shared as a whole. */
   /**
@@ -392,6 +426,108 @@ export const pagesApi = {
   },
 
   /** With the page's html and the breadcrumb chain. */
+  /**
+   * Make a copy (here) or Copy to (another place), parity #33/#34. A small
+   * item comes back copied; a big folder comes back as a transfer that runs
+   * in the background (`transfers.ts`).
+   */
+  duplicate: async (spaceId: number, nodeId: number, to: { targetSpaceId?: number; parentId?: number | null } = {}): Promise<{ node: PageNode } | { transfer: Transfer }> => {
+    const body: Record<string, unknown> = {};
+    if (to.targetSpaceId !== undefined) body.target_space_id = to.targetSpaceId;
+    if (to.parentId !== undefined) body.parent_id = to.parentId;
+    const res = await http.post(`/api/v1/page_app/spaces/${spaceId}/nodes/${nodeId}/duplicate`, body);
+    const data = obj(res.data, "duplicate");
+    if (data.transfer) return { transfer: parseTransfer(data.transfer) };
+    return { node: parseNode(data.node) };
+  },
+  /**
+   * Replace (parity #37): a new file behind the same item — same name,
+   * place and shares; the server keeps the old one as a version first.
+   */
+  replaceFile: async (
+    spaceId: number,
+    nodeId: number,
+    file: { uri: string; name: string; mimeType: string | null },
+    opts: { onProgress?: (sent: number) => void; signal?: AbortSignal } = {},
+  ): Promise<PageNode> => {
+    const form = new FormData();
+    form.append("node[attachment]", { uri: file.uri, name: file.name, type: file.mimeType ?? "application/octet-stream" } as unknown as Blob);
+    const res = await http.patch(`/api/v1/page_app/spaces/${spaceId}/nodes/${nodeId}`, form, {
+      headers: { "Content-Type": "multipart/form-data" },
+      // A big file on a slow line takes longer than any default.
+      timeout: 0,
+      signal: opts.signal,
+      onUploadProgress: (e) => opts.onProgress?.(e.total ? e.loaded / e.total : 0),
+    });
+    return parseNode(obj(res.data, "replace").node);
+  },
+
+  /** Earlier versions of a file (parity #39), newest first. */
+  versions: async (spaceId: number, nodeId: number): Promise<NodeVersion[]> => {
+    const res = await http.get(`/api/v1/page_app/spaces/${spaceId}/nodes/${nodeId}/versions`);
+    return arr(obj(res.data, "versions").versions, "versions")
+      .map(parseVersion)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  },
+  restoreVersion: async (spaceId: number, nodeId: number, versionId: number): Promise<PageNode> => {
+    const res = await http.post(`/api/v1/page_app/spaces/${spaceId}/nodes/${nodeId}/versions/${versionId}/restore`);
+    return parseNode(obj(res.data, "restore").node);
+  },
+  deleteVersion: async (spaceId: number, nodeId: number, versionId: number): Promise<void> => {
+    await http.delete(`/api/v1/page_app/spaces/${spaceId}/nodes/${nodeId}/versions/${versionId}`);
+  },
+
+  /**
+   * A text or Markdown file, edited (parity #49): the new text becomes the
+   * file's new content (the old one kept as a version), under its own name,
+   * as the web's `updateMarkdown` does.
+   */
+  updateText: async (spaceId: number, nodeId: number, text: string, filename: string): Promise<PageNode> => {
+    const dir = new Directory(Paths.cache, "pages-edits", `${nodeId}-${Date.now()}`);
+    dir.create({ intermediates: true, idempotent: true });
+    const file = new File(dir, safeFileName(filename));
+    file.create();
+    file.write(text);
+    const form = new FormData();
+    form.append("node[attachment]", { uri: file.uri, name: safeFileName(filename), type: /\.md$/i.test(filename) ? "text/markdown" : "text/plain" } as unknown as Blob);
+    const res = await http.patch(`/api/v1/page_app/spaces/${spaceId}/nodes/${nodeId}`, form, { headers: { "Content-Type": "multipart/form-data" } });
+    return parseNode(obj(res.data, "update text").node);
+  },
+
+  /** New page (parity #22): a rich page, empty, in a folder or at the space's root. */
+  createPage: async (spaceId: number, parentId: number | null, title: string): Promise<PageNode> => {
+    const node = { kind: "page", title, ...(parentId != null ? { parent_id: parentId } : {}), content: { html: "" } };
+    const res = await http.post(`/api/v1/page_app/spaces/${spaceId}/nodes`, { node });
+    return parseNode(obj(res.data, "create page").node);
+  },
+  /** A page's body, saved (parity #50; the web's autosave payload). */
+  /**
+   * An XLSX/ODS/CSV file read by the server for the viewer (parity #46;
+   * multi-magic-83, `docs/table_app/SPREADSHEET_PREVIEW.md`): at most 500 rows
+   * x 50 columns, header row included, formulas as their cached value, dates
+   * as "2026-11-21". A refusal (unreadable, empty, no_sheet, too_large) comes
+   * back as an error with the server's own sentence in the reader's language.
+   */
+  spreadsheetPreview: async (nodeId: number, sheet: number): Promise<SpreadsheetPreview> => {
+    const res = await http.get(`/api/v1/page_app/nodes/${nodeId}/spreadsheet_preview`, { params: { sheet } });
+    const body = obj(res.data, "spreadsheet preview");
+    const cell = (v: unknown) => (v == null ? "" : String(v));
+    return {
+      filename: typeof body.filename === "string" ? body.filename : "",
+      sheets: (Array.isArray(body.sheets) ? body.sheets : []).map((x, i) => {
+        const r = (typeof x === "object" && x !== null ? x : {}) as { index?: unknown; name?: unknown };
+        return { index: typeof r.index === "number" ? r.index : i, name: typeof r.name === "string" ? r.name : String(i + 1) };
+      }),
+      sheet: typeof body.sheet === "number" ? body.sheet : sheet,
+      rows: (Array.isArray(body.rows) ? body.rows : []).map((row) => (Array.isArray(row) ? row.map(cell) : [])),
+      truncated: body.truncated === true,
+    };
+  },
+
+  savePage: async (spaceId: number, nodeId: number, html: string): Promise<PageNode> => {
+    const res = await http.patch(`/api/v1/page_app/spaces/${spaceId}/nodes/${nodeId}`, { node: { content: { html } } });
+    return parseNode(obj(res.data, "save page").node);
+  },
   node: async (spaceId: number, nodeId: number): Promise<PageNode> => {
     const res = await http.get(`/api/v1/page_app/spaces/${spaceId}/nodes/${nodeId}`);
     return parseNode(obj(res.data, "node").node);

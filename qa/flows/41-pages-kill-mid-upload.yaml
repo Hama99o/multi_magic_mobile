@@ -1,0 +1,31 @@
+# M9 restart cleanup: the app killed while a copied file is being SENT. On
+# relaunch the row checks the server and carries on; it finishes, and its
+# copy is deleted (the driver's listing after).
+#
+# COVERS: "Uploading" seen, the kill, the relaunch, the row finishing
+# ("Saved in …").
+# CANNOT TELL YOU: iOS's background session (finishes with no JS running).
+appId: ${APP_ID}
+tags: [pages, parity, kill]
+---
+- runFlow: pages-open-trip.yaml
+- tapOn:
+    id: "pages-add"
+- tapOn:
+    id: "pages-new-files"
+- tapOn: "qa-big.bin"
+- extendedWaitUntil:
+    visible: "Uploading.*|Sending…"
+    timeout: 120000
+- killApp
+- launchApp:
+    stopApp: false
+- runFlow: pages-open-trip.yaml
+- tapOn:
+    id: "pages-menu"
+- tapOn:
+    id: "pages-menu-uploads"
+- extendedWaitUntil:
+    visible: "Saved in .*"
+    timeout: 600000
+- takeScreenshot: reports/41-after-kill-mid-upload

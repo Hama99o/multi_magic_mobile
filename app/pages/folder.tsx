@@ -13,10 +13,11 @@
  * one's files. 25 a page.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
+import { crumbsFor } from "@/screens/pages/links";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { LinearFade } from "@/screens/pages/drive/fade";
 import { Screen } from "@/components/ScreenContainer";
@@ -31,7 +32,9 @@ import { SORTS, pagesApi } from "@/api/pages";
 import { FILTERS, listFilter, type Filter } from "@/screens/pages/drive/filters";
 import { failureMessage } from "@/api/failure";
 import { NameDialog } from "@/screens/pages/ItemSheet";
-import { EmptyLine } from "@/screens/pages/parts";
+import { EmptyLine, formatBytes } from "@/screens/pages/parts";
+import { planFolderUpload, startFolderUpload, type FolderPlan } from "@/screens/pages/pickFolder";
+import { MAX_FOLDER_FILES } from "@/screens/pages/folderUpload";
 import { openNode } from "@/screens/pages/navigation";
 import { sortLabel, typeLabel } from "@/screens/pages/labels";
 import { explainPick, pickDocuments, pickMedia, takePhotoOrVideo, type PickResult } from "@/screens/pages/addFiles";
@@ -42,6 +45,9 @@ import { useUploads } from "@/stores/uploads.store";
 import { pagesKeys } from "@/api/keys";
 import { useCreateFolder } from "@/screens/pages/usePageMutations";
 import { useSpaceRights } from "@/screens/pages/permissions";
+import { TransferSheet } from "@/screens/pages/TransferSheet";
+import { pickZip } from "@/screens/pages/transferFiles";
+import { transfersApi, type Transfer } from "@/api/transfers";
 
 function Chip({ label, selected, onPress, testID }: { label: string; selected: boolean; onPress: () => void; testID: string }) {
   const colors = useColors();
@@ -77,12 +83,30 @@ export default function Folder() {
   const colors = useColors();
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const client = useQueryClient();
   const params = useLocalSearchParams<{ spaceId: string; parentId?: string; title?: string; trail?: string }>();
   const spaceId = Number(params.spaceId);
   const parentId = params.parentId ? Number(params.parentId) : null;
-  const title = params.title ?? "";
+  // The folder's own record (its path, and its name when it was opened by
+  // id alone, from "Show location") and the space's (its name, for the root
+  // crumb). Both are cached: the rights already read the space.
+  const folderNode = useQuery({
+    queryKey: pagesKeys.node(spaceId, parentId ?? -1),
+    queryFn: () => pagesApi.node(spaceId, parentId as number),
+    enabled: Number.isFinite(spaceId) && parentId != null,
+  });
+  const spaceQuery = useQuery({ queryKey: pagesKeys.space(spaceId), queryFn: () => pagesApi.space(spaceId), enabled: Number.isFinite(spaceId) });
+  const title = params.title || folderNode.data?.title || (parentId == null ? (spaceQuery.data?.title ?? "") : "");
   const trail = params.trail ?? "";
+  // A tappable path (parity #8): every crumb opens the folder it names.
+  const crumbs = useMemo(
+    () =>
+      spaceQuery.data && (parentId == null || folderNode.data)
+        ? crumbsFor({ spaceId, spaceTitle: spaceQuery.data.title }, folderNode.data?.ancestors ?? [], folderNode.data ? { id: folderNode.data.id, title: folderNode.data.title } : null)
+        : null,
+    [spaceQuery.data, folderNode.data, parentId, spaceId],
+  );
 
   // Kept across folders and restarts (audit P2, 2026-11-16), like the view.
   const sortBy = useFolderSort((s) => s.sortBy);
@@ -134,6 +158,79 @@ export default function Folder() {
     [enqueue, destination, t],
   );
 
+  // Upload a folder (parity #24): read, refuse with the reason or confirm, then make and queue.
+  const [readingFolder, setReadingFolder] = useState(false);
+  const uploadFolder = useCallback(async () => {
+    let plan: FolderPlan;
+    try {
+      plan = await planFolderUpload(() => setReadingFolder(true));
+    } catch (e) {
+      Alert.alert(failureMessage(e, t("pages.folderUpload.failed")));
+      return;
+    } finally {
+      setReadingFolder(false);
+    }
+    if (plan.kind === "cancelled") return;
+    if (plan.kind === "empty") {
+      Alert.alert(t("pages.folderUpload.empty"));
+      return;
+    }
+    if (plan.kind === "noRoom") {
+      const size = formatBytes(plan.bytes, t, i18n.language);
+      Alert.alert(t(plan.where === "server" ? "pages.folderUpload.noRoomServer" : "pages.folderUpload.noRoomDisk", { size }));
+      return;
+    }
+    const { walked } = plan;
+    const notes = [walked.skipped > 0 ? t("pages.folderUpload.skipped") : null, walked.truncated ? t("pages.folderUpload.truncated", { max: MAX_FOLDER_FILES }) : null].filter(Boolean);
+    const body = [t("pages.folderUpload.confirm", { count: walked.files.length, size: formatBytes(walked.totalBytes, t, i18n.language), where: destination.label }), ...notes].join("\n\n");
+    Alert.alert(t("pages.folderUpload.confirmTitle", { name: walked.folders[0]?.[0] ?? "" }), body, [
+      { text: t("common.cancel"), style: "cancel" },
+      {
+        text: t("pages.folderUpload.start"),
+        onPress: () =>
+          void startFolderUpload(walked, { spaceId, parentId, label: destination.label }, enqueue)
+            .then(() => client.invalidateQueries({ queryKey: pagesKeys.all }))
+            .catch((e: unknown) => {
+              void client.invalidateQueries({ queryKey: pagesKeys.all }); // folders made before the failure show
+              Alert.alert(failureMessage(e, t("pages.folderUpload.failed")));
+            }),
+      },
+    ]);
+  }, [t, i18n.language, destination, spaceId, parentId, enqueue, client]);
+
+  // Import a ZIP here (parity #25): its folders and files land in this folder.
+  const [importing, setImporting] = useState<Transfer | null>(null);
+  // New page (parity #22): named first, then opened in the editor.
+  const [namingPage, setNamingPage] = useState(false);
+  const [pageBusy, setPageBusy] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
+  const createPage = useCallback(
+    async (name: string) => {
+      setPageBusy(true);
+      setPageError(null);
+      try {
+        const made = await pagesApi.createPage(spaceId, parentId, name);
+        setNamingPage(false);
+        router.push({ pathname: "/pages/edit", params: { spaceId: String(spaceId), nodeId: String(made.id), title: made.title } });
+      } catch (e) {
+        setPageError(failureMessage(e, t("pages.page.createFailed")));
+      } finally {
+        setPageBusy(false);
+      }
+    },
+    [spaceId, parentId, t],
+  );
+  const importZip = useCallback(async () => {
+    try {
+      const zip = await pickZip();
+      if (zip === "not-zip") return Alert.alert(t("pages.copy.notZip"));
+      if (!zip) return;
+      setImporting(await transfersApi.importZip(zip, { spaceId, parentNodeId: parentId }));
+    } catch (e) {
+      Alert.alert(failureMessage(e, t("pages.actions.failed")));
+    }
+  }, [spaceId, parentId, t]);
+
   const creating = useCreateFolder();
   const createFolder = useCallback(
     async (name: string) => {
@@ -155,7 +252,41 @@ export default function Folder() {
   // A selection replaces this row, never the shared header.
   const header = (
     <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.xs, paddingVertical: metrics.space.xs }}>
-      {trail ? (
+      {crumbs && crumbs.length > 1 ? (
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ flex: 1, minWidth: 0 }} contentContainerStyle={{ alignItems: "center" }} accessibilityLabel={t("pages.path.label")} testID="pages-folder-path">
+          {crumbs.map((c, i) => (
+            <View key={c.key} style={{ flexDirection: "row", alignItems: "center" }}>
+              {i > 0 ? (
+                <Text variant="caption" tone="muted" style={{ paddingHorizontal: 2 }}>
+                  {"/"}
+                </Text>
+              ) : null}
+              {c.target ? (
+                <Pressable
+                  onPress={() => {
+                    const to = c.target;
+                    if (!to) return;
+                    router.push({ pathname: "/pages/folder", params: to.parentId == null ? { spaceId: String(to.spaceId), title: to.title } : { spaceId: String(to.spaceId), parentId: String(to.parentId), title: to.title, trail: to.trail } });
+                  }}
+                  accessibilityRole="link"
+                  accessibilityLabel={t("pages.path.open", { name: c.label })}
+                  hitSlop={8}
+                  style={{ minHeight: 40, justifyContent: "center", paddingHorizontal: 4 }}
+                  testID={`pages-crumb-${c.key}`}
+                >
+                  <Text variant="caption" tone="accent" numberOfLines={1} style={{ maxWidth: 160 }}>
+                    {c.label}
+                  </Text>
+                </Pressable>
+              ) : (
+                <Text variant="caption" tone="muted" numberOfLines={1} style={{ maxWidth: 160, paddingHorizontal: 4 }}>
+                  {c.label}
+                </Text>
+              )}
+            </View>
+          ))}
+        </ScrollView>
+      ) : trail ? (
         <Text variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1, minWidth: 0 }} testID="pages-folder-trail">
           {trail}
         </Text>
@@ -225,6 +356,26 @@ export default function Folder() {
         onMedia={() => void add(pickMedia)}
         onFiles={() => void add(pickDocuments)}
         onCamera={() => void add(takePhotoOrVideo)}
+        onImportZip={rights.canWrite ? () => void importZip() : undefined}
+        onPage={rights.canWrite ? () => setNamingPage(true) : undefined}
+        onUploadFolder={rights.canWrite ? () => void uploadFolder() : undefined}
+      />
+      <TransferSheet started={importing} onClose={() => setImporting(null)} />
+      {readingFolder ? (
+        <View testID="pages-folder-reading" accessibilityLiveRegion="polite" style={{ position: "absolute", left: metrics.space.lg, right: metrics.space.lg, bottom: metrics.space.xl, flexDirection: "row", alignItems: "center", gap: metrics.space.sm, padding: metrics.space.md, borderRadius: metrics.radius.md, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
+          <ActivityIndicator color={colors.accent} />
+          <Text>{t("pages.folderUpload.reading")}</Text>
+        </View>
+      ) : null}
+      <NameDialog
+        open={namingPage}
+        title={t("pages.page.new")}
+        confirm={t("pages.page.create")}
+        initial=""
+        onCancel={() => setNamingPage(false)}
+        onSubmit={(name) => void createPage(name)}
+        busy={pageBusy}
+        error={pageError}
       />
       <NameDialog
         open={naming}

@@ -1,0 +1,37 @@
+# M5 (parity #26, #51): link a note to a file, see it listed, unlink it.
+#
+# COVERS: the Linked notes sheet empty, the picker searching "QA linked
+# note", the row appearing, unlinking (no confirm: the note stays).
+# CANNOT TELL YOU: opening the note from the row (another screen's flow).
+appId: ${APP_ID}
+tags: [pages, parity]
+---
+- runFlow: pages-open-trip.yaml
+- tapOn: "More actions for b-sheet.csv"
+- tapOn:
+    id: "pages-action-notes"
+- extendedWaitUntil:
+    visible:
+      id: "pages-notes-empty"
+    timeout: 20000
+- tapOn:
+    id: "pages-notes-link"
+- tapOn:
+    id: "pages-notes-search"
+- inputText: "QA linked"
+- extendedWaitUntil:
+    visible: "Link “QA linked note”"
+    timeout: 20000
+- tapOn: "Link “QA linked note”"
+- tapOn:
+    id: "pages-notes-done"
+- extendedWaitUntil:
+    visible:
+      id: "pages-notes-row"
+    timeout: 20000
+- takeScreenshot: reports/34-linked
+- tapOn: "Unlink “QA linked note”"
+- extendedWaitUntil:
+    visible:
+      id: "pages-notes-empty"
+    timeout: 20000

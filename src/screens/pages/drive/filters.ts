@@ -7,12 +7,14 @@
  */
 import { TYPE_FILTERS, type ListOptions, type TypeFilter } from "@/api/pages";
 
-export type Filter = TypeFilter | "folders";
+export type Filter = TypeFilter | "folders" | "pages";
 
-export const FILTERS: Filter[] = ["folders", ...TYPE_FILTERS];
+/** Pages: the web's kind filter for rich pages (parity audit #17). */
+export const FILTERS: Filter[] = ["folders", "pages", ...TYPE_FILTERS];
 
 export function listFilter(filter: Filter | null): Pick<ListOptions, "type" | "kind"> {
   if (filter == null) return {};
   if (filter === "folders") return { kind: "folder" };
+  if (filter === "pages") return { kind: "page" };
   return { type: filter, kind: "file" };
 }

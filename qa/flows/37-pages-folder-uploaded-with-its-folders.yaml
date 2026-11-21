@@ -1,0 +1,41 @@
+# M9 (parity #24): a folder picked on the phone is uploaded with its folders;
+# the hidden file is left out and said.
+#
+# COVERS: New > Upload a folder > the system folder picker (qa-folder,
+# pushed by `pages-parity.sh device`) > the confirm naming 3 files and the
+# left-out note > the folders "qa-folder" and "sub" made > the files there.
+# CANNOT TELL YOU: iOS (its folder picker is another UI, by hand); a
+# folder the server has no room for (the demo quota is large).
+appId: ${APP_ID}
+tags: [pages, parity]
+---
+- runFlow: pages-open-trip.yaml
+- tapOn:
+    id: "pages-add"
+- tapOn:
+    id: "pages-new-upload-folder"
+# The Android folder picker (DocumentsUI): open Download, the folder, use it.
+- extendedWaitUntil:
+    visible: "Download|Downloads"
+    timeout: 20000
+- tapOn: "Download|Downloads"
+- tapOn: "qa-folder"
+- tapOn: "USE THIS FOLDER|Use this folder"
+- tapOn: "ALLOW|Allow"
+- extendedWaitUntil:
+    visible: "Upload “qa-folder”?"
+    timeout: 30000
+- assertVisible: "3 files, .*"
+- takeScreenshot: reports/37-confirm
+- tapOn: "Upload"
+- extendedWaitUntil:
+    visible: "qa-folder"
+    timeout: 60000
+- tapOn: "qa-folder"
+- extendedWaitUntil:
+    visible: "two.txt"
+    timeout: 120000
+# lint: anchored-ok — the folder "sub" from qa-folder is a whole row title
+- assertVisible: "sub"
+- assertNotVisible: ".hidden"
+- takeScreenshot: reports/37-uploaded

@@ -1,0 +1,39 @@
+# M3 (parity #12, #28, #33, #34): Make a copy lands beside the original;
+# Download as ZIP follows the transfer to "ready" and offers Share / Save.
+#
+# COVERS: "a-notes.txt" copied (the app's confirmation); the folder ZIP
+# transfer reaching done with Share and Save; closing the sheet.
+# CANNOT TELL YOU: the ZIP's contents (shared to the system, not opened);
+# Copy to another space (the demo account has one space); import (needs a
+# ZIP picked from the device, covered by hand).
+appId: ${APP_ID}
+tags: [pages, parity]
+---
+- runFlow: pages-open-trip.yaml
+- tapOn: "More actions for a-notes.txt"
+- tapOn:
+    id: "pages-action-make-copy"
+# The app's own confirmation (pages.copy.copied); the copy's name is the server's.
+- extendedWaitUntil:
+    visible: "“a-notes.txt” copied."
+    timeout: 30000
+- takeScreenshot: reports/32-copied
+- tapOn:
+    id: "pages-crumb-space"
+- extendedWaitUntil:
+    visible: "Trip"
+    timeout: 15000
+- tapOn: "More actions for Trip"
+- tapOn:
+    id: "pages-action-download-zip"
+- extendedWaitUntil:
+    visible:
+      id: "pages-transfer-done"
+    timeout: 120000
+- assertVisible:
+    id: "pages-transfer-share"
+- assertVisible:
+    id: "pages-transfer-save"
+- takeScreenshot: reports/32-zip-ready
+- tapOn:
+    id: "pages-transfer-close"

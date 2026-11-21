@@ -114,6 +114,16 @@ const SAME_IN_BOTH = new Set([
   ...["doc.file.pages_one", "doc.file.pages_other", "doc.pages.count_one", "doc.pages.count_other", "doc.pages.page"],
   ...["doc.creator.sizeValue", "doc.text.sizeValue", "doc.text.fontInfo", "doc.text.fontSans", "doc.text.fontSerif", "doc.text.fontMono"],
   ...["doc.convert.formats.pdf", "doc.convert.formats.jpg", "doc.convert.formats.png", "doc.convert.formats.webp"],
+  // Pages' "Pages" filter chip: the web's French is "Pages" too.
+  "pages.types.pages",
+  // "Versions" is the French word too (the web's French).
+  "pages.versions.menu",
+  // Storage: app names French keeps ("Pages", "Notes", "Contacts", "Assistant"), and a line that is only its values.
+  "pages.storage.apps.page_app",
+  "pages.storage.apps.notes",
+  "pages.storage.apps.contacts",
+  "pages.storage.apps.ai",
+  "pages.storage.file",
   "pages.searchChips.type",
   // "Pause" is the French word too (a player button).
   "pages.view.pause",

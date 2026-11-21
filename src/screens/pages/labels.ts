@@ -23,6 +23,8 @@ export function typeLabel(type: Filter | null, t: Translate): string {
   switch (type) {
     case "folders":
       return t("pages.types.folders");
+    case "pages":
+      return t("pages.types.pages");
     case "image":
       return t("pages.types.image");
     case "pdf":

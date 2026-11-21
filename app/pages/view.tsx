@@ -26,10 +26,10 @@
  * first bytes say (`probeRemoteType`), and shown as that.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
+import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { WebView } from "react-native-webview";
 import { Screen } from "@/components/ScreenContainer";
@@ -37,7 +37,15 @@ import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { LoadFailure } from "@/components/LoadFailure";
 import { AnswerMarkdown } from "@/components/chat/AnswerMarkdown";
-import { Download, MoreVertical, Pause, Play, Star } from "@/components/icons";
+import { ChevronLeft, ChevronRight, Download, MoreVertical, Pause, Pencil, Play, Star } from "@/components/icons";
+import * as Clipboard from "expo-clipboard";
+import { nodeLink } from "@/screens/pages/links";
+import { neighbours } from "@/screens/pages/neighbours";
+import { VersionsSheet } from "@/screens/pages/VersionsSheet";
+import { LinkedNotesSheet } from "@/screens/pages/LinkedNotesSheet";
+import { TransferSheet } from "@/screens/pages/TransferSheet";
+import type { Transfer } from "@/api/transfers";
+import { familyFor } from "@/theme/fonts";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { pagesApi, type PageNode } from "@/api/pages";
 import { ImageGallery } from "@/screens/pages/ImageGallery";
@@ -50,6 +58,9 @@ import { ShareSheet, type ShareSheetTarget } from "@/screens/pages/ShareSheet";
 import { useMoveNodes, useRenameNode, useStarNodes, useTrashNodes } from "@/screens/pages/usePageMutations";
 import { HeaderButton, NodeGlyph, PagesHeader, metaLine } from "@/screens/pages/parts";
 import { modeFor, pageDocument } from "@/screens/pages/viewerModes";
+import { MAX_COLUMNS, MAX_ROWS, parseDelimited } from "@/screens/pages/csv";
+import { SheetTable } from "@/screens/pages/SheetTable";
+import { WorkbookView } from "@/screens/pages/WorkbookView";
 import { pagesKeys } from "@/api/keys";
 import { isUnknownType, mediaKind } from "@/lib/mediaKind";
 import { probeRemoteType } from "@/lib/probeMimeType";
@@ -154,8 +165,18 @@ export function clock(seconds: number): string {
   return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
 }
 
-function TextFile({ uri, markdown }: { uri: string; markdown: boolean }) {
+/**
+ * A text or Markdown file, and its edit (parity #49; web `NodeViewer`
+ * `updateMarkdown`): whoever can write gets Edit; Save sends the new text
+ * as the file's new content, the old one kept as a version by the server.
+ */
+function TextFile({ uri, markdown, node, canWrite }: { uri: string; markdown: boolean; node: PageNode; canWrite: boolean }) {
   const { t } = useTranslation();
+  const colors = useColors();
+  const metrics = useMetrics();
+  const client = useQueryClient();
+  const [draft, setDraft] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const { data, error, isLoading } = useQuery({
     queryKey: pagesKeys.text(uri),
     queryFn: async () => {
@@ -166,7 +187,84 @@ function TextFile({ uri, markdown }: { uri: string; markdown: boolean }) {
   });
   if (isLoading) return <ActivityIndicator style={{ marginTop: 32 }} />;
   if (error || data == null) return <Text tone="muted">{t("pages.view.textFailed")}</Text>;
-  return <ScrollView>{markdown ? <AnswerMarkdown content={data} /> : <Text selectable>{data}</Text>}</ScrollView>;
+
+  const save = async () => {
+    if (draft == null) return;
+    setSaving(true);
+    try {
+      await pagesApi.updateText(node.spaceId, node.id, draft, node.title);
+      setDraft(null);
+      await client.invalidateQueries({ queryKey: pagesKeys.all });
+    } catch (e) {
+      Alert.alert(failureMessage(e, t("pages.edit.saveFailed")));
+    } finally {
+      setSaving(false);
+    }
+  };
+  const cancel = () =>
+    draft === data
+      ? setDraft(null)
+      : Alert.alert(t("pages.edit.discardTitle"), t("pages.edit.discardBody"), [
+          { text: t("pages.edit.keep"), style: "cancel" },
+          { text: t("pages.edit.discard"), style: "destructive", onPress: () => setDraft(null) },
+        ]);
+
+  if (draft != null) {
+    return (
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, gap: metrics.space.sm }}>
+        <TextInput
+          testID="pages-text-editor"
+          value={draft}
+          onChangeText={setDraft}
+          multiline
+          autoFocus
+          textAlignVertical="top"
+          accessibilityLabel={t("pages.edit.field", { title: node.title })}
+          style={{ flex: 1, minHeight: 240, padding: metrics.space.md, borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, color: colors.ink, backgroundColor: colors.surface, fontFamily: familyFor("mono"), fontSize: 15 }}
+        />
+        <View style={{ flexDirection: "row", gap: metrics.space.sm }}>
+          <View style={{ flex: 1 }}>
+            <Button tone="neutral" label={t("pages.edit.cancel")} onPress={cancel} testID="pages-text-cancel" />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Button label={t("pages.edit.save")} busy={saving} disabled={draft === data} onPress={() => void save()} testID="pages-text-save" />
+          </View>
+        </View>
+      </KeyboardAvoidingView>
+    );
+  }
+  return (
+    <View style={{ flex: 1, gap: metrics.space.sm }}>
+      {canWrite ? (
+        <View style={{ alignItems: "flex-end" }}>
+          <Pressable onPress={() => setDraft(data)} accessibilityRole="button" accessibilityLabel={t("pages.edit.edit")} style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: metrics.touch, paddingHorizontal: metrics.space.sm }} testID="pages-text-edit">
+            <Pencil size={18} color={colors.accent} />
+            <Text variant="label" tone="accent">
+              {t("pages.edit.edit")}
+            </Text>
+          </Pressable>
+        </View>
+      ) : null}
+      <ScrollView>{markdown ? <AnswerMarkdown content={data} /> : <Text selectable>{data}</Text>}</ScrollView>
+    </View>
+  );
+}
+
+/** Wide enough for a date or an amount; one line each, so every row is the same height. */
+function SheetFile({ uri, title }: { uri: string; title: string }) {
+  const { t } = useTranslation();
+  const { data, error, isLoading } = useQuery({
+    queryKey: pagesKeys.text(uri),
+    queryFn: async () => {
+      const res = await fetch(uri);
+      if (!res.ok) throw new Error(String(res.status));
+      return res.text();
+    },
+  });
+  const sheet = useMemo(() => (data == null ? null : parseDelimited(data, title)), [data, title]);
+  if (isLoading) return <ActivityIndicator style={{ marginTop: 32 }} />;
+  if (error || !sheet) return <Text tone="muted">{t("pages.view.textFailed")}</Text>;
+  return <SheetTable rows={sheet.rows} truncated={sheet.truncated} limits={{ rows: MAX_ROWS, columns: MAX_COLUMNS }} />;
 }
 
 export default function Viewer() {
@@ -250,6 +348,21 @@ export default function Viewer() {
     const rows = siblings.data ?? [];
     return rows.some((n) => n.id === node.id) ? rows : [node];
   }, [siblings.data, node]);
+  // Every file beside this one, by name (the gallery's order), so previous /
+  // next steps across all of them, not only the pictures (parity #43).
+  const siblingFiles = useQuery({
+    queryKey: pagesKeys.siblings(spaceId, node?.parentId ?? null),
+    queryFn: async () => {
+      const rows: PageNode[] = [];
+      for (let page = 1; page <= 4; page += 1) {
+        const res = await pagesApi.children(spaceId, node!.parentId, page, { kind: "file", sortBy: "name", sortDir: "asc" });
+        rows.push(...res.rows);
+        if (!res.hasMore) break;
+      }
+      return rows;
+    },
+    enabled: node?.kind === "file",
+  });
   // Swiping changes what the header names and what Share sends.
   const [shown, setShown] = useState<PageNode | null>(null);
   useEffect(() => setShown(null), [nodeId]);
@@ -277,10 +390,31 @@ export default function Viewer() {
     onDone: () => setRenaming(null),
     onError: (e) => setRenameError(failureMessage(e, t("pages.actions.failed"))),
   });
+  const around = current ? neighbours(siblingFiles.data ?? [], current.id) : null;
+  const go = (to: PageNode) => router.replace({ pathname: "/pages/view", params: { spaceId: String(to.spaceId), nodeId: String(to.id), title: to.title } });
+  // This branch's item actions, in the viewer's menu too.
+  const client = useQueryClient();
+  const [versionsOf, setVersionsOf] = useState<{ node: PageNode; replace: boolean } | null>(null);
+  const [notesOf, setNotesOf] = useState<PageNode | null>(null);
+  const [copying, setCopying] = useState<PageNode[] | null>(null);
+  const [transfer, setTransfer] = useState<Transfer | null>(null);
+  const duplicate = async (n: PageNode, to?: { spaceId: number; parentId: number | null }, quiet = false) => {
+    try {
+      const out = await pagesApi.duplicate(n.spaceId, n.id, to ? { targetSpaceId: to.spaceId, parentId: to.parentId } : {});
+      if ("transfer" in out) setTransfer(out.transfer);
+      else {
+        await client.invalidateQueries({ queryKey: pagesKeys.all });
+        Alert.alert(t("pages.copy.copied", { title: n.title }));
+      }
+    } catch (e) {
+      if (!quiet) Alert.alert(failureMessage(e, t("pages.copy.failed")));
+      throw e;
+    }
+  };
   const location = [space.data?.title ?? current?.space?.title ?? "", ...(current?.ancestors ?? []).map((a) => a.title)].filter(Boolean).join(" / ");
 
   return (
-    <Screen measure={mode === "page" || mode === "text" || mode === "markdown" || mode === "other"}>
+    <Screen measure={mode === "page" || mode === "text" || mode === "markdown" || mode === "sheet" || mode === "workbook" || mode === "other"}>
       <PagesHeader
         title={current?.title ?? params.title ?? ""}
         subtitle={current ? metaLine(current, t, i18n.language) : null}
@@ -317,6 +451,22 @@ export default function Viewer() {
         <ActivityIndicator color={colors.inkMuted} style={{ marginTop: metrics.space.xl }} testID="pages-view-probing" />
       ) : (
         <View style={{ flex: 1, paddingBottom: metrics.space.md }} testID={`pages-view-${mode}`}>
+          {mode === "page" && rights.canWrite ? (
+            <View style={{ alignItems: "flex-end" }}>
+              <Pressable
+                onPress={() => router.push({ pathname: "/pages/edit", params: { spaceId: String(node.spaceId), nodeId: String(node.id), title: node.title } })}
+                accessibilityRole="button"
+                accessibilityLabel={t("pages.edit.edit")}
+                style={{ flexDirection: "row", alignItems: "center", gap: 6, minHeight: metrics.touch, paddingHorizontal: metrics.space.sm }}
+                testID="pages-page-edit"
+              >
+                <Pencil size={18} color={colors.accent} />
+                <Text variant="label" tone="accent">
+                  {t("pages.edit.edit")}
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
           {mode === "page" ? (
             node.html ? (
               <WebView
@@ -344,7 +494,11 @@ export default function Viewer() {
           ) : mode === "media" && node.attachmentUrl ? (
             <Media uri={node.attachmentUrl} audio={mediaKind(node.mimeType) === "audio"} node={node} />
           ) : (mode === "text" || mode === "markdown") && node.attachmentUrl ? (
-            <TextFile uri={node.attachmentUrl} markdown={mode === "markdown"} />
+            <TextFile uri={node.attachmentUrl} markdown={mode === "markdown"} node={node} canWrite={rights.canWrite} />
+          ) : mode === "sheet" && node.attachmentUrl ? (
+            <SheetFile uri={node.attachmentUrl} title={node.title} />
+          ) : mode === "workbook" ? (
+            <WorkbookView nodeId={node.id} />
           ) : mode === "pdf" && node.attachmentUrl ? (
             <PdfView node={node} onShare={() => void share()} sharing={sharing} />
           ) : mode === "document" && node.attachmentUrl ? (
@@ -360,10 +514,35 @@ export default function Viewer() {
           )}
         </View>
       )}
+      {around && around.total > 1 && around.index >= 0 ? (
+        <View testID="pages-view-stepper" style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", paddingBottom: metrics.space.sm }}>
+          <HeaderButton
+            icon={ChevronLeft}
+            label={around.prev ? t("pages.view.prevFile", { title: around.prev.title }) : t("pages.view.position", { n: around.index + 1, total: around.total })}
+            onPress={() => around.prev && go(around.prev)}
+            testID="pages-view-prev"
+          />
+          <Text variant="caption" tone="muted" accessibilityLiveRegion="polite">
+            {t("pages.view.position", { n: around.index + 1, total: around.total })}
+          </Text>
+          <HeaderButton
+            icon={ChevronRight}
+            label={around.next ? t("pages.view.nextFile", { title: around.next.title }) : t("pages.view.position", { n: around.index + 1, total: around.total })}
+            onPress={() => around.next && go(around.next)}
+            testID="pages-view-next"
+          />
+        </View>
+      ) : null}
       <ActionsSheet
         node={actionsFor}
         onClose={() => setActionsFor(null)}
         onShare={() => void share()}
+        onCopyLink={(n) => void Clipboard.setStringAsync(nodeLink(n)).then(() => Alert.alert(t("pages.actions.linkCopied")))}
+        onMakeCopy={(n) => void duplicate(n).catch(() => undefined)}
+        onCopyTo={(n) => setCopying([n])}
+        onVersions={(n) => setVersionsOf({ node: n, replace: false })}
+        onReplace={(n) => setVersionsOf({ node: n, replace: true })}
+        onLinkedNotes={setNotesOf}
         onShareWith={(n) => setSharingWith({ spaceId: n.spaceId, nodeId: n.id, title: n.title })}
         onStar={(n) => starring.mutate({ nodes: [n], starred: !n.starred })}
         onRename={(n) => {
@@ -375,7 +554,23 @@ export default function Viewer() {
         onTrash={(n) => trashing.mutate([n])}
         rights={rights}
       />
-      <DetailsSheet node={detailsFor} location={location} onClose={() => setDetailsFor(null)} />
+      <DetailsSheet
+        node={detailsFor}
+        location={location}
+        onClose={() => setDetailsFor(null)}
+        onManageAccess={rights.canShare ? (n) => setSharingWith({ spaceId: n.spaceId, nodeId: n.id, title: n.title }) : undefined}
+      />
+      <VersionsSheet node={versionsOf?.node ?? null} replaceNow={versionsOf?.replace} canWrite={rights.canWrite} onClose={() => setVersionsOf(null)} />
+      <LinkedNotesSheet node={notesOf} canWrite={rights.canWrite} onClose={() => setNotesOf(null)} />
+      <MoveSheet
+        mode="copy"
+        nodes={copying}
+        onClose={() => setCopying(null)}
+        onMove={async (to) => {
+          if (copying?.[0]) await duplicate(copying[0], to, true);
+        }}
+      />
+      <TransferSheet started={transfer} onClose={() => setTransfer(null)} />
       <ShareSheet target={sharingWith} onClose={() => setSharingWith(null)} />
       <MoveSheet
         nodes={moving}

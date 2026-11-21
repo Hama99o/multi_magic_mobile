@@ -267,6 +267,7 @@ const PLURAL = new Set([
   "doc.text.savedShared",
   "doc.text.savedWithSubstitute",
   "doc.text.someRejected",
+  "pages.folderUpload.confirm",
   "shell.chatsWaiting",
   "shell.notificationsUnread",
   "finance.ledger.entries",

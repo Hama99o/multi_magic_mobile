@@ -17,4 +17,8 @@ describe("listFilter", () => {
   });
   it("Folders asks for folders only", () => expect(listFilter("folders")).toEqual({ kind: "folder" }));
   it("offers Folders first after All, as Drive does", () => expect(FILTERS[0]).toBe("folders"));
+  it("Pages asks for rich pages only, the web's kind filter (parity #17)", () => {
+    expect(listFilter("pages")).toEqual({ kind: "page" });
+    expect(FILTERS[1]).toBe("pages");
+  });
 });

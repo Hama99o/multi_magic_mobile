@@ -190,6 +190,26 @@ function uploadsRoot(): Directory {
   return dir;
 }
 
+/**
+ * On relaunch (Hello, 2026-11-21): a copy cut short by a kill is deleted, and
+ * so is any copy no row names any more, so the phone never fills with files
+ * nobody will send. A row that failed for another reason keeps its copy,
+ * because Retry needs it.
+ */
+function sweepCopies(cutShort: string[], live: UploadItem[]): void {
+  for (const id of cutShort) removeLocal({ id } as UploadItem);
+  // The LIVE rows, not the stored ones: a share that arrived while this loaded is named here.
+  const named = new Set(live.map((item) => item.id));
+  try {
+    for (const entry of uploadsRoot().list()) {
+      const id = decodeURIComponent(entry.uri.replace(/\/$/, "").split("/").pop() ?? "");
+      if (entry instanceof Directory && id && !named.has(id)) entry.delete();
+    }
+  } catch {
+    // A folder we could not read or delete costs disk, not correctness.
+  }
+}
+
 function removeLocal(item: UploadItem): void {
   try {
     const dir = new Directory(uploadsRoot(), item.id);
@@ -520,6 +540,7 @@ export const useUploads = create<UploadsState>((set, get) => {
             : item,
       );
       set({ items, hydrated: true });
+      sweepCopies(stored.filter((item) => item.status === "preparing").map((item) => item.id), get().items);
       if (!appStateWired) {
         appStateWired = true;
         AppState.addEventListener("change", (state) => {

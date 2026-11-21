@@ -8,7 +8,7 @@
  */
 import MockAdapter from "axios-mock-adapter";
 import { http } from "../http";
-import { tablesApi, recordsParams, type RecordsQuery } from "../tables";
+import { projected, tablesApi, recordsParams, type RecordsQuery } from "../tables";
 
 const BASE = "/api/v1/table_app";
 let mock: MockAdapter;
@@ -195,6 +195,17 @@ describe("recordsParams: the query the phone sends (never the view)", () => {
       sorts: JSON.stringify([{ field_id: 1, direction: "asc" }]),
       group_by: 2,
     });
+  });
+
+  it("rows are marked partial only when the server did project (prod ignores field_ids until its deploy)", () => {
+    const r = (values: Record<number, unknown>) => ({ id: 1, position: 1, createdAt: "x", updatedAt: "x", values, linkLabels: {}, linkCounts: {} }) as never;
+    // A server that ignored it sent a column nobody asked for: not projected, nothing marked.
+    expect(projected([r({ 1: {}, 5: {} })], [1, 2], undefined)).toBe(false);
+    // Only asked columns: projected (an empty cell is simply absent).
+    expect(projected([r({ 1: {} }), r({ 1: {}, 2: {} })], [1, 2], undefined)).toBe(true);
+    // Nothing asked: never partial. An echo, when the server sends one, is trusted.
+    expect(projected([r({ 1: {} })], undefined, undefined)).toBe(false);
+    expect(projected([r({ 1: {}, 5: {} })], [1, 2], [1, 2])).toBe(true);
   });
 
   it("newest first is the row's own creation time, ahead of any column sort", () => {

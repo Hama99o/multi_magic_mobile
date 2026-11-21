@@ -318,6 +318,22 @@ export function parseRecord(raw: unknown): RecordRow {
 }
 
 /** The request parameters for one page of rows: only what is set, in the server's names. */
+/**
+ * Did the server send only the asked columns? A server that ignores `field_ids` (prod until the
+ * feat/mobile-gaps-2 deploy) sends every column: then nothing is marked partial, so the row page shows
+ * no loading line and bulk edit fetches nothing (Hello, 2026-11-21).
+ * - `meta.field_ids` echoed (asked of multi-magic-83): trusted as is.
+ * - No echo: projected unless some row carries a column that was not asked. An old server whose rows
+ *   happen to hold only the asked columns is then marked partial: harmless (a brief loading line, a
+ *   row read before a bulk edit), never a wrong value.
+ */
+export function projected(rows: RecordRow[], asked: number[] | undefined, echoed: unknown): boolean {
+  if (!asked?.length) return false;
+  if (Array.isArray(echoed)) return echoed.length > 0;
+  const allowed = new Set(asked);
+  return !rows.some((r) => Object.keys(r.values).some((k) => !allowed.has(Number(k))));
+}
+
 export function recordsParams(query: RecordsQuery, offset: number): Record<string, string | number | number[]> {
   const params: Record<string, string | number | number[]> = { offset, limit: PAGE_SIZE };
   const search = query.search?.trim();
@@ -964,7 +980,7 @@ export const tablesApi = {
     const body = obj(data, "records response");
     const meta = body.meta && typeof body.meta === "object" ? (body.meta as Record<string, unknown>) : {};
     const { rows: read, unreadable } = readableRows(arr(body.records, "records"), parseRecord);
-    const rows = query.fieldIds?.length ? read.map((r) => ({ ...r, loadedFieldIds: query.fieldIds })) : read;
+    const rows = projected(read, query.fieldIds, meta.field_ids) ? read.map((r) => ({ ...r, loadedFieldIds: query.fieldIds })) : read;
     return {
       rows,
       unreadable,

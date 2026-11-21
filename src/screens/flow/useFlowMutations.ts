@@ -30,6 +30,7 @@ import {
   type ProjectInput,
   type ProjectsPage,
   type SprintInput,
+  type SprintScope,
 } from "@/api/flow";
 import { fieldsApi, type DefinitionInput, type FieldDefinition, type FieldValues } from "@/api/fields";
 import type { FieldTarget } from "@/components/fields/useFieldWrites";
@@ -177,6 +178,12 @@ export interface MoveVars {
   index: number;
   /** Sprint to put it in; omitted = stays where it is. */
   sprintId?: number | null;
+  /**
+   * The board scope ON SCREEN (a sprint id, "backlog" or "all"): the column
+   * order sent is read from exactly that board. Omitted (the card screen),
+   * only an ACTIVE cached board that holds the card is read.
+   */
+  scope?: SprintScope;
 }
 
 /**
@@ -187,13 +194,32 @@ export interface MoveVars {
  */
 export function useMoveCard(projectId: number, opts: { onError?: OnError } = {}) {
   return useOptimistic({
-    run: async ({ card, toColumn, index, sprintId }: MoveVars, client) => {
+    run: async ({ card, toColumn, index, sprintId, scope }: MoveVars, client) => {
       const changesSprint = sprintId !== undefined && sprintId !== card.sprintId;
       if (toColumn !== card.columnId || changesSprint) {
         await flowApi.moveCard(projectId, card.id, { columnId: toColumn, sprintId: changesSprint ? (sprintId ?? null) : card.sprintId, position: index + 1 });
       }
-      // The order as the guess left it in the cache (onMutate runs first), real ids only.
-      const cards = client.getQueriesData<InfiniteData<Board>>({ queryKey: flowKeys.boards(projectId) }).find(([, d]) => d?.pages?.length)?.[1]?.pages.flatMap((p) => p.cards) ?? [];
+      // The order as the guess left it in the cache (onMutate runs first), real
+      // ids only. The server renumbers every id it is sent (`reorder_action.rb`),
+      // so the list must be the board the person is LOOKING at: any other cached
+      // scope may be minutes old and name a card the web or the assistant has
+      // since moved, which this would move back (review FL1 and its follow-up,
+      // 88, 2026-11-21). Never "the first cached", never "all" for its own sake.
+      const holds = (d: InfiniteData<Board> | undefined) => Boolean(d?.pages?.some((p) => p.cards.some((c) => c.id === card.id)));
+      let source: InfiniteData<Board> | undefined;
+      if (scope !== undefined) source = client.getQueryData<InfiniteData<Board>>(flowKeys.board(projectId, scope));
+      if (!holds(source)) {
+        // No scope named (the card screen): a board that holds the card, an
+        // ACTIVE one first (a mounted screen observes it, so it is fresh), else
+        // the most recently fetched.
+        const holders = client
+          .getQueryCache()
+          .findAll({ queryKey: flowKeys.boards(projectId) })
+          .filter((q) => holds(q.state.data as InfiniteData<Board> | undefined))
+          .sort((a, b) => Number(b.isActive()) - Number(a.isActive()) || b.state.dataUpdatedAt - a.state.dataUpdatedAt);
+        source = holders[0]?.state.data as InfiniteData<Board> | undefined;
+      }
+      const cards = source?.pages.flatMap((p) => p.cards) ?? [];
       const order = (col: number) => orderOf(cards, col);
       const columns = [toColumn, ...(toColumn !== card.columnId ? [card.columnId] : [])].map((col) => ({ columnId: col, ids: order(col).filter((cid) => cid > 0) }));
       await flowApi.reorderCards(projectId, columns);

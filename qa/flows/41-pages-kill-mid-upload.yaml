@@ -13,6 +13,14 @@ tags: [pages, parity, kill]
     id: "pages-add"
 - tapOn:
     id: "pages-new-files"
+# The system picker opens on its last place (Documents on this AVD), not on
+# Download (measured 2026-11-21): the storage root in its breadcrumb, then
+# Download, where `pages-parity.sh device` put the fixtures.
+- extendedWaitUntil:
+    visible: "sdk_gphone.*"
+    timeout: 20000
+- tapOn: "sdk_gphone.*"
+- tapOn: "Download"
 - tapOn: "qa-big.bin"
 - extendedWaitUntil:
     visible: "Uploading.*|Sending…"
@@ -21,6 +29,9 @@ tags: [pages, parity, kill]
 - launchApp:
     stopApp: false
 - runFlow: pages-open-trip.yaml
+# pages-menu is Pages home's (index.tsx), not a folder's: the Home tab first.
+- tapOn:
+    id: "pages-tab-home"
 - tapOn:
     id: "pages-menu"
 - tapOn:

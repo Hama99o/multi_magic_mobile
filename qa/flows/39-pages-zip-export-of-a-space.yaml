@@ -22,7 +22,10 @@ tags: [pages, parity]
 - extendedWaitUntil:
     visible:
       id: "pages-transfer-done"
-    timeout: 120000
+    # 5 min: the :3020 sandbox runs no job worker (its Sidekiq would also
+    # start AI indexing), so multi-magic-83 runs this one export by hand when
+    # pinged with the transfer id (2026-11-21).
+    timeout: 300000
 - takeScreenshot: reports/39-space-zip
 - tapOn:
     id: "pages-transfer-close"

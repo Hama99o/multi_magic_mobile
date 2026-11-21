@@ -23,6 +23,13 @@ tags: [pages, parity]
     visible:
       id: "note-toolbar"
     timeout: 30000
+# FOCUS THE EDITOR FIRST. Measured 2026-11-21: typing with nothing focused
+# sent key events to the activity, and the dev client's key commands
+# (expo-dev-menu DevMenuFragment.onKeyUp, debug builds only) took the "r" of
+# "from" as Reload and the "p" of "phone" as the performance monitor. The
+# editor's accessibility label is its placeholder (pages.page.placeholder).
+# lint: anchored-ok — the editor's whole accessibility label
+- tapOn: "Write here"
 - inputText: "Hello from the phone"
 - extendedWaitUntil:
     visible: "Saved"

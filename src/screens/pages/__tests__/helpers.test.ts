@@ -19,7 +19,7 @@ describe("modeFor — the web's NodeViewer, by type", () => {
     [node("file", "audio/mpeg"), "ios", "media"],
     [node("file", "text/markdown"), "ios", "markdown"],
     [node("file", "application/octet-stream", "notes.md"), "android", "markdown"],
-    [node("file", "text/csv"), "android", "text"],
+    [node("file", "text/csv"), "android", "sheet"], // a table since parity #46 (M6), not raw text
     [node("file", "application/zip"), "ios", "other"],
   ] as const)("%o on %s is %s", (n, os, mode) => {
     expect(modeFor(n, os)).toBe(mode);

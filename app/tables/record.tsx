@@ -114,7 +114,8 @@ export default function RecordScreen() {
   });
   const remove = useDeleteRow(tableId, {
     onDeleted: (id) => {
-      offerUndo(t("tables.rowDeleted"), () => void restoreRows(client, tableId, [id]));
+      // The page has gone back by the time Undo is tapped: an alert is the only place left to say it failed.
+      offerUndo(t("tables.rowDeleted"), () => void restoreRows(client, tableId, [id]).catch((e: unknown) => Alert.alert(failureMessage(e, t("tables.undoFailed")))));
       router.back();
     },
     onError: (e) => setFailure(failureMessage(e, t("tables.deleteFailed"))),

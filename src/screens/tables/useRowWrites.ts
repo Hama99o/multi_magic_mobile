@@ -121,16 +121,16 @@ export async function restoreRows(client: QueryClient, tableId: number, ids: num
 /**
  * Move a row to another value of one column (a kanban card to a column):
  * shown at once, sent through `records#update`, put back if refused. The
- * value before goes to `onMoved`, for the Undo.
+ * values before and after go to `onMoved`, for the Undo.
  */
-export function useMoveRow(tableId: number, opts: { onMoved: (row: RecordRow, before: unknown) => void; onError: (e: unknown) => void }) {
+export function useMoveRow(tableId: number, opts: { onMoved: (row: RecordRow, before: unknown, after: unknown) => void; onError: (e: unknown) => void }) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: ({ row, field, value }: { row: RecordRow; field: FieldDefinition; value: unknown; before: unknown }) => tablesApi.updateValues(row.id, { [field.id]: value }),
     onMutate: ({ row, field, value }) => editRow(client, tableId, row.id, (r) => ({ ...r, values: { ...r.values, [field.id]: { kind: "scalar", value } } })),
-    onSuccess: (_, { row, before }) => {
+    onSuccess: (_, { row, value, before }) => {
       void client.invalidateQueries({ queryKey: tablesKeys.rows(tableId) });
-      opts.onMoved(row, before);
+      opts.onMoved(row, before, value);
     },
     onError: (e, { row, field, before }) => {
       editRow(client, tableId, row.id, (r) => ({ ...r, values: { ...r.values, [field.id]: { kind: "scalar", value: before } } }));

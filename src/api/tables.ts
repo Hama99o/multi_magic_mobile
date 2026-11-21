@@ -461,6 +461,26 @@ export function parseSummary(raw: unknown): Record<number, SummaryCell> {
   return out;
 }
 
+/** `records#bulk_write`'s `result` (`TableApp::BulkWriter`): a 200 can still carry rows it refused, each with its 1-based row and why. */
+export interface BulkResult {
+  created: number;
+  updated: number;
+  failed: { row: number; error: string }[];
+}
+
+export function parseBulkResult(raw: unknown): BulkResult {
+  const r = raw && typeof raw === "object" ? (raw as { result?: unknown }).result : null;
+  const o = r && typeof r === "object" ? (r as Record<string, unknown>) : {};
+  const n = (x: unknown) => (typeof x === "number" ? x : 0);
+  const failed = Array.isArray(o.failed)
+    ? o.failed.map((f: unknown) => {
+        const e = f && typeof f === "object" ? (f as Record<string, unknown>) : {};
+        return { row: n(e.row), error: typeof e.error === "string" ? e.error : "" };
+      })
+    : [];
+  return { created: n(o.created), updated: n(o.updated), failed };
+}
+
 export interface FieldUsage {
   filledCount: number;
   rowCount: number;
@@ -702,13 +722,14 @@ export const tablesApi = {
   // ── Collaborate (increment 5) ─────────────────────────────────────────
 
   /** One column set on many rows (the web's bulk edit, one Undo there; `BulkWriter`). */
-  async bulkSet(tableId: number, ids: number[], fieldId: number, value: unknown): Promise<void> {
-    await tablesApi.bulkWrite(tableId, ids.map((rid) => ({ id: rid, values: { [fieldId]: value } })));
+  async bulkSet(tableId: number, ids: number[], fieldId: number, value: unknown): Promise<BulkResult> {
+    return tablesApi.bulkWrite(tableId, ids.map((rid) => ({ id: rid, values: { [fieldId]: value } })));
   },
 
   /** Each row its own values in one request: the bulk edit's Undo puts every row back as it was. */
-  async bulkWrite(tableId: number, rows: { id: number; values: Record<number, unknown> }[]): Promise<void> {
-    await http.post(`${BASE}/tables/${tableId}/records/bulk_write`, { rows: rows.map((r) => ({ id: r.id, values: Object.fromEntries(Object.entries(r.values)) })) });
+  async bulkWrite(tableId: number, rows: { id: number; values: Record<number, unknown> }[]): Promise<BulkResult> {
+    const { data } = await http.post(`${BASE}/tables/${tableId}/records/bulk_write`, { rows: rows.map((r) => ({ id: r.id, values: Object.fromEntries(Object.entries(r.values)) })) });
+    return parseBulkResult(data);
   },
 
   /** Many rows to the trash at once; `restore` with the ids brings them back. */

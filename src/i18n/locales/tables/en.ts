@@ -576,6 +576,7 @@ export const tablesEn = {
     column: "Column",
     value: "New value",
     emptyHint: "Leave empty to clear it",
+    notANumber: "Type a number, or leave it empty to clear it",
     hint_one: "This value replaces the selected row’s. You can undo.",
     hint_other: "This value replaces the {{count}} selected rows’. You can undo.",
     apply_one: "Apply to 1 row",

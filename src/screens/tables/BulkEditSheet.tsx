@@ -34,6 +34,9 @@ export function BulkEditSheet({ count, fields, busy, error, onApply, onClose }: 
     setValue(f.fieldType === "boolean" ? true : f.fieldType === "multi_select" ? [] : null);
   };
   const numeric = field?.fieldType === "integer" || field?.fieldType === "decimal";
+  // Typed but unreadable ("1,250.50", "12 AFN") parses to null, and null is "clear": refuse it
+  // rather than empty the column on every selected row (review T3, ee). Empty still clears.
+  const unreadable = numeric && typed.trim() !== "" && value === null;
 
   return (
     <BottomSheet
@@ -43,7 +46,7 @@ export function BulkEditSheet({ count, fields, busy, error, onApply, onClose }: 
       testID="tables-bulk-edit"
       footer={
         <View style={{ paddingHorizontal: metrics.space.lg }}>
-          <SheetButton testID="tables-bulk-edit-apply" label={t("tables.bulk.apply", { count })} disabled={!field || busy} busy={busy} onPress={() => field && onApply(field, value)} />
+          <SheetButton testID="tables-bulk-edit-apply" label={t("tables.bulk.apply", { count })} disabled={!field || busy || unreadable} busy={busy} onPress={() => field && !unreadable && onApply(field, value)} />
         </View>
       }
     >
@@ -108,6 +111,11 @@ export function BulkEditSheet({ count, fields, busy, error, onApply, onClose }: 
                 style={{ minHeight: 44, borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, paddingHorizontal: metrics.space.md, color: colors.ink, fontSize: 16, backgroundColor: colors.surface }}
               />
             )}
+            {unreadable ? (
+              <Text tone="danger" variant="caption" testID="tables-bulk-not-number" accessibilityLiveRegion="polite">
+                {t("tables.bulk.notANumber")}
+              </Text>
+            ) : null}
             <Text tone="muted" variant="caption">
               {t("tables.bulk.hint", { count })}
             </Text>

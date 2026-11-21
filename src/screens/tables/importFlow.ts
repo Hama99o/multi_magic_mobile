@@ -6,7 +6,7 @@
  * or a CSV copy. Dependencies are injected, so every branch is a test.
  */
 import type { LocalFile, PreviewRefusal, Sheet } from "@/api/tableImports";
-import { pastedGrid, toCsv } from "./importGrid";
+import { looksLikeHeader, pastedGrid, toCsv } from "./importGrid";
 import { sheetFromGrid } from "./importSheet";
 
 export type ImportInput = { kind: "file"; file: LocalFile & { size: number | null } } | { kind: "paste"; text: string };
@@ -36,7 +36,9 @@ export async function readForImport(input: ImportInput, deps: ReadDeps): Promise
   if (input.kind === "paste") {
     grid = pastedGrid(input.text);
     if (!grid.length) return { kind: "refused", reason: "empty" };
-    file = deps.saveCsv(toCsv(grid, true, deps.columnName), "paste.csv");
+    // The same guess the phone's own sheet makes (importSheet), so a list with no header line
+    // gets "Column N" names and its first row is imported, not read as the header (review T1, ee).
+    file = deps.saveCsv(toCsv(grid, looksLikeHeader(grid, deps.tableColumnNames), deps.columnName), "paste.csv");
   } else file = input.file;
 
   try {
@@ -49,6 +51,6 @@ export async function readForImport(input: ImportInput, deps: ReadDeps): Promise
   if (input.kind === "file" && !isTextFile(input.file)) return { kind: "refused", reason: "needs_server" };
   const rows = grid ?? pastedGrid(await deps.readText(file.uri));
   if (!rows.length) return { kind: "refused", reason: "empty" };
-  const csv = toCsv(rows, true, deps.columnName);
+  const csv = toCsv(rows, looksLikeHeader(rows, deps.tableColumnNames), deps.columnName);
   return { kind: "sheet", sheet: sheetFromGrid(rows, { csv, filename: file.name, tableColumnNames: deps.tableColumnNames, columnName: deps.columnName }) };
 }

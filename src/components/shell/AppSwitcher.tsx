@@ -15,6 +15,7 @@
 import { useRef, useState } from "react";
 import { Modal, Pressable, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { Search, Sparkles } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
@@ -222,6 +223,24 @@ export function AppSwitcher({
           </View>
 
           <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: metrics.space.md }}>
+            {/* Global search (docs/design/search/SPEC.md): the web's TopNav
+                search button, here because a sixth header key would cut an
+                app's name at 360 dp. It carries what was typed. */}
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => {
+                const text = query.trim();
+                onClose();
+                router.push({ pathname: "/search", params: text ? { q: text } : {} });
+              }}
+              style={{ minHeight: 48, flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.md, borderWidth: 1, borderColor: colors.border }}
+              testID="switcher-global-search"
+            >
+              <Search size={18} color={colors.accent} />
+              <Text variant="label" numberOfLines={1} style={{ flex: 1, color: colors.accent }}>
+                {query.trim() ? t("search.everythingFor", { query: query.trim() }) : t("search.everything")}
+              </Text>
+            </Pressable>
             {q ? null : (
               <Pressable
                 accessibilityRole="button"

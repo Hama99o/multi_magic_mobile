@@ -131,6 +131,31 @@ export function routeForWebPath(path: string | null | undefined, label?: string 
     const task = id("task");
     return { pathname: "/todos/list", params: task ? { id: group, task } : { id: group } };
   }
+  // Global search hits (multi_magic services/search/sources.rb).
+  const financeTab: Record<string, { tab: "expenses" | "income" | "loans"; param: string }> = {
+    "/finance/expenses": { tab: "expenses", param: "expense" },
+    "/finance/income": { tab: "income", param: "income" },
+    "/finance/loans": { tab: "loans", param: "loan" },
+  };
+  const finance = financeTab[pathname];
+  if (finance) {
+    if (!query.has(finance.param)) return { pathname: "/finance", params: { tab: finance.tab } };
+    const record = id(finance.param);
+    if (!record) return null;
+    if (finance.tab === "loans") return { pathname: "/finance/loan", params: { id: record } };
+    return { pathname: "/finance/entry", params: { kind: finance.tab === "income" ? "income" : "expense", id: record } };
+  }
+  const safe: Record<string, { kind: "passwords" | "payment_cards" | "identities"; param: string }> = {
+    "/safezone/passwords": { kind: "passwords", param: "password" },
+    "/safezone/payment-cards": { kind: "payment_cards", param: "card" },
+    "/safezone/identities": { kind: "identities", param: "identity" },
+  };
+  const vault = safe[pathname];
+  if (vault) {
+    if (!query.has(vault.param)) return "/safezone";
+    const record = id(vault.param);
+    return record ? { pathname: "/safezone/item", params: { kind: vault.kind, id: record } } : null;
+  }
   if (pathname === "/profile/me/api-keys") return "/ai-keys";
   if (pathname === "/ai") return "/chat";
   return null;

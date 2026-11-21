@@ -198,6 +198,7 @@ export default function RootLayout() {
               mounted underneath (his instruction, 2026-11-06: the AI is a
               button at the top of every screen, not a destination). */}
           <Stack.Screen name="chat" options={{ presentation: "modal" }} />
+          <Stack.Screen name="search" options={{ presentation: "modal" }} />
           {/* A new or edited event slides up over what it came from and
               goes back down on Save or Cancel (Apple Invites, Saturn). */}
           <Stack.Screen name="calendar/edit" options={{ presentation: "modal" }} />

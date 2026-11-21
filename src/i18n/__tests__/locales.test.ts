@@ -37,6 +37,14 @@ const FRENCH = flatten(fr);
  * because it was checked, not because it looked foreign.
  */
 const SAME_IN_BOTH = new Set([
+  // Global search: a product name and words French spells the same way.
+  "search.groups.flow",
+  "search.kinds.note",
+  "search.kinds.contact",
+  "search.kinds.conversation",
+  "search.kinds.message",
+  "search.kinds.signature",
+  "search.kinds.document",
   "pages.searchChips.type",
   // "Pause" is the French word too (a player button).
   "pages.view.pause",

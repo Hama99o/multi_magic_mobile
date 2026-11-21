@@ -209,6 +209,30 @@ describe("the header (M1, M2, M3, M10)", () => {
       expect(titleRoom(360)).toBe(360 - 2 * 16 - 32 - 2 * 6 - 5 * 36);
     });
 
+    // Global search: the web's TopNav search key, first, icon only (as on
+    // the web). Tablets only: at 360 dp a sixth key would cut an app's name
+    // (titleRoom 104 → 68 dp), so phones reach search from Home and the
+    // Apps sheet (docs/design/search/SPEC.md §C).
+    it("a tablet has the search key first, icon only, and it opens search", async () => {
+      const { router } = jest.requireMock("expo-router");
+      widthOf(800);
+      counts(0, 0);
+      open("finance");
+      const keys = (await screen.findByTestId("header-buttons")).findAll((n: { props: { testID?: string } }) => /^header-[a-z]+$/.test(n.props.testID ?? "") && n.props.testID !== "header-buttons", { deep: false });
+      expect(keys[0].props.testID).toBe("header-search");
+      expect(screen.queryByTestId("header-search-label")).toBeNull();
+      fireEvent.press(screen.getByTestId("header-search"));
+      expect(router.push).toHaveBeenLastCalledWith("/search");
+    });
+
+    it("a phone has no search key (Home and the Apps sheet open search)", async () => {
+      widthOf(360);
+      counts(0, 0);
+      open("finance");
+      await screen.findByTestId("header-buttons");
+      expect(screen.queryByTestId("header-search")).toBeNull();
+    });
+
     it("on a tablet the buttons carry their names", async () => {
       widthOf(800);
       counts(0, 0);
@@ -402,6 +426,23 @@ describe("the switcher (M4, M10)", () => {
     expect(screen.getByTestId("switcher-app-safezone")).toBeTruthy();
     fireEvent.changeText(screen.getByTestId("switcher-search"), "zzzz");
     expect(screen.getByText("No app matches")).toBeTruthy();
+  });
+
+  // Global search (docs/design/search/SPEC.md §C): the web's TopNav search
+  // button cannot fit a sixth key at 360 dp without cutting an app's name, so
+  // it lives at the top of the Apps sheet, one tap from every screen.
+  it("Search everything opens global search, carrying what was typed", async () => {
+    const { router } = jest.requireMock("expo-router");
+    counts(0, 0);
+    open("todos");
+    fireEvent.press(await screen.findByTestId("header-apps"));
+    fireEvent.press(await screen.findByTestId("switcher-global-search"));
+    expect(router.push).toHaveBeenLastCalledWith({ pathname: "/search", params: {} });
+    fireEvent.press(screen.getByTestId("header-apps"));
+    fireEvent.changeText(await screen.findByTestId("switcher-search"), " trip ");
+    expect(screen.getByTestId("switcher-global-search")).toHaveTextContent(/trip/);
+    fireEvent.press(screen.getByTestId("switcher-global-search"));
+    expect(router.push).toHaveBeenLastCalledWith({ pathname: "/search", params: { q: "trip" } });
   });
 
   it("speaks French", async () => {

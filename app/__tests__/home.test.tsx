@@ -76,3 +76,12 @@ describe("each app has its own colour", () => {
     expect(style("home-tile-conversations").flexGrow ?? 0).toBe(0);
   });
 });
+
+// Global search (docs/design/search/SPEC.md §C, Hello for the owner
+// 2026-11-21): on a phone the header has no room for a search key, so Home
+// opens search from a field at its top.
+it("the search field at the top of Home opens global search", () => {
+  renderHome();
+  fireEvent.press(screen.getByTestId("home-search"));
+  expect(mockPush).toHaveBeenCalledWith("/search");
+});

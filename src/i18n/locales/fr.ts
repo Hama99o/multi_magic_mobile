@@ -1292,6 +1292,30 @@ export const fr: Translations = {
     },
   },
 
+  search: {
+    open: "Rechercher",
+    placeholder: "Tout rechercher",
+    everything: "Tout rechercher",
+    everythingFor: "Tout rechercher pour « {{query}} »",
+    clear: "Effacer la recherche",
+    clearRecents: "Effacer",
+    ask: "Demander à l’assistant : « {{query}} »",
+    askAbout: "Parle-moi de « {{title}} » ({{kind}}).",
+    empty: "Rien trouvé pour « {{query}} ».",
+    loadFailed: "La recherche n’a pas répondu.",
+    sections: { recents: "Récents", apps: "Aller à", commands: "Créer" },
+    groups: { flow: "Flow", doc: "Outils PDF" },
+    kinds: {
+      note: "Note", space: "Espace", file: "Fichier", todoGroup: "Liste", task: "Tâche", event: "Événement",
+      contact: "Contact", expense: "Dépense", income: "Revenu", loan: "Prêt", password: "Mot de passe",
+      paymentCard: "Carte", identity: "Pièce d’identité", project: "Projet", card: "Carte", conversation: "Conversation",
+      message: "Message", signature: "Signature", document: "Document",
+    },
+    commands: {
+      newExpense: "Nouvelle dépense", newIncome: "Nouveau revenu", newLoan: "Nouveau prêt",
+      newContact: "Nouveau contact", newEvent: "Nouvel événement", newPassword: "Nouveau mot de passe",
+    },
+  },
   shell: {
     home: "Accueil",
     homeBody: "Toutes vos applis",

@@ -30,6 +30,11 @@ case "$API_LOCAL" in *:3020*) ;; *) echo "REFUSED: seed writes; API_LOCAL must b
 QA_EMAIL="${QA_EMAIL:-demo@example.com}"
 SERIAL="${SERIAL:?set SERIAL to the claimed device, e.g. emulator-5580}"
 APP_ID="${APP_ID:-com.multimagics.mobile}"
+# The dev client opened straight on OUR Metro, by 10.0.2.2 (RIG_CONTRACT §1).
+# Measured 2026-11-21: with plain multimagic:// the launcher stayed up, listing
+# Metro under a LAN address (mDNS), and every flow failed before its first step.
+METRO_PORT_PP="${METRO_PORT_PP:-3031}"
+PP_DEEP_LINK="multimagic://expo-development-client/?url=http%3A%2F%2F10.0.2.2%3A${METRO_PORT_PP}"
 OUT="$DIR/evidence/pages-parity-$(date +%Y%m%d-%H%M)"   # gitignored: screenshots and dumps of a real session
 STATE="$DIR/evidence/.pages-parity.state"   # space/note ids for clean (gitignored)
 SPACE_TITLE="QA Parity"
@@ -94,7 +99,7 @@ device() {
 flow() { # flow <file> : one flow, its own log, and the verdict line
   local f=$1 n; n=$(basename "$f" .yaml)
   MAESTRO_QA_EMAIL="$QA_EMAIL" MAESTRO_QA_PASSWORD="$QA_PASSWORD" \
-    maestro --device "$SERIAL" test -e APP_ID="$APP_ID" -e DEEP_LINK="${DEEP_LINK:-multimagic://}" --test-output-dir "$OUT/$n" "$f" > "$OUT/$n.log" 2>&1
+    maestro --device "$SERIAL" test -e APP_ID="$APP_ID" -e DEEP_LINK="$PP_DEEP_LINK" --test-output-dir "$OUT/$n" "$f" > "$OUT/$n.log" 2>&1
   local rc=$?; echo "$n: $([ $rc = 0 ] && echo PASS || echo FAIL rc=$rc)" | tee -a "$OUT/verdicts.txt"
 }
 
@@ -117,7 +122,7 @@ widths() { # the same three screens at 360, 411 and 800 dp
     case $w in 360) px=1080x2280; d=480;; 411) px=1080x2400; d=420;; 800) px=1600x2560; d=320;; esac
     adb -s "$SERIAL" shell wm size $px; adb -s "$SERIAL" shell wm density $d
     adb -s "$SERIAL" shell am force-stop "$APP_ID"   # RN caches the window size at startup
-    MAESTRO_QA_EMAIL="$QA_EMAIL" MAESTRO_QA_PASSWORD="$QA_PASSWORD" maestro --device "$SERIAL" test -e APP_ID="$APP_ID" -e DEEP_LINK="${DEEP_LINK:-multimagic://}" -e WIDTH=$w --test-output-dir "$OUT/widths-$w" "$DIR/flows/42-pages-shots-at-width.yaml" > "$OUT/widths-$w.log" 2>&1
+    MAESTRO_QA_EMAIL="$QA_EMAIL" MAESTRO_QA_PASSWORD="$QA_PASSWORD" maestro --device "$SERIAL" test -e APP_ID="$APP_ID" -e DEEP_LINK="$PP_DEEP_LINK" -e WIDTH=$w --test-output-dir "$OUT/widths-$w" "$DIR/flows/42-pages-shots-at-width.yaml" > "$OUT/widths-$w.log" 2>&1
     echo "widths $w dp: $([ $? = 0 ] && echo PASS || echo FAIL)" | tee -a "$OUT/verdicts.txt"
   done
   adb -s "$SERIAL" shell wm size reset; adb -s "$SERIAL" shell wm density reset; adb -s "$SERIAL" shell am force-stop "$APP_ID"

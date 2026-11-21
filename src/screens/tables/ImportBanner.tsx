@@ -6,11 +6,12 @@
  * rows are refreshed so what came in shows at once.
  */
 import { useEffect, useRef } from "react";
-import { Pressable, View } from "react-native";
+import { Alert, Pressable, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { tablesKeys } from "@/api/keys";
 import { tableImportsApi, type TableImport } from "@/api/tableImports";
+import { failureMessage } from "@/api/failure";
 import { X } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -38,7 +39,10 @@ export function ImportBanner({ tableId, canEdit }: { tableId: number; canEdit: b
 
   if (!imp || imp.dismissedAt) return null;
   const active = isActive(imp);
-  const act = (work: () => Promise<TableImport>) => void work().then(() => client.invalidateQueries({ queryKey: tablesKeys.imports(tableId) }));
+  const act = (work: () => Promise<TableImport>) =>
+    void work()
+      .then(() => client.invalidateQueries({ queryKey: tablesKeys.imports(tableId) }))
+      .catch((e: unknown) => Alert.alert(failureMessage(e, t("tables.import.banner.actionFailed"))));
 
   const line = active
     ? imp.cancelRequested

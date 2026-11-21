@@ -11,7 +11,7 @@
  */
 import MockAdapter from "axios-mock-adapter";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
+import { configure, act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import { Alert, StyleSheet } from "react-native";
 import { useTablesUndo } from "@/stores/tablesUndo.store";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -27,6 +27,11 @@ import { router as mockedRouter } from "expo-router";
 import Bases from "../../../../app/tables";
 import TableScreen from "../../../../app/tables/table";
 import RecordScreen from "../../../../app/tables/record";
+
+// Under a full run's load (one worker, an emulator up) a first render of a Tables screen can pass the
+// default 1 s of findBy/waitFor: one unnamed tablesApp failure in 1 of 3 full runs on 2026-11-21, and
+// formsScreens before it. Every wait in this suite gets 5 s: bounded, not removed.
+configure({ asyncUtilTimeout: 5_000 });
 
 /** Two taps in the same frame, before any re-render: what a double tap is. A guard that is only `disabled={isPending}` lets both through. */
 const doubleTap = (el: Parameters<typeof fireEvent.press>[0]) => {

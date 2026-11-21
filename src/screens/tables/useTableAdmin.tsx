@@ -81,10 +81,12 @@ export function useTableAdmin({ table, base, editable, onOpenTable }: { table: T
             .clearTable(table.id)
             .then(async ({ deleted, trashedAt }) => {
               await client.invalidateQueries({ queryKey: tablesKeys.rows(table.id) });
-              offerUndo(t("tables.admin.cleared", { count: deleted }), async () => {
-                await tablesApi.restoreCleared(table.id, trashedAt);
-                await client.invalidateQueries({ queryKey: tablesKeys.rows(table.id) });
-              });
+              offerUndo(t("tables.admin.cleared", { count: deleted }), () =>
+                void tablesApi
+                  .restoreCleared(table.id, trashedAt)
+                  .then(() => client.invalidateQueries({ queryKey: tablesKeys.rows(table.id) }))
+                  .catch((e: unknown) => Alert.alert(failureMessage(e, t("tables.undoFailed")))),
+              );
             })
             .catch((e: unknown) => Alert.alert(failureMessage(e, t("tables.admin.failed")))),
       },

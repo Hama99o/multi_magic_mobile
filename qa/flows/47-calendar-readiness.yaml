@@ -1,0 +1,130 @@
+# CALENDAR, the release-readiness pass (docs/RELEASE_READINESS.md, ff's row).
+#
+# The slot driver runs this once per column it can set from outside:
+# W (360/411/800 dp), THEME (light/dark), FONT (1.0/2.0, `font_scale`), and
+# NET (online, or offline through `svc wifi/data disable`). Each run names its
+# shots `47-${W}-${THEME}-f${FONT}-${NET}-…`; the table cites them.
+#
+# What it does, as the QA account on :3001 (never another account):
+# 1. Calendar from Home: the month and the list, and a day with nothing on it
+#    (the empty state) -> pictures.
+# 2. ONLINE only: a new event "[qa] DST weekly", 09:00, repeating weekly,
+#    from Thursday 25 March 2027 (Europe's clocks go forward on Sunday 28 March
+#    2027). The form is opened on that day by the app's own route
+#    (`/calendar/edit?day=`, what the list's + sends), not by scrolling five
+#    months of grid: the edge case is the DATE, not the navigation.
+#    - The keyboard over the title -> a picture (keyboard column).
+#    - Save is DOUBLE-TAPPED: the driver's read-only count of events with
+#      that title must be ONE (double-tap column).
+#    - The list then shows the 25 March and 1 April occurrences: both must
+#      read 09:00 (83's server fix 1a145681, "a repeat keeps its time on the
+#      clock across a DST change"; NOT on master, so the driver logs which
+#      server code answered). The picture is the evidence.
+# 3. Cleanup: the event is deleted (a series goes whole, to the trash); the
+#    driver logs its id and that it left the QA account's live events.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: states (month, list, empty day), keyboard, double tap, DST repeat,
+#   and the outside columns the driver sets per run.
+# DOES NOT COVER: guests (a second account: two-person checks wait for the
+#   owner's demo.env), reminders firing, the server's own DST maths (83's
+#   specs own that).
+appId: ${APP_ID}
+tags:
+  - calendar
+  - readiness
+---
+# The app reopens in its last place: Back until the Home button shows.
+- launchApp
+- openLink: ${DEEP_LINK}
+- extendedWaitUntil:
+    visible:
+      id: "app-header"
+    timeout: 120000
+- repeat:
+    while:
+      notVisible:
+        id: "header-home"
+    times: 4
+    commands:
+      - back
+- runFlow:
+    when:
+      notVisible:
+        id: "home-greeting"
+    commands:
+      - tapOn:
+          id: "header-home"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-calendar"
+- tapOn:
+    id: "home-tile-calendar"
+- extendedWaitUntil:
+    visible:
+      id: "calendar-view-toggle"
+    timeout: 60000
+- takeScreenshot: reports/47-${W}-${THEME}-f${FONT}-${NET}-open
+- tapOn:
+    id: "calendar-view-toggle"
+- takeScreenshot: reports/47-${W}-${THEME}-f${FONT}-${NET}-other-view
+- tapOn:
+    id: "calendar-view-toggle"
+
+# Offline runs stop here: the pictures above are the offline state.
+- runFlow:
+    when:
+      true: ${NET == "online"}
+    commands:
+      - openLink: "multimagic://calendar/edit?day=2027-03-25"
+      - extendedWaitUntil:
+          visible:
+            id: "event-form-title"
+          timeout: 30000
+      - tapOn:
+          id: "event-form-title"
+      - inputText: "[qa] DST weekly"
+      - takeScreenshot: reports/47-${W}-${THEME}-f${FONT}-${NET}-keyboard
+      # Enter, not hideKeyboard: in this modal form hideKeyboard can act as
+      # Back and close it (flow_lint HIDEKEY). The title is one line.
+      - pressKey: Enter
+      - tapOn:
+          id: "event-form-repeat"
+      - tapOn:
+          id: "event-form-repeat-sheet-weekly"
+      - doubleTapOn:
+          id: "event-form-save"
+      - extendedWaitUntil:
+          notVisible:
+            id: "event-form"
+          timeout: 30000
+      # The list holds both occurrences, either side of 28 March 2027.
+      - runFlow:
+          when:
+            notVisible:
+              id: "calendar-list"
+          commands:
+            - tapOn:
+                id: "calendar-view-toggle"
+      - scrollUntilVisible:
+          element: "\\[qa\\] DST weekly.*"
+          timeout: 60000
+      - takeScreenshot: reports/47-${W}-${THEME}-f${FONT}-${NET}-dst-occurrences
+      # Cleanup: the series, whole.
+      - tapOn: "\\[qa\\] DST weekly.*"
+      - extendedWaitUntil:
+          visible:
+            id: "event-detail"
+          timeout: 20000
+      - takeScreenshot: reports/47-${W}-${THEME}-f${FONT}-${NET}-detail
+      - tapOn:
+          id: "event-delete"
+      - extendedWaitUntil:
+          visible: "Delete “\\[qa\\] DST weekly”\\?"
+          timeout: 10000
+      # lint: regex-ok — the alert's button, either case (Android caps it).
+      - tapOn: "(Delete|DELETE)"
+      - extendedWaitUntil:
+          notVisible:
+            id: "event-detail"
+          timeout: 20000

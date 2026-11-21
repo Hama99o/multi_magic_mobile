@@ -1,0 +1,98 @@
+# CONTACTS, the release-readiness pass (docs/RELEASE_READINESS.md, ff's row).
+#
+# Run by the slot driver once per outside column it sets: W (360/411/800 dp),
+# THEME, FONT (`font_scale` 1.0/2.0), NET (online/offline). Shots are named
+# `48-${W}-${THEME}-f${FONT}-${NET}-…`.
+#
+# As the QA account on :3001 only:
+# 1. Contacts from Home: the list with its A–Z headers (at 200 % each row must
+#    hold its two lines: fix on `fix/contacts-font-scale`), a search that
+#    finds nothing (the empty result) -> pictures.
+# 2. ONLINE only: a new contact "[qa] Readiness". The keyboard over the first
+#    name -> a picture. Save is DOUBLE-TAPPED: the driver's read-only count of
+#    contacts with that name must be ONE. Its card -> a picture.
+# 3. Cleanup: Delete from the card (to the trash); 48b deletes it for ever by
+#    the id the driver read, and the driver logs it gone.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: states, keyboard, double tap, the 200 % row, outside columns.
+# DOES NOT COVER: import from the phone book and permission denied (the
+#   contacts permission prompt is the system's; a separate run with the
+#   permission revoked by `pm revoke`), sharing a contact (two-person).
+appId: ${APP_ID}
+tags:
+  - contacts
+  - readiness
+---
+- launchApp
+- openLink: ${DEEP_LINK}
+- extendedWaitUntil:
+    visible:
+      id: "app-header"
+    timeout: 120000
+- repeat:
+    while:
+      notVisible:
+        id: "header-home"
+    times: 4
+    commands:
+      - back
+- runFlow:
+    when:
+      notVisible:
+        id: "home-greeting"
+    commands:
+      - tapOn:
+          id: "header-home"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-contacts"
+- tapOn:
+    id: "home-tile-contacts"
+- extendedWaitUntil:
+    visible:
+      id: "contacts-search"
+    timeout: 60000
+- takeScreenshot: reports/48-${W}-${THEME}-f${FONT}-${NET}-list
+- tapOn:
+    id: "contacts-search"
+- inputText: "zqx-qa-none"
+- takeScreenshot: reports/48-${W}-${THEME}-f${FONT}-${NET}-no-match
+- tapOn:
+    id: "contacts-search-clear"
+
+- runFlow:
+    when:
+      true: ${NET == "online"}
+    commands:
+      - tapOn:
+          id: "contacts-new"
+      - extendedWaitUntil:
+          visible:
+            id: "contact-form-firstname"
+          timeout: 20000
+      - tapOn:
+          id: "contact-form-firstname"
+      - inputText: "[qa] Readiness"
+      - takeScreenshot: reports/48-${W}-${THEME}-f${FONT}-${NET}-keyboard
+      - doubleTapOn:
+          id: "contact-form-save"
+      - extendedWaitUntil:
+          visible:
+            id: "contact-name"
+          timeout: 30000
+      - takeScreenshot: reports/48-${W}-${THEME}-f${FONT}-${NET}-card
+      - scrollUntilVisible:
+          element:
+            id: "contact-delete"
+      - tapOn:
+          id: "contact-delete"
+      - extendedWaitUntil:
+          visible: "Delete \\[qa\\] Readiness\\?"
+          timeout: 10000
+      # lint: regex-ok — the alert's button, either case (Android caps it).
+      - tapOn: "(Delete|DELETE)"
+      - extendedWaitUntil:
+          visible:
+            id: "contacts-search"
+          timeout: 20000

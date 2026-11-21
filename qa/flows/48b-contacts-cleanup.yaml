@@ -1,0 +1,28 @@
+# Cleanup for 48: the contact it made, in the trash, deleted FOR EVER by the id
+# the slot driver read (read-only) in 48's window. Runs only when that count
+# is exactly one.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: nothing new; it puts the QA account back.
+appId: ${APP_ID}
+tags:
+  - contacts
+---
+# The trash by the app's own route: this is cleanup, not a path under test.
+- openLink: "multimagic://contacts/trash"
+# lint: dbid-ok — THIS contact is the subject: the one 48 made, by its id.
+- extendedWaitUntil:
+    visible:
+      id: "contacts-trash-delete-${CONTACT_ID}"
+    timeout: 30000
+- tapOn:
+    id: "contacts-trash-delete-${CONTACT_ID}"
+- extendedWaitUntil:
+    visible: "Delete \\[qa\\] Readiness\\?"
+    timeout: 10000
+- tapOn: "Delete for ever"
+# lint: dbid-ok — the same contact, gone.
+- extendedWaitUntil:
+    notVisible:
+      id: "contacts-trash-row-${CONTACT_ID}"
+    timeout: 20000

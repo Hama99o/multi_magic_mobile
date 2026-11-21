@@ -4,6 +4,8 @@
 #   qa/doc-readiness.sh device    push qa-doc.pdf to Download, fps overlay off
 #   qa/doc-readiness.sh run       flow 48 (keyboard), then flow 49's shots at
 #                                 360, 411, 800, 411 dark, 411 at 200 % font
+#   qa/doc-readiness.sh busy      flow 50, right after multi-magic-83 confirms
+#                                 it holds the Doc slot ("hold slot")
 #
 # The :3020 sandbox only (Doc tools write files there), as pages-parity.sh:
 # API_LOCAL must say 3020; the password comes from QA_PASSWORD in the
@@ -74,4 +76,4 @@ run() {
   echo "verdicts: $OUT/verdicts.txt"
 }
 
-case "${1:-}" in device) device;; run) run;; *) sed -n 2,6p "$0"; exit 2;; esac
+case "${1:-}" in device) device;; run) run;; busy) flow "$DIR/flows/50-doc-busy-countdown-then-retry.yaml";; *) sed -n 2,8p "$0"; exit 2;; esac

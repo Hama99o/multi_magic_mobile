@@ -10,7 +10,7 @@
  * than only at the point of refusal — "17 of 20 files" is information; meeting
  * the limit with no warning is a surprise.
  */
-import { Modal, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { SheetFrame } from "@/components/SheetFrame";
 import { useTranslation } from "react-i18next";
 import { Camera, FileText, Image as ImageIcon } from "@/components/icons";

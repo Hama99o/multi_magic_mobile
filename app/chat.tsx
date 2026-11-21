@@ -57,6 +57,7 @@ import { notificationsApi } from "@/api/notifications";
 import { conversationsApi } from "@/api/conversations";
 import { aiKeys, conversationKeys, notificationKeys } from "@/api/keys";
 import { useMe } from "@/hooks/useMe";
+import { MemoryReviewCard } from "@/components/chat/MemoryReviewCard";
 
 /**
  * One quiet door in the title bar.
@@ -768,6 +769,9 @@ export default function Chat() {
         {/* Messages the server sent that could not be read, said rather than
             skipped in silence (`readableRows`, parse.ts). */}
         <UnreadableNotice count={unreadable ?? 0} />
+        {/* "Is this still true?": what the assistant remembers that may have changed (the web shows it at
+            the top of its AI page). Nothing to ask: nothing drawn. */}
+        <MemoryReviewCard />
         {/* Wraps the list so `ScrollToBottom`'s absolute position anchors to
             the list's box rather than the screen's — anchored to the screen it
             lands ON the composer instead of above it. */}

@@ -45,6 +45,8 @@ export const aiKeys = {
   currentSession: () => ["ai", "currentSession"] as const,
   sessions: () => ["ai", "sessions"] as const,
   documents: <C extends number | null>(conversationId: C) => ["ai", "documents", conversationId] as const,
+  /** "Is this still true?": the remembered facts most likely to have changed (`ai/memory_review`). */
+  memoryReview: () => ["ai", "memoryReview"] as const,
 };
 
 export const conversationKeys = {

@@ -293,3 +293,22 @@ origin/main.
 | `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
 
 **Run 6: 0 failures** at d205479.
+
+## Run 7 — 2026-11-21, run 6 plus the Finance sweep
+
+| Branch @ head | Owner | What is new | Merge |
+|---|---|---|---|
+| `feat/tables` @ feebf23 | 88 | a bounded wait in formsScreens.test (a flake under load) | clean |
+| `fix/finance-sweep` @ 32ed64e | 88 | new: the Finance hidden-criteria sweep; `useOneAtATime` moves to `src/hooks` | clean |
+
+Checked after the merge: no import of the old `src/screens/tables/useOneAtATime`
+path is left; the pane-nav codemod changes 0 files.
+
+| Gate (guarded.sh, Jest 1 worker, node 22.19.0) | Result |
+|---|---|
+| tsc | 0 errors |
+| eslint, 376 changed files | 0 errors, 0 warnings |
+| Jest, full | 327 suites passed; **4103 / 4103 tests passed, 0 failed** |
+| `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
+
+**Run 7: 0 failures** at 6eb7245.

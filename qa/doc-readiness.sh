@@ -1,6 +1,8 @@
 #!/bin/bash
 # DOC READINESS ON A DEVICE (docs/RELEASE_READINESS.md, the Doc row).
 #
+#   qa/doc-readiness.sh smoke     FIRST: open the bundle, sign in, shoot Home;
+#                                 look at the shot before running anything else
 #   qa/doc-readiness.sh device    push qa-doc.pdf to Download, fps overlay off
 #   qa/doc-readiness.sh run       flow 48 (keyboard), then flow 49's shots at
 #                                 360, 411, 800, 411 dark, 411 at 200 % font
@@ -54,6 +56,22 @@ PY
   echo "device: qa-doc.pdf in Download"; fps_off
 }
 
+# OPEN THE BUNDLE BEFORE ANY FLOW (measured 2026-11-21, slot 2 rerun): on a
+# device whose dev client last showed its launcher, Maestro's openLink did not
+# load the bundle and every flow stopped on "Development servers" for 50 min.
+# `am start` with the package does load it. So: open it, wait for the JS to
+# run, and stop here as NOT MEASURED (exit 3) if it never does.
+prime() {
+  adb -s "$SERIAL" logcat -c
+  adb -s "$SERIAL" shell am start -a android.intent.action.VIEW -d "$1" "$APP_ID" >/dev/null
+  local i
+  for i in $(seq 1 90); do
+    adb -s "$SERIAL" logcat -d | grep -q 'Running "main"' && { echo "prime: bundle running"; return 0; }
+    sleep 2
+  done
+  echo "NOT MEASURED: the dev client never ran the bundle from $1"; exit 3
+}
+
 flow() { # flow <file> [KEY=VALUE]
   local f=$1 n; n=$(basename "$f" .yaml)${2:+-${2#*=}}
   MAESTRO_QA_EMAIL="$QA_EMAIL" MAESTRO_QA_PASSWORD="$QA_PASSWORD" \
@@ -68,6 +86,7 @@ shots() { # shots <label> <px> <density> : relaunch, then flow 49
 }
 
 run() {
+  prime "$DEEP_LINK_DOC"
   flow "$DIR/flows/48-doc-text-edit-sheet-over-keyboard.yaml"
   shots 360 1080x2280 480; shots 411 1080x2400 420; shots 800 1600x2560 320
   adb -s "$SERIAL" shell cmd uimode night yes; shots 411-dark 1080x2400 420; adb -s "$SERIAL" shell cmd uimode night no
@@ -76,4 +95,4 @@ run() {
   echo "verdicts: $OUT/verdicts.txt"
 }
 
-case "${1:-}" in device) device;; run) run;; busy) flow "$DIR/flows/50-doc-busy-countdown-then-retry.yaml";; *) sed -n 2,8p "$0"; exit 2;; esac
+case "${1:-}" in smoke) prime "$DEEP_LINK_DOC"; flow "$DIR/flows/00-smoke-signed-in.yaml"; echo "LOOK: $OUT/00-smoke-signed-in before the batch";; device) device;; run) run;; busy) prime "$DEEP_LINK_DOC"; flow "$DIR/flows/50-doc-busy-countdown-then-retry.yaml";; *) sed -n 2,10p "$0"; exit 2;; esac

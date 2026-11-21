@@ -1,0 +1,25 @@
+# Readiness "2×tap" (docs/RELEASE_READINESS.md): a double tap on Create makes
+# ONE folder. The count is not something Maestro can read, so
+# `pages-parity.sh columns` counts the rows titled "[qa] twice" in Trip with a
+# read-only GET on :3020 right after this flow, and writes it to the log.
+#
+# COVERS: the double tap on the name sheet's confirm, on a device.
+# CANNOT TELL YOU: the count (the driver's GET does); a double tap on other
+# create buttons.
+appId: ${APP_ID}
+tags: [pages, readiness]
+---
+- runFlow: pages-open-trip.yaml
+- tapOn:
+    id: "pages-add"
+- tapOn:
+    id: "pages-new-folder"
+- tapOn:
+    id: "pages-name-input"
+- inputText: "[qa] twice"
+- doubleTapOn:
+    id: "pages-name-confirm"
+- extendedWaitUntil:
+    visible: "\\[qa\\] twice"
+    timeout: 20000
+- takeScreenshot: reports/43-double-tap

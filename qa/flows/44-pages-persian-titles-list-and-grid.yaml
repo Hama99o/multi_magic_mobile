@@ -1,0 +1,30 @@
+# Readiness "RTL" (Persian/Pashto text in the user's content): the folder
+# "RTL" holds a folder and a file with Persian titles, made by
+# `pages-parity.sh seed` (Maestro cannot type Persian on Android). The
+# titles are read in the list and in the grid.
+#
+# COVERS: right-to-left titles drawn in both views, asserted by their text.
+# CANNOT TELL YOU: that the alignment is right (a person reads the shots);
+# typing Persian on the phone.
+appId: ${APP_ID}
+tags: [pages, readiness]
+---
+- runFlow: pages-open-trip.yaml
+- tapOn:
+    id: "pages-crumb-space"
+- extendedWaitUntil:
+    visible: "RTL"
+    timeout: 20000
+# lint: anchored-ok — the seeded folder "RTL" is a whole row title
+- tapOn: "RTL"
+- extendedWaitUntil:
+    visible: "سفر کابل"
+    timeout: 20000
+- assertVisible: "یادداشت سفر.txt"
+- takeScreenshot: reports/44-rtl-list
+- tapOn:
+    id: "pages-view-toggle"
+- assertVisible: "سفر کابل"
+- takeScreenshot: reports/44-rtl-grid
+- tapOn:
+    id: "pages-view-toggle"

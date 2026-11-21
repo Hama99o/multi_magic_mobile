@@ -1,0 +1,25 @@
+# Readiness "Off", first half: `pages-parity.sh columns` turns wifi and data
+# OFF before this flow. A file picked offline is queued and the bar says it
+# is waiting for a connection; nothing is lost.
+#
+# COVERS: the queue's offline state, said on screen.
+# CANNOT TELL YOU: that it sends when the network is back (flow 46 does).
+appId: ${APP_ID}
+tags: [pages, readiness, offline]
+---
+- runFlow: pages-open-trip.yaml
+- tapOn:
+    id: "pages-add"
+- tapOn:
+    id: "pages-new-files"
+# The system picker opens on its last place: storage root, then Download.
+- extendedWaitUntil:
+    visible: "sdk_gphone.*"
+    timeout: 20000
+- tapOn: "sdk_gphone.*"
+- tapOn: "Download"
+- tapOn: "qa-offline.txt"
+- extendedWaitUntil:
+    visible: "Waiting for a connection"
+    timeout: 60000
+- takeScreenshot: reports/45-offline-waiting

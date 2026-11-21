@@ -1,0 +1,14 @@
+# Readiness "Off", second half: the network is back (`pages-parity.sh
+# columns` turned it on), and the file queued by flow 45 arrives in Trip
+# without being picked again.
+#
+# COVERS: the retry after the network returns, the file in its folder.
+# CANNOT TELL YOU: how long the back-off waited (the queue's own retryAt).
+appId: ${APP_ID}
+tags: [pages, readiness, offline]
+---
+- runFlow: pages-open-trip.yaml
+- extendedWaitUntil:
+    visible: "qa-offline.txt"
+    timeout: 180000
+- takeScreenshot: reports/46-offline-sent

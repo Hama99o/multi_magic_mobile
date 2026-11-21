@@ -18,7 +18,7 @@
  * - A turned page is read-only, as on the web.
  */
 import { useMemo, useState } from "react";
-import { Alert, KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
+import { Alert, Modal, Pressable, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -26,6 +26,7 @@ import { docKeys } from "@/api/keys";
 import { docApi, type DocError, type DocFile, type DocResult } from "@/api/doc";
 import { Bold, ChevronLeft, ChevronRight, Italic, Type, ZoomIn, ZoomOut, type LucideIcon } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
+import { KeyboardPadding } from "@/components/KeyboardPadding";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { Button } from "@/components/reusables/button";
 import { Text } from "@/components/reusables/text";
@@ -400,12 +401,17 @@ function KeyboardSheet({ onClose, children, testID }: { onClose: () => void; chi
   const { t } = useTranslation();
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, justifyContent: "flex-end" }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={onClose} style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.35)" }} />
-        <View testID={testID} style={{ backgroundColor: colors.ground, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: metrics.space.lg, paddingBottom: metrics.space.lg + insets.bottom, width: "100%", maxWidth: metrics.maxMeasure, alignSelf: "center", maxHeight: "80%" }}>
-          {children}
+      {/* KeyboardPadding, not KeyboardAvoidingView "height" (the shape the
+          kav-height lint rule refuses): on edge-to-edge Android "height" left
+          controls under the keyboard (measured in Pages, 2026-11-21). */}
+      <KeyboardPadding>
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={onClose} style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.35)" }} />
+          <View testID={testID} style={{ backgroundColor: colors.ground, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: metrics.space.lg, paddingBottom: metrics.space.lg + insets.bottom, width: "100%", maxWidth: metrics.maxMeasure, alignSelf: "center", maxHeight: "80%" }}>
+            {children}
+          </View>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardPadding>
     </Modal>
   );
 }

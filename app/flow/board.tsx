@@ -123,6 +123,13 @@ function Board({ projectId, initialScope }: { projectId: number; initialScope: S
   const role = project ? roleIn(project, me?.id) : "viewer";
   const powers = powersOf(role);
   const filtering = activeFilters(filter) > 0;
+  // Reorder mode writes the column's MANUAL order: a sort or a filter turned on
+  // while it is open would send the sorted order, or a subset, as the manual
+  // one (review FL2). It closes, and is never drawn open, while either is on.
+  const canReorder = sort === "manual" && !filtering;
+  useEffect(() => {
+    if (!canReorder) setReorderingColumn(null);
+  }, [canReorder]);
   const tint = colorHex(project?.color) ?? FLOW_COLOR;
 
   const createCard = useCreateCard(projectId, { onError: (e) => fail(t("flow.board.addFailed"))(e) });
@@ -147,7 +154,7 @@ function Board({ projectId, initialScope }: { projectId: number; initialScope: S
 
   const moveTo = (card: Card, columnId: number, where: "top" | "bottom", sprintId?: number | null) => {
     const count = cards.filter((c) => c.columnId === columnId && c.id !== card.id).length;
-    move.mutate({ card, toColumn: columnId, index: where === "top" ? 0 : count, sprintId });
+    move.mutate({ card, toColumn: columnId, index: where === "top" ? 0 : count, sprintId, scope: shownScope });
     // The card goes where the board is not looking: follow it, as Jira does.
     const target = columns.findIndex((c) => c.id === columnId);
     if (target >= 0 && !side) jump(target);
@@ -323,7 +330,7 @@ function Board({ projectId, initialScope }: { projectId: number; initialScope: S
               today={today}
               canEdit={powers.editCards}
               canManage={powers.manage}
-              reordering={reorderingColumn === item.id}
+              reordering={canReorder && reorderingColumn === item.id}
               refreshing={board.isRefetching && !board.isFetchingNextPage}
               onRefresh={() => void board.refetch()}
               onOpen={openCard}

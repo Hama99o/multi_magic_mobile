@@ -156,9 +156,15 @@ function CardView({ projectId, cardId }: { projectId: number; cardId: number }) 
         {
           text: t("fields.save"),
           onPress: () => {
-            if (title.trim()) update.mutate({ title: title.trim() });
-            leaving.current = true;
-            navigation.dispatch(e.data.action);
+            const leave = () => {
+              leaving.current = true;
+              navigation.dispatch(e.data.action);
+            };
+            // Leave only once the save has landed: leaving first lost both
+            // the title (rolled back) and the failure note, on an unmounted
+            // screen (review FL3). A refused save stays here and says so.
+            if (title.trim()) update.mutate({ title: title.trim() }, { onSuccess: leave });
+            else leave();
           },
         },
       ]);

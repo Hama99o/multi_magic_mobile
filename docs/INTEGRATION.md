@@ -341,3 +341,30 @@ and the gates were run on 1117884.
 | `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
 
 **Run 8: 0 failures** at bff410d. `feat/workspace-w1` stays held (G1).
+
+## Run 9 — 2026-11-21, run 8 plus Doc, Pages, field_ids echo, ff's flows
+
+| Branch @ head | Owner | What is new | Merge |
+|---|---|---|---|
+| `feat/tables-field-ids` @ 73cfe99 | 88 | the rows carry the server's `meta.field_ids` echo (capped at 200) | clean |
+| `feat/doc-tools` @ 6f2d597 | ee | the login dev-menu guard (and earlier doc fixes) | clean |
+| `feat/pages-parity` @ 790401a | ee | page editor toolbar over the keyboard, PDF offline, duration badge, the gear drag, prime + smoke, device evidence | clean |
+| `qa/ff-slot` @ 3cb51f6 | ff | the slot flows (Calendar, Contacts readiness, cleanups) | clean |
+
+The first gate run (16:20) was stopped behind a hung job holding the box lock
+(not ff's; reported to Hello) and re-run at 17:37.
+
+**One gate-script defect found and fixed:** the eslint list passed
+`src/vendor/pdfjs/pdfjs.ts`, which `.eslintrc.js` ignores; eslint warns
+"File ignored", and `--max-warnings 0` made that a failure of no code. The
+list now leaves out `src/vendor/` (what the config ignores); eslint re-run on
+the same tree: 0.
+
+| Gate (guarded.sh, Jest 1 worker, node 22.19.0) | Result |
+|---|---|
+| tsc | 0 errors |
+| eslint, the changed files (less the ignored vendor/) | 0 errors, 0 warnings |
+| Jest, full | 329 suites passed; **4114 / 4114 tests passed, 0 failed** |
+| `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
+
+**Run 9: 0 failures** at 20529af (code).

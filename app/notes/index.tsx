@@ -19,6 +19,7 @@
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ActivityIndicator, Modal, Platform, Pressable, RefreshControl, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
+import { SheetFrame } from "@/components/SheetFrame";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 
@@ -368,28 +369,25 @@ export default function NotesScreen() {
         }}
       />
       <EditLabelsSheet visible={editLabels} onClose={() => setEditLabels(false)} />
-      <Modal visible={moreOpen} transparent animationType="slide" onRequestClose={() => setMoreOpen(false)}>
-        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }} onPress={() => setMoreOpen(false)} accessibilityLabel={t("common.close")} />
-        <View testID="notes-selection-menu" style={{ backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingVertical: metrics.space.sm }}>
-          {selectionActions.map(({ testID, label, icon, onPress }) => (
-              <Pressable
-                key={testID}
-                testID={testID}
-                onPress={() => {
-                  setMoreOpen(false);
-                  // iOS presents one modal at a time: the confirm or the labels
-                  // sheet waits for this one to slide away.
-                  setTimeout(onPress, Platform.OS === "ios" ? 350 : 0);
-                }}
-                accessibilityRole="button"
-                style={{ minHeight: 52, flexDirection: "row", alignItems: "center", gap: 20, paddingHorizontal: metrics.space.lg }}
-              >
-                {icon}
-                <Text style={{ fontSize: 16 }}>{label}</Text>
-              </Pressable>
-            ))}
-        </View>
-      </Modal>
+      <SheetFrame visible={moreOpen} onClose={() => setMoreOpen(false)} closeLabel={t("common.close")} testID="notes-selection-menu" style={{ paddingVertical: metrics.space.sm }}>
+        {selectionActions.map(({ testID, label, icon, onPress }) => (
+            <Pressable
+              key={testID}
+              testID={testID}
+              onPress={() => {
+                setMoreOpen(false);
+                // iOS presents one modal at a time: the confirm or the labels
+                // sheet waits for this one to slide away.
+                setTimeout(onPress, Platform.OS === "ios" ? 350 : 0);
+              }}
+              accessibilityRole="button"
+              style={{ minHeight: 52, flexDirection: "row", alignItems: "center", gap: 20, paddingHorizontal: metrics.space.lg }}
+            >
+              {icon}
+              <Text style={{ fontSize: 16 }}>{label}</Text>
+            </Pressable>
+          ))}
+      </SheetFrame>
       {labelsNote ? (
         <NoteLabelsSheet
           visible

@@ -591,3 +591,21 @@ describe("the card's date (web NoteCard footer; parity #24)", () => {
     expect(date).toHaveStyle({ fontSize: 11 });
   });
 });
+
+describe("sheets on a tablet (Hello for the owner, 2026-11-21: full width at 800 dp)", () => {
+  it("Edit labels is a centred 560 dp card at 800 dp, a bottom sheet at 411", async () => {
+    const RN = require("react-native");
+    mock.onGet("/api/v1/note_app/tags").reply(200, { tags: [], meta: { pagy: { page: 1, pages: 1 } } });
+    const dims = jest.spyOn(RN, "useWindowDimensions");
+    for (const [w, expected] of [[800, 560], [411, "100%"]] as const) {
+      dims.mockReturnValue({ width: w, height: 1200, scale: 2, fontScale: 1 });
+      const view = open();
+      await screen.findByText("Pinned seed");
+      fireEvent.press(screen.getByTestId("notes-menu"));
+      fireEvent.press(await screen.findByTestId("drawer-edit-labels"));
+      expect(require("react-native").StyleSheet.flatten((await screen.findByTestId("labels-edit")).props.style).width).toBe(expected);
+      view.unmount();
+    }
+    dims.mockRestore();
+  });
+});

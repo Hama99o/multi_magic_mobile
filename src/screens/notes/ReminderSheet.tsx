@@ -4,7 +4,8 @@
  * (the calendar's WhenRow, no native picker), a repeat, and Remove.
  */
 import { useEffect, useState } from "react";
-import { Modal, Pressable, View } from "react-native";
+import { Pressable, View } from "react-native";
+import { SheetFrame } from "@/components/SheetFrame";
 import { useTranslation } from "react-i18next";
 
 import { Text } from "@/components/reusables/text";
@@ -66,40 +67,37 @@ export function ReminderSheet({
   const repeatLabel = { once: t("notes.reminder.once"), daily: t("notes.reminder.daily"), weekly: t("notes.reminder.weekly"), monthly: t("notes.reminder.monthly") };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)" }} onPress={onClose} accessibilityLabel={t("common.close")} />
-      <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: metrics.space.lg, gap: metrics.space.md }}>
-        <Text style={{ fontSize: 17, fontWeight: "700" }}>{t("notes.reminder.title")}</Text>
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {quickChoices().map((c) =>
-            chip(`reminder-quick-${c.key}`, quickLabel[c.key], dayKey(c.at) === day && timeKey(c.at) === time, () => {
-              setDay(dayKey(c.at));
-              setTime(timeKey(c.at));
-            }),
-          )}
-        </View>
-        <WhenRow name="reminder" label={t("notes.reminder.when")} day={day} onDay={setDay} time={time} onTime={setTime} open={open} onOpen={setOpen} minDay={dayKey(new Date())} />
-        <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-          {(["once", "daily", "weekly", "monthly"] as const).map((r) =>
-            chip(`reminder-repeat-${r}`, repeatLabel[r], (repeat ?? "once") === r, () => setRepeat(r === "once" ? null : r)),
-          )}
-        </View>
-        <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.md }}>
-          {value ? (
-            <Pressable testID="reminder-remove" onPress={onRemove} accessibilityRole="button" style={{ padding: 10 }}>
-              <Text style={{ color: colors.danger, fontWeight: "600" }}>{t("notes.reminder.remove")}</Text>
-            </Pressable>
-          ) : null}
-          <View style={{ flex: 1 }} />
-          <Pressable onPress={onClose} style={{ padding: 10 }}>
-            <Text tone="muted">{t("common.cancel")}</Text>
-          </Pressable>
-          <Pressable testID="reminder-save" onPress={() => onSave({ at: fromKeys(day, time), repeat })} accessibilityRole="button" style={{ padding: 10 }}>
-            <Text style={{ color: colors.accent, fontWeight: "700" }}>{t("common.save")}</Text>
-          </Pressable>
-        </View>
+    <SheetFrame visible={visible} onClose={onClose} closeLabel={t("common.close")} style={{ padding: metrics.space.lg, gap: metrics.space.md }}>
+      <Text style={{ fontSize: 17, fontWeight: "700" }}>{t("notes.reminder.title")}</Text>
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        {quickChoices().map((c) =>
+          chip(`reminder-quick-${c.key}`, quickLabel[c.key], dayKey(c.at) === day && timeKey(c.at) === time, () => {
+            setDay(dayKey(c.at));
+            setTime(timeKey(c.at));
+          }),
+        )}
       </View>
-    </Modal>
+      <WhenRow name="reminder" label={t("notes.reminder.when")} day={day} onDay={setDay} time={time} onTime={setTime} open={open} onOpen={setOpen} minDay={dayKey(new Date())} />
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
+        {(["once", "daily", "weekly", "monthly"] as const).map((r) =>
+          chip(`reminder-repeat-${r}`, repeatLabel[r], (repeat ?? "once") === r, () => setRepeat(r === "once" ? null : r)),
+        )}
+      </View>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.md }}>
+        {value ? (
+          <Pressable testID="reminder-remove" onPress={onRemove} accessibilityRole="button" style={{ padding: 10 }}>
+            <Text style={{ color: colors.danger, fontWeight: "600" }}>{t("notes.reminder.remove")}</Text>
+          </Pressable>
+        ) : null}
+        <View style={{ flex: 1 }} />
+        <Pressable onPress={onClose} style={{ padding: 10 }}>
+          <Text tone="muted">{t("common.cancel")}</Text>
+        </Pressable>
+        <Pressable testID="reminder-save" onPress={() => onSave({ at: fromKeys(day, time), repeat })} accessibilityRole="button" style={{ padding: 10 }}>
+          <Text style={{ color: colors.accent, fontWeight: "700" }}>{t("common.save")}</Text>
+        </Pressable>
+      </View>
+    </SheetFrame>
   );
 }
 

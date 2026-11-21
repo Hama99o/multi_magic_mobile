@@ -82,8 +82,7 @@ export default function CompressScreen() {
   ];
 
   return (
-    <Screen measure avoidKeyboard>
-      <AppHeader app="doc" title={t("doc.tools.compress.title")} back />
+    <Screen measure avoidKeyboard header={<AppHeader app="doc" title={t("doc.tools.compress.title")} back />}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: metrics.space.md, paddingVertical: metrics.space.md }}>
         {!file ? (
           <IntakeCard testID="doc-compress-intake" icon={Shrink} help={t("doc.compress.help")} limits={t("doc.intake.anyFile")} onAdd={intake.openSheet} />

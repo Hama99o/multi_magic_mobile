@@ -86,8 +86,7 @@ export default function MergeScreen() {
     ]);
 
   return (
-    <Screen measure>
-      <AppHeader app="doc" title={t("doc.tools.merge.title")} back />
+    <Screen measure header={<AppHeader app="doc" title={t("doc.tools.merge.title")} back />}>
       <ScrollView contentContainerStyle={{ gap: metrics.space.md, paddingVertical: metrics.space.md }}>
         {items.length === 0 ? (
           <IntakeCard testID="doc-merge-intake" icon={Combine} help={t("doc.merge.help")} limits={`${t("doc.intake.anyFile")} ${t("doc.intake.mergeLimit")}`} onAdd={intake.openSheet} />

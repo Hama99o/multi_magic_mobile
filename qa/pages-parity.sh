@@ -103,6 +103,13 @@ device() {
   # 300 MB: long enough to copy and to send that a kill lands inside each.
   adb -s "$SERIAL" shell "dd if=/dev/zero of=/sdcard/Download/qa-big.bin bs=1048576 count=300 2>/dev/null"
   adb -s "$SERIAL" shell "echo offline > /sdcard/Download/qa-offline.txt"
+  # Flow 40 (kill mid-COPY) needs a copy long enough to land a kill inside it:
+  # measured 2026-11-21, 300 MB was copied before "Preparing…" could be read.
+  # 1.5 GB, only when the device has room for it AND its copy (+500 MB margin).
+  local free_kb; free_kb=$(adb -s "$SERIAL" shell df /data | awk 'NR==2{print $4}')
+  if [ "${free_kb:-0}" -gt $(( (1536*2+500)*1024 )) ]; then
+    adb -s "$SERIAL" shell "dd if=/dev/zero of=/sdcard/Download/qa-huge.bin bs=1048576 count=1536 2>/dev/null"; echo "device: qa-huge.bin 1.5 GB"
+  else echo "device: no room for qa-huge.bin (free ${free_kb} KB): flow 40 will be NOT MEASURED"; fi
   adb -s "$SERIAL" shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download >/dev/null 2>&1
   rm -rf "$d"; echo "device: qa-folder (3 files + a hidden one), qa-big.bin 300 MB, qa-offline.txt in Download"
   fps_off
@@ -198,7 +205,7 @@ clean() {
   api DELETE /page_app/spaces/$space -o /dev/null -w "space $space: %{http_code}\n"
   api DELETE /note_app/notes/$note -o /dev/null -w "note $note: %{http_code}\n"
   unset TOK; rm -f "$STATE"
-  adb -s "$SERIAL" shell rm -rf /sdcard/Download/qa-folder /sdcard/Download/qa-big.bin /sdcard/Download/qa-offline.txt 2>/dev/null
+  adb -s "$SERIAL" shell rm -rf /sdcard/Download/qa-folder /sdcard/Download/qa-big.bin /sdcard/Download/qa-huge.bin /sdcard/Download/qa-offline.txt 2>/dev/null
   echo "clean: done (the uploads the flows made live in the deleted space)"
 }
 

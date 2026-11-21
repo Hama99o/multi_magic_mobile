@@ -22,7 +22,9 @@ tags: [pages, parity, kill]
     timeout: 20000
 - tapOn: "sdk_gphone.*"
 - tapOn: "Download"
-- tapOn: "qa-big.bin"
+# 1.5 GB (pages-parity.sh device): 300 MB was copied before "Preparing…"
+# could be read (2026-11-21), so the kill landed after the copy.
+- tapOn: "qa-huge.bin"
 - extendedWaitUntil:
     visible: "Preparing…"
     timeout: 20000

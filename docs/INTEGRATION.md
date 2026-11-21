@@ -321,3 +321,23 @@ path is left; the pane-nav codemod changes 0 files.
   evidence: the TestFlight tree is the tree that was QA'd. Trial-merged in a
   scratch branch only (`trial/workspace-w1`): clean at 9cc29da. Re-trialled
   when integration moves; conflicts go to 88.
+
+## Run 8 — 2026-11-21, run 7 plus Tables field_ids
+
+| Branch @ head | Owner | What is new | Merge |
+|---|---|---|---|
+| `feat/tables` @ 5583dc6 | 88 | the tablesApp load flake, by cause: a bounded 5 s `asyncUtilTimeout` in three suites (tests only) | clean |
+| `feat/tables-field-ids` @ 1117884 | 88 | a table asks for its drawn columns only; a record says "Loading the other columns…"; a server that ignores `field_ids` (prod until deployed) marks nothing partial | clean |
+
+The gates first started on field_ids 1d5e325; 88 superseded it with 1117884
+(the compat check) minutes later, so that run was stopped (no process left)
+and the gates were run on 1117884.
+
+| Gate (guarded.sh, Jest 1 worker, node 22.19.0) | Result |
+|---|---|
+| tsc | 0 errors |
+| eslint, 376 changed files | 0 errors, 0 warnings |
+| Jest, full | 327 suites passed; **4107 / 4107 tests passed, 0 failed** |
+| `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
+
+**Run 8: 0 failures** at bff410d. `feat/workspace-w1` stays held (G1).

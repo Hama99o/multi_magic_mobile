@@ -23,6 +23,7 @@ import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { BottomSheet } from "./drive/sheets";
 import { fetchArtifact, saveArtifact, shareArtifact } from "./transferFiles";
+import { followAfterClose } from "./transferFollow";
 
 const POLL_MS = 1000;
 
@@ -59,6 +60,13 @@ export function TransferSheet({ started, onClose }: { started: Transfer | null; 
 
   if (!started || !transfer) return null;
 
+  // Closed while an import or a copy still runs: keep following it, so the lists
+  // catch up when it is done (review 88, P7).
+  const close = () => {
+    followAfterClose(transfer, client);
+    onClose();
+  };
+
   const withArtifact = async (fn: (file: Awaited<ReturnType<typeof fetchArtifact>>) => Promise<string | null>, which: "share" | "save") => {
     if (!transfer.artifactUrl) return;
     setBusy(which);
@@ -94,7 +102,7 @@ export function TransferSheet({ started, onClose }: { started: Transfer | null; 
   };
 
   return (
-    <BottomSheet open onClose={onClose} testID="pages-transfer-sheet">
+    <BottomSheet open onClose={close} testID="pages-transfer-sheet">
       <View style={{ paddingHorizontal: metrics.space.xl, gap: metrics.space.md, paddingBottom: metrics.space.sm }}>
         <Text variant="label" accessibilityRole="header">
           {t(TITLES[transfer.kind])}

@@ -28,8 +28,7 @@ const SEARCH_DELAY_MS = 300;
 
 export default function SafeZoneScreen() {
   return (
-    <Screen measure>
-      <AppHeader app="safezone" />
+    <Screen measure header={<AppHeader app="safezone" />}>
       <VaultActions />
       <SafeZoneGate>
         <Vault />

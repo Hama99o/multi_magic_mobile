@@ -217,8 +217,7 @@ export default function Calendar() {
   const refreshControl = <RefreshControl refreshing={isRefetching} onRefresh={reload} tintColor={colors.inkMuted} />;
 
   return (
-    <Screen measure>
-      <AppHeader app="calendar" />
+    <Screen measure header={<AppHeader app="calendar" />}>
       {/* The app's own row: which view this is, the toggle, and refresh. */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
         <Text variant="label" tone="muted" style={{ flex: 1, fontSize: 15 }} numberOfLines={1} testID="calendar-view-title">

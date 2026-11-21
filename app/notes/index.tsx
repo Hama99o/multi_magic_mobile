@@ -195,8 +195,7 @@ export default function NotesScreen() {
   );
 
   return (
-    <Screen>
-      <AppHeader app="notes" />
+    <Screen header={<AppHeader app="notes" />}>
       {selecting ? (
         <View style={{ flexDirection: "row", alignItems: "center", paddingVertical: metrics.space.sm, gap: 4 }}>
           {iconKey("notes-selection-close", t("notes.grid.clearSelection"), () => setSelected([]), <X size={22} color={colors.ink} />)}

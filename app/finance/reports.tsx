@@ -65,8 +65,7 @@ export default function ReportsScreen() {
   const manyCurrencies = new Set((summary.data?.byCategory ?? []).map((s) => s.currency)).size > 1;
 
   return (
-    <Screen measure>
-      <AppHeader app="finance" title={t("finance.manage.reports.title")} back />
+    <Screen measure header={<AppHeader app="finance" title={t("finance.manage.reports.title")} back />}>
       <ScrollView refreshControl={<RefreshControl refreshing={summary.isRefetching} onRefresh={() => void summary.refetch()} tintColor={colors.inkMuted} />} contentContainerStyle={{ gap: metrics.space.lg, paddingTop: metrics.space.md, paddingBottom: metrics.space.xl }}>
         <PeriodSwitcher
           testID="finance-reports-period"

@@ -296,8 +296,7 @@ export default function Folder() {
   );
 
   return (
-    <Screen measure={false}>
-      <AppHeader app="pages" title={title || undefined} back />
+    <Screen measure={false} header={<AppHeader app="pages" title={title || undefined} back />}>
       <View style={{ flex: 1 }}>
         <NodeCollection
           testID="pages-folder-list"

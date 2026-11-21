@@ -78,8 +78,7 @@ export default function LoanScreen() {
   };
 
   return (
-    <Screen measure>
-      <AppHeader app="finance" title={loan?.contactName ?? t("finance.tabs.loans")} back onBack={back} />
+    <Screen measure header={<AppHeader app="finance" title={loan?.contactName ?? t("finance.tabs.loans")} back onBack={back} />}>
       {/* The loan's own row, under the shared header: edit and delete. */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
         <Pressable

@@ -24,8 +24,7 @@ export default function ContactsDuplicates() {
   const groups = query.data ?? [];
 
   return (
-    <Screen measure>
-      <AppHeader app="contacts" title={t("contacts.duplicates.title")} back />
+    <Screen measure header={<AppHeader app="contacts" title={t("contacts.duplicates.title")} back />}>
       <LoadFailure error={query.error} loadFailed={t("contacts.duplicates.loadFailed")} hasData={Boolean(query.data)} updatedAt={query.dataUpdatedAt} onRetry={() => void query.refetch()} testID="contacts-duplicates-load-failed" />
       {!query.data && !query.error ? <ActivityIndicator style={{ marginTop: metrics.space.xl }} /> : null}
       <ScrollView contentContainerStyle={{ gap: metrics.space.md, paddingTop: metrics.space.md, paddingBottom: 48 }}>

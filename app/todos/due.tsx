@@ -71,8 +71,7 @@ export default function DueScreen() {
   const opened = openId == null ? null : (tasks.find((x) => x.id === openId) ?? null);
 
   return (
-    <Screen measure>
-      <AppHeader app="todos" title={t(`todos.views.${view}`)} back />
+    <Screen measure header={<AppHeader app="todos" title={t(`todos.views.${view}`)} back />}>
 
       <View accessibilityRole="tablist" style={{ flexDirection: "row", backgroundColor: colors.surface, borderRadius: metrics.radius.md, padding: metrics.space.xs, marginTop: metrics.space.md, marginBottom: metrics.space.md }}>
         {DUE_VIEWS.map((v) => {

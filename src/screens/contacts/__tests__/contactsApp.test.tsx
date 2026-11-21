@@ -8,7 +8,7 @@
  * (`docs/QA_REPORT_<date>.md`, the checklist there).
  */
 import MockAdapter from "axios-mock-adapter";
-import { Alert, Linking } from "react-native";
+import { Alert, Linking, StyleSheet, type StyleProp, type ViewStyle } from "react-native";
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
@@ -150,6 +150,45 @@ describe("the list", () => {
     expect(await screen.findByTestId("contacts-section-★")).toBeTruthy();
     for (const key of ["A", "B", "Z"]) expect(screen.getByTestId(`contacts-section-${key}`)).toBeTruthy();
     expect(screen.getByTestId("contacts-row-3")).toBeTruthy();
+  });
+
+  // Hidden criterion (Hello, 2026-11-21): a 200 % system font. Each row's
+  // height is FIXED (getItemLayout, so a jump to Z never measures), but Android
+  // scales fontSize AND lineHeight: the name (body, 22) and the subtitle
+  // (caption, 17) need 78 dp at 200 % in a 64 dp row, and the header's label
+  // (18) needs 36 in 32. The text spilled into the next row.
+  it("at a 200 % system font each row holds its two lines and each header its label", async () => {
+    const RN = require("react-native");
+    const flat = (el: { props: Record<string, unknown> }) => (StyleSheet.flatten(el.props.style as StyleProp<ViewStyle>) ?? {}) as { height: number };
+    jest.spyOn(RN, "useWindowDimensions").mockReturnValue({ width: 411, height: 900, scale: 2.6, fontScale: 2 });
+    mock.onGet(BASE).reply(200, page([contact({ id: 1, firstname: "Zara", lastname: "" })]));
+    renderScreen(<Contacts />);
+    const row = await screen.findByTestId("contacts-row-1");
+    expect(flat(row).height).toBeGreaterThanOrEqual((22 + 17) * 2);
+    const header = screen.getByTestId("contacts-section-Z-frame");
+    expect(flat(header).height).toBeGreaterThanOrEqual(18 * 2);
+  });
+
+  // The A–Z strip: 27 letters on 15 dp lines are ~400 dp at 100 % and ~810 at
+  // 200 %, taller than a phone's list, so the last letters fell off the screen
+  // and could not be reached. A scrub index does not grow with the system font
+  // (iOS's own section index ignores Dynamic Type); the list it scrubs does.
+  it("at a 200 % system font the A–Z index keeps every letter on screen (capped at 120 %)", async () => {
+    const RN = require("react-native");
+    jest.spyOn(RN, "useWindowDimensions").mockReturnValue({ width: 411, height: 900, scale: 2.6, fontScale: 2 });
+    mock.onGet(BASE).reply(200, page("ABCDEFGHIJ".split("").map((l, i) => contact({ id: i + 1, firstname: `${l}ara`, lastname: "" }))));
+    renderScreen(<Contacts />);
+    const letter = await screen.findByTestId("contacts-index-A");
+    expect(letter.props.maxFontSizeMultiplier).toBeLessThanOrEqual(1.2);
+  });
+
+  it("at 100 % the rows and headers keep their 64 and 32 dp", async () => {
+    const RN = require("react-native");
+    const flat = (el: { props: Record<string, unknown> }) => (StyleSheet.flatten(el.props.style as StyleProp<ViewStyle>) ?? {}) as { height: number };
+    jest.spyOn(RN, "useWindowDimensions").mockReturnValue({ width: 411, height: 900, scale: 2.6, fontScale: 1 });
+    mock.onGet(BASE).reply(200, page([contact({ id: 1, firstname: "Zara", lastname: "" })]));
+    renderScreen(<Contacts />);
+    expect(flat(await screen.findByTestId("contacts-row-1")).height).toBe(64);
   });
 
   it("an empty book says so and offers the two ways in", async () => {

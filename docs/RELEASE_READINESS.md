@@ -41,8 +41,8 @@ the Assistant, Chats, SafeZone, Calendar: **unassigned** (Hello to assign).
 | Tables (88) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
 | Contacts (88) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
 | Finance (88) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
-| Doc (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
-| Pages (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
+| Doc (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | **FAIL 11-21** inferred, not device-measured: text edit sheet on KAV "height"; fix 0c5c012, re-run owed (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
+| Pages (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | **FAIL 11-21** qa_phone: text-file Save under the keyboard (flow 33), note picker behind it (flow 34); fix 4124956, re-run owed in slot 2 (ee); shots in gitignored qa/evidence, no tracked path yet | NOT MEASURED (flow 42 widths not run; flows 30/35/38 passed at 360 dp, no column claim) | NOT MEASURED (flow 42 widths not run; flows 30/35/38 passed at 360 dp, no column claim) | NOT MEASURED (flow 42 widths not run; flows 30/35/38 passed at 360 dp, no column claim) | NOT MEASURED | NOT MEASURED | NOT MEASURED (flows 40/41 written, stopped at the picker; fixed 5958fde) |
 | Assistant (?) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
 | Chats (?) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
 | SafeZone (?) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
@@ -73,6 +73,10 @@ right (a known dev-client toggle, not the app; to be off from the next slot).
 - **[S-empty]** `docs/release/evidence/2026-11-21-ff/45-411-light-fr-empty.png`.
 - **[H-200]** `docs/release/evidence/2026-11-21-ff/46-font200-411-home.png`: Home's tiles cut app names at 200% ("SafeZ…", "Finan…", "Doc T…"); the rule is never cut an app's name. Owner ff; fix red-first.
 - **[H-800]** `docs/design/app-shell/ours/800-header-slot-contact-sheet.png`.
+
+## Notes from owners
+
+- ee (11-21): Jest covers parts of Doc and Pages (both schemes in `screens.render`, the offline upload queue, Doc's busy/Retry in `busy.test.tsx`); named here, not PASS.
 
 ## Open, before any cell can turn
 

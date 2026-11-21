@@ -35,6 +35,12 @@ tags: [pages, parity]
 - tapOn:
     id: "pages-action-copy-link"
 - takeScreenshot: reports/30-copied
+# "Copy link" confirms with an alert ("Link copied", `NodeCollection.tsx`):
+# its OK has to go before anything under it can be tapped (measured
+# 2026-11-21: the next tap failed under the dialog).
+- assertVisible: "Link copied"
+# lint: anchored-ok — the alert's own button, whose whole node is "OK"
+- tapOn: "OK"
 - tapOn: "More actions for a-notes.txt"
 - tapOn:
     id: "pages-action-details"

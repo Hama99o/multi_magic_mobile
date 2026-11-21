@@ -1,0 +1,119 @@
+# GLOBAL SEARCH, arrived at the way a person arrives (docs/design/search/SPEC.md).
+#
+# Entry points (Hello's decision, SPEC §C 0): on a phone the search field at
+# the top of Home; on a tablet (>= 800 dp) the Search key in the header. The
+# Apps sheet's "Search everything" row is the third way in.
+#
+# Searches QUERY and opens the Notes hit NOTE. Run on the local demo stack
+# (:3020, invented data: QUERY=courses NOTE="Liste de courses"). On :3001 use
+# QUERY=qa-shot only: the QA account holds copies of real notes, which must
+# never be in a screenshot. Opens one hit and comes back. A query
+# that matches nothing shows the empty state. WRITES NOTHING on the server
+# (the recents are on the phone, AsyncStorage).
+#
+# Run by the slot driver at 360, 411 and 800 dp, light and dark, en and fr:
+# W, THEME and LANG name the shots (`docs/design/search/ours/`).
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: the entry for the width, the server's hits under their group
+#   heading, opening a Notes hit, the empty state, the Apps-sheet row.
+# DOES NOT COVER: a failed request (21-faults' proxy owns that), every group
+#   (the QA account has no SafeZone or Doc rows named "qa-shot").
+appId: ${APP_ID}
+tags:
+  - search
+---
+# NOT login.yaml's last step: at 360 dp and at 200 % Home's Assistant tile is
+# below the fold and login taps it (device, 2026-11-21). The slot driver signs
+# in first (set-language), so the app reopens signed in: Home, or inside the
+# last app, whose header has the Home button.
+- launchApp
+- openLink: ${DEEP_LINK}
+# The app reopens in its last place, maybe a pushed screen (a back arrow,
+# no Home button): Back until the Home button shows.
+- extendedWaitUntil:
+    visible:
+      id: "app-header"
+    timeout: 120000
+- repeat:
+    while:
+      notVisible:
+        id: "header-home"
+    times: 4
+    commands:
+      - back
+- runFlow:
+    when:
+      notVisible:
+        id: "home-greeting"
+    commands:
+      - tapOn:
+          id: "header-home"
+- extendedWaitUntil:
+    visible:
+      id: "home-greeting"
+    timeout: 30000
+
+# Phone: the field on Home. Tablet: the header's Search key.
+- runFlow:
+    when:
+      visible:
+        id: "home-search"
+    commands:
+      - tapOn:
+          id: "home-search"
+- runFlow:
+    when:
+      notVisible:
+        id: "search-input"
+    commands:
+      - tapOn:
+          id: "header-search"
+- extendedWaitUntil:
+    visible:
+      id: "search-input"
+    timeout: 15000
+- takeScreenshot: reports/45-${W}-${THEME}-${LANG}-open
+
+- inputText: "${QUERY}"
+- extendedWaitUntil:
+    visible:
+      id: "search-section-notes"
+    timeout: 30000
+- assertVisible: "${NOTE}"
+- takeScreenshot: reports/45-${W}-${THEME}-${LANG}-hits
+- tapOn: "${NOTE}"
+- extendedWaitUntil:
+    visible:
+      id: "note-toolbar"
+    timeout: 30000
+- tapOn:
+    id: "note-edit-back"
+- extendedWaitUntil:
+    visible:
+      id: "search-input"
+    timeout: 15000
+
+# Nothing matches: the empty state names the query.
+- tapOn:
+    id: "search-clear"
+- inputText: "zqx-qa-none"
+- extendedWaitUntil:
+    visible:
+      id: "search-empty"
+    timeout: 30000
+- takeScreenshot: reports/45-${W}-${THEME}-${LANG}-empty
+- tapOn:
+    id: "search-cancel"
+
+# The third way in: the Apps sheet's first row.
+- tapOn:
+    id: "header-apps"
+- tapOn:
+    id: "switcher-global-search"
+- extendedWaitUntil:
+    visible:
+      id: "search-input"
+    timeout: 15000
+- tapOn:
+    id: "search-cancel"

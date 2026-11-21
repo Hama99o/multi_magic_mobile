@@ -1,0 +1,32 @@
+# Cleanup for 48: the contact it made, in the trash, deleted FOR EVER by the id
+# the slot driver read (read-only) in 48's window. Runs only when that count
+# is exactly one.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: nothing new; it puts the QA account back.
+appId: ${APP_ID}
+tags:
+  - contacts
+---
+# The trash by the app's own route: this is cleanup, not a path under test.
+- openLink: "multimagic://contacts/trash"
+# lint: dbid-ok — THIS contact is the subject: the one 48 made, by its id.
+- extendedWaitUntil:
+    visible:
+      id: "contacts-trash-delete-${CONTACT_ID}"
+    timeout: 30000
+- tapOn:
+    id: "contacts-trash-delete-${CONTACT_ID}"
+# The dialog's words, in English or French (the run may end on either):
+# "Delete [qa] Readiness for ever?" / its French, then "Delete for ever".
+# lint: regex-ok — an alternation on purpose (en|fr).
+- extendedWaitUntil:
+    visible: "(Delete \\[qa\\] Readiness for ever\\?|Supprimer \\[qa\\] Readiness définitivement.\\?)"
+    timeout: 10000
+# lint: regex-ok — the button, en or fr, either case.
+- tapOn: "(Delete for ever|DELETE FOR EVER|Supprimer définitivement|SUPPRIMER DÉFINITIVEMENT)"
+# lint: dbid-ok — the same contact, gone.
+- extendedWaitUntil:
+    notVisible:
+      id: "contacts-trash-row-${CONTACT_ID}"
+    timeout: 20000

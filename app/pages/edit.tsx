@@ -110,7 +110,7 @@ export default function PageEditorScreen() {
   });
 
   /** True when what is on screen is on the server (saved now, or nothing to send). */
-  const saveNow = useCallback(async (): Promise<boolean> => {
+  const saveOnce = useCallback(async (): Promise<boolean> => {
     if (timer.current) {
       clearTimeout(timer.current);
       timer.current = null;
@@ -139,6 +139,24 @@ export default function PageEditorScreen() {
       return false;
     }
   }, [engine, openedHtml, saving]);
+
+  // One save at a time, in order (review 88, S3): a save started while the one
+  // before it was on its way could reach the server first, and the older body
+  // would win. Each waits for the previous, then sends what is on screen NOW.
+  const inFlight = useRef<Promise<boolean> | null>(null);
+  const saveNow = useCallback(async (): Promise<boolean> => {
+    const before = inFlight.current;
+    const run = (async () => {
+      if (before) await before.catch(() => false);
+      return saveOnce();
+    })();
+    inFlight.current = run;
+    try {
+      return await run;
+    } finally {
+      if (inFlight.current === run) inFlight.current = null;
+    }
+  }, [saveOnce]);
 
   const changed = () => {
     setState("pending");

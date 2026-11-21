@@ -1,0 +1,33 @@
+# Readiness pictures, Chats: the list (and the first thread, when there is one)
+# at ${SHOT} (360, 411, 800, 411-dark, 411-font200), a relaunch per setting.
+#
+# COVERS: arriving; the shots are for a person.
+# CANNOT TELL YOU: anything a screenshot is not read for.
+appId: ${APP_ID}
+tags: [chats, readiness, shots]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-chats"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-chats"
+- extendedWaitUntil:
+    visible:
+      id: "chats-list"
+    timeout: 30000
+- takeScreenshot: reports/68-chats-list-${SHOT}
+- runFlow:
+    when:
+      notVisible:
+        id: "chats-empty"
+    commands:
+      # lint: dbid-ok — any thread is the subject; the QA account's own list
+      - tapOn:
+          id: "chat-row-.*"
+          index: 0
+      - takeScreenshot: reports/68-chats-thread-${SHOT}

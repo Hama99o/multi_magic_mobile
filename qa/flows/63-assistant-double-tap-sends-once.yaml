@@ -1,0 +1,54 @@
+# Readiness "2×tap", Assistant: a double tap on Send asks ONCE. In a new
+# conversation of the QA account's own (never his), deleted at the end.
+#
+# COVERS: one question bubble after a double tap (no second instance of the
+# text), then the conversation deleted through its own menu.
+# CANNOT TELL YOU: the server side (one request); the driver does not count it.
+appId: ${APP_ID}
+tags: [assistant, readiness, writes]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn:
+    id: "sessions-new"
+# Name it, so the cleanup deletes THIS conversation and no other (flow 04's way).
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn: "Options for New chat"
+- tapOn:
+    id: "session-menu-rename"
+- tapOn:
+    id: "rename-input"
+- eraseText: 60
+- inputText: "[qa] 2x target"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "\\[qa\\] 2x target.*"
+    timeout: 20000
+- tapOn: "\\[qa\\] 2x target.*"
+- tapOn:
+    id: "composer-input"
+- inputText: "[qa-2x] what day is it"
+- doubleTapOn:
+    id: "composer-send"
+- extendedWaitUntil:
+    visible: "\\[qa-2x\\] what day is it"
+    timeout: 20000
+- assertNotVisible:
+    text: "\\[qa-2x\\] what day is it"
+    index: 1
+- takeScreenshot: reports/63-assistant-double-tap
+# Cleanup: exactly this conversation.
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn: "Options for \\[qa\\] 2x target"
+- tapOn:
+    id: "session-menu-delete"
+- assertVisible:
+    id: "delete-conversation-confirm"
+- tapOn:
+    id: "delete-conversation-yes"
+- extendedWaitUntil:
+    notVisible: "\\[qa\\] 2x target.*"
+    timeout: 20000

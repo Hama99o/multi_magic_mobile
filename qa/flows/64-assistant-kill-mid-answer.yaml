@@ -1,0 +1,61 @@
+# Readiness "Kill", Assistant: ask, kill the app while it thinks, relaunch;
+# the question is still there (and the answer, when it has come). Deleted at
+# the end, as flow 63.
+#
+# COVERS: a question survives a kill mid-answer.
+# CANNOT TELL YOU: whether the answer was generated once or twice.
+appId: ${APP_ID}
+tags: [assistant, readiness, kill, writes]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn:
+    id: "sessions-new"
+# Name it, so the cleanup deletes THIS conversation and no other (flow 04's way).
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn: "Options for New chat"
+- tapOn:
+    id: "session-menu-rename"
+- tapOn:
+    id: "rename-input"
+- eraseText: 60
+- inputText: "[qa] kill target"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "\\[qa\\] kill target.*"
+    timeout: 20000
+- tapOn: "\\[qa\\] kill target.*"
+- tapOn:
+    id: "composer-input"
+- inputText: "[qa-kill] name three colours"
+- tapOn:
+    id: "composer-send"
+- killApp
+- launchApp:
+    stopApp: false
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-open-sessions"
+- extendedWaitUntil:
+    visible: "\\[qa\\] kill target.*"
+    timeout: 30000
+- tapOn: "\\[qa\\] kill target.*"
+- extendedWaitUntil:
+    visible: "\\[qa-kill\\] name three colours"
+    timeout: 30000
+- takeScreenshot: reports/64-assistant-after-kill
+# Cleanup: exactly this conversation.
+- tapOn:
+    id: "chat-open-sessions"
+- tapOn: "Options for \\[qa\\] kill target"
+- tapOn:
+    id: "session-menu-delete"
+- assertVisible:
+    id: "delete-conversation-confirm"
+- tapOn:
+    id: "delete-conversation-yes"
+- extendedWaitUntil:
+    notVisible: "\\[qa\\] kill target.*"
+    timeout: 20000

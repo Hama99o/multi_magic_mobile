@@ -1,0 +1,11 @@
+# Readiness "States", Assistant: the memory review card (88, 8a9488e) when the
+# QA account has reviewable facts, or its absence (an empty state, photographed,
+# not asserted into). Nothing is answered: an answer changes the account.
+#
+# COVERS: the card or its empty state, on a device.
+# CANNOT TELL YOU: what an answer does (Jest, 88's tests).
+appId: ${APP_ID}
+tags: [assistant, readiness]
+---
+- runFlow: login.yaml
+- takeScreenshot: reports/65-assistant-memory-state

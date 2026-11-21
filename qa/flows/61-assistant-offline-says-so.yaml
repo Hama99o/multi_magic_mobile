@@ -1,0 +1,14 @@
+# Readiness "Off", Assistant: `ac-readiness.sh` turns wifi and data OFF before
+# this flow and back on after. The composer says it is offline.
+#
+# COVERS: the composer's offline state on screen.
+# CANNOT TELL YOU: what happens to a question typed offline.
+appId: ${APP_ID}
+tags: [assistant, readiness, offline]
+---
+- runFlow: login.yaml
+- extendedWaitUntil:
+    visible:
+      id: "composer-offline"
+    timeout: 30000
+- takeScreenshot: reports/61-assistant-offline

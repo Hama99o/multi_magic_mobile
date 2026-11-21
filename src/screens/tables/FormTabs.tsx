@@ -29,7 +29,8 @@ import { FORM_LANGUAGES, moveQuestion, parseEmails, questionFor, requiredState, 
 import { OPTION_PALETTE } from "./palette";
 import { LoadFailure } from "@/components/LoadFailure";
 
-type Save = (c: FormChanges) => void;
+/** A change, or one built from the form as the last save left it (`useFormEdit`). */
+type Save = (c: FormChanges | ((current: TableForm) => FormChanges)) => void;
 
 function useInputStyle() {
   const colors = useColors();
@@ -84,8 +85,14 @@ export function QuestionsTab({ form, save }: { form: TableForm; save: Save }) {
   const metrics = useMetrics();
   const { t } = useTranslation();
   const byId = new Map(form.availableFields.map((f) => [f.id, f]));
-  const set = (questions: FormQuestion[]) => save({ questions });
-  const update = (i: number, patch: Partial<FormQuestion>) => set(form.questions.map((q, j) => (j === i ? { ...q, ...patch } : q)));
+  // Built from the form as the last save left it, never from this render's copy: two quick edits keep both (M3).
+  const set = (next: (questions: FormQuestion[]) => FormQuestion[]) => save((current) => ({ questions: next(current.questions) }));
+  const move = (fieldId: number, by: -1 | 1) =>
+    set((qs) => {
+      const at = qs.findIndex((x) => x.fieldId === fieldId);
+      return at < 0 ? qs : moveQuestion(qs, at, by);
+    });
+  const update = (fieldId: number, patch: Partial<FormQuestion>) => set((qs) => qs.map((q) => (q.fieldId === fieldId ? { ...q, ...patch } : q)));
   const unused = unusedFields(form);
 
   return (
@@ -110,21 +117,21 @@ export function QuestionsTab({ form, save }: { form: TableForm; save: Save }) {
                   {field ? `${name} · ${t(`fields.types.${field.fieldType}`, { defaultValue: field.fieldType })}` : name}
                 </Text>
               </View>
-              <Pressable testID={`tables-form-question-${i}-up`} disabled={i === 0} onPress={() => set(moveQuestion(form.questions, i, -1))} accessibilityRole="button" accessibilityLabel={t("tables.form.up", { question: q.label || name })} style={{ width: 36, height: 44, alignItems: "center", justifyContent: "center", opacity: i === 0 ? 0.3 : 1 }}>
+              <Pressable testID={`tables-form-question-${i}-up`} disabled={i === 0} onPress={() => move(q.fieldId, -1)} accessibilityRole="button" accessibilityLabel={t("tables.form.up", { question: q.label || name })} style={{ width: 36, height: 44, alignItems: "center", justifyContent: "center", opacity: i === 0 ? 0.3 : 1 }}>
                 <ArrowUp size={16} color={colors.ink} />
               </Pressable>
-              <Pressable testID={`tables-form-question-${i}-down`} disabled={i === form.questions.length - 1} onPress={() => set(moveQuestion(form.questions, i, 1))} accessibilityRole="button" accessibilityLabel={t("tables.form.down", { question: q.label || name })} style={{ width: 36, height: 44, alignItems: "center", justifyContent: "center", opacity: i === form.questions.length - 1 ? 0.3 : 1 }}>
+              <Pressable testID={`tables-form-question-${i}-down`} disabled={i === form.questions.length - 1} onPress={() => move(q.fieldId, 1)} accessibilityRole="button" accessibilityLabel={t("tables.form.down", { question: q.label || name })} style={{ width: 36, height: 44, alignItems: "center", justifyContent: "center", opacity: i === form.questions.length - 1 ? 0.3 : 1 }}>
                 <ArrowDown size={16} color={colors.ink} />
               </Pressable>
-              <Pressable testID={`tables-form-question-${i}-remove`} onPress={() => set(form.questions.filter((_, j) => j !== i))} accessibilityRole="button" accessibilityLabel={t("tables.form.remove", { question: q.label || name })} style={{ width: 36, height: 44, alignItems: "center", justifyContent: "center" }}>
+              <Pressable testID={`tables-form-question-${i}-remove`} onPress={() => set((qs) => qs.filter((x) => x.fieldId !== q.fieldId))} accessibilityRole="button" accessibilityLabel={t("tables.form.remove", { question: q.label || name })} style={{ width: 36, height: 44, alignItems: "center", justifyContent: "center" }}>
                 <X size={16} color={colors.inkMuted} />
               </Pressable>
             </View>
-            <SavedText testID={`tables-form-question-${i}-label`} label={t("tables.form.label")} value={q.label ?? ""} placeholder={name} maxLength={200} onSave={(v) => update(i, { label: v.trim() || null })} />
-            <SavedText testID={`tables-form-question-${i}-help`} label={t("tables.form.help")} value={q.help ?? ""} maxLength={1000} multiline onSave={(v) => update(i, { help: v.trim() || null })} />
-            {field && TAKES_PLACEHOLDER.includes(field.fieldType) ? <SavedText testID={`tables-form-question-${i}-placeholder`} label={t("tables.form.placeholder")} value={q.placeholder ?? ""} maxLength={120} onSave={(v) => update(i, { placeholder: v.trim() || null })} /> : null}
-            <Toggle testID={`tables-form-question-${i}-required`} label={req.locked ? t("tables.form.requiredByColumn") : t("tables.form.required")} value={req.on} disabled={req.locked} onChange={(required) => update(i, { required })} />
-            <Toggle testID={`tables-form-question-${i}-hidden`} label={t("tables.form.hidden")} value={q.hidden} onChange={(hidden) => update(i, { hidden })} />
+            <SavedText testID={`tables-form-question-${i}-label`} label={t("tables.form.label")} value={q.label ?? ""} placeholder={name} maxLength={200} onSave={(v) => update(q.fieldId, { label: v.trim() || null })} />
+            <SavedText testID={`tables-form-question-${i}-help`} label={t("tables.form.help")} value={q.help ?? ""} maxLength={1000} multiline onSave={(v) => update(q.fieldId, { help: v.trim() || null })} />
+            {field && TAKES_PLACEHOLDER.includes(field.fieldType) ? <SavedText testID={`tables-form-question-${i}-placeholder`} label={t("tables.form.placeholder")} value={q.placeholder ?? ""} maxLength={120} onSave={(v) => update(q.fieldId, { placeholder: v.trim() || null })} /> : null}
+            <Toggle testID={`tables-form-question-${i}-required`} label={req.locked ? t("tables.form.requiredByColumn") : t("tables.form.required")} value={req.on} disabled={req.locked} onChange={(required) => update(q.fieldId, { required })} />
+            <Toggle testID={`tables-form-question-${i}-hidden`} label={t("tables.form.hidden")} value={q.hidden} onChange={(hidden) => update(q.fieldId, { hidden })} />
           </View>
         );
       })}
@@ -133,7 +140,7 @@ export function QuestionsTab({ form, save }: { form: TableForm; save: Save }) {
           <Text variant="label">{t("tables.form.add")}</Text>
           <View style={{ flexDirection: "row", flexWrap: "wrap", gap: metrics.space.xs }}>
             {unused.map((f) => (
-              <Pressable key={f.id} testID={`tables-form-add-${f.id}`} onPress={() => set([...form.questions, questionFor(f)])} accessibilityRole="button" accessibilityLabel={t("tables.form.addOne", { column: f.name })} style={{ flexDirection: "row", alignItems: "center", gap: 4, minHeight: 36, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, borderWidth: 1, borderColor: colors.border }}>
+              <Pressable key={f.id} testID={`tables-form-add-${f.id}`} onPress={() => set((qs) => (qs.some((x) => x.fieldId === f.id) ? qs : [...qs, questionFor(f)]))} accessibilityRole="button" accessibilityLabel={t("tables.form.addOne", { column: f.name })} style={{ flexDirection: "row", alignItems: "center", gap: 4, minHeight: 36, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, borderWidth: 1, borderColor: colors.border }}>
                 <Plus size={14} color={colors.accent} />
                 <Text variant="label">{f.name}</Text>
               </Pressable>

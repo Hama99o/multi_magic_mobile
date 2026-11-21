@@ -114,6 +114,8 @@ function literalKeys(namespaces: Set<string>): Map<string, string> {
  * to templates only.
  */
 const COMPOSED = [
+  // A password's strength badge, t(`safezone.strength.${strength}`) (app/safezone/index.tsx).
+  ...["weak", "fair", "strong"].map((v) => `safezone.strength.${v}`),
   // `sessionEndSentence` in auth.store.ts: t(`session.${reason}`), reason is
   // `SessionEndReason` ("expired" | "revoked") in api/http.ts.
   "session.expired",

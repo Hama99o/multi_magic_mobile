@@ -85,7 +85,7 @@ describe("display", () => {
     expect(maskedTail("4242")).toBe("•••• 4242");
     expect(maskedTail(null)).toBe("••••••••");
     expect(rowSubtitle({ kind: "payment_cards", id: 1, name: "V", cardType: null, expiry: null, last4: "4242", updatedAt: null }, (k) => k)).toBe("•••• 4242");
-    expect(rowSubtitle({ kind: "passwords", id: 1, title: "M", username: null, email: "a@b.test", link: null, weak: null, updatedAt: null }, (k) => k)).toBe("a@b.test");
+    expect(rowSubtitle({ kind: "passwords", id: 1, title: "M", username: null, email: "a@b.test", link: null, weak: null, strength: null, updatedAt: null }, (k) => k)).toBe("a@b.test");
   });
 
   it("an identity is expired the day after its date", () => {

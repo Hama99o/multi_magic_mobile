@@ -72,7 +72,7 @@ describe("lists: the phone masks, whatever the server sends", () => {
     holdsNoSecret(page);
     expect(page.rows[0]).toEqual({
       kind: "passwords", id: 11, title: "Mail", username: "qa-user", email: "qa@example.test",
-      link: "https://mail.example.test", weak: null, updatedAt: "2026-11-10T10:00:00Z",
+      link: "https://mail.example.test", weak: null, strength: null, updatedAt: "2026-11-10T10:00:00Z",
     });
   });
 
@@ -105,6 +105,20 @@ describe("lists: the phone masks, whatever the server sends", () => {
     });
     expect((await safezoneApi.list("passwords", { token: "t" })).rows[0]).toMatchObject({ weak: true });
     expect((await safezoneApi.list("payment_cards", { token: "t" })).rows[0]).toMatchObject({ last4: "1881" });
+  });
+
+  it("reads the strength level (weak / fair / strong); an older server's password_weak alone still reads as weak", async () => {
+    mock.onGet(`${BASE}/passwords`).reply(200, {
+      passwords: [
+        { ...plaintextPassword, id: 1, password: null, password_weak: false, password_strength: "strong" },
+        { ...plaintextPassword, id: 2, password: null, password_weak: false, password_strength: "fair" },
+        { ...plaintextPassword, id: 3, password: null, password_weak: true },
+        { ...plaintextPassword, id: 4, password: null, password_weak: false, password_strength: "unheard-of" },
+      ],
+      meta: pagy(),
+    });
+    const rows = (await safezoneApi.list("passwords", { token: "t" })).rows;
+    expect(rows.map((r) => (r.kind === "passwords" ? r.strength : "-"))).toEqual(["strong", "fair", "weak", null]);
   });
 
   it("a short secret gives no last four (nothing to hint from)", () => {

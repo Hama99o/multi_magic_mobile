@@ -214,6 +214,22 @@ describe("the gate", () => {
     expect(screen.queryByTestId("safezone-card-expiry-21")).toBeNull();
   });
 
+  it.each([
+    ["strong", "Strong"],
+    ["fair", "Fair"],
+    ["weak", "Weak"],
+  ])("a password row says how strong it is, from the server's password_strength (%s)", async (strength, label) => {
+    // The masked list carries password_strength next to password_weak (multi-magic-83, 26ce8e01).
+    mock.resetHandlers();
+    mock.onGet(`${BASE}/passwords`).reply(200, list("passwords", [{ ...password, password: null, password_weak: strength === "weak", password_strength: strength }]));
+    mock.onGet(`${BASE}/payment_cards`).reply(200, list("payment_cards", [card]));
+    mock.onGet(`${BASE}/identities`).reply(200, list("identities", []));
+    mock.onPost(`${BASE}/pin/refresh`).reply(200, { unlock_token: "tok-r", expires_in: 120 });
+    await unlockVault();
+    expect(screen.getByTestId("safezone-strength-11")).toHaveTextContent(label);
+    expect(screen.queryAllByTestId(/^safezone-(weak|strength)-11$/)).toHaveLength(1); // one badge, never two
+  });
+
   it("the dots are cleared the moment the PIN is sent", async () => {
     mock.onGet(`${BASE}/pin`).reply(200, status());
     mock.onPost(`${BASE}/pin/unlock`).reply(403, { error: "wrong_pin", attempts_left: 3 });

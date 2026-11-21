@@ -53,8 +53,16 @@ export interface PasswordRow {
   link: string | null;
   /** The server's `password_weak` (masked view); `null` when it did not say. */
   weak: boolean | null;
+  /**
+   * How strong, as the web's badge says it: `password_strength` (multi-magic-83, 26ce8e01). An older
+   * server sends only `password_weak`: true reads as "weak", anything else as unknown (no badge).
+   */
+  strength: PasswordStrength | null;
   updatedAt: string | null;
 }
+
+export const PASSWORD_STRENGTHS = ["weak", "fair", "strong"] as const;
+export type PasswordStrength = (typeof PASSWORD_STRENGTHS)[number];
 export interface CardRow {
   kind: "payment_cards";
   id: number;
@@ -250,6 +258,7 @@ export function stripSecrets(kind: SafeZoneKind, raw: unknown): SafeZoneRow {
     return {
       kind, id: rowId, title: optStr(r.title), username: optStr(r.username), email: optStr(r.email),
       link: optStr(r.link), weak: optBool(r.password_weak), updatedAt,
+      strength: (PASSWORD_STRENGTHS as readonly string[]).includes(String(r.password_strength)) ? (r.password_strength as PasswordStrength) : r.password_weak === true ? "weak" : null,
     };
   }
   if (kind === "payment_cards") {

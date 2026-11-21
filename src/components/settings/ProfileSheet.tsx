@@ -34,9 +34,8 @@
  */
 import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { Modal, Pressable, ScrollView, View } from "react-native";
-import { FILL } from "@/theme/fill";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
+import { Pressable, ScrollView, View } from "react-native";
+import { SheetFrame } from "@/components/SheetFrame";
 import { router } from "expo-router";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LayoutGrid, X } from "@/components/icons";
 import { useTranslation } from "react-i18next";
@@ -183,7 +182,6 @@ export function ProfileSheet({
 }) {
   const colors = useColors();
   const metrics = useMetrics();
-  const insets = useSafeAreaInsets();
   const { t } = useTranslation();
   const user = useMe();
   const [pane, setPane] = useState<Pane>("root");
@@ -208,177 +206,154 @@ export function ProfileSheet({
           : (user?.fullName ?? t("profileMenu.title"));
 
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={close}>
-      <View style={{ flex: 1, justifyContent: "flex-end" }}>
-        {/* THE SCRIM IS A SIBLING, NOT A PARENT — `docs/ACCESSIBILITY.md` N1.
-            A named accessibility element groups its children, so a labelled
-            Pressable WRAPPING the sheet makes the whole thing read as one
-            "Close" button and every row inside it unreachable. */}
+    <SheetFrame
+      visible
+      onClose={close}
+      closeLabel={t("common.close")}
+      testID="profile-sheet"
+      style={{ backgroundColor: colors.ground, padding: metrics.space.lg, paddingBottom: metrics.space.xl, gap: metrics.space.md }}
+    >
+      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
+        {pane === "root" ? null : (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel={t("common.back")}
+            hitSlop={10}
+            onPress={() => setPane("root")}
+            style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
+            testID="profile-back"
+          >
+            <ChevronLeft size={22} color={colors.inkMuted} />
+          </Pressable>
+        )}
+        <Text variant="title" style={{ flex: 1 }} numberOfLines={1}>
+          {title}
+        </Text>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t("common.close")}
+          hitSlop={10}
           onPress={close}
-          style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.5)" }}
-          testID="profile-scrim"
-        />
-        <View
-          style={{
-            backgroundColor: colors.ground,
-            borderTopLeftRadius: metrics.radius.lg,
-            borderTopRightRadius: metrics.radius.lg,
-            padding: metrics.space.lg,
-            paddingBottom: metrics.space.xl + insets.bottom,
-            gap: metrics.space.md,
-            maxHeight: "85%",
-            width: "100%",
-            maxWidth: metrics.maxMeasure,
-            alignSelf: "center",
-          }}
-          testID="profile-sheet"
+          style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
+          testID="profile-close"
         >
-          <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm }}>
-            {pane === "root" ? null : (
-              <Pressable
-                accessibilityRole="button"
-                accessibilityLabel={t("common.back")}
-                hitSlop={10}
-                onPress={() => setPane("root")}
-                style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
-                testID="profile-back"
-              >
-                <ChevronLeft size={22} color={colors.inkMuted} />
-              </Pressable>
-            )}
-            <Text variant="title" style={{ flex: 1 }} numberOfLines={1}>
-              {title}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              accessibilityLabel={t("common.close")}
-              hitSlop={10}
-              onPress={close}
-              style={{ width: metrics.touch, height: metrics.touch, alignItems: "center", justifyContent: "center" }}
-              testID="profile-close"
-            >
-              <X size={22} color={colors.inkMuted} />
-            </Pressable>
-          </View>
-
-          <ScrollView>
-            {pane === "root" ? (
-              <View style={{ gap: metrics.space.xs }}>
-                {/* The face and the address, so it is never a mystery WHICH
-                    account this is — the one thing a profile menu owes you
-                    before it offers to sign you out of it. */}
-                <View
-                  style={{
-                    flexDirection: "row",
-                    alignItems: "center",
-                    gap: metrics.space.md,
-                    paddingHorizontal: metrics.space.sm,
-                    paddingBottom: metrics.space.sm,
-                  }}
-                  testID="profile-identity"
-                >
-                  <Avatar
-                    name={user?.fullName ?? user?.email ?? ""}
-                    uri={user?.avatar ?? null}
-                    userId={user?.id ?? 0}
-                    size={48}
-                  />
-                  <Text tone="muted" numberOfLines={1} style={{ flex: 1 }}>
-                    {user?.email ?? ""}
-                  </Text>
-                </View>
-
-                {/* Every app, collapsible: the switcher's list, for those who
-                    look for apps under their own name (SPEC §E). It replaces
-                    the lone Pages row that used to stand here. */}
-                <AppsSection
-                  current={currentApp}
-                  onOpenApp={(key) => {
-                    close();
-                    if (onOpenApp) onOpenApp(key);
-                    else openApp(key, { current: currentApp ?? "assistant", subScreen: true });
-                  }}
-                />
-                <Row
-                  label={t("sessions.yourProfile")}
-                  onPress={() => {
-                    close();
-                    router.push("/profile");
-                  }}
-                  testID="profile-open-profile"
-                />
-                <Row
-                  label={t("sessions.privacyAndAccount")}
-                  onPress={() => {
-                    close();
-                    router.push("/account");
-                  }}
-                  testID="profile-open-account"
-                />
-
-                {/* The two choosers. A chevron rather than the choice inline:
-                    the root of this sheet is a menu, and a menu that also holds
-                    two radio groups is the mixing he objected to, moved. */}
-                <Row
-                  label={t("profileMenu.language")}
-                  onPress={() => setPane("language")}
-                  testID="profile-open-language"
-                  chevron
-                />
-                <Row
-                  label={t("profileMenu.appearance")}
-                  onPress={() => setPane("theme")}
-                  testID="profile-open-theme"
-                  chevron
-                />
-                {/* His: "we should be able to choose french or english" for
-                    dictation. The only way to change it used to be a long
-                    press on the mic, which nothing announced. */}
-                <Row
-                  label={t("dictation.title")}
-                  onPress={() => setPane("dictation")}
-                  testID="profile-open-dictation"
-                  chevron
-                />
-
-                <View
-                  style={{
-                    borderTopWidth: 1,
-                    borderTopColor: colors.border,
-                    marginTop: metrics.space.sm,
-                    paddingTop: metrics.space.xs,
-                  }}
-                >
-                  <Row
-                    label={t("sessions.signOut")}
-                    onPress={() => {
-                      setPane("root");
-                      onSignOut();
-                    }}
-                    testID="profile-sign-out"
-                    tone="muted"
-                  />
-                </View>
-              </View>
-            ) : pane === "language" ? (
-              <View testID="profile-language-pane">
-                <LanguageRow userId={userId} />
-              </View>
-            ) : pane === "dictation" ? (
-              <View testID="profile-dictation-pane">
-                <DictationRow lang={dictation.lang} onChange={dictation.setLang} />
-              </View>
-            ) : (
-              <View testID="profile-theme-pane">
-                <ThemeRow />
-              </View>
-            )}
-          </ScrollView>
-        </View>
+          <X size={22} color={colors.inkMuted} />
+        </Pressable>
       </View>
-    </Modal>
+
+      <ScrollView>
+        {pane === "root" ? (
+          <View style={{ gap: metrics.space.xs }}>
+            {/* The face and the address, so it is never a mystery WHICH
+                account this is — the one thing a profile menu owes you
+                before it offers to sign you out of it. */}
+            <View
+              style={{
+                flexDirection: "row",
+                alignItems: "center",
+                gap: metrics.space.md,
+                paddingHorizontal: metrics.space.sm,
+                paddingBottom: metrics.space.sm,
+              }}
+              testID="profile-identity"
+            >
+              <Avatar
+                name={user?.fullName ?? user?.email ?? ""}
+                uri={user?.avatar ?? null}
+                userId={user?.id ?? 0}
+                size={48}
+              />
+              <Text tone="muted" numberOfLines={1} style={{ flex: 1 }}>
+                {user?.email ?? ""}
+              </Text>
+            </View>
+
+            {/* Every app, collapsible: the switcher's list, for those who
+                look for apps under their own name (SPEC §E). It replaces
+                the lone Pages row that used to stand here. */}
+            <AppsSection
+              current={currentApp}
+              onOpenApp={(key) => {
+                close();
+                if (onOpenApp) onOpenApp(key);
+                else openApp(key, { current: currentApp ?? "assistant", subScreen: true });
+              }}
+            />
+            <Row
+              label={t("sessions.yourProfile")}
+              onPress={() => {
+                close();
+                router.push("/profile");
+              }}
+              testID="profile-open-profile"
+            />
+            <Row
+              label={t("sessions.privacyAndAccount")}
+              onPress={() => {
+                close();
+                router.push("/account");
+              }}
+              testID="profile-open-account"
+            />
+
+            {/* The two choosers. A chevron rather than the choice inline:
+                the root of this sheet is a menu, and a menu that also holds
+                two radio groups is the mixing he objected to, moved. */}
+            <Row
+              label={t("profileMenu.language")}
+              onPress={() => setPane("language")}
+              testID="profile-open-language"
+              chevron
+            />
+            <Row
+              label={t("profileMenu.appearance")}
+              onPress={() => setPane("theme")}
+              testID="profile-open-theme"
+              chevron
+            />
+            {/* His: "we should be able to choose french or english" for
+                dictation. The only way to change it used to be a long
+                press on the mic, which nothing announced. */}
+            <Row
+              label={t("dictation.title")}
+              onPress={() => setPane("dictation")}
+              testID="profile-open-dictation"
+              chevron
+            />
+
+            <View
+              style={{
+                borderTopWidth: 1,
+                borderTopColor: colors.border,
+                marginTop: metrics.space.sm,
+                paddingTop: metrics.space.xs,
+              }}
+            >
+              <Row
+                label={t("sessions.signOut")}
+                onPress={() => {
+                  setPane("root");
+                  onSignOut();
+                }}
+                testID="profile-sign-out"
+                tone="muted"
+              />
+            </View>
+          </View>
+        ) : pane === "language" ? (
+          <View testID="profile-language-pane">
+            <LanguageRow userId={userId} />
+          </View>
+        ) : pane === "dictation" ? (
+          <View testID="profile-dictation-pane">
+            <DictationRow lang={dictation.lang} onChange={dictation.setLang} />
+          </View>
+        ) : (
+          <View testID="profile-theme-pane">
+            <ThemeRow />
+          </View>
+        )}
+      </ScrollView>
+    </SheetFrame>
   );
 }

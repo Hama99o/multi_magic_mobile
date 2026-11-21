@@ -77,7 +77,10 @@ describe("outside the sheet", () => {
   it("covers the screen and closes on a tap", () => {
     const onClose = jest.fn();
     render(<ProfileSheet visible onClose={onClose} onSignOut={noop} userId={7} />, { wrapper: withClient });
-    const scrim = screen.getByTestId("profile-scrim");
+    // SheetFrame (docs/design/app-shell/SHEETS.md): the card is
+    // accessibilityViewIsModal, so the scrim is hidden from a screen reader,
+    // which stays in the sheet; a finger still taps it.
+    const scrim = screen.getByTestId("profile-sheet-scrim", { includeHiddenElements: true });
     expectCovers(scrim);
     fireEvent.press(scrim);
     expect(onClose).toHaveBeenCalledTimes(1);

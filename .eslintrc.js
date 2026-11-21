@@ -194,6 +194,27 @@ const config = {
           "Use FILL from @/theme/fill. absoluteFillObject is removed in the React Native SDK 57 ships, and spreading the missing name leaves a scrim with no size (a sheet that no tap outside can close).",
       },
       /**
+       * KEYBOARDAVOIDINGVIEW "height" LEAVES CONTROLS UNDER THE KEYBOARD.
+       *
+       * Measured 2026-11-21 on qa_phone (Pages parity flow 33): the text-file
+       * editor's Save and Cancel sat under the keyboard. It used
+       * `behavior={Platform.OS === "ios" ? "padding" : "height"}`, the shape
+       * that had shipped twice (Pages and Doc). An edge-to-edge Android window
+       * is not resized for the IME (docs/TESTING.md §5); what lifts a view
+       * here is the keyboard's own position, which `"padding"` reads in one
+       * frame and `KeyboardPadding` reads eased. The sweep is
+       * docs/KEYBOARD_SWEEP_2026-11-21.md.
+       *
+       * DOES NOT COVER: a Modal with a field and no lift at all (the Pages
+       * note picker's shape, the other bug the same run found), a `behavior`
+       * computed in a variable, and `"position"`.
+       */
+      {
+        selector: "JSXOpeningElement[name.name='KeyboardAvoidingView'] > JSXAttribute[name.name='behavior'] Literal[value='height']",
+        message:
+          "KeyboardAvoidingView \"height\" left Save under the keyboard on edge-to-edge Android (measured 2026-11-21). Use KeyboardPadding from @/components/KeyboardPadding, or behavior=\"padding\".",
+      },
+      /**
        * AN ACCESSIBILITY STRING IS A USER-FACING STRING.
        *
        * `docs/LANGUAGES.md` says this app is English and French. Two hint

@@ -12,6 +12,7 @@
  * The category filter is the web's: client side, top-level categories, and
  * the total of the shown rules per currency with their count.
  */
+import { useOneAtATime } from "@/hooks/useOneAtATime";
 import { useState } from "react";
 import { FlatList, Pressable, RefreshControl, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
@@ -55,6 +56,8 @@ export default function RecurringScreen() {
   const failed = () => setFailure(t("finance.manage.failed"));
   const toggle = useToggleRecurring(kind, { onError: failed });
   const run = useRunRecurringIncome({ onDone: () => offerUndo(t("finance.manage.recurring.ran")), onError: failed });
+  // Run now books money: two taps in one frame were two incomes dated today (review F2, ee).
+  const once = useOneAtATime();
 
   const categories = (tags.data ?? []).filter((x) => x.parentId == null);
   const filtered = (rules.data ?? []).filter((r) => tagId == null || r.tag?.id === tagId);
@@ -139,7 +142,7 @@ export default function RecurringScreen() {
         }
         renderItem={({ item, index }) => (
           <View>
-            <RuleRow rule={item} onOpen={() => open(item)} onToggle={() => toggle.mutate(item)} onRun={kind === "income" ? () => run.mutate(item.id) : undefined} />
+            <RuleRow rule={item} onOpen={() => open(item)} onToggle={() => toggle.mutate(item)} onRun={kind === "income" ? () => once(() => run.mutateAsync(item.id)) : undefined} />
           </View>
         )}
       />

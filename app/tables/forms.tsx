@@ -41,8 +41,7 @@ export default function FormsScreen() {
   });
 
   return (
-    <Screen measure>
-      <AppHeader app="tables" back title={t("tables.forms.title")} />
+    <Screen measure header={<AppHeader app="tables" back title={t("tables.forms.title")} />}>
       <LoadFailure error={forms.error} loadFailed={t("tables.forms.loadFailed")} hasData={Boolean(forms.data)} updatedAt={forms.dataUpdatedAt} onRetry={() => void forms.refetch()} testID="tables-forms-failed" />
       <FlatList
         testID="tables-forms"

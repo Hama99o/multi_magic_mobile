@@ -57,8 +57,7 @@ export default function ActivityScreen() {
   const base = bases.data?.find((b) => b.id === table.data?.baseId);
 
   return (
-    <Screen measure>
-      <AppHeader app="tables" back title={recordId ? t("tables.activity.rowTitle") : (table.data?.name ?? t("tables.title"))} />
+    <Screen measure header={<AppHeader app="tables" back title={recordId ? t("tables.activity.rowTitle") : (table.data?.name ?? t("tables.title"))} />}>
       <View style={{ paddingVertical: metrics.space.xs }}>
         <Segmented
           testID="tables-activity-tabs"

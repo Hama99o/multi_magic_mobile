@@ -91,8 +91,7 @@ export default function TablesScreen() {
   };
 
   return (
-    <Screen measure>
-      <AppHeader app="tables" />
+    <Screen measure header={<AppHeader app="tables" />}>
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
         <View style={{ flex: 1 }}>
           <SortChips

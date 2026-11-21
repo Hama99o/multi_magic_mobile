@@ -52,8 +52,7 @@ export default function FormScreen() {
     ]);
 
   return (
-    <Screen measure>
-      <AppHeader app="tables" back title={form.data?.name ?? t("tables.forms.title")} />
+    <Screen measure header={<AppHeader app="tables" back title={form.data?.name ?? t("tables.forms.title")} />}>
       <View style={{ paddingVertical: metrics.space.xs }}>
         <Segmented
           testID="tables-form-tabs"

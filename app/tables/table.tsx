@@ -359,8 +359,7 @@ export default function TableScreen() {
     });
 
   return (
-    <Screen measure>
-      <AppHeader app="tables" back title={base?.name ?? table.data?.name ?? t("tables.title")} />
+    <Screen measure header={<AppHeader app="tables" back title={base?.name ?? table.data?.name ?? t("tables.title")} />}>
 
       {base && base.tables.length > 1 ? (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} testID="tables-table-strip" contentContainerStyle={{ gap: metrics.space.xs, paddingVertical: metrics.space.xs }} style={{ flexGrow: 0 }}>

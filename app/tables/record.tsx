@@ -161,8 +161,7 @@ export default function RecordScreen() {
   const titleText = (row && title && displayValue(title, row.values[title.id], known, i18n.language)) || t("tables.untitled");
 
   return (
-    <Screen measure>
-      <AppHeader app="tables" back title={table.data?.name ?? t("tables.title")} />
+    <Screen measure header={<AppHeader app="tables" back title={table.data?.name ?? t("tables.title")} />}>
       <LoadFailure error={table.error ?? (row ? null : record.error)} loadFailed={t("tables.rowLoadFailed")} hasData={Boolean(row)} updatedAt={record.dataUpdatedAt} onRetry={() => void Promise.all([table.refetch(), record.refetch()])} testID="tables-record-failed" />
 
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.xs }}>

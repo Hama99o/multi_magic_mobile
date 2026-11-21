@@ -121,8 +121,7 @@ export default function ImportScreen() {
   const pill = (on: boolean) => ({ minHeight: 32, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, justifyContent: "center" as const, borderWidth: 1, borderColor: on ? colors.accent : colors.border, backgroundColor: on ? colors.accent : colors.surface });
 
   return (
-    <Screen measure>
-      <AppHeader app="tables" back title={t("tables.import.title", { table: table.data?.name ?? "" })} />
+    <Screen measure header={<AppHeader app="tables" back title={t("tables.import.title", { table: table.data?.name ?? "" })} />}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: metrics.space.sm, paddingBottom: metrics.space.xl }}>
         {step.kind === "source" ? (
           <>

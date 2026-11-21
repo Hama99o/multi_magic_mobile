@@ -1,0 +1,87 @@
+# TABLES 7: import a paste, export the view (2026-11-21, increment 7 + a1d6073).
+#
+# Needs the fixture (`tables_fixture.py up`). The 2 pasted rows land in
+# "[qa] Tables device" and go with `tables_fixture.py down`.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: Import… from the menu; a 3-line paste (header + 2 rows) read
+# through the server's preview; Name mapped by name; Start; the banner until
+# it closes; the 2 new rows on top (newest first). Export CSV to the share
+# sheet (opened, then dismissed with Back; nothing is sent).
+# CANNOT TELL YOU: a file from the picker (the system picker is outside the
+# app; jest covers it, and multi-magic-83 measured a 2-sheet .xlsx end to end
+# on :3020); upload_expired (needs an hour); the job worker on :3020 — if no
+# worker runs there, the banner stays "queued" and the run must say so.
+appId: ${APP_ID}
+tags:
+  - tables
+  - writes-fixture
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-tables"
+- tapOn: "\\[qa\\] Tables device"
+- extendedWaitUntil:
+    visible:
+      id: "tables-menu"
+    timeout: 30000
+- tapOn:
+    id: "tables-menu"
+- tapOn:
+    id: "tables-options-import"
+- extendedWaitUntil:
+    visible:
+      id: "tables-import-paste"
+    timeout: 15000
+- takeScreenshot: t7-01-source
+- tapOn:
+    id: "tables-import-paste"
+- tapOn:
+    id: "tables-import-text"
+# UNPROVEN: whether Maestro's inputText types "\n" as a new line in a multiline
+# TextInput on this Android. If the summary says 1 row, that is the instrument,
+# not the app: paste through `adb shell cmd clipboard` instead and say so.
+- inputText: "Name\nQA pasted one\nQA pasted two"
+- takeScreenshot: t7-02-paste
+- tapOn:
+    id: "tables-import-read"
+- extendedWaitUntil:
+    visible:
+      id: "tables-import-summary"
+    timeout: 30000
+- assertVisible:
+    id: "tables-import-summary"
+    text: "2 rows .*"
+- takeScreenshot: t7-03-map
+- tapOn:
+    id: "tables-import-start"
+- extendedWaitUntil:
+    visible:
+      id: "tables-import-banner"
+    timeout: 30000
+- takeScreenshot: t7-04-banner
+- extendedWaitUntil:
+    visible:
+      id: "tables-import-banner-close"
+    timeout: 120000
+- takeScreenshot: t7-05-done
+- tapOn:
+    id: "tables-import-banner-close"
+# lint: anchored-ok — one pasted line becomes one row whose title node is exactly that line
+- assertVisible: "QA pasted two"
+- takeScreenshot: t7-06-rows
+# Export: CSV, to the share sheet, dismissed.
+- tapOn:
+    id: "tables-menu"
+- tapOn:
+    id: "tables-options-export"
+- tapOn:
+    id: "tables-export-csv"
+- extendedWaitUntil:
+    notVisible:
+      id: "tables-export"
+    timeout: 60000
+- takeScreenshot: t7-07-share-sheet
+- back

@@ -1,0 +1,76 @@
+# TABLES 8: forms (2026-11-21, increment 8, docs/design/tables/inc-8/MANIFEST.md).
+#
+# Needs the fixture (`tables_fixture.py up`). The form it makes is deleted at
+# the end, and `tables_fixture.py down` takes the base with anything left.
+#
+# NEVER invites: invitations send real email (the owner's rule). The Share tab
+# is opened and photographed; the invite field is not typed into.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: Forms from the menu; New form (on top: newest first); a question
+# added from a column; the four tabs; the public link shown; Delete with its
+# wording asserted, then confirmed.
+# CANNOT TELL YOU: an invitation (never sent from a device); a person filling
+# the form (that is the web's /f/:slug); the cover image (system picker).
+appId: ${APP_ID}
+tags:
+  - tables
+  - writes-fixture
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-tables"
+- tapOn: "\\[qa\\] Tables device"
+- extendedWaitUntil:
+    visible:
+      id: "tables-menu"
+    timeout: 30000
+- tapOn:
+    id: "tables-menu"
+- tapOn:
+    id: "tables-options-forms"
+- extendedWaitUntil:
+    visible:
+      id: "tables-forms-new"
+    timeout: 15000
+- takeScreenshot: t8-01-forms
+- tapOn:
+    id: "tables-forms-new"
+- extendedWaitUntil:
+    visible:
+      id: "tables-form-tabs"
+    timeout: 15000
+- takeScreenshot: t8-02-questions
+# The chip's name is "Ask <column>" (`tables.form.addOne`).
+- tapOn: "Ask Phone"
+- assertVisible:
+    id: "tables-form-question-1"
+- takeScreenshot: t8-03-question-added
+- tapOn: "Page"
+- assertVisible:
+    id: "tables-form-title"
+- takeScreenshot: t8-04-page
+- tapOn: "Share"
+- assertVisible:
+    id: "tables-form-url"
+- takeScreenshot: t8-05-share
+- tapOn: "Answers"
+- takeScreenshot: t8-06-answers
+# Delete: the wording, then confirm (this run's own form).
+- tapOn: "Page"
+- scrollUntilVisible:
+    element:
+      id: "tables-form-delete"
+- tapOn:
+    id: "tables-form-delete"
+- assertVisible: "Delete the form .*\\?"
+- assertVisible: "Its link stops working. The rows it added stay in the table."
+- takeScreenshot: t8-07-delete-confirm
+- tapOn: "Delete the form"
+- extendedWaitUntil:
+    visible:
+      id: "tables-forms-new"
+    timeout: 15000
+- takeScreenshot: t8-08-after-delete

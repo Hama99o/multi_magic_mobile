@@ -1,0 +1,100 @@
+# TABLES 4b: views and the kanban (2026-11-21, docs/design/tables/inc-4b/MANIFEST.md).
+#
+# Needs the fixture: `tables_fixture.py up` (base "[qa] Tables device", the
+# Items table with a single-select Status). Everything this flow makes lives in
+# that base and goes with `tables_fixture.py down`.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: a new kanban view on Status; fold a column and unfold it; reorder a
+# card within its column ("Move up"); rename the view; duplicate it; delete
+# the copy (opened, confirmed, the wording asserted).
+# CANNOT TELL YOU: that another member sees the new view (one account); drag
+# (there is none: the phone moves through a sheet); a big board's paging.
+appId: ${APP_ID}
+tags:
+  - tables
+  - writes-fixture
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-tables"
+- tapOn: "\\[qa\\] Tables device"
+- extendedWaitUntil:
+    visible:
+      id: "tables-view-switch"
+    timeout: 30000
+# A new kanban view, grouped by Status.
+- tapOn:
+    id: "tables-view-switch"
+- tapOn:
+    id: "tables-views-new"
+- tapOn:
+    id: "tables-views-type-kanban"
+- tapOn:
+    id: "tables-views-name"
+- inputText: "QA board"
+- tapOn: "Status"
+- takeScreenshot: t4b-01-new-kanban
+- tapOn:
+    id: "tables-views-save"
+- extendedWaitUntil:
+    visible:
+      id: "tables-kanban"
+    timeout: 30000
+- takeScreenshot: t4b-02-board
+# Fold the first column, see its chip, unfold it.
+- tapOn:
+    id: "tables-kanban-fold-0"
+- assertVisible:
+    id: "tables-kanban-chip-0"
+- takeScreenshot: t4b-03-folded
+- tapOn:
+    id: "tables-kanban-chip-0"
+- assertVisible:
+    id: "tables-kanban-column-0"
+# Reorder: the second card of the first column moves up.
+- longPressOn:
+    id: "tables-kanban-0-card-1"
+- extendedWaitUntil:
+    visible:
+      id: "tables-kanban-move"
+    timeout: 10000
+- takeScreenshot: t4b-04-move-sheet
+- tapOn:
+    id: "tables-kanban-move-within-up"
+- takeScreenshot: t4b-05-moved
+# Rename, duplicate, delete the copy. Rows are addressed by the view's name,
+# never its id (the sheet's testIDs carry the database id: flow_lint DBID).
+- tapOn:
+    id: "tables-view-switch"
+- takeScreenshot: t4b-06-views
+- tapOn: "Manage QA board"
+- tapOn: "Rename"
+- tapOn:
+    id: "tables-views-name"
+- eraseText
+- inputText: "QA board 2"
+- tapOn:
+    id: "tables-views-save"
+- extendedWaitUntil:
+    visible: "Manage QA board 2"
+    timeout: 15000
+- takeScreenshot: t4b-07-renamed
+- tapOn: "Manage QA board 2"
+- tapOn: "Duplicate"
+- extendedWaitUntil:
+    # The server names the copy "<name> (copie)" (`tables.ts` duplicateView).
+    visible: "Manage QA board 2 \\(copie\\)"
+    timeout: 15000
+- takeScreenshot: t4b-08-duplicated
+# Delete the copy: the wording is the point, then confirm (it is the fixture's).
+- tapOn: "Manage QA board 2 \\(copie\\)"
+- tapOn: "Delete"
+- assertVisible: "Delete the view \".*\"\\?"
+- assertVisible: "It is gone for everyone on the base. The rows stay."
+- takeScreenshot: t4b-09-delete-confirm
+- tapOn: "Delete"
+- assertNotVisible: "Manage QA board 2 \\(copie\\)"
+- back

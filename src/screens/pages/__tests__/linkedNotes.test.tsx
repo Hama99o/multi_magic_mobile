@@ -2,7 +2,7 @@
  * Linked notes (parity #26, #51): the list, who may link and unlink, and a
  * note already linked cannot be linked twice. Invented values only.
  */
-import { fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import MockAdapter from "axios-mock-adapter";
 import { testQueryClient } from "@/__tests__/queryClient";
@@ -46,4 +46,17 @@ it("an editor links a note at the end; a note already linked is marked and canno
   fireEvent.press(screen.getByTestId("pages-notes-pick-11"));
   await waitFor(() => expect(mock.history.post).toHaveLength(1));
   expect(JSON.parse(mock.history.post[0].data)).toEqual({ note_id: 11, position: 1 });
+});
+
+// Measured 2026-11-21 on qa_phone (flow 34): the picker's search field opens
+// the keyboard (autoFocus), and the whole sheet sat behind it: a Pages
+// BottomSheet is a Modal, and an edge-to-edge Android window is not resized
+// for the IME (docs/TESTING.md §5). KeyboardPadding is the app's lift.
+it("the picker rises with the keyboard (the sheet is inside KeyboardPadding)", async () => {
+  const { KeyboardPadding } = jest.requireActual("@/components/KeyboardPadding");
+  show(true);
+  fireEvent.press(await screen.findByTestId("pages-notes-link"));
+  const search = await screen.findByTestId("pages-notes-search");
+  const lifted = screen.UNSAFE_getAllByType(KeyboardPadding);
+  expect(lifted.some((k) => within(k).queryByTestId("pages-notes-search") === search)).toBe(true);
 });

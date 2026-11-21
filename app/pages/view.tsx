@@ -21,13 +21,14 @@
  * html are current, not whatever the list had.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Pressable, ScrollView, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVideoPlayer, VideoView } from "expo-video";
 import { WebView } from "react-native-webview";
 import { Screen } from "@/components/ScreenContainer";
+import { KeyboardPadding } from "@/components/KeyboardPadding";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -204,26 +205,31 @@ function TextFile({ uri, markdown, node, canWrite }: { uri: string; markdown: bo
 
   if (draft != null) {
     return (
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={{ flex: 1, gap: metrics.space.sm }}>
-        <TextInput
-          testID="pages-text-editor"
-          value={draft}
-          onChangeText={setDraft}
-          multiline
-          autoFocus
-          textAlignVertical="top"
-          accessibilityLabel={t("pages.edit.field", { title: node.title })}
-          style={{ flex: 1, minHeight: 240, padding: metrics.space.md, borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, color: colors.ink, backgroundColor: colors.surface, fontFamily: familyFor("mono"), fontSize: 15 }}
-        />
-        <View style={{ flexDirection: "row", gap: metrics.space.sm }}>
-          <View style={{ flex: 1 }}>
-            <Button tone="neutral" label={t("pages.edit.cancel")} onPress={cancel} testID="pages-text-cancel" />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Button label={t("pages.edit.save")} busy={saving} disabled={draft === data} onPress={() => void save()} testID="pages-text-save" />
+      // KeyboardPadding, not KeyboardAvoidingView "height": an edge-to-edge
+      // Android window is not resized for the IME, so Save stayed under the
+      // keyboard (measured on qa_phone, flow 33, 2026-11-21).
+      <KeyboardPadding>
+        <View style={{ flex: 1, gap: metrics.space.sm }}>
+          <TextInput
+            testID="pages-text-editor"
+            value={draft}
+            onChangeText={setDraft}
+            multiline
+            autoFocus
+            textAlignVertical="top"
+            accessibilityLabel={t("pages.edit.field", { title: node.title })}
+            style={{ flex: 1, minHeight: 120, padding: metrics.space.md, borderWidth: 1, borderColor: colors.border, borderRadius: metrics.radius.md, color: colors.ink, backgroundColor: colors.surface, fontFamily: familyFor("mono"), fontSize: 15 }}
+          />
+          <View style={{ flexDirection: "row", gap: metrics.space.sm }}>
+            <View style={{ flex: 1 }}>
+              <Button tone="neutral" label={t("pages.edit.cancel")} onPress={cancel} testID="pages-text-cancel" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Button label={t("pages.edit.save")} busy={saving} disabled={draft === data} onPress={() => void save()} testID="pages-text-save" />
+            </View>
           </View>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardPadding>
     );
   }
   return (

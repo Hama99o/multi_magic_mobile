@@ -22,7 +22,7 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useVideoPlayer, VideoView } from "expo-video";
@@ -172,6 +172,30 @@ function TextFile({ uri, markdown, node, canWrite }: { uri: string; markdown: bo
       return res.text();
     },
   });
+  // An unsaved edit is not dropped on the way out (review 88, P4): Prev/Next
+  // (router.replace), the hardware back and a swipe all remove this screen,
+  // so `beforeRemove` sees every one; with a change, it stops and asks.
+  const navigation = useNavigation();
+  const unsaved = draft != null && data != null && draft !== data;
+  const leaving = useRef(false);
+  useEffect(() => {
+    if (!unsaved) return;
+    return navigation.addListener("beforeRemove", (e) => {
+      if (leaving.current) return;
+      e.preventDefault();
+      Alert.alert(t("pages.edit.discardTitle"), t("pages.edit.discardBody"), [
+        { text: t("pages.edit.keep"), style: "cancel" },
+        {
+          text: t("pages.edit.discard"),
+          style: "destructive",
+          onPress: () => {
+            leaving.current = true;
+            navigation.dispatch(e.data.action);
+          },
+        },
+      ]);
+    });
+  }, [navigation, unsaved, t]);
   if (isLoading) return <ActivityIndicator style={{ marginTop: 32 }} />;
   if (error || data == null) return <Text tone="muted">{t("pages.view.textFailed")}</Text>;
 

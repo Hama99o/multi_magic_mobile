@@ -21,6 +21,8 @@ jest.mock("@/api/pageShares", () => ({
   shareLinksApi: { list: jest.fn(async () => []) },
 }));
 jest.mock("expo-router", () => ({
+  // TextFile listens for beforeRemove (unsaved edit, review 88 P4).
+  useNavigation: () => ({ addListener: () => () => undefined, dispatch: jest.fn() }),
   useLocalSearchParams: () => ({ spaceId: "400", nodeId: "5" }),
   router: { back: jest.fn(), push: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) },
 }));

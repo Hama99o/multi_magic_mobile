@@ -23,7 +23,7 @@ const mockPlayer = {
     return { remove: jest.fn() };
   },
 };
-jest.mock("expo-router", () => ({ useLocalSearchParams: () => ({ spaceId: "315", nodeId: "5" }), router: { back: jest.fn() } }));
+jest.mock("expo-router", () => ({ useNavigation: () => ({ addListener: () => () => undefined, dispatch: jest.fn() }), useLocalSearchParams: () => ({ spaceId: "315", nodeId: "5" }), router: { back: jest.fn() } }));
 jest.mock("expo-video", () => ({ useVideoPlayer: () => mockPlayer, VideoView: () => null }));
 jest.mock("react-native-webview", () => ({ WebView: () => null }));
 jest.mock("expo-sharing", () => ({ shareAsync: jest.fn() }));

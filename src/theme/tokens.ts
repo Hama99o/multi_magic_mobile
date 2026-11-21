@@ -39,6 +39,10 @@ export interface Tokens {
   userBubbleInk: string;
   /** Destructive: the delete row and its confirm. */
   danger: string;
+  /** A state that is on or going (a running sprint). Text-safe: 4.5:1 on `surface` and on its own 15 % tint. */
+  success: string;
+  /** A state that is done or informative (a completed sprint). Text-safe, as `success`. */
+  info: string;
 }
 
 export const TOKENS: { light: Tokens; dark: Tokens } = {
@@ -56,6 +60,8 @@ export const TOKENS: { light: Tokens; dark: Tokens } = {
     userBubble: "#2d5363",
     userBubbleInk: "#E8EEEF",
     danger: "#e98262",
+    success: "#6fd39a",
+    info: "#8ab8f2",
   },
   light: {
     // A very slightly teal-biased off-white, not paper grey.
@@ -69,6 +75,8 @@ export const TOKENS: { light: Tokens; dark: Tokens } = {
     userBubble: "#DCEEEC",
     userBubbleInk: "#12232A",
     danger: "#c2542f",
+    success: "#1d7340",
+    info: "#2459b8",
   },
 };
 

@@ -15,10 +15,14 @@ tags: [pages, parity]
 - tapOn:
     id: "pages-new-upload-folder"
 # The Android folder picker (DocumentsUI): open Download, the folder, use it.
+# The system picker opens on its last place (Documents on this AVD), not on
+# Download (measured 2026-11-21): the storage root in its breadcrumb, then
+# Download, where `pages-parity.sh device` put the fixtures.
 - extendedWaitUntil:
-    visible: "Download|Downloads"
+    visible: "sdk_gphone.*"
     timeout: 20000
-- tapOn: "Download|Downloads"
+- tapOn: "sdk_gphone.*"
+- tapOn: "Download"
 - tapOn: "qa-folder"
 - tapOn: "USE THIS FOLDER|Use this folder"
 - tapOn: "ALLOW|Allow"

@@ -38,9 +38,13 @@ jest.mock("expo-router", () => ({
 /* eslint-disable import/first */
 import PagesHome from "../../../../app/pages/index";
 
+// The client a test renders with, so a test can wait for its own mutation to
+// settle instead of racing it (see the delete test).
+let client: ReturnType<typeof testQueryClient>;
 function wrap() {
+  client = testQueryClient();
   return render(
-    <QueryClientProvider client={testQueryClient()}>
+    <QueryClientProvider client={client}>
       <PagesHome />
     </QueryClientProvider>,
   );
@@ -66,7 +70,9 @@ it("Edit space opens the form filled in, and saves the four fields", async () =>
   fireEvent.press(screen.getByTestId("pages-space-color-none"));
   await act(async () => fireEvent.press(screen.getByTestId("pages-space-create")));
   expect(mockApi.updateSpace).toHaveBeenCalledWith(315, { title: "Holidays", description: "Summer", icon: "🏠", color: "" });
-  await waitFor(() => expect(screen.queryByTestId("pages-space-form")).toBeNull());
+  // Same chain as the delete below (a mutation, then a re-render): same bounds.
+  await waitFor(() => expect(client.isMutating()).toBe(0), { timeout: 10_000 });
+  await waitFor(() => expect(screen.queryByTestId("pages-space-form")).toBeNull(), { timeout: 10_000 });
 });
 
 it("Delete space asks first, then deletes and the row goes", async () => {
@@ -79,7 +85,16 @@ it("Delete space asks first, then deletes and the row goes", async () => {
   mockRows.current = [];
   await act(async () => lastButtons().find((b) => b.style === "destructive")!.onPress!());
   expect(mockApi.deleteSpace).toHaveBeenCalledWith(315);
-  await waitFor(() => expect(screen.queryByText("Trips")).toBeNull());
+  // FLAKE, 2026-11-21: red in 2 of 3 full runs on one worker (88), green
+  // alone. The row leaves through an async chain (useDeleteSpace: await
+  // cancelQueries → setQueriesData → the list re-renders, then the refetch
+  // on settle), and the last waitFor gave all of it the default 1 s, which
+  // a worker 250 suites into a run does not always have. Wait for the
+  // mutation to settle first (the client's own count, not a clock), then
+  // for the row, with bounds a starved worker can meet; a pass is as fast
+  // as before, since waitFor returns the moment it holds.
+  await waitFor(() => expect(client.isMutating()).toBe(0), { timeout: 10_000 });
+  await waitFor(() => expect(screen.queryByText("Trips")).toBeNull(), { timeout: 10_000 });
 });
 
 it("a space shared with him (not his) has no menu", async () => {

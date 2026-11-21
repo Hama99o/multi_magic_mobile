@@ -20,6 +20,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FILL } from "@/theme/fill";
 import { Camera, Plus, ChevronRight, Download, File, Folder, FolderInput, FolderPlus, FolderUp, FileText, Images, Info, Link2, MapPin, Copy, FileStack, FileArchive, History, RefreshCw, NotebookPen, Pencil, Star, StarOff, Trash2, Users, type LucideIcon } from "@/components/icons";
+import { KeyboardPadding } from "@/components/KeyboardPadding";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -38,26 +39,31 @@ export function BottomSheet({ open, onClose, children, testID }: { open: boolean
   if (!open) return null;
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <View style={{ flex: 1, justifyContent: "flex-end" }}>
-        <Pressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={onClose} style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.45)" }} />
-        <View
-          style={{
-            backgroundColor: colors.ground,
-            borderTopLeftRadius: 24,
-            borderTopRightRadius: 24,
-            paddingTop: metrics.space.sm,
-            paddingBottom: metrics.space.md + insets.bottom,
-            width: "100%",
-            maxWidth: metrics.maxMeasure,
-            alignSelf: "center",
-            maxHeight: "85%",
-          }}
-          testID={testID}
-        >
-          <View style={{ alignSelf: "center", width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: metrics.space.sm }} />
-          {children}
+      {/* A sheet with a field (the note picker, the space form) has to rise
+          over the keyboard: a Modal on an edge-to-edge Android window is not
+          resized for the IME (measured on qa_phone, flow 34, 2026-11-21). */}
+      <KeyboardPadding>
+        <View style={{ flex: 1, justifyContent: "flex-end" }}>
+          <Pressable accessibilityRole="button" accessibilityLabel={t("common.close")} onPress={onClose} style={{ ...FILL, backgroundColor: "rgba(0,0,0,0.45)" }} />
+          <View
+            style={{
+              backgroundColor: colors.ground,
+              borderTopLeftRadius: 24,
+              borderTopRightRadius: 24,
+              paddingTop: metrics.space.sm,
+              paddingBottom: metrics.space.md + insets.bottom,
+              width: "100%",
+              maxWidth: metrics.maxMeasure,
+              alignSelf: "center",
+              maxHeight: "85%",
+            }}
+            testID={testID}
+          >
+            <View style={{ alignSelf: "center", width: 36, height: 4, borderRadius: 2, backgroundColor: colors.border, marginBottom: metrics.space.sm }} />
+            {children}
+          </View>
         </View>
-      </View>
+      </KeyboardPadding>
     </Modal>
   );
 }

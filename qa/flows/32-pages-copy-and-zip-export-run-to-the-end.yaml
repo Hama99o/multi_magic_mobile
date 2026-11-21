@@ -18,6 +18,9 @@ tags: [pages, parity]
     visible: "“a-notes.txt” copied."
     timeout: 30000
 - takeScreenshot: reports/32-copied
+# The confirmation is an alert: OK before anything under it can be tapped.
+# lint: anchored-ok — the alert's own button, whose whole node is "OK"
+- tapOn: "OK"
 - tapOn:
     id: "pages-crumb-space"
 - extendedWaitUntil:
@@ -29,7 +32,10 @@ tags: [pages, parity]
 - extendedWaitUntil:
     visible:
       id: "pages-transfer-done"
-    timeout: 120000
+    # 5 min: the :3020 sandbox runs no job worker (its Sidekiq would also
+    # start AI indexing), so multi-magic-83 runs this one export by hand when
+    # pinged with the transfer id (2026-11-21).
+    timeout: 300000
 - assertVisible:
     id: "pages-transfer-share"
 - assertVisible:

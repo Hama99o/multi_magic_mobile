@@ -90,6 +90,27 @@ appId: ${APP_ID}
       - tapOn:
           id: "chat-close"
 
+# REOPENED INSIDE AN APP (2026-11-21). Since 80c2273 a signed-in launch
+# reopens the last app the person was in, never Home (the owner's rule,
+# `app/index.tsx`). Measured on qa_phone with the shared dev client: after
+# one Pages flow, the next launch sat on Pages home, which is none of the
+# three states above, and flows 31-41 all failed asserting `sign-in-email`
+# on an app that was signed in. The header's own Home button (the app mark,
+# `header-home` in `AppHeader.tsx`) is how a person goes back to Home.
+- runFlow:
+    when:
+      visible:
+        id: "header-home"
+      notVisible:
+        id: "home-tile-pages"
+    commands:
+      - tapOn:
+          id: "header-home"
+      - extendedWaitUntil:
+          visible:
+            id: "home-tile-pages"
+          timeout: 30000
+
 # NO "Back from a pushed screen" step any more. `launchApp` restarts the
 # app, so the stack is fresh: Home, the assistant or sign-in, never a pushed
 # screen. The Back step that was here (2026-11-07 morning) fired during a

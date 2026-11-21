@@ -8,6 +8,9 @@ appId: ${APP_ID}
 tags: [pages, parity]
 ---
 - runFlow: pages-open-trip.yaml
+# pages-menu is Pages home's (index.tsx), not a folder's: the Home tab first.
+- tapOn:
+    id: "pages-tab-home"
 - tapOn:
     id: "pages-menu"
 - tapOn:

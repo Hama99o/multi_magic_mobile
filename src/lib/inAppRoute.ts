@@ -28,8 +28,9 @@
  * `todos` and `todo_group` open the Todo app (2026-11-16). `expense`,
  * `income`, `expenses`, `incomes` and `loan` open Finance (2026-11-20, parity
  * F-X3): an expense or income on its tab with its sheet open, a loan on its
- * own screen. The flow and table keys still return null: this app has no
- * screen for them, so they open the preview sheet and from there the web. **Adding a key here is a claim that this app has that
+ * own screen. `flow_project` and `flow_card` open Flow's board and card
+ * (2026-11-20). The table keys still return null: this app has no screen for
+ * them yet, so they open the preview sheet and from there the web. **Adding a key here is a claim that this app has that
  * screen.**
  *
  * `routeForWebPath` is the same table read by PATH alone, for what carries no
@@ -73,6 +74,8 @@ const BY_PATH: Record<string, AppRoute> = {
   income: "/finance",
   incomes: "/finance",
   loan: "/finance",
+  flow_project: "/flow",
+  flow_card: "/flow",
 };
 
 const DIGITS = /^\d+$/;
@@ -149,6 +152,16 @@ export function routeForWebPath(path: string | null | undefined, label?: string 
     if (!query.has("loan")) return { pathname: "/finance", params: { tab: "loans" } };
     const loan = id("loan");
     return loan ? { pathname: "/finance/loan", params: { id: loan } } : null;
+  }
+  if (pathname === "/flow" || pathname === "/flow/backlog") return pathname === "/flow" ? "/flow" : { pathname: "/flow", params: { tab: "backlog" } };
+  const flowCard = pathname.match(/^\/flow\/(\d+)\/cards\/(\d+)$/);
+  if (flowCard) return { pathname: "/flow/card", params: { projectId: flowCard[1], id: flowCard[2] } };
+  const flowBoard = pathname.match(/^\/flow\/(\d+)$/);
+  if (flowBoard) {
+    // The web opens a card as a drawer over the board: `/flow/7?card=12`.
+    const card = id("card");
+    if (card) return { pathname: "/flow/card", params: { projectId: flowBoard[1], id: card } };
+    return query.has("card") ? null : { pathname: "/flow/board", params: { id: flowBoard[1] } };
   }
   if (pathname === "/profile/me/api-keys") return "/ai-keys";
   if (pathname === "/ai") return "/chat";

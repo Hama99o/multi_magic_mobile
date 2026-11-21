@@ -171,6 +171,19 @@ const COMPOSED = [
   ...["none", "daily", "weekly", "monthly"].map((v) => `todos.frequency.${v}`),
   ...["daily", "weekly", "monthly"].map((v) => `todos.repeatEvery.${v}`),
   ...["today", "upcoming", "overdue"].flatMap((v) => [`todos.views.${v}`, `todos.emptyView.${v}`]),
+  // Flow (app/flow, src/screens/flow): t(`flow.roles.${role}`) over FLOW_ROLES,
+  // t(`flow.roleHints.${r}`) over ASSIGNABLE_ROLES, t(`flow.sprints.status.${s}`)
+  // over SPRINT_STATUSES (api/flow.ts), t(`flow.color.${key}`) over
+  // PROJECT_COLORS (screens/flow/logic.ts), t(`flow.move.${where}`).
+  ...["owner", "admin", "member", "viewer"].map((v) => `flow.roles.${v}`),
+  ...["admin", "member", "viewer"].map((v) => `flow.roleHints.${v}`),
+  ...["planning", "active", "completed"].map((v) => `flow.sprints.status.${v}`),
+  ...["blue", "green", "red", "yellow", "purple", "pink", "orange"].map((v) => `flow.color.${v}`),
+  // The shared field editors (src/components/fields, app/flow/fields.tsx):
+  // t(`fields.types.${type}`) over FIELD_TYPES (api/fields.ts) and
+  // t(`fields.recordClasses.${key}`) over RECORD_CLASS_KEY.
+  ...["text", "rich_text", "integer", "decimal", "boolean", "date", "datetime", "single_select", "multi_select", "single_record", "multi_record", "attachment", "attachments", "long_text", "phone", "email", "url", "created_time", "last_modified_time", "lookup", "rollup"].map((v) => `fields.types.${v}`),
+  ...["user", "tag", "card", "sprint", "record"].map((v) => `fields.recordClasses.${v}`),
   // Finance: the five tabs (app/finance/index.tsx) and the Help sheet's sections (HelpSheet.tsx).
   ...["overview", "expenses", "income", "loans", "budgets"].map((v) => `finance.tabs.${v}`),
   ...["overview", "expenses", "recurring", "income", "loans", "budgets", "reports", "categories"].flatMap((v) => [`finance.help.${v}.title`, `finance.help.${v}.body`]),
@@ -253,6 +266,15 @@ const PLURAL = new Set([
   "safezone.pin.wrong",
   "chats.chosen",
   "thread.membersCount",
+  "fields.fileCount",
+  "flow.board.cardCount",
+  "flow.tile.comments",
+  "flow.project.cards",
+  "flow.project.sprints",
+  "flow.project.people",
+  "flow.project.deleteBody",
+  "flow.comments.tabCount",
+  "flow.filter.button",
 ]);
 
 const CALLED = calledKeys();

@@ -42,6 +42,26 @@ const SAME_IN_BOTH = new Set([
   // Family words French spells the same (`familyLabel.ts`).
   "contacts.familyLabels.parent",
   "contacts.familyLabels.cousin",
+  // Flow (2026-11-20): the web's own French keeps "Flow", "Backlog",
+  // "Sprint(s)", "Description", "Date" and "Orange"; "MultiMagic" is the
+  // product; the sprint counts and "Sprint 1" are the same words.
+  // "Notes" is the card's tab in both: with "Commentaires (1)" the three tabs did not fit at 411 dp (device, 2026-11-20).
+  "flow.notes.tab",
+  "flow.title",
+  "flow.tabs.backlog",
+  "flow.color.orange",
+  "flow.project.description",
+  "flow.project.sprints_one",
+  "flow.project.sprints_other",
+  "flow.card.description",
+  "flow.card.sprint",
+  "flow.move.sprint",
+  "flow.history.system",
+  "flow.sprints.title",
+  "flow.sprints.list",
+  "flow.sprints.namePlaceholder",
+  "fields.types.date",
+  "fields.recordClasses.sprint",
   "pages.searchChips.type",
   // "Pause" is the French word too (a player button).
   "pages.view.pause",

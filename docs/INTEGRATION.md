@@ -178,7 +178,22 @@ run 1 made inside the merge (`app/__tests__/search.test.tsx`,
 opens, a Doc signature hit for the ask case) are not conflicts, so rerere does
 not carry them: **re-applied from run 1's merge c96e31c.**
 
-### Waiting on
-ee's 9 header moves (doc ×8, pages/storage). Both branches have 746b39b merged
-(88d169a, b9cd2f9); none of the 9 screens uses `header=` yet. The header-slot
-rule will fail on them until then, so the gates run after that.
+### ee's header moves, merged on top
+`feat/doc-tools` @ 39270b1 (the 8 Doc screens) and `feat/pages-parity` @
+51ef26d (pages/storage), merged into the run-2 branch after the rest: both
+clean, all 9 screens pass `header=`.
+
+## Gates for run 2 (at 14ec569, guarded.sh, 0 emulators, node 22.19.0)
+
+| Gate | Result |
+|---|---|
+| tsc | 0 errors |
+| Jest, full, 1 worker | 318 suites passed; **4041 / 4041 tests passed, 0 failed** |
+| `expo export --platform android --clear` | built; all 12 app markers in the .hbc (as run 1) |
+
+**Run 2 meets the bar: 0 failures.** The header-slot rule passes on every
+screen. `spaceEdit.test` (Pages), which 88 saw fail in 2 of 3 full runs on
+their box, passed here.
+
+Next: run 3 adds `feat/tables` @ ced0326 (import fix + tablet grid, touches
+`keys.ts` / `keys.test.ts`).

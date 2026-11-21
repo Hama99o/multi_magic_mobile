@@ -102,7 +102,7 @@ export default function SearchScreen() {
   const me = useMe();
   const { recents, remember, clear } = useSearchRecents(me?.id ?? null);
   const { data: sessionId } = useQuery({ queryKey: aiKeys.currentSession(), queryFn: aiApi.currentSessionId });
-  const { setDraft } = useDraft(sessionId ?? null);
+  const { draft, setDraft } = useDraft(sessionId ?? null);
 
   // What was typed in the Apps sheet before coming here, searched at once.
   const params = useNavParams<{ q?: string }>();
@@ -157,7 +157,9 @@ export default function SearchScreen() {
   }, [records]);
 
   const ask = (text: string) => {
-    setDraft(text);
+    // A question the person half typed in the assistant is kept: the new one
+    // goes under it (review S4, 88: Ask used to replace it).
+    setDraft(draft.trim() ? `${draft.trimEnd()}\n\n${text}` : text);
     router.push("/chat");
   };
   const openRecord = (r: { id: string; title: string; subtitle: string | null; to: string; group?: string }, kind?: string) => {

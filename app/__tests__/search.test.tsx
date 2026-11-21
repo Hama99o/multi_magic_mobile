@@ -13,8 +13,8 @@ jest.mock("expo-router", () => ({
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismiss: jest.fn(), canGoBack: jest.fn(() => true) },
   useLocalSearchParams: () => mockParams,
 }));
-const mockDraft = { text: null as string | null };
-jest.mock("@/hooks/useDraft", () => ({ useDraft: () => ({ draft: "", setDraft: (v: string) => void (mockDraft.text = v) }) }));
+const mockDraft = { text: null as string | null, held: "" };
+jest.mock("@/hooks/useDraft", () => ({ useDraft: () => ({ draft: mockDraft.held, setDraft: (v: string) => void (mockDraft.text = v) }) }));
 
 /* eslint-disable import/first */
 import SearchScreen from "../search";
@@ -42,6 +42,7 @@ beforeEach(async () => {
   __resetFingerprintCache();
   Object.values(router).forEach((f) => f.mockClear());
   mockDraft.text = null;
+  mockDraft.held = "";
   delete mockParams.q;
   await AsyncStorage.clear();
   useAuthStore.setState({ status: "signedIn", user: { id: 1, email: "qa@example.com", fullName: "QA" } as never });
@@ -127,6 +128,17 @@ it("Ask the assistant puts the query in the composer", async () => {
   fireEvent.press(await screen.findByTestId("search-ask"));
   await waitFor(() => expect(mockDraft.text).toMatch(/trip/));
   expect(router.push).toHaveBeenCalledWith("/chat");
+});
+
+// Review S4 (88, 2026-11-21): Ask REPLACED a question the person had half
+// typed in the assistant. It is kept, and the new question goes under it.
+it("Ask keeps a half-typed question in the composer and adds the query under it", async () => {
+  mockDraft.held = "What did I spend on";
+  open();
+  await type("trip");
+  fireEvent.press(await screen.findByTestId("search-ask"));
+  await waitFor(() => expect(mockDraft.text).toMatch(/trip/));
+  expect(mockDraft.text?.startsWith("What did I spend on")).toBe(true);
 });
 
 it("a command opens its form: New expense", async () => {

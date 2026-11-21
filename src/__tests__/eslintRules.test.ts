@@ -85,6 +85,13 @@ const CASES: Case[] = [
     times: 1,
   },
   {
+    // TWO: the bare literal and the Platform ternary that shipped twice.
+    rule: "KeyboardAvoidingView behavior \"height\", which leaves controls under the keyboard",
+    fixture: "kav-height.tsx",
+    says: /under the keyboard/,
+    times: 2,
+  },
+  {
     rule: "a selectable Text under a long press",
     fixture: "selectable-under-longpress.tsx",
     says: /eats the long press/i,
@@ -154,7 +161,7 @@ describe("every custom rule can actually fire", () => {
     expect(restricted(fixture).filter((hit) => says.test(hit.message))).toHaveLength(times);
   });
 
-  it("flags nothing in the legitimate forms of all nine", () => {
+  it("flags nothing in the legitimate forms of every rule", () => {
     expect(restricted("clean.tsx").map((hit) => `${hit.line}: ${hit.message}`)).toEqual([]);
   });
 

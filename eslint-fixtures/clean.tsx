@@ -1,7 +1,7 @@
 // EXPECTED TO PASS — the legitimate forms of everything the rules forbid.
 // A rule that fires on these is over-broad, which this test catches too.
 import { useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { KeyboardAvoidingView, Pressable, StyleSheet, Text, View } from "react-native";
 import type { LucideIcon } from "lucide-react-native";
 import Animated, { FadeIn } from "react-native-reanimated";
 
@@ -90,4 +90,10 @@ export function NotRequestsInEffects({ id, frame }: { id: number; frame: unknown
 // cell, and neither reads an index.
 export function EmptyFade() {
   return <Animated.View entering={FadeIn.duration(260)} />;
+}
+
+// Keyboard: "padding" is allowed (kav-height): it computes the overlap from
+// the keyboard's own position, so it is 0 wherever the window did resize.
+export function PaddingIsFine() {
+  return <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }} />;
 }

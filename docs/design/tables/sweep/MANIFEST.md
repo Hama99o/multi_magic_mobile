@@ -37,3 +37,19 @@ Contact sheet: `~/Downloads/multimagic-qa/2026-11-21-tables-p4.jpg`, also in Mul
 3. **At 800 dp the + button covered the summary bar's last cell.** The grid now keeps `FAB_ZONE` (96, what the card list already kept) free below it. Test: "the + button never covers the grid's summary bar". At 360 dp there is no grid; the card list already keeps the same 96.
 
 Red: 4 of 6 new tests failed on the old code (the other 2 are guards that must stay false). Green: 344/344 in the Tables, i18n and a11y suites. tsc and lint are clean.
+
+## Device pass 5 (qa_phone, 2026-11-21 09:26–10:09, bundle b5dfdf9, :3001 QA account)
+Hello's option (b): the QA account, credentials read by name from `.env`, signed-in email checked before the run (YES). Fixtures are `[qa]` bases made through the API and deleted by id (8–15, all "left: []"). The account's language went fr → en for the run → fr. Shots: `~/Downloads/multimagic-qa/2026-11-21-tables-p5/`. Only the 100 % pass fit in the slot.
+
+| Flow | Result at 100 %, light |
+|---|---|
+| 33 admin | ☑ PASS in full: rename, new column, clear + Undo (count back to 25), duplicate, new table |
+| 35 forms | ☑ PASS in full: list, new form, the four tabs, delete wording then confirm |
+| 34 import and export | ⚠ the paste typed with Enter reads 2 rows, maps, starts, banner shown; the import never finished (no job worker on :3001): its end, and export, NOT MEASURED |
+| 32 views and kanban | ⚠ new view and fold ☑. Move up: NOT MEASURED. :3001 ignores `sort=-created_at` (the board came oldest first), so the chip is rightly hidden; fix 1 above is proven by Jest only until a run on a server that sorts |
+
+Not run: the 200 % and dark passes of 32–35. Not measured on a device yet: fixes 2 (strip) and 3 (+ over the grid).
+
+Rig notes:
+- After `pm clear` the dev client shows its first-run developer menu over the app; dismiss it before the flows.
+- Metro served another worktree through the shared node_modules cache until restarted with `--clear`; check the served bundle for this tree's paths.

@@ -4,9 +4,10 @@
 # the top of Home; on a tablet (>= 800 dp) the Search key in the header. The
 # Apps sheet's "Search everything" row is the third way in.
 #
-# Searches "qa-shot" only: the QA account holds copies of real notes, which
-# must never be in a screenshot; the invented "[qa-shot]" notes are the only
-# rows this query can match in Notes. Opens one hit and comes back. A query
+# Searches QUERY and opens the Notes hit NOTE. Run on the local demo stack
+# (:3020, invented data: QUERY=courses NOTE="Liste de courses"). On :3001 use
+# QUERY=qa-shot only: the QA account holds copies of real notes, which must
+# never be in a screenshot. Opens one hit and comes back. A query
 # that matches nothing shows the empty state. WRITES NOTHING on the server
 # (the recents are on the phone, AsyncStorage).
 #
@@ -51,14 +52,14 @@ tags:
     timeout: 15000
 - takeScreenshot: reports/45-${W}-${THEME}-${LANG}-open
 
-- inputText: "qa-shot"
+- inputText: "${QUERY}"
 - extendedWaitUntil:
     visible:
       id: "search-section-notes"
     timeout: 30000
-- assertVisible: "\\[qa-shot\\] Groceries"
+- assertVisible: "${NOTE}"
 - takeScreenshot: reports/45-${W}-${THEME}-${LANG}-hits
-- tapOn: "\\[qa-shot\\] Groceries"
+- tapOn: "${NOTE}"
 - extendedWaitUntil:
     visible:
       id: "note-toolbar"

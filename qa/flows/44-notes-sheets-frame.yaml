@@ -6,8 +6,10 @@
 # tablet (>= SPLIT_AT, 800 dp). Jest proves the frame's width and position
 # (`SheetFrame.test.tsx`, `notes-index` "sheets on a tablet"); only a device
 # shows the card actually sits centred with the scrim around it, in both
-# themes. This opens each sheet on an invented "[qa-shot]" note, takes its
-# picture, and closes it with Back. It WRITES NOTHING: no colour is picked, no
+# themes. This opens each sheet on the note NOTE (found by QUERY), takes its
+# picture, and closes it with Back. Run on the local demo stack (:3020, its
+# invented data): on :3001 use QUERY=qa-shot NOTE="\\[qa-shot\\] Groceries", never a
+# real note. It WRITES NOTHING: no colour is picked, no
 # reminder saved, no one invited.
 #
 # Run by the slot driver at 411 and 800 dp, light and dark: W and THEME name
@@ -28,13 +30,13 @@ tags:
     id: "chat-close"
 - tapOn:
     id: "home-tile-notes"
-# Only the invented notes: the QA account also holds copies of real notes.
+# Only the note asked for (on :3001 the QA account also holds copies of real notes).
 - tapOn:
     id: "notes-search"
-- inputText: "qa-shot"
+- inputText: "${QUERY}"
 - pressKey: Enter
 - extendedWaitUntil:
-    visible: "\\[qa-shot\\] Groceries"
+    visible: "${NOTE}"
     timeout: 30000
 
 # The drawer's Edit labels sheet.
@@ -51,7 +53,7 @@ tags:
     id: "labels-close"
 
 # A note's editor, and each sheet it opens.
-- tapOn: "\\[qa-shot\\] Groceries"
+- tapOn: "${NOTE}"
 - extendedWaitUntil:
     visible:
       id: "note-toolbar"

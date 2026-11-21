@@ -1203,7 +1203,12 @@ describe("select rows, then edit or delete them together (increment 5)", () => {
   });
 
   it("a column the list did not load (field_ids): Undo writes back each row's REAL value, read first, never a blank", async () => {
-    // Phone (5) is not on the cards, so the list never loaded it: the old values come from each row.
+    // A server that projects: the list's rows carry only the asked columns (title, Status, Supplier,
+    // Photos), so Phone (5) was never loaded and the old values must come from each row.
+    mock.resetHandlers();
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }]), role: "editor" }] });
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody());
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([row(502, "Red hat", { "2": { scalar_value: "out" } }), row(501, "Blue scarf", { "2": { scalar_value: "in" } })]));
     mock.onGet(`${B}/records/502`).reply(200, { record: row(502, "Red hat", { "5": { scalar_value: "+93 70 000 0002" } }) });
     mock.onGet(`${B}/records/501`).reply(200, { record: scarf });
     mock.onPost(`${B}/tables/10/records/bulk_write`).reply(200, { result: { created: 0, updated: 2, ids: [502, 501] }, records: [] });
@@ -1216,6 +1221,21 @@ describe("select rows, then edit or delete them together (increment 5)", () => {
     await act(async () => useTablesUndo.getState().offer?.undo?.());
     const undo = JSON.parse(mock.history.post[mock.history.post.length - 1].data);
     expect(undo).toEqual({ rows: [{ id: 502, values: { "5": "+93 70 000 0002" } }, { id: 501, values: { "5": "+93 70 123 4567" } }] });
+  });
+
+  it("a server that IGNORES field_ids (prod until the deploy): every column came, so nothing is read again", async () => {
+    // The default rows carry Phone (5), a column the list did not ask for: the server sent everything.
+    mock.onPost(`${B}/tables/10/records/bulk_write`).reply(200, { result: { created: 0, updated: 2, ids: [502, 501] }, records: [] });
+    await selectBoth();
+    fireEvent.press(screen.getByTestId("tables-bulk-edit-open"));
+    fireEvent.press(await screen.findByTestId("tables-bulk-field-5"));
+    fireEvent.changeText(screen.getByTestId("tables-bulk-value"), "+93 70 999 9999");
+    fireEvent.press(screen.getByTestId("tables-bulk-edit-apply"));
+    await waitFor(() => expect(useTablesUndo.getState().offer?.message).toBe("2 rows changed"));
+    expect(mock.history.get.filter((r) => /\/records\/\d+$/.test(r.url ?? ""))).toHaveLength(0); // no extra fetch
+    await act(async () => useTablesUndo.getState().offer?.undo?.());
+    const undo = JSON.parse(mock.history.post[mock.history.post.length - 1].data);
+    expect(undo).toEqual({ rows: [{ id: 502, values: { "5": null } }, { id: 501, values: { "5": "+93 70 123 4567" } }] });
   });
 
   it("sets one column on every selected row; Undo writes each row's own value back", async () => {

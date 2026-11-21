@@ -8,6 +8,7 @@
  * refusal puts it back. An upload is not: the file's id and URL are the
  * server's, so the row shows it when the server answers.
  */
+import { useRef } from "react";
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
 import { fieldsApi, type FieldDefinition, type FieldFile, type FieldRecord, type FieldValues, type Selection } from "@/api/fields";
 import { useOptimistic } from "@/lib/optimistic";
@@ -24,6 +25,15 @@ type OnError = (error: unknown) => void;
 
 export function useFieldWrites(target: FieldTarget, onError?: OnError) {
   const touched = () => target.touched;
+  /**
+   * The links the server has not answered yet, by field and record. A guess
+   * carries `selectionId: -recordId`; unlinking it before the answer sent
+   * DELETE …/-3 (a 404), and the link then landed on the server while the
+   * screen showed none (review FL4, 88, 2026-11-21). An unlink of a pending
+   * link waits for it, then deletes the REAL selection, or nothing if it failed.
+   */
+  const pending = useRef(new Map<string, Promise<Selection | null>>());
+  const keyOf = (field: FieldDefinition, recordId: number) => `${field.id}:${recordId}`;
 
   const setScalar = useOptimistic({
     run: ({ field, value }: { field: FieldDefinition; value: unknown }) => fieldsApi.setValues(target.record, { [field.id]: value }),
@@ -34,7 +44,19 @@ export function useFieldWrites(target: FieldTarget, onError?: OnError) {
 
   /** A single-record field holds one link: the server replaces it, and so does the guess. */
   const link = useOptimistic({
-    run: ({ field, recordId }: { field: FieldDefinition; recordId: number }) => fieldsApi.addSelection(field, target.record, recordId),
+    run: ({ field, recordId }: { field: FieldDefinition; recordId: number }) => {
+      const made = fieldsApi.addSelection(field, target.record, recordId);
+      const key = keyOf(field, recordId);
+      const settled = made.then(
+        (s) => s,
+        () => null,
+      );
+      pending.current.set(key, settled);
+      void settled.finally(() => {
+        if (pending.current.get(key) === settled) pending.current.delete(key);
+      });
+      return made;
+    },
     touched,
     apply: (client, { field, recordId }) =>
       target.edit(client, (values) => {
@@ -53,7 +75,12 @@ export function useFieldWrites(target: FieldTarget, onError?: OnError) {
   });
 
   const unlink = useOptimistic({
-    run: ({ selection }: { field: FieldDefinition; selection: Selection }) => fieldsApi.removeSelection(selection.selectionId),
+    run: async ({ field, selection }: { field: FieldDefinition; selection: Selection }) => {
+      if (selection.selectionId > 0) return fieldsApi.removeSelection(selection.selectionId);
+      // A guess: wait for its link, then delete what the server made.
+      const made = await pending.current.get(keyOf(field, selection.recordId));
+      if (made) await fieldsApi.removeSelection(made.selectionId);
+    },
     touched,
     apply: (client, { field, selection }) =>
       target.edit(client, (values) => {

@@ -52,6 +52,15 @@ export function editCards(client: QueryClient, projectId: number, edit: (cards: 
   });
 }
 
+/** `editCards`, only in the board scopes `keep` accepts (key: ["flow","board",P,scope]). */
+function editCardsIn(client: QueryClient, projectId: number, keep: (scope: unknown) => boolean, edit: (cards: Card[]) => Card[]) {
+  for (const [key, data] of client.getQueriesData<InfiniteData<Board>>({ queryKey: flowKeys.boards(projectId) })) {
+    if (!data?.pages?.length || !keep(key[3])) continue;
+    const all = edit(data.pages.flatMap((p) => p.cards));
+    client.setQueryData<InfiniteData<Board>>(key, { ...data, pages: data.pages.map((p, i) => ({ ...p, cards: i === 0 ? all : [] })) });
+  }
+}
+
 /** The board's own parts (columns, sprints, the project), in every board of the project. */
 export function editBoards(client: QueryClient, projectId: number, edit: (board: Board) => Board) {
   client.setQueriesData<InfiniteData<Board>>({ queryKey: flowKeys.boards(projectId) }, (data) =>
@@ -135,8 +144,10 @@ export function useCreateCard(projectId: number, opts: { onError?: (e: unknown, 
   return useOptimistic({
     run: (input: { title: string; columnId: number; sprintId: number | null }) => flowApi.createCard(projectId, input),
     touched: () => [flowKeys.boards(projectId), flowKeys.projectLists()],
+    // The guess goes only where the card will be: "all", its own sprint, or
+    // the backlog when it has none (review, 88: it showed on every sprint).
     apply: (client, { title, columnId, sprintId }) =>
-      editCards(client, projectId, (cards) => {
+      editCardsIn(client, projectId, (scope) => scope === "all" || scope === sprintId || (scope === "backlog" && sprintId == null), (cards) => {
         const last = Math.max(0, ...cards.filter((c) => c.columnId === columnId).map((c) => c.position));
         const guess: Card = {
           id: nextGuessId(), projectId, columnId, sprintId, title, description: null, position: last + 1, dueDate: null,
@@ -270,7 +281,14 @@ export function useAddComment(projectId: number, cardId: number, me: { id: numbe
       ]);
       editCard(client, projectId, cardId, (c) => ({ ...c, commentsCount: c.commentsCount + 1 }));
     },
-    done: (client, made) => client.setQueryData<Comment[]>(flowKeys.comments(projectId, cardId), (rows) => (rows ?? []).map((r) => (r.id < 0 && r.content === made.content ? made : r))),
+    // The answer replaces ONE pending row: the oldest with these words. Two
+    // "ok" sent quickly became two copies of the first (review, 88).
+    done: (client, made) =>
+      client.setQueryData<Comment[]>(flowKeys.comments(projectId, cardId), (rows) => {
+        const list = rows ?? [];
+        const at = list.findIndex((r) => r.id < 0 && r.content === made.content);
+        return at < 0 ? list : list.map((r, i) => (i === at ? made : r));
+      }),
     onError: (e, text) => opts.onError?.(e, text),
   });
 }

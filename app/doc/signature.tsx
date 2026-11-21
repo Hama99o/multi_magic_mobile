@@ -6,7 +6,7 @@
  * text (G7), in the same six fonts as here. Leaving with unsaved ink asks
  * first. `?id=` edits an existing one, restoring its strokes or text.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Alert, TextInput, View, useWindowDimensions } from "react-native";
 import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
@@ -89,8 +89,12 @@ export default function SignatureCreator() {
     ]);
   };
 
+  // Two taps in one frame both arrive before `isPending` disables Save, and
+  // each made a signature (readiness 2×tap): a ref closes the gap.
+  const saving = useRef(false);
   const onSave = () => {
-    if (!ready) return;
+    if (!ready || saving.current) return;
+    saving.current = true;
     setFailed(false);
     const name = editing?.name ?? nextSignatureName(list.data?.rows ?? [], (n) => t("doc.signatures.defaultName", { n }));
     const input: SignatureInput =
@@ -105,6 +109,9 @@ export default function SignatureCreator() {
           router.back();
         },
         onError: () => setFailed(true),
+        onSettled: () => {
+          saving.current = false;
+        },
       },
     );
   };

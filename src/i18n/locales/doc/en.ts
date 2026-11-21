@@ -190,7 +190,7 @@ export const docEn = {
     extract_other: "Extract {{count}} pages",
     extractNone: "Extract pages",
     split: "One file per page",
-    truncated: "Only the first {{count}} pages are shown.",
+    truncated: "Pictures for the first {{count}} pages only. Every page is kept.",
     allRemoved: "Every page is removed. Undo to bring them back.",
   },
   text: {

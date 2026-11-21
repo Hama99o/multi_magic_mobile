@@ -146,7 +146,7 @@ export default function TextEditorScreen() {
       { text: t("doc.text.discard"), style: "destructive", onPress: () => setDrafts({}) },
     ]);
 
-  const save = remember(async () => {
+  const save = remember("save", async () => {
     if (!file || edits.length === 0) return;
     const out = await task.run((opts) => docApi.pdfEdit(file, edits, opts));
     if (!out) return;
@@ -274,7 +274,7 @@ export default function TextEditorScreen() {
                   </Text>
                 ) : null}
                 <BusyCard task={task} />
-                <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} onRetry={retry} />
+                <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} onRetry={() => retry({ save })} />
                 <Button testID="doc-text-save" label={t("doc.text.save")} disabled={edits.length === 0 || task.busy} onPress={() => void save()} />
                 {edits.length ? <Button testID="doc-text-discard" tone="neutral" label={t("doc.text.discard")} onPress={discard} /> : null}
 

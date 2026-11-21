@@ -192,7 +192,7 @@ export const docFr: typeof docEn = {
     extract_other: "Extraire {{count}} pages",
     extractNone: "Extraire des pages",
     split: "Un fichier par page",
-    truncated: "Seules les {{count}} premières pages sont affichées.",
+    truncated: "Images des {{count}} premières pages seulement. Toutes les pages sont gardées.",
     allRemoved: "Toutes les pages sont retirées. Annulez pour les retrouver.",
   },
   text: {

@@ -193,6 +193,25 @@ it("a typed signature is sent without a PNG, named Signature 3, in the web's fon
   expect(body).not.toHaveProperty("data_url");
 });
 
+// Readiness "2×tap" (docs/RELEASE_READINESS.md): Save is disabled while the
+// mutation is pending, but `isPending` is React state, so two taps in ONE
+// frame both land before the re-render, and each made a signature.
+it("a double tap on Save makes one signature, not two", async () => {
+  setWidth(360);
+  mock.onPost("/api/v1/doc_app/signatures").reply(201, { signature: { ...SIGNATURES.signatures[0], id: 3, name: "Signature 3" } });
+  show(<SignatureCreator />);
+  await waitFor(() => expect(mock.history.get.some((r) => r.url === "/api/v1/doc_app/signatures")).toBe(true));
+  fireEvent.press(await screen.findByTestId("doc-creator-mode-type"));
+  fireEvent.changeText(screen.getByTestId("doc-creator-text"), "Ada");
+  await act(async () => {
+    const save = screen.getByTestId("doc-creator-save");
+    fireEvent.press(save);
+    fireEvent.press(save);
+  });
+  await waitFor(() => expect(mock.history.post.length).toBeGreaterThan(0));
+  expect(mock.history.post.filter((r) => r.url === "/api/v1/doc_app/signatures")).toHaveLength(1);
+});
+
 it("the signatures list keeps the server's order and asks before deleting", async () => {
   setWidth(360);
   const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});

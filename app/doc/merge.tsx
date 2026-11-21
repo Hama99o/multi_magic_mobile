@@ -67,7 +67,7 @@ export default function MergeScreen() {
   const anyProblem = items.some((_, i) => infoOf(i).problem);
   const limit = useMemo(() => checkMerge(items.map((i) => i.file)), [items]);
 
-  const merge = remember(async () => {
+  const merge = remember("merge", async () => {
     const result = await task.run((opts) => docApi.merge(items.map((i) => i.file), opts));
     if (result) setResults([result]);
   });
@@ -160,7 +160,7 @@ export default function MergeScreen() {
               <Text tone="muted">{t("doc.merge.needTwo")}</Text>
             ) : null}
             <BusyCard task={task} />
-            <ErrorLine error={task.error} onDismiss={task.clearError} onRetry={retry} />
+            <ErrorLine error={task.error} onDismiss={task.clearError} onRetry={() => retry({ merge })} />
             <Button testID="doc-merge-go" label={t("doc.merge.merge")} disabled={items.length < 2 || anyProblem || Boolean(limit) || task.busy} onPress={() => void merge()} />
           </>
         )}

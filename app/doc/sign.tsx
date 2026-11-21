@@ -117,7 +117,7 @@ export default function SignScreen() {
   const shownStamps = stamps.filter((s) => s.page === (kind === "pdf" ? pageIndex : 0));
   const selectedStamp = stamps.find((s) => s.key === selected) ?? null;
 
-  const save = remember(async (output: "same" | "pdf") => {
+  const save = remember("save", async (output: "same" | "pdf") => {
     if (!file) return;
     if (stamps.length === 0) {
       setHint(t("doc.sign.placeFirst"));
@@ -228,7 +228,7 @@ export default function SignScreen() {
                     </Text>
                   ) : null}
                   <BusyCard task={task} />
-                  <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} onRetry={retry} />
+                  <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} onRetry={() => retry({ save })} />
                   <Button testID="doc-sign-save" label={t("doc.sign.save")} disabled={task.busy} onPress={() => void save("same")} />
                   {kind === "image" ? <Button testID="doc-sign-save-pdf" tone="neutral" label={t("doc.sign.saveAsPdf")} disabled={task.busy} onPress={() => void save("pdf")} /> : null}
                 </>

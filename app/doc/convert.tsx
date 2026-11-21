@@ -48,7 +48,7 @@ export default function ConvertScreen() {
   const pages = inspect.data?.pages ?? 0;
   const targets = file ? convertTargets(file) : [];
 
-  const convert = remember(async () => {
+  const convert = remember("convert", async () => {
     if (!file || !target) return;
     const base = baseName(file.name);
     const out = await task.run(async (opts): Promise<DocResult[]> => {
@@ -94,7 +94,7 @@ export default function ConvertScreen() {
                   </Text>
                 ) : null}
                 <BusyCard task={task} />
-                <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} onRetry={retry} />
+                <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} onRetry={() => retry({ convert })} />
                 <Button testID="doc-convert-go" label={t("doc.convert.convert")} disabled={!target || task.busy} onPress={() => void convert()} />
               </>
             ) : null}

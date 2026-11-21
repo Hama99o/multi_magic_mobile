@@ -54,7 +54,10 @@ export default function PagesScreen() {
   const problem = inspectionProblem(inspect.data) ?? inspect.error ?? thumbs.error ?? null;
 
   useEffect(() => {
-    if (thumbs.data && entries.length === 0 && history.length === 0) setEntries(entriesFor(thumbs.data.pages.length));
+    // Every page of the PDF, not only those the server drew a picture for:
+    // over its cap, Save used to send the first 300 and drop the rest (review
+    // 88, D1). A page past the cap is kept, drawn as a blank sheet.
+    if (thumbs.data && entries.length === 0 && history.length === 0) setEntries(entriesFor(thumbs.data.pageCount));
   }, [thumbs.data, entries.length, history.length]);
 
   const edit = (next: Entry[]) => {
@@ -77,13 +80,13 @@ export default function PagesScreen() {
   const thumbOf = (source: number) => thumbs.data?.pages.find((p) => p.index === source);
 
   const base = file ? baseName(file.name) : "document";
-  const save = remember(async (which: "all" | "extract") => {
+  const save = remember("save", async (which: "all" | "extract") => {
     if (!file) return;
     const list = which === "all" ? entries : entries.filter((e) => selected.has(e.key));
     const result = await task.run((opts) => docApi.pages(file, toServer(list), false, which === "extract" ? { ...opts, as: `${base}-pages.pdf` } : opts));
     if (result) setResults([result]);
   });
-  const split = remember(async () => {
+  const split = remember("split", async () => {
     if (!file) return;
     const list = entries;
     const out = await task.run(async (opts) => {
@@ -195,7 +198,7 @@ export default function PagesScreen() {
                   </View>
                 )}
                 <BusyCard task={task} />
-                <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} onRetry={retry} />
+                <ErrorLine error={task.error} name={file.name} onDismiss={task.clearError} onRetry={() => retry({ save, split })} />
                 <Button testID="doc-pages-save" label={t("doc.pages.saveAll")} disabled={task.busy || entries.length === 0} onPress={() => void save("all")} />
                 <Button
                   testID="doc-pages-extract"

@@ -107,6 +107,19 @@ export const en = {
   },
 
   chat: {
+    // "Is this still true?" (the web's ai.memoryReview, word for word).
+    memoryReview: {
+      title: "Is this still true?",
+      hint: "Things I remember about you that may have changed. Keep me right.",
+      stillTrue: "Still true",
+      askLater: "Ask me later",
+      notTrue: "Not any more",
+      removed: "Removed from what I remember",
+      failed: "That did not go through. Try again.",
+      stillTrueOf: "Still true: {{fact}}",
+      askLaterOf: "Ask me later: {{fact}}",
+      notTrueOf: "Not any more: {{fact}}",
+    },
     gone: "This conversation was deleted on another device. Open Conversations to pick another.",
     scrollToBottom: "Scroll to the newest message",
     title: "Assistant",

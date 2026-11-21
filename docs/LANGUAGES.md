@@ -63,6 +63,8 @@ not been done.
 
 ## The French this session wrote
 
+**Doc Tools (2026-11-20)** keeps its own file, `src/i18n/locales/doc/fr.ts`: the web's French (`doc.*` in its `fr.ts`) wherever the web has the sentence, and this session's for the phone-only ones (the "Add from" sheet, sending/working/cancel, Share and Save, the line list and edit sheet of the text editor). Those phone-only sentences await his eye like the table below.
+
 | Key | English | French |
 |---|---|---|
 | `account.deleteAccount` | Delete account | Supprimer le compte |

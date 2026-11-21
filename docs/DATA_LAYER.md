@@ -58,6 +58,7 @@ wider net, run by hand.
 | `src/stores/reachability.store.ts` | a health ping, not data: it answers "is the server there", and the offline banner reads that |
 | SafeZone `item.tsx` `safezoneApi.show` | secrets (rule 4) |
 | `src/stores/readAloud.store.ts` `speechApi.forMessage` | the playback engine asks for a SIGNED audio URL at the moment of playing; a cached one can expire under it, so there is nothing a cache would add but a dead link |
+| Doc Tools' actions (`src/screens/doc/ui.tsx` `useDocTask`) | a tool call uploads a file from the phone and answers a NEW file, written to the cache for Share or Save. Nothing on the server changes and nothing is server data another screen could read, so there is nothing to cache or invalidate; what it needs is upload progress and a cancel, which the hook gives. Doc's READS are queries: signatures, `inspect`, pages, thumbnails, text runs, the compress preview (`docKeys`); signature writes are mutations |
 | the sign-in answer in `auth.store` | it IS the session, like the token; the profile itself is `useMe()` → `profileKeys.me()` |
 
 ## How it was found

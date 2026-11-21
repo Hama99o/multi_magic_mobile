@@ -106,6 +106,14 @@ const SAME_IN_BOTH = new Set([
   "tables.history.sources.import",
   "tables.history.kinds.table",
   "tables.history.kinds.imports",
+  // Doc Tools: "Pages", "Photos", "Signatures", "Active" and "Signature {{n}}"
+  // are French words too (the web's own French for the tool and its list);
+  // format names, the three generic font families and the units are the same
+  // in both, as is "{{font}} · {{size}} pt".
+  ...["doc.tools.pages.title", "doc.intake.photos", "doc.signatures.title", "doc.signatures.active", "doc.signatures.defaultName", "doc.creator.backgrounds.transparent"],
+  ...["doc.file.pages_one", "doc.file.pages_other", "doc.pages.count_one", "doc.pages.count_other", "doc.pages.page"],
+  ...["doc.creator.sizeValue", "doc.text.sizeValue", "doc.text.fontInfo", "doc.text.fontSans", "doc.text.fontSerif", "doc.text.fontMono"],
+  ...["doc.convert.formats.pdf", "doc.convert.formats.jpg", "doc.convert.formats.png", "doc.convert.formats.webp"],
   "pages.searchChips.type",
   // "Pause" is the French word too (a player button).
   "pages.view.pause",

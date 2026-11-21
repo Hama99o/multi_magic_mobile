@@ -1,0 +1,93 @@
+# DOC TOOLS, the way in (2026-11-20): the Home tile, the hub's six tools, and
+# each tool's intake card and "Add from" sheet. docs/design/doc/SPEC.md.
+#
+# It writes nothing and calls no Doc tool: the rig's backend (the owner's local
+# MultiMagic) does not have the Doc endpoints yet (multi_magic
+# feat/doc-mobile-endpoints, not deployed). Every tool call was measured by
+# hand on qa_phone3 against a local stack that has them, results checked in
+# the output files (SPEC §F).
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: the door (Home tile); the six tools reachable from the hub; each
+# intake card renders; the sheet offers only what a tool takes (Pages and Text:
+# Files only; the others: Photos, Files, Camera); the scanner row stays hidden.
+# CANNOT TELL YOU: anything a tool does with a file (SPEC §F, by hand).
+appId: ${APP_ID}
+tags:
+  - doc
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-doc"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-doc"
+- extendedWaitUntil:
+    visible:
+      id: "doc-tools"
+    timeout: 30000
+- takeScreenshot: reports/28-doc-hub
+
+# Sign, Merge, Convert, Compress take a PDF or a picture: three rows.
+- tapOn:
+    id: "doc-tool-sign"
+- tapOn:
+    id: "doc-sign-intake-add"
+- assertVisible:
+    id: "doc-intake-photos"
+- assertVisible:
+    id: "doc-intake-files"
+- assertVisible:
+    id: "doc-intake-camera"
+- assertNotVisible:
+    id: "doc-intake-scan"
+- takeScreenshot: reports/28-doc-sign-sheet
+- pressKey: Back
+- tapOn:
+    id: "header-back"
+
+- tapOn:
+    id: "doc-tool-merge"
+- assertVisible:
+    id: "doc-merge-intake"
+- tapOn:
+    id: "header-back"
+
+# Pages and Text take a PDF only: Files, no Photos, no Camera.
+- tapOn:
+    id: "doc-tool-pages"
+- tapOn:
+    id: "doc-pages-intake-add"
+- assertVisible:
+    id: "doc-intake-files"
+- assertNotVisible:
+    id: "doc-intake-photos"
+- assertNotVisible:
+    id: "doc-intake-camera"
+- pressKey: Back
+- tapOn:
+    id: "header-back"
+
+- tapOn:
+    id: "doc-tool-text"
+- assertVisible:
+    id: "doc-text-intake"
+- tapOn:
+    id: "header-back"
+
+- tapOn:
+    id: "doc-tool-convert"
+- assertVisible:
+    id: "doc-convert-intake"
+- tapOn:
+    id: "header-back"
+
+- tapOn:
+    id: "doc-tool-compress"
+- assertVisible:
+    id: "doc-compress-intake"
+- takeScreenshot: reports/28-doc-compress-intake

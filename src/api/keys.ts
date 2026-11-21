@@ -255,3 +255,22 @@ export const fieldKeys = {
   /** A record field's choices for a search term, paged. */
   options: <D extends number, Q extends string>(definitionId: D, term: Q) => ["fields", "options", definitionId, term] as const,
 };
+
+/**
+ * Doc Tools. Every tool call is stateless, so the only cached reads are the
+ * signatures and, per picked file (its cache uri), what the server said about
+ * it: its inspection, a page drawn at a width, every page small.
+ */
+export const docKeys = {
+  all: ["doc"] as const,
+  signatures: () => ["doc", "signatures"] as const,
+  inspect: <U extends string>(uri: U) => ["doc", "inspect", uri] as const,
+  page: <U extends string, P extends number, W extends number>(uri: U, page: P, width: W) => ["doc", "page", uri, page, width] as const,
+  thumbs: <U extends string, W extends number>(uri: U, width: W) => ["doc", "thumbs", uri, width] as const,
+  /** A compression preview: the file, the mode and the target (0 when none). */
+  compress: <U extends string, M extends string, T extends number>(uri: U, mode: M, target: T) => ["doc", "compress", uri, mode, target] as const,
+  /** Every text run of a PDF, for the text editor. */
+  text: <U extends string>(uri: U) => ["doc", "text", uri] as const,
+  /** A picture the phone cannot draw, as the server's JPEG copy. */
+  preview: <U extends string>(uri: U) => ["doc", "preview", uri] as const,
+};

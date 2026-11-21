@@ -17,7 +17,7 @@
  */
 import { CATEGORY_COLORS, TOKENS } from "./tokens";
 
-export const HOME_APPS = ["pages", "notes", "assistant", "chats", "notifications", "calendar", "contacts", "safezone", "conversations", "todos", "finance", "flow", "tables"] as const;
+export const HOME_APPS = ["pages", "notes", "assistant", "chats", "notifications", "calendar", "contacts", "safezone", "conversations", "todos", "finance", "flow", "tables", "doc"] as const;
 export type HomeApp = (typeof HOME_APPS)[number];
 
 const [BLUE, GREEN, ORANGE, PINK, PURPLE, TEAL, YELLOW, CORAL] = CATEGORY_COLORS;
@@ -28,6 +28,8 @@ export const GOLD = "#c9a227";
 export const MINT = "#3ecf9a";
 /** Tables (2026-11-20): azure, rows and columns; darker and bluer than the icon's sky blue. */
 export const AZURE = "#3d7fd9";
+/** Doc Tools (2026-11-20): slate, not a PDF red — red is `danger` here (docs/design/doc/SPEC.md). */
+export const SLATE = "#7a9cc6";
 
 export const APP_COLORS: Record<HomeApp, string> = {
   pages: TEAL,
@@ -43,6 +45,7 @@ export const APP_COLORS: Record<HomeApp, string> = {
   finance: GOLD,
   flow: MINT,
   tables: AZURE,
+  doc: SLATE,
 };
 
 /** The Assistant's badge: a gradient between two of the icon's colours. */

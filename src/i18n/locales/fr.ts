@@ -2153,6 +2153,7 @@ export const fr: Translations = {
       seek: "Position dans l’enregistrement",
       pdfTooBig: "Ce PDF est trop lourd pour être affiché ici. Ouvrez-le dans l’app PDF du téléphone : Partager ou enregistrer.",
       pdfFailed: "Impossible d’afficher ce PDF ici. Ouvrez-le dans l’app PDF du téléphone : Partager ou enregistrer.",
+      pdfPage: "Page {{n}} sur {{count}}",
       position: "{{n}} sur {{total}}",
       grid: "Vue en grille",
       list: "Vue en liste",

@@ -132,6 +132,8 @@ export const pagesKeys = {
   /** One background export, import or copy, followed until it finishes. */
   transfer: <I extends number>(transferId: I) => ["pages", "transfer", transferId] as const,
   /** One sheet of a spreadsheet, read by the server (parity #46). */
+  /** A PDF's server-drawn pages (page_images), a window at a time. */
+  pageImages: <N extends number>(nodeId: N) => ["pages", "pageImages", nodeId] as const,
   spreadsheet: <N extends number, S extends number>(nodeId: N, sheet: S) => ["pages", "spreadsheet", nodeId, sheet] as const,
   /** A file's earlier versions (parity #39). */
   versions: <S extends number, N extends number>(spaceId: S, nodeId: N) => ["pages", "versions", spaceId, nodeId] as const,

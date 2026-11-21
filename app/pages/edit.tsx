@@ -300,7 +300,9 @@ export default function PageEditorScreen() {
           : t("pages.page.saved");
 
   return (
-    <Screen measure scroll={false}>
+    // avoidKeyboard, as the note editor (app/notes/edit.tsx): without it the
+    // toolbar sat under the keyboard (measured on qa_phone, flow 36, 2026-11-21).
+    <Screen measure scroll={false} avoidKeyboard>
       <PagesHeader title={title} subtitle={engine?.handle ? status : null} onBack={() => void saveNow().finally(() => router.back())} />
       {page.isPending || (html != null && !engine) ? (
         <ActivityIndicator color={colors.inkMuted} style={{ marginTop: metrics.space.xl }} />

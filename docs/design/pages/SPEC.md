@@ -212,6 +212,7 @@ reuses a sheet this app already has. Rule Zero's receipt is §1 and §6 phase 1.
 | 43 | Previous / next across every file | `neighbours.ts`, the viewer's bar | M6 |
 | 46 | CSV / TSV preview | `csv.ts` (200 rows, 20 columns), `viewerModes.ts` `"sheet"` | M6 |
 | 22, 50 | New page, edit a page | `app/pages/edit.tsx`, `pageEditor.ts`, `pagesApi.createPage/savePage` | M7 |
+| 24 | Upload a folder | `folderUpload.ts` (walk, room check, folders parent first), `pickFolder.ts`, `uploads.store.ts` `sweepCopies` | M9 |
 | 50 | Links, images, code blocks in a page | `PageEditorSheets.tsx`; the note screen's calls (`setLink`, `imagesApi.upload` + `imageNode`, `blockEdits.ts`) | M8 |
 
 **How a page saves:** as the web does, `PATCH {node:{content:{html}}}`, one
@@ -235,13 +236,12 @@ JavaScript.
   `node_modules` is one symlinked tree shared by every worktree on this box,
   so adding a dependency changes every sibling's install. Until then an
   `.xlsx` file goes to the system viewer.
-- **#24, upload a folder, about a day.** No new dependency:
-  `Directory.pickDirectoryAsync` is in the installed `expo-file-system`
-  57.0.7, natively on both iOS and Android. The work: walk the tree, create
-  each folder through `pagesApi`, and queue the files into the existing
-  uploads store under their folder. **Unknown until a device run:** whether a
-  picked folder's URIs (Android SAF `content://`, iOS security-scoped) still
-  read after a restart, which matters because the queue survives restarts.
+- **#24, upload a folder: built (M9), not yet on a device.** Every file is
+  copied into Documents when it is queued, so the queue never depends on a
+  picked folder's URI still opening after a restart. On relaunch, a half copy
+  from a kill and any copy no row names are deleted. Unproven until the
+  device run: the two kill tests (mid-copy, mid-upload), and on iOS whether a
+  picked folder's files can be read and copied at all (no iOS here).
 - **Server:** a big merge or a custom compress runs out of memory on a 2 GB
   local box. That is a `multi_magic` fix (multi-magic-83), not a phone fix.
 

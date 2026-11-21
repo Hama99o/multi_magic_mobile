@@ -19,7 +19,7 @@ import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { FILL } from "@/theme/fill";
-import { Camera, Plus, ChevronRight, Download, File, Folder, FolderInput, FolderPlus, FileText, Images, Info, Link2, MapPin, Copy, FileStack, FileArchive, History, RefreshCw, NotebookPen, Pencil, Star, StarOff, Trash2, Users, type LucideIcon } from "@/components/icons";
+import { Camera, Plus, ChevronRight, Download, File, Folder, FolderInput, FolderPlus, FolderUp, FileText, Images, Info, Link2, MapPin, Copy, FileStack, FileArchive, History, RefreshCw, NotebookPen, Pencil, Star, StarOff, Trash2, Users, type LucideIcon } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -108,6 +108,7 @@ export function NewSheet({
   onSpace,
   onImportZip,
   onPage,
+  onUploadFolder,
 }: {
   open: boolean;
   onClose: () => void;
@@ -122,6 +123,8 @@ export function NewSheet({
   onPage?: () => void;
   /** A ZIP unpacked here, its folders kept (parity #25). */
   onImportZip?: () => void;
+  /** A whole folder from the phone, its folders kept (parity #24). */
+  onUploadFolder?: () => void;
 }) {
   const { t } = useTranslation();
   // Close first, act once the sheet has slid away: started at once, the
@@ -139,6 +142,7 @@ export function NewSheet({
       <SheetRow icon={Images} label={t("pages.new.media")} onPress={run(onMedia)} testID="pages-new-media" />
       <SheetRow icon={File} label={t("pages.new.files")} onPress={run(onFiles)} testID="pages-new-files" />
       <SheetRow icon={Camera} label={t("pages.new.camera")} onPress={run(onCamera)} testID="pages-new-camera" />
+      {onUploadFolder ? <SheetRow icon={FolderUp} label={t("pages.folderUpload.menu")} onPress={run(onUploadFolder)} testID="pages-new-upload-folder" /> : null}
       {onImportZip ? <SheetRow icon={FileArchive} label={t("pages.copy.importZip")} onPress={run(onImportZip)} testID="pages-new-import-zip" /> : null}
     </BottomSheet>
   );

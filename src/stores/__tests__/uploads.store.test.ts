@@ -31,6 +31,15 @@ jest.mock("expo-file-system", () => {
     delete() {
       for (const uri of [...mockFiles.keys()]) if (uri.startsWith(this.uri + "/")) mockFiles.delete(uri);
     }
+    // The immediate subfolders that hold a file (enough for the orphan sweep).
+    list() {
+      const names = new Set<string>();
+      for (const uri of mockFiles.keys()) if (uri.startsWith(this.uri + "/")) {
+        const rest = uri.slice(this.uri.length + 1);
+        if (rest.includes("/")) names.add(rest.split("/")[0]);
+      }
+      return [...names].map((n) => new Directory(this.uri, n));
+    }
   }
   class File {
     uri: string;
@@ -547,6 +556,25 @@ describe("a row at once (QA_FULL U4)", () => {
     store = load();
     await store.useUploads.getState().hydrate();
     expect(store.useUploads.getState().items[0]).toMatchObject({ status: "failed", error: "missingFile" });
+  });
+
+  it("a relaunch deletes the half-copied file and every copy no row names; a live row keeps its own", async () => {
+    // Hello, 2026-11-21: a kill mid-copy must not leave the half copy on the phone for ever.
+    mockFiles.set("file:///doc/pages-uploads/p/p.mov", 5);
+    mockFiles.set("file:///doc/pages-uploads/orphan/old.mov", 9);
+    mockFiles.set("file:///doc/pages-uploads/q/q.jpg", 3);
+    await AsyncStorage.setItem(
+      "mm-pages-uploads",
+      JSON.stringify([
+        { id: "p", localUri: "content://x", fileName: "p.mov", mimeType: "video/quicktime", size: 10, destination: DEST, status: "preparing", sent: 0, error: null, attempts: 0, queuedAt: new Date().toISOString() },
+        { id: "q", localUri: "file:///doc/pages-uploads/q/q.jpg", fileName: "q.jpg", mimeType: "image/jpeg", size: 3, destination: DEST, status: "failed", sent: 0, error: "quota", attempts: 1, queuedAt: new Date().toISOString() },
+      ]),
+    );
+    store = load();
+    await store.useUploads.getState().hydrate();
+    expect(mockFiles.has("file:///doc/pages-uploads/p/p.mov")).toBe(false);
+    expect(mockFiles.has("file:///doc/pages-uploads/orphan/old.mov")).toBe(false);
+    expect(mockFiles.has("file:///doc/pages-uploads/q/q.jpg")).toBe(true);
   });
 });
 

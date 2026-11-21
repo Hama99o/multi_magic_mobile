@@ -223,3 +223,25 @@ describe("emptyTrash", () => {
     await expect(pagesApi.emptyTrash()).rejects.toBeTruthy();
   });
 });
+
+// multi_magic feat/mobile-gaps-2 (81a02e96, multi-magic-83, 2026-11-21):
+// every node carries `duration_seconds`, a float from Active Storage's
+// analyzer for video/* and audio/*, null otherwise or before analysis. Not
+// captured yet (the branch is not on :3020): the captured node plus the
+// field, as the contract states it.
+describe("duration_seconds (feat/mobile-gaps-2)", () => {
+  const withDuration = (value: unknown) => {
+    const body = JSON.parse(JSON.stringify(load("pages_node_page").body)) as { node: Record<string, unknown> };
+    if (value !== undefined) body.node.duration_seconds = value;
+    return body;
+  };
+  it("a float is kept", async () => {
+    mock.onGet(/\/nodes\/\d+$/).reply(200, withDuration(12.48));
+    expect((await pagesApi.node(1, 2)).durationSeconds).toBe(12.48);
+  });
+  it("null, or a server without the field, is null", async () => {
+    mock.onGet(/\/nodes\/\d+$/).replyOnce(200, withDuration(null)).onGet(/\/nodes\/\d+$/).replyOnce(200, withDuration(undefined));
+    expect((await pagesApi.node(1, 2)).durationSeconds).toBeNull();
+    expect((await pagesApi.node(1, 2)).durationSeconds).toBeNull();
+  });
+});

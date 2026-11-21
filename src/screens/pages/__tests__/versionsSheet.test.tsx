@@ -11,7 +11,7 @@ import { http } from "@/api/http";
 import type { PageNode } from "@/api/pages";
 import { VersionsSheet } from "../VersionsSheet";
 
-const node = { id: 9, spaceId: 3, parentId: null, title: "Budget.xlsx", kind: "file", starred: false, childrenCount: 0, attachmentUrl: "https://files.example.test/b.xlsx", thumbnailUrl: null, mimeType: "application/vnd.ms-excel", fileSize: 10, ownerName: null, updatedAt: "2026-11-20T21:00:00Z", createdAt: null, deletedAt: null, space: null, html: null, ancestors: [] } as PageNode;
+const node = { id: 9, spaceId: 3, parentId: null, title: "Budget.xlsx", kind: "file", starred: false, childrenCount: 0, attachmentUrl: "https://files.example.test/b.xlsx", thumbnailUrl: null, mimeType: "application/vnd.ms-excel", fileSize: 10, durationSeconds: null, ownerName: null, updatedAt: "2026-11-20T21:00:00Z", createdAt: null, deletedAt: null, space: null, html: null, ancestors: [] } as PageNode;
 
 let mock: MockAdapter;
 beforeEach(() => {

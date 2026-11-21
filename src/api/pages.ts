@@ -80,6 +80,8 @@ export interface PageNode {
   thumbnailUrl: string | null;
   mimeType: string | null;
   fileSize: number | null;
+  /** Video/audio length from the server's analyzer (feat/mobile-gaps-2); null otherwise or before analysis. */
+  durationSeconds: number | null;
   ownerName: string | null;
   updatedAt: string;
   createdAt: string | null;
@@ -173,6 +175,7 @@ function parseNode(payload: unknown): PageNode {
     thumbnailUrl: absoluteUrl(optStr(record.thumbnail_url)),
     mimeType: optStr(record.mime_type),
     fileSize: optNum(record.file_size),
+    durationSeconds: optNum(record.duration_seconds),
     ownerName: ownerName(record.owner),
     updatedAt: str(record.updated_at, "node.updated_at"),
     createdAt: optStr(record.created_at),

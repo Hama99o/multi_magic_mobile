@@ -1,0 +1,17 @@
+# Readiness "States", the empty state: the seeded folder "Day 1" holds
+# nothing. An empty list is a state, reached and photographed, not asserted
+# into (FLOW_REGISTER rule).
+#
+# COVERS: the empty folder's own message.
+# CANNOT TELL YOU: the loading state, or an error state (needs qa/faults.sh).
+appId: ${APP_ID}
+tags: [pages, readiness]
+---
+- runFlow: pages-open-trip.yaml
+# lint: anchored-ok — the seeded folder "Day 1" is a whole row title
+- tapOn: "Day 1"
+- extendedWaitUntil:
+    visible:
+      id: "pages-folder-empty"
+    timeout: 20000
+- takeScreenshot: reports/47-empty-folder

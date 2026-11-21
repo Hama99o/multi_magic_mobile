@@ -163,7 +163,13 @@ appId: ${APP_ID}
 - assertVisible:
     id: "home-tile-pages"
 
-# Then the assistant, the way he opens it: the tile on Home.
+# Then the assistant, the way he opens it: the tile on Home. SCROLL TO IT
+# first (2026-11-21, qa_phone): at 360 dp and at a 200 % system font the
+# tile is below the fold, and a tap on an off-screen id fails "not found", so
+# every flow failed signing in at those sizes.
+- scrollUntilVisible:
+    element:
+      id: "home-tile-ai"
 - tapOn:
     id: "home-tile-ai"
 - extendedWaitUntil:

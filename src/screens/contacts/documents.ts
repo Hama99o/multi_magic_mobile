@@ -31,6 +31,7 @@ export function asPageNode(doc: ContactDocument, contactId: number): PageNode {
     thumbnailUrl: doc.thumbnailUrl,
     mimeType: doc.contentType || null,
     fileSize: doc.byteSize,
+    durationSeconds: null,
     ownerName: null,
     updatedAt: `contact-${contactId}`,
     createdAt: null,

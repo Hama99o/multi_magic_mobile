@@ -16,6 +16,9 @@ tags: [pages, parity, shots]
     timeout: 30000
 - takeScreenshot: reports/42-workbook-${WIDTH}
 - back
+# pages-menu is Pages home's (index.tsx), not a folder's: the Home tab first.
+- tapOn:
+    id: "pages-tab-home"
 - tapOn:
     id: "pages-menu"
 - tapOn:

@@ -5,6 +5,8 @@
 #   qa/pages-parity.sh device     push the test folder and files onto the device
 #   qa/pages-parity.sh run        every flow below, in order, with the kill tests
 #   qa/pages-parity.sh widths     the screenshots at 360, 411 and 800 dp
+#   qa/pages-parity.sh columns    readiness columns: empty, RTL, 2×tap, offline,
+#                                 dark, 200% font (docs/RELEASE_READINESS.md)
 #   qa/pages-parity.sh clean      delete what seed and the flows made
 #   qa/pages-parity.sh all        seed, device, run, widths, clean
 #
@@ -78,6 +80,12 @@ EOF
   printf 'line one, edited\n' > "$fx/a-notes.txt"
   api PATCH /page_app/spaces/$sid/nodes/$txt -F "node[attachment]=@$fx/a-notes.txt;type=text/plain" >/dev/null
   api POST /page_app/spaces/$sid/nodes -H 'Content-Type: application/json' -d "{\"node\":{\"kind\":\"page\",\"title\":\"Plan\",\"parent_id\":$trip,\"content\":{\"html\":\"<p>Hello</p>\"}}}" >/dev/null
+  # Readiness RTL (flow 44): Persian titles, made here because Maestro cannot
+  # type Persian on Android. Its own folder, so Trip's order is untouched.
+  local rtl; rtl=$(api POST /page_app/spaces/$sid/nodes -H 'Content-Type: application/json' -d '{"node":{"kind":"folder","title":"RTL"}}' | jget "d['node']['id']")
+  api POST /page_app/spaces/$sid/nodes -H 'Content-Type: application/json' -d "{\"node\":{\"kind\":\"folder\",\"title\":\"سفر کابل\",\"parent_id\":$rtl}}" >/dev/null
+  printf 'سلام\n' > "$fx/rtl.txt"
+  api POST /page_app/spaces/$sid/nodes -F "node[title]=یادداشت سفر.txt" -F "node[kind]=file" -F "node[parent_id]=$rtl" -F "node[attachment]=@$fx/rtl.txt;type=text/plain" >/dev/null
   local note; note=$(api POST /note_app/notes -H 'Content-Type: application/json' -d '{"title":"QA linked note","description":"<p>for the link test</p>"}' | jget "d['note']['id']")
   printf 'space=%s\ntrip=%s\nnote=%s\n' "$sid" "$trip" "$note" > "$STATE"
   rm -rf "$fx"; unset TOK
@@ -92,8 +100,20 @@ device() {
   adb -s "$SERIAL" push "$d/qa-folder" /sdcard/Download/ >/dev/null
   # 300 MB: long enough to copy and to send that a kill lands inside each.
   adb -s "$SERIAL" shell "dd if=/dev/zero of=/sdcard/Download/qa-big.bin bs=1048576 count=300 2>/dev/null"
+  adb -s "$SERIAL" shell "echo offline > /sdcard/Download/qa-offline.txt"
   adb -s "$SERIAL" shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download >/dev/null 2>&1
-  rm -rf "$d"; echo "device: qa-folder (3 files + a hidden one), qa-big.bin 300 MB in Download"
+  rm -rf "$d"; echo "device: qa-folder (3 files + a hidden one), qa-big.bin 300 MB, qa-offline.txt in Download"
+  fps_off
+}
+
+# The dev client's performance overlay (expo-dev-menu "P" key command; RN
+# DevInternalSettings "fps_debug" in the default prefs) must not be in a shot.
+fps_off() {
+  local prefs="shared_prefs/${APP_ID}_preferences.xml"
+  adb -s "$SERIAL" shell am force-stop "$APP_ID"
+  echo "fps_debug before: $(adb -s "$SERIAL" shell run-as "$APP_ID" grep -o 'fps_debug" value="[a-z]*' "$prefs" 2>/dev/null || echo absent)"
+  adb -s "$SERIAL" shell run-as "$APP_ID" sed -i 's/name="fps_debug" value="true"/name="fps_debug" value="false"/' "$prefs" 2>/dev/null
+  echo "fps_debug after: $(adb -s "$SERIAL" shell run-as "$APP_ID" grep -o 'fps_debug" value="[a-z]*' "$prefs" 2>/dev/null || echo absent)"
 }
 
 flow() { # flow <file> : one flow, its own log, and the verdict line
@@ -128,18 +148,43 @@ widths() { # the same three screens at 360, 411 and 800 dp
   adb -s "$SERIAL" shell wm size reset; adb -s "$SERIAL" shell wm density reset; adb -s "$SERIAL" shell am force-stop "$APP_ID"
 }
 
+shot42() { # shot42 <label> : flow 42's three shots after a relaunch, named <label>
+  adb -s "$SERIAL" shell am force-stop "$APP_ID"
+  MAESTRO_QA_EMAIL="$QA_EMAIL" MAESTRO_QA_PASSWORD="$QA_PASSWORD" maestro --device "$SERIAL" test -e APP_ID="$APP_ID" -e DEEP_LINK="$PP_DEEP_LINK" -e WIDTH="$1" --test-output-dir "$OUT/shots-$1" "$DIR/flows/42-pages-shots-at-width.yaml" > "$OUT/shots-$1.log" 2>&1
+  echo "shots $1: $([ $? = 0 ] && echo PASS || echo FAIL)" | tee -a "$OUT/verdicts.txt"
+}
+
+columns() { # the readiness columns this rig can set (docs/RELEASE_READINESS.md)
+  need_pw
+  flow "$DIR/flows/47-pages-empty-folder-state.yaml"
+  flow "$DIR/flows/44-pages-persian-titles-list-and-grid.yaml"
+  flow "$DIR/flows/43-pages-double-tap-makes-one-folder.yaml"
+  [ -f "$STATE" ] && { . "$STATE"; TOK=$(token)
+    echo "2x-tap count of '[qa] twice' in Trip: $(api GET "/page_app/spaces/$space/nodes?parent_id=$trip&per_page=100" | python3 -c "import json,sys;d=json.load(sys.stdin);print(sum(1 for n in d.get('nodes',[]) if n.get('title')=='[qa] twice'))")" | tee -a "$OUT/verdicts.txt"; unset TOK; }
+  # Offline: wifi and data off around flow 45, back on for 46. Restored on any exit path below.
+  adb -s "$SERIAL" shell svc wifi disable; adb -s "$SERIAL" shell svc data disable
+  flow "$DIR/flows/45-pages-offline-upload-waits.yaml"
+  adb -s "$SERIAL" shell svc wifi enable; adb -s "$SERIAL" shell svc data enable
+  flow "$DIR/flows/46-pages-offline-upload-sends-when-back.yaml"
+  # Dark at 411 dp, then 200 % font at 411 dp, then back to the defaults.
+  adb -s "$SERIAL" shell wm size 1080x2400; adb -s "$SERIAL" shell wm density 420
+  adb -s "$SERIAL" shell cmd uimode night yes; shot42 411-dark; adb -s "$SERIAL" shell cmd uimode night no
+  adb -s "$SERIAL" shell settings put system font_scale 2.0; shot42 411-font200; adb -s "$SERIAL" shell settings put system font_scale 1.0
+  adb -s "$SERIAL" shell wm size reset; adb -s "$SERIAL" shell wm density reset; adb -s "$SERIAL" shell am force-stop "$APP_ID"
+}
+
 clean() {
   [ -f "$STATE" ] || { echo "clean: nothing seeded"; return 0; }
   . "$STATE"; TOK=$(token)
   api DELETE /page_app/spaces/$space -o /dev/null -w "space $space: %{http_code}\n"
   api DELETE /note_app/notes/$note -o /dev/null -w "note $note: %{http_code}\n"
   unset TOK; rm -f "$STATE"
-  adb -s "$SERIAL" shell rm -rf /sdcard/Download/qa-folder /sdcard/Download/qa-big.bin 2>/dev/null
+  adb -s "$SERIAL" shell rm -rf /sdcard/Download/qa-folder /sdcard/Download/qa-big.bin /sdcard/Download/qa-offline.txt 2>/dev/null
   echo "clean: done (the uploads the flows made live in the deleted space)"
 }
 
 case "${1:-}" in
-  seed) seed;; device) device;; run) run;; widths) widths;; clean) clean;;
-  all) seed && device && run; widths; clean;;
-  *) sed -n 2,9p "$0"; exit 2;;
+  seed) seed;; device) device;; run) run;; widths) widths;; columns) columns;; clean) clean;;
+  all) seed && device && run; widths; columns; clean;;
+  *) sed -n 2,11p "$0"; exit 2;;
 esac

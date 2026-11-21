@@ -27,6 +27,7 @@ const base = {
   ancestors: [],
   kind: "file",
   fileSize: 1000,
+  durationSeconds: null,
   attachmentUrl: "http://x/f",
 };
 const clipWithFrame = { ...base, id: 1, title: "IMG_8511.MOV", mimeType: "video/quicktime", thumbnailUrl: "http://x/frame.jpg" } as PageNode;

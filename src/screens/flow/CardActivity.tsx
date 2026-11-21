@@ -14,7 +14,7 @@ import { useEffect, useRef, useState } from "react";
 import * as Clipboard from "expo-clipboard";
 import { ActivityIndicator, Alert, Keyboard, Pressable, TextInput, View } from "react-native";
 import { useSubmitText } from "@/lib/useSubmitText";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { flowKeys } from "@/api/keys";
@@ -190,6 +190,7 @@ export function CommentComposer({ onSend, busy }: { onSend: (text: string) => vo
 // ── Linked notes ─────────────────────────────────────────────────────────
 
 export function NotesList({ projectId, cardId, canLink, onError }: { projectId: number; cardId: number; canLink: boolean; onError: (m: string) => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();

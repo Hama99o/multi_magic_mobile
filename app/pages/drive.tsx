@@ -9,7 +9,7 @@
  */
 import { useMemo } from "react";
 import { FlatList, Pressable, RefreshControl, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
@@ -63,6 +63,7 @@ function emptyFor(view: View_, t: (key: string) => string): string {
 }
 
 function SharedRow({ item }: { item: SharedItem }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -103,10 +104,11 @@ function SharedRow({ item }: { item: SharedItem }) {
 }
 
 export default function Drive() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ view?: string }>();
+  const params = useNavParams<{ view?: string }>();
   const view: View_ = (["recent", "starred", "trash", "search", "shared"] as const).find((v) => v === params.view) ?? "recent";
 
   const nodesQuery = useInfiniteQuery({
@@ -176,7 +178,7 @@ export default function Drive() {
           }}
           refreshing={nodesQuery.isRefetching}
           onRefresh={() => void nodesQuery.refetch()}
-          onOpen={(node) => openNode(node, { trail: node.space?.title ?? "" })}
+          onOpen={(node) => openNode(router, node, { trail: node.space?.title ?? "" })}
           showSpace
           locationOf={(node) => node.space?.title ?? ""}
           bottomPadding={metrics.space.xl}

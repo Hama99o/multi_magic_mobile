@@ -11,7 +11,7 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
-import { router } from "expo-router";
+import { useNav, type Nav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { ChevronRight, Copy, KeyRound, ShieldCheck, TriangleAlert } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
@@ -21,8 +21,9 @@ import { useSafezoneLock } from "@/stores/safezoneLock.store";
 
 type Load = { kind: "loading" } | { kind: "failed" } | { kind: "ready"; report: HealthReport };
 
-function openItem(entry: HealthEntry) {
-  router.push({ pathname: "/safezone/item", params: { kind: "passwords", id: String(entry.id) } });
+/** `nav` is the panel's `useNav()`, so in a Workspace pane the item opens in that pane. */
+function openItem(nav: Nav, entry: HealthEntry) {
+  nav.push({ pathname: "/safezone/item", params: { kind: "passwords", id: String(entry.id) } });
 }
 
 export function HealthPanel() {
@@ -123,6 +124,7 @@ export function HealthPanel() {
 }
 
 function EntryRow({ entry, testID }: { entry: HealthEntry; testID: string }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -130,7 +132,7 @@ function EntryRow({ entry, testID }: { entry: HealthEntry; testID: string }) {
   return (
     <Pressable
       testID={testID}
-      onPress={() => openItem(entry)}
+      onPress={() => openItem(router, entry)}
       accessibilityRole="button"
       accessibilityLabel={t("safezone.open", { name: title })}
       style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.md, minHeight: 52, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.surface }}

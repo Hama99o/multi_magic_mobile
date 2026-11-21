@@ -18,7 +18,7 @@
 import { useMemo, useRef, useState } from "react";
 import { Alert, Image, Linking, PanResponder, Pressable, ScrollView, View } from "react-native";
 import * as Clipboard from "expo-clipboard";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient, type InfiniteData } from "@tanstack/react-query";
 import { tablesKeys } from "@/api/keys";
@@ -49,12 +49,13 @@ import { mergePages, positionOf, titleField } from "@/screens/tables/logic";
 import { phoneActions } from "@/screens/tables/recordActions";
 
 export default function RecordScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
   const ask = useAsk();
   const client = useQueryClient();
-  const params = useLocalSearchParams<{ table: string; id: string; q?: string; view?: string }>();
+  const params = useNavParams<{ table: string; id: string; q?: string; view?: string }>();
   const tableId = Number(params.table);
   const recordId = Number(params.id);
 
@@ -255,6 +256,7 @@ const isTableLink = (field: FieldDefinition) => (field.fieldType === "single_rec
  * editor's pencil opens the shared picker.
  */
 function LinkFieldRow({ field, row, known, editable, writes, group }: { field: FieldDefinition; row: RecordRow; known: KnownRecords; editable: boolean; writes: FieldWrites; group?: RelationGroup }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

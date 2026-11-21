@@ -6,7 +6,7 @@
  */
 import { useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, ScrollView, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Mail, Phone, Search, UserPlus, Users, X } from "@/components/icons";
@@ -26,6 +26,7 @@ import { contactsKeys } from "@/api/keys";
 import { useMergeIntoContact } from "@/screens/contacts/useContactMutations";
 
 export default function SharedIntoContactsScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

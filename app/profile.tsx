@@ -21,7 +21,7 @@
  */
 import { useEffect, useState } from "react";
 import { Image, Pressable, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { ChevronLeft, ChevronRight, Pencil } from "@/components/icons";
 import { useQuery } from "@tanstack/react-query";
@@ -86,6 +86,7 @@ function Field({
 }
 
 export default function ProfileScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

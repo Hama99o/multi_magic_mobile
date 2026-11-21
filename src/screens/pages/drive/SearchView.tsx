@@ -14,7 +14,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { Text } from "@/components/reusables/text";
@@ -135,6 +135,7 @@ function Option({ label, chosen, onPress, testID }: { label: string; chosen: boo
 }
 
 export function SearchView() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -252,7 +253,7 @@ export function SearchView() {
         }}
         refreshing={found.isRefetching}
         onRefresh={() => void found.refetch()}
-        onOpen={(node) => openNode(node, { trail: node.space?.title ?? "" })}
+        onOpen={(node) => openNode(router, node, { trail: node.space?.title ?? "" })}
         showSpace
         locationOf={(node) => node.space?.title ?? ""}
         bottomPadding={metrics.space.xl}

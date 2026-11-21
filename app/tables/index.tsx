@@ -9,7 +9,7 @@
  */
 import { useMemo, useState } from "react";
 import { FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { failureMessage } from "@/api/failure";
@@ -34,6 +34,7 @@ import { BaseBadge, SortChips } from "@/screens/tables/parts";
 import { baseMatches } from "@/screens/tables/logic";
 
 export default function TablesScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -205,6 +206,7 @@ export default function TablesScreen() {
 }
 
 function BaseRow({ base, index, onMenu }: { base: Base; index: number; onMenu?: () => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();

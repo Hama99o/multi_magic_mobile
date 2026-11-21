@@ -12,7 +12,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, Share, TextInput, View } from "react-native";
 import { SheetFrame } from "@/components/SheetFrame";
-import { router, useLocalSearchParams, useNavigation } from "expo-router";
+import { useNavigation } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { createNativeEditorDocumentHandle, RichTextEditor, type RichTextEditorRef } from "@apollohg/react-native-rich-text-editor";
@@ -84,11 +85,12 @@ interface Opened {
 const toServer = (n: Note): ServerNote => ({ title: n.title, html: n.html, updatedAt: n.updatedAt });
 
 export default function NoteEditScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useNavParams<{ id?: string }>();
   const noteId = Number(params.id) || 0;
 
   const { data: note, error, refetch, isFetchedAfterMount } = useNote(noteId);

@@ -7,7 +7,7 @@
  * largest file opens where it is; one in the trash opens the trash.
  */
 import { ScrollView, Pressable, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { storageKeys } from "@/api/keys";
@@ -50,6 +50,7 @@ const LABEL: Record<StorageApp, string> = {
 };
 
 export default function StorageScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();

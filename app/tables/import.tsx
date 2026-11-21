@@ -13,7 +13,7 @@
  */
 import { useMemo, useState } from "react";
 import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { File, Paths } from "expo-file-system";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
@@ -43,11 +43,12 @@ function importKey(sheet: Sheet, columns: unknown[]): string {
 }
 
 export default function ImportScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const client = useQueryClient();
-  const params = useLocalSearchParams<{ table: string }>();
+  const params = useNavParams<{ table: string }>();
   const tableId = Number(params.table);
   const table = useQuery({ queryKey: tablesKeys.table(tableId), queryFn: () => tablesApi.table(tableId), enabled: Number.isFinite(tableId) });
   const bases = useQuery({ queryKey: tablesKeys.bases("created_at_desc"), queryFn: () => tablesApi.bases(), enabled: Boolean(table.data) });

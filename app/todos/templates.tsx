@@ -7,7 +7,7 @@
  */
 import { useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { todoKeys } from "@/api/keys";
@@ -25,6 +25,7 @@ import { useApplyTemplate, useDeleteTemplate } from "@/screens/todos/useTodoMuta
 import { repeatLabel } from "@/screens/todos/templates";
 
 export default function TemplatesScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();

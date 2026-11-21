@@ -22,7 +22,7 @@
  */
 import { createElement, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Linking, Pressable, Switch, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { fieldKeys } from "@/api/keys";
@@ -125,6 +125,7 @@ export function FieldRow({
   testID: string;
   onError?: (message: string) => void;
 }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();

@@ -97,3 +97,16 @@ export function EmptyFade() {
 export function PaddingIsFine() {
   return <KeyboardAvoidingView behavior="padding" style={{ flex: 1 }} />;
 }
+
+// pane-nav: a type-only router, the other expo-router names, and the hooks themselves.
+import type { router as RouterType } from "expo-router";
+import { Link, useNavigation, usePathname } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
+export type PushTarget = Parameters<typeof RouterType.push>[0];
+export function PaneSafe() {
+  const nav = useNav();
+  const { id } = useNavParams<{ id: string }>();
+  const navigation = useNavigation();
+  const path = usePathname();
+  return <Link href="/" onPress={() => nav.push("/notes")}>{`${id}${path}${navigation ? "" : ""}`}</Link>;
+}

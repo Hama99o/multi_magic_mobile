@@ -14,7 +14,7 @@
  */
 import { useState } from "react";
 import { View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
@@ -32,6 +32,7 @@ import { AccountHeader } from "@/components/settings/AccountUi";
 const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 export default function ChangeEmail() {
+  const router = useNav();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const client = useQueryClient();

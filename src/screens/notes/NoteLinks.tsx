@@ -8,7 +8,7 @@
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { SheetFrame } from "@/components/SheetFrame";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 
 import { Text } from "@/components/reusables/text";
@@ -27,6 +27,7 @@ export function linkRoute(link: NoteLink) {
 }
 
 export function NoteLinksChip({ note }: { note: Pick<Note, "id" | "role"> }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

@@ -41,7 +41,7 @@
  */
 import { useEffect, useState } from "react";
 import { View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { ShieldCheck } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
@@ -65,6 +65,7 @@ function messageFor(error: unknown, t: (key: string) => string): string {
 }
 
 export default function TwoFactor() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -90,7 +91,7 @@ export default function TwoFactor() {
     // of the screen that is about to offer them a choice is the bug this guard
     // would otherwise introduce.
     if (!pending && !verified) router.replace("/sign-in");
-  }, [pending, verified]);
+  }, [pending, verified, router]);
 
   async function submit() {
     if (busy) return;

@@ -17,7 +17,8 @@
  */
 import { useEffect, useMemo, useState, type ComponentType, type ReactNode } from "react";
 import { ActivityIndicator, Pressable, ScrollView, TextInput, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, type Nav } from "@/lib/nav";
+import { useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import type { TFunction } from "i18next";
@@ -46,7 +47,7 @@ const MAX_APPS = 6;
 const MAX_COMMANDS = 4;
 
 type Icon = ComponentType<{ size?: number; color?: string }>;
-type Route = Parameters<typeof router.push>[0];
+type Route = Parameters<Nav["push"]>[0];
 
 /** Each server group under its app's own name and icon; Flow and Doc have no app here. */
 function groupMeta(t: TFunction): Record<SearchGroup, { label: string; icon: Icon }> {
@@ -94,6 +95,7 @@ function commands(t: TFunction): { id: string; label: string; alias: string; rou
 }
 
 export default function SearchScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -103,7 +105,7 @@ export default function SearchScreen() {
   const { setDraft } = useDraft(sessionId ?? null);
 
   // What was typed in the Apps sheet before coming here, searched at once.
-  const params = useLocalSearchParams<{ q?: string }>();
+  const params = useNavParams<{ q?: string }>();
   const [query, setQuery] = useState(() => (typeof params.q === "string" ? params.q : ""));
   const [debounced, setDebounced] = useState("");
   useEffect(() => {

@@ -16,7 +16,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
-import { router, useLocalSearchParams, useNavigation } from "expo-router";
+import { useNavigation } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { createNativeEditorDocumentHandle, RichTextEditor, type RichTextEditorRef } from "@apollohg/react-native-rich-text-editor";
@@ -49,12 +50,13 @@ const SAVE_AFTER_MS = 1000;
 type SaveState = "saved" | "pending" | "saving" | "failed" | "invalid";
 
 export default function PageEditorScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const client = useQueryClient();
   const navigation = useNavigation();
-  const params = useLocalSearchParams<{ spaceId: string; nodeId: string; title?: string }>();
+  const params = useNavParams<{ spaceId: string; nodeId: string; title?: string }>();
   const spaceId = Number(params.spaceId);
   const nodeId = Number(params.nodeId);
 

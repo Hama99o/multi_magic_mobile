@@ -28,7 +28,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { Plus, Search, X } from "@/components/icons";
 import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
@@ -50,6 +50,7 @@ import { NewConversationSheet } from "@/screens/people/NewConversationSheet";
 export const SEARCH_DEBOUNCE_MS = 350;
 
 export default function Chats() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -125,7 +126,7 @@ export default function Chats() {
         unread: String(conversation.unreadMessages),
       },
     });
-  }, []);
+  }, [router]);
 
   // By id, first seen: the list is ordered by latest activity, so a row can
   // move from page 2 to page 1 between two requests and arrive twice.

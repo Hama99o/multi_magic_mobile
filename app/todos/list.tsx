@@ -15,7 +15,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
 import Animated, { FadeIn, useAnimatedStyle, useSharedValue, withTiming } from "react-native-reanimated";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { todoKeys } from "@/api/keys";
@@ -61,10 +61,11 @@ const LINGER_MS = 600;
 type Item = { kind: "task"; todo: Todo } | { kind: "doneHeader"; count: number } | { kind: "allDone" };
 
 export default function TodoListScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ id?: string; task?: string }>();
+  const params = useNavParams<{ id?: string; task?: string }>();
   const groupId = Number(params.id);
   const focusTask = Number(params.task) || null;
   const today = todayKey();

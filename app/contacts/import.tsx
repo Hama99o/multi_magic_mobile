@@ -10,7 +10,7 @@
  */
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { ActivityIndicator, FlatList, Linking, Pressable, TextInput, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import * as DocumentPicker from "expo-document-picker";
@@ -42,6 +42,7 @@ function fold(value: string): string {
 }
 
 export default function ImportContacts() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -76,7 +77,7 @@ export default function ImportContacts() {
 
   // Several cards shared from another app (`ShareIntentBridge`): straight to
   // the bulk import, the same bar and summary as a file.
-  const params = useLocalSearchParams<{ shared?: string; rest?: string }>();
+  const params = useNavParams<{ shared?: string; rest?: string }>();
   const started = useRef(false);
   useEffect(() => {
     if (params.shared !== "1" || started.current) return;

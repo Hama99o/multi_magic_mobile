@@ -11,7 +11,7 @@
  */
 import { useMemo, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useSubmitText } from "@/lib/useSubmitText";
 import { useQuery } from "@tanstack/react-query";
@@ -38,7 +38,7 @@ const FLOW_RECORD_CLASSES: RecordClass[] = ["User", "Core::Tag", "FlowApp::Card"
 const RECORD_CLASS_KEY: Record<string, string> = { User: "user", "Core::Tag": "tag", "FlowApp::Card": "card", "FlowApp::Sprint": "sprint", "TableApp::Record": "record" };
 
 export default function FieldsScreen() {
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useNavParams<{ id?: string }>();
   const projectId = Number(params.id);
   const colors = useColors();
   const metrics = useMetrics();

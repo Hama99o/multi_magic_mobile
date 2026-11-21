@@ -13,7 +13,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { todoKeys } from "@/api/keys";
@@ -39,6 +39,7 @@ import { useTodoUndo } from "@/stores/todoUndo.store";
 const SEARCH_DELAY_MS = 300;
 
 export default function TodosScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -192,6 +193,7 @@ export default function TodosScreen() {
 }
 
 function DueCard({ view, icon: Icon, count, loading, alert = false }: { view: DueView; icon: LucideIcon; count: number; loading: boolean; alert?: boolean }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -228,6 +230,7 @@ function DueCard({ view, icon: Icon, count, loading, alert = false }: { view: Du
 }
 
 function ListRow({ group, today }: { group: TodoGroup; today: string }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -307,6 +310,7 @@ function TaskHits({ tasks, lists, today }: { tasks: Todo[]; lists: TodoGroup[]; 
 }
 
 function HitRow({ todo, listName, today }: { todo: Todo; listName?: string; today: string }) {
+  const router = useNav();
   const { t } = useTranslation();
   const toggle = useToggleTask(todo.todoGroupId);
   const remove = useDeleteTask(todo.todoGroupId);

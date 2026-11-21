@@ -11,7 +11,7 @@
  */
 import { useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, ScrollView, TextInput, useWindowDimensions, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tablesKeys } from "@/api/keys";
@@ -72,12 +72,13 @@ const FAB_ZONE = 96;
 const VIEW_ICONS: Record<ViewType, LucideIcon> = { grid: Table2, gallery: LayoutGrid, kanban: Kanban, calendar: CalendarDays };
 
 export default function TableScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
   const me = useMe();
   const ask = useAsk();
-  const params = useLocalSearchParams<{ id: string; base?: string; view?: string }>();
+  const params = useNavParams<{ id: string; base?: string; view?: string }>();
   const tableId = Number(params.id);
   const baseId = params.base ? Number(params.base) : null;
 

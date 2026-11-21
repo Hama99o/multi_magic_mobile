@@ -6,7 +6,7 @@
  * Newest first, as every list here.
  */
 import { FlatList, Pressable, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { tablesKeys } from "@/api/keys";
@@ -24,11 +24,12 @@ import { EmptyState } from "@/screens/flow/parts";
 import { useOneAtATime } from "@/screens/tables/useOneAtATime";
 
 export default function FormsScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const client = useQueryClient();
-  const params = useLocalSearchParams<{ table: string }>();
+  const params = useNavParams<{ table: string }>();
   const tableId = Number(params.table);
   const forms = useQuery({ queryKey: tablesKeys.forms(tableId), queryFn: () => tableFormsApi.list(tableId), enabled: Number.isFinite(tableId) });
   // The server lists them oldest first; the phone shows the newest on top (the owner's rule for every list).

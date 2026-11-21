@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Animated, FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
 import Reanimated, { FadeIn } from "react-native-reanimated";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
@@ -89,6 +89,7 @@ export function PaidBadge({ testID }: { testID: string }) {
 // ── the tab ──────────────────────────────────────────────────────────────
 
 export function LoansTab() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -266,6 +267,7 @@ function SummaryCard({ kind, totals, count, loading }: { kind: "receive" | "pay"
 }
 
 function LoanRow({ loan, onDelete }: { loan: Loan; onDelete: () => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
@@ -344,6 +346,7 @@ function LoanRow({ loan, onDelete }: { loan: Loan; onDelete: () => void }) {
 }
 
 function Empty({ paid, filtered }: { paid: boolean; filtered: boolean }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

@@ -3,7 +3,7 @@
  * The card itself is `src/screens/contacts/ContactCard.tsx`, shared with the
  * tablet split's right pane (`docs/design/contacts/SPEC.md` §C.11).
  */
-import { useLocalSearchParams } from "expo-router";
+import { useNavParams } from "@/lib/nav";
 import { ContactCard } from "@/screens/contacts/ContactCard";
 
 export function parseId(raw: string | undefined): number | null {
@@ -11,6 +11,6 @@ export function parseId(raw: string | undefined): number | null {
 }
 
 export default function ContactDetail() {
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useNavParams<{ id?: string }>();
   return <ContactCard contactId={parseId(params.id)} />;
 }

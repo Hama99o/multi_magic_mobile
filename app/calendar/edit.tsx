@@ -14,7 +14,8 @@
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, View } from "react-native";
-import { router, useLocalSearchParams, useNavigation } from "expo-router";
+import { useNavigation } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { Screen } from "@/components/ScreenContainer";
@@ -35,8 +36,9 @@ function parseId(raw: string | undefined): number | null {
 }
 
 export default function EditEvent() {
+  const router = useNav();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ id?: string; day?: string }>();
+  const params = useNavParams<{ id?: string; day?: string }>();
   const eventId = parseId(params.id);
   const navigation = useNavigation();
 
@@ -104,7 +106,7 @@ export default function EditEvent() {
       inFlight.current = false;
       setSaving(false);
     }
-  }, [draft, eventId, saver, t]);
+  }, [draft, eventId, saver, t, router]);
 
   if (!draft) {
     return (
@@ -144,6 +146,7 @@ export default function EditEvent() {
 }
 
 function BackKey({ label }: { label: string }) {
+  const router = useNav();
   const colors = useColors();
   return (
     <View style={{ paddingVertical: 12 }}>

@@ -14,7 +14,8 @@
  */
 import { useState } from "react";
 import { View } from "react-native";
-import { Link, router } from "expo-router";
+import { Link } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
@@ -42,6 +43,7 @@ function messageFor(error: unknown, t: (key: string) => string): string {
 }
 
 export default function SignIn() {
+  const router = useNav();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const signIn = useAuthStore((s) => s.signIn);

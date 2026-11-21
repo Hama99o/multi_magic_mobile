@@ -9,7 +9,7 @@
  */
 import { useEffect, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, TextInput, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { pagesKeys } from "@/api/keys";
@@ -26,6 +26,7 @@ import { BottomSheet } from "./drive/sheets";
 const SEARCH_DELAY_MS = 400;
 
 export function LinkedNotesSheet({ node, canWrite, onClose }: { node: PageNode | null; canWrite: boolean; onClose: () => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

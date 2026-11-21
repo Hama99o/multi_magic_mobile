@@ -12,7 +12,7 @@
 import { useState } from "react";
 import { Alert, Modal, Pressable, RefreshControl, ScrollView, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useQuery } from "@tanstack/react-query";
@@ -35,10 +35,11 @@ import { useAddPayment, useDeleteEntry, useDeletePayment, useRestoreEntry } from
 import { useFinanceUndo } from "@/stores/financeUndo.store";
 
 export default function LoanScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useNavParams<{ id?: string }>();
   const loanId = Number(params.id);
   const [paying, setPaying] = useState(false);
   const [failure, setFailure] = useState<string | null>(null);

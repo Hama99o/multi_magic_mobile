@@ -20,7 +20,7 @@
  */
 import { useCallback, useRef, useState } from "react";
 import { I18nManager, Pressable, View, useWindowDimensions } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { Bell, ChevronLeft, LayoutGrid, MessageSquare, Sparkles, type LucideIcon, Search } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
@@ -185,6 +185,7 @@ export function AppHeader({
   /** Replaces the default back (a confirm before leaving unsaved changes). */
   onBack?: () => void;
 }) {
+  const router = useNav();
   const colors = useColors();
   const { t } = useTranslation();
   const me = useMe();

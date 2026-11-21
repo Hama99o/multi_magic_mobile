@@ -10,7 +10,7 @@
  * tree is walked: person by person.
  */
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "@/components/icons";
@@ -28,10 +28,11 @@ const ROWS = ["greatGrandparents", "grandparents", "parents", "same", "children"
 const rowName = (generation: number) => ROWS[Math.max(-3, Math.min(3, generation)) + 3];
 
 export default function ContactFamilyTree() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const contactId = parseId(useLocalSearchParams<{ id?: string }>().id) ?? 0;
+  const contactId = parseId(useNavParams<{ id?: string }>().id) ?? 0;
   const query = useQuery({ queryKey: contactsKeys.family(contactId), queryFn: () => contactsApi.family(contactId), enabled: contactId > 0 });
   const nodes = query.data?.nodes ?? [];
   const root = nodes.find((n) => n.id === query.data?.rootId);

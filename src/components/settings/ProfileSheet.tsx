@@ -36,7 +36,7 @@ import { useEffect, useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Pressable, ScrollView, View } from "react-native";
 import { SheetFrame } from "@/components/SheetFrame";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { Check, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, LayoutGrid, X } from "@/components/icons";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
@@ -180,6 +180,7 @@ export function ProfileSheet({
    *  locally without it — see `LanguageRow`. */
   userId: number | null;
 }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

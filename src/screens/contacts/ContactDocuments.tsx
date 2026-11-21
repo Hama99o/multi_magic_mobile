@@ -13,7 +13,7 @@
  */
 import { useState } from "react";
 import { ActivityIndicator, Alert, Pressable, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { FolderOpen, Images, MoreVertical, Pencil, Plus, Trash2, Eye } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
@@ -42,6 +42,7 @@ export function ContactDocuments({
    *  since React Query drops the placeholder row on an error. */
   documents: ContactDocument[] | null;
 }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();

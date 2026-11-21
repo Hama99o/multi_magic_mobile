@@ -15,7 +15,7 @@ import { ActivityIndicator, Animated as RNAnimated, Modal, Pressable, RefreshCon
 import Animated, { FadeInDown } from "react-native-reanimated";
 import * as Haptics from "expo-haptics";
 import * as Sharing from "expo-sharing";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { useTranslation } from "react-i18next";
 import { keepPreviousData, useInfiniteQuery, useMutation, useQuery, type InfiniteData, type UseInfiniteQueryResult } from "@tanstack/react-query";
@@ -56,6 +56,7 @@ export function totalOf(rows: { amount: number; currency: Currency }[]): Totals 
 
 /** `openId`: a link to one entry (`app/finance/index.tsx` `?entry=`) opens its sheet once it has loaded. */
 export function Ledger({ kind, header, openId }: { kind: Kind; header?: ReactNode; openId?: number }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
@@ -300,6 +301,7 @@ function EntryRow({ entry, kind, tags, onOpen, onDelete }: { entry: Entry; kind:
 
 /** An entry, opened (the web's drawer view): the amount, its tags, day, currency and note; Edit, Delete. */
 function EntrySheet({ entry, kind, onClose, onDelete }: { entry: Entry | null; kind: Kind; onClose: () => void; onDelete: (e: Entry) => void }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();

@@ -13,7 +13,8 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, TextInput, View } from "react-native";
-import { router, useLocalSearchParams, useNavigation } from "expo-router";
+import { useNavigation } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { flowKeys } from "@/api/keys";
@@ -45,7 +46,7 @@ import { cardFieldTarget, useAddComment, useDeleteCard, useMoveCard, useUpdateCa
 type Tab = "comments" | "notes" | "history";
 
 export default function CardScreen() {
-  const params = useLocalSearchParams<{ projectId?: string; id?: string }>();
+  const params = useNavParams<{ projectId?: string; id?: string }>();
   const projectId = Number(params.projectId);
   const cardId = Number(params.id);
   const { t } = useTranslation();
@@ -75,6 +76,7 @@ function useBoardParts(projectId: number) {
 }
 
 function CardView({ projectId, cardId }: { projectId: number; cardId: number }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

@@ -15,7 +15,7 @@
 import { useCallback, useState } from "react";
 import { Linking, Pressable, ScrollView, View } from "react-native";
 import { SheetFrame } from "@/components/SheetFrame";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { X } from "@/components/icons";
 import { useTranslation } from "react-i18next";
 import { Text } from "@/components/reusables/text";
@@ -44,6 +44,7 @@ import type { MessageLink } from "@/api/ai";
  * without mounting the whole conversation.
  */
 export function useOpenSource() {
+  const router = useNav();
   const [openSource, setOpenSource] = useState<MessageLink | null>(null);
 
   const openLink = useCallback((source: MessageLink) => {
@@ -53,7 +54,7 @@ export function useOpenSource() {
       return;
     }
     setOpenSource(source);
-  }, []);
+  }, [router]);
 
   const closeSource = useCallback(() => setOpenSource(null), []);
 

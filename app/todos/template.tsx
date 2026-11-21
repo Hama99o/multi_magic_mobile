@@ -6,7 +6,7 @@
  */
 import { useState } from "react";
 import { Pressable, ScrollView, TextInput, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { todoKeys } from "@/api/keys";
@@ -21,7 +21,7 @@ import { useSaveTemplate } from "@/screens/todos/useTodoMutations";
 import { linesToItems, repeatLabel } from "@/screens/todos/templates";
 
 export default function TemplateForm() {
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useNavParams<{ id?: string }>();
   const id = params.id ? Number(params.id) : null;
   const templates = useQuery({ queryKey: todoKeys.templates(), queryFn: todoTemplatesApi.list, enabled: id != null });
   const existing = id == null ? null : templates.data?.find((x) => x.id === id);
@@ -30,6 +30,7 @@ export default function TemplateForm() {
 }
 
 function Form({ existing }: { existing: TodoTemplate | null }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

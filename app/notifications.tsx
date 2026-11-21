@@ -31,7 +31,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Pressable, RefreshControl, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { CheckCheck, Trash2 } from "@/components/icons";
 import { RowsSkeleton } from "@/components/reusables/skeleton";
@@ -63,6 +63,7 @@ type Row =
   | { kind: "row"; key: string; notification: AppNotification };
 
 export default function Notifications() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -139,7 +140,7 @@ export default function Notifications() {
       setComposed(question);
       router.push("/chat");
     },
-    [markRead, setDraft, t],
+    [markRead, setDraft, t, router],
   );
 
   /**

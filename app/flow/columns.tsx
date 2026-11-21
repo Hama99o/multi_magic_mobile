@@ -10,7 +10,7 @@
  */
 import { useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
-import { useLocalSearchParams } from "expo-router";
+import { useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { flowKeys } from "@/api/keys";
@@ -32,7 +32,7 @@ import { EmptyState, Swatches } from "@/screens/flow/parts";
 import { useCreateColumn, useDeleteColumn, useReorderColumns, useUpdateColumn } from "@/screens/flow/useFlowMutations";
 
 export default function ColumnsScreen() {
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useNavParams<{ id?: string }>();
   const projectId = Number(params.id);
   const colors = useColors();
   const metrics = useMetrics();

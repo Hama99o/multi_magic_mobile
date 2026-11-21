@@ -7,7 +7,7 @@
  */
 import { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { KeyRound, Lock } from "@/components/icons";
 import { Screen } from "@/components/ScreenContainer";
@@ -31,6 +31,7 @@ export default function SafeZoneSettingsScreen() {
 }
 
 function Settings() {
+  const router = useNav();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const [mode, setMode] = useState<"idle" | "change" | "disable">("idle");

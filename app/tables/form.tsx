@@ -6,7 +6,7 @@
  */
 import { useState } from "react";
 import { Alert, ScrollView, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
 import { tablesKeys } from "@/api/keys";
@@ -26,10 +26,11 @@ import { useFormEdit } from "@/screens/tables/useFormEdit";
 type Tab = "questions" | "page" | "share" | "answers";
 
 export default function FormScreen() {
+  const router = useNav();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const client = useQueryClient();
-  const params = useLocalSearchParams<{ id: string; table: string }>();
+  const params = useNavParams<{ id: string; table: string }>();
   const formId = Number(params.id);
   const { form, save, run, error, setError } = useFormEdit(formId, t("tables.form.saveFailed"));
   const [tab, setTab] = useState<Tab>("questions");

@@ -14,7 +14,7 @@
  */
 import { useState } from "react";
 import { FlatList, Pressable, RefreshControl, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
@@ -37,10 +37,11 @@ import { useFinanceUndo } from "@/stores/financeUndo.store";
 type Kind = "expense" | "income";
 
 export default function RecurringScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
-  const params = useLocalSearchParams<{ kind?: string }>();
+  const params = useNavParams<{ kind?: string }>();
   const [kind, setKind] = useState<Kind>(params.kind === "income" ? "income" : "expense");
   const [tagId, setTagId] = useState<number | null>(null);
   const [choosing, setChoosing] = useState(false);

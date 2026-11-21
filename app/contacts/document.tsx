@@ -14,7 +14,7 @@
  */
 import { useCallback, useMemo, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { WebView } from "react-native-webview";
@@ -38,10 +38,11 @@ import { asPageNode } from "@/screens/contacts/documents";
 import { parseId } from "./contact";
 
 export default function ContactDocumentScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
-  const params = useLocalSearchParams<{ contactId?: string; documentId?: string }>();
+  const params = useNavParams<{ contactId?: string; documentId?: string }>();
   const contactId = parseId(params.contactId);
   const documentId = parseId(params.documentId);
 

@@ -361,6 +361,32 @@ const config = {
         message:
           "A layout animation on a list cell: a recycled cell keeps it and the list shows overlapping rows and gaps (owner bug, 2026-11-17). Render the row plainly; an empty state or a header may animate. See docs/MOBILE_PARITY_2026-11-20.md §4.",
       },
+      /**
+       * SCREENS NAVIGATE THROUGH useNav(), NOT THE router SINGLETON
+       * (docs/design/workspace/SPEC.md §C3, 2026-11-21).
+       *
+       * In a Workspace pane a `router.push` moves the WHOLE app, not the pane.
+       * `useNav()` / `useNavParams()` from `@/lib/nav` are the singleton and
+       * `useLocalSearchParams` outside a pane, and the pane's own stack inside
+       * one. `scripts/codemods/paneNav.js` made the change; re-run it on an
+       * older branch rather than resolving the conflicts by hand.
+       *
+       * Allowed by name (the override at the end of this file): the files
+       * that navigate the whole app ON PURPOSE (the app switcher's `openApp`,
+       * the last place, back to Home, the share intent), `nav.ts` itself, the
+       * tests, and the hand fixes the codemod listed until they are done.
+       *
+       * DOES NOT COVER: `router` reached another way (a re-export, `import *
+       * as`, `require`); `usePathname`/`useGlobalSearchParams`, which read
+       * the app's route, not the pane's; a `Link` with an `href`.
+       */
+      {
+        id: "pane-nav",
+        selector:
+          "ImportDeclaration[source.value='expo-router'][importKind!='type'] > ImportSpecifier[importKind!='type'][imported.name=/^(router|useLocalSearchParams)$/]",
+        message:
+          "A screen moves with useNav() and reads its params with useNavParams() from @/lib/nav, not expo-router's router or useLocalSearchParams: inside a Workspace pane the singleton moves the whole app (docs/design/workspace/SPEC.md §C3).",
+      },
       {
         selector:
           "JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > ConditionalExpression > Literal[value=/[A-Za-z]{3,}/], JSXAttribute[name.name=/^accessibility(Label|Hint)$/] > JSXExpressionContainer > LogicalExpression > Literal[value=/[A-Za-z]{3,}/]",
@@ -409,7 +435,7 @@ config.overrides = [
   {
     files: ["**/__tests__/**"],
     rules: {
-      "no-restricted-syntax": strip(restricted.filter((entry) => entry.id !== "text-literal" && entry.id !== "api-in-effect")),
+      "no-restricted-syntax": strip(restricted.filter((entry) => entry.id !== "text-literal" && entry.id !== "api-in-effect" && entry.id !== "pane-nav")),
     },
   },
   {
@@ -417,8 +443,23 @@ config.overrides = [
     files: ["src/__tests__/animated.ts"],
     rules: {
       "no-restricted-syntax": strip(
-        restricted.filter((entry) => entry.id !== "text-literal" && entry.id !== "animated-spy" && entry.id !== "api-in-effect"),
+        restricted.filter((entry) => entry.id !== "text-literal" && entry.id !== "animated-spy" && entry.id !== "api-in-effect" && entry.id !== "pane-nav"),
       ),
+    },
+  },
+  {
+    // pane-nav: the files that may still use expo-router's singleton: the hook
+    // itself, and the four that navigate the WHOLE app on purpose (the app
+    // switcher's openApp, the last place, back to Home, the share intent).
+    files: [
+      "src/lib/nav.ts",
+      "src/apps/registry.ts",
+      "src/apps/lastPlace.ts",
+      "src/hooks/useBackToHome.ts",
+      "src/screens/pages/ShareIntentBridge.tsx",
+    ],
+    rules: {
+      "no-restricted-syntax": strip(restricted.filter((entry) => entry.id !== "pane-nav")),
     },
   },
 ];

@@ -8,7 +8,7 @@
 import { useMemo, useState } from "react";
 import { Pressable, RefreshControl, SectionList, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";
-import { useLocalSearchParams } from "expo-router";
+import { useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQueries, useQuery, type InfiniteData } from "@tanstack/react-query";
 import { todoKeys } from "@/api/keys";
@@ -36,7 +36,7 @@ export default function DueScreen() {
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
-  const params = useLocalSearchParams<{ view?: string }>();
+  const params = useNavParams<{ view?: string }>();
   const [view, setView] = useState<DueView>(DUE_VIEWS.find((v) => v === params.view) ?? "today");
   const [openId, setOpenId] = useState<number | null>(null);
   const today = todayKey();

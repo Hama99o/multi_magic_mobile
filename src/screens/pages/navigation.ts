@@ -3,18 +3,19 @@
  * opens in the viewer (`app/pages/view.tsx`). `trail` is the names above,
  * so the next header can say where it is without a request.
  */
-import { router } from "expo-router";
 import type { PageNode } from "@/api/pages";
+import type { Nav } from "@/lib/nav";
 
-export function openNode(node: PageNode, { trail }: { trail: string }): void {
+/** `nav` is the caller's `useNav()`, so inside a Workspace pane the item opens in that pane. */
+export function openNode(nav: Nav, node: PageNode, { trail }: { trail: string }): void {
   if (node.kind === "folder") {
-    router.push({
+    nav.push({
       pathname: "/pages/folder",
       params: { spaceId: String(node.spaceId), parentId: String(node.id), title: node.title, trail },
     });
     return;
   }
-  router.push({
+  nav.push({
     pathname: "/pages/view",
     params: { spaceId: String(node.spaceId), nodeId: String(node.id), title: node.title },
   });

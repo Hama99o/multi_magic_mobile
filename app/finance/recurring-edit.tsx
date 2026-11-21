@@ -12,7 +12,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, TextInput, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { financeKeys } from "@/api/keys";
@@ -35,7 +35,7 @@ type Kind = "expense" | "income";
 
 export default function RecurringEdit() {
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ kind?: string; id?: string }>();
+  const params = useNavParams<{ kind?: string; id?: string }>();
   const kind: Kind = params.kind === "income" ? "income" : "expense";
   const id = params.id ? Number(params.id) : null;
   const rules = useQuery({ queryKey: financeKeys.recurring(kind), queryFn: () => financeApi.recurring.list(kind), enabled: id != null });
@@ -51,6 +51,7 @@ export default function RecurringEdit() {
 }
 
 function Form({ kind, existing }: { kind: Kind; existing: Recurring | null }) {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

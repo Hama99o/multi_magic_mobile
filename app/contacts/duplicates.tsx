@@ -4,7 +4,7 @@
  * phone. A tap opens the contact, where the person decides.
  */
 import { ActivityIndicator, Pressable, ScrollView, View } from "react-native";
-import { router } from "expo-router";
+import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useQuery } from "@tanstack/react-query";
 import { ChevronRight } from "@/components/icons";
@@ -17,6 +17,7 @@ import { contactsApi } from "@/api/contacts";
 import { contactsKeys } from "@/api/keys";
 
 export default function ContactsDuplicates() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();

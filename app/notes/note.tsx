@@ -11,7 +11,7 @@
  */
 import { useMemo, type ReactNode } from "react";
 import { ActivityIndicator, Alert, Pressable, ScrollView, View } from "react-native";
-import { router, useLocalSearchParams } from "expo-router";
+import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 
 import { Screen } from "@/components/ScreenContainer";
@@ -31,10 +31,11 @@ import { openReadViewLink, useEditorLabels } from "@/screens/notes/readView";
 import { parseNoteHtml } from "@/screens/notes/document";
 
 export default function NoteScreen() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const params = useLocalSearchParams<{ id?: string }>();
+  const params = useNavParams<{ id?: string }>();
   const noteId = Number(params.id) || 0;
 
   const { data: note, error, refetch, isPending } = useNote(noteId);

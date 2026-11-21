@@ -394,3 +394,23 @@ Search 3/3, Notes 3/3 (+ N1c). The pane-nav codemod: 0 files.
 | `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
 
 **Run 10: 0 failures** at eace8a3.
+
+## Run 11 — 2026-11-21, 88's fixes from ee's review
+
+| Branch @ head | Owner | What is new | Merge |
+|---|---|---|---|
+| `feat/tables` @ 105fe67 | 88 | T1 (a headerless import kept its first row), T3 (an unreadable bulk number cleared the column) | clean (also `app/tables/table.tsx`, after field_ids) |
+| `fix/finance-sweep` @ a146651 | 88 | F2 (a double "Run now" made two incomes) | clean |
+| `feat/chats-ask` @ 2612abd | 88 | C1 (Ask from a thread with no name param) | clean |
+
+The Jest gate waited ~90 min on the box lock, held by ff's own hung red-test
+run (killed by guarded.sh's watchdog; see the hidden-criteria lows below).
+
+| Gate (guarded.sh, Jest 1 worker, node 22.19.0) | Result |
+|---|---|
+| tsc | 0 errors |
+| eslint, 396 changed files | 0 errors, 0 warnings |
+| Jest, full | 340 suites passed; **4156 / 4156 tests passed, 0 failed** |
+| `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
+
+**Run 11: 0 failures** at 608e198.

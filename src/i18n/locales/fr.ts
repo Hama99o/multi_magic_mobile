@@ -1270,7 +1270,7 @@ export const fr: Translations = {
     open: "Ouvrir {{name}}",
     expired: "Expiré",
     expiresSoon: "Expire bientôt",
-    weak: "Faible",
+    strength: { weak: "Faible", fair: "Moyen", strong: "Fort" },
     identityTypes: {
       passport: "Passeport",
       national_id: "Carte d’identité",

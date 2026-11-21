@@ -255,7 +255,8 @@ function Row({ row }: { row: SafeZoneRow }) {
   const [pressed, setPressed] = useState(false);
   const title = rowTitle(row, t);
   const expired = row.kind === "identities" && isExpired(row.expiresAt);
-  const weak = row.kind === "passwords" && row.weak === true;
+  // Weak, Fair or Strong, as the web's badge (danger / muted / success; the app has no warning tone).
+  const strength = row.kind === "passwords" ? row.strength : null;
   return (
     <View>
     <Pressable
@@ -296,9 +297,9 @@ function Row({ row }: { row: SafeZoneRow }) {
           {t("safezone.expired")}
         </Text>
       ) : null}
-      {weak ? (
-        <Text tone="danger" variant="caption" testID={`safezone-weak-${row.id}`}>
-          {t("safezone.weak")}
+      {strength ? (
+        <Text tone={strength === "weak" ? "danger" : "muted"} variant="caption" testID={`safezone-strength-${row.id}`} style={strength === "strong" ? { color: colors.success } : undefined}>
+          {t(`safezone.strength.${strength}`)}
         </Text>
       ) : null}
       {date ? (

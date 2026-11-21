@@ -1255,7 +1255,7 @@ export const en = {
     open: "Open {{name}}",
     expired: "Expired",
     expiresSoon: "Expires soon",
-    weak: "Weak",
+    strength: { weak: "Weak", fair: "Fair", strong: "Strong" },
     identityTypes: {
       passport: "Passport",
       national_id: "ID card",

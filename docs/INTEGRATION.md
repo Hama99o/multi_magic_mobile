@@ -264,3 +264,32 @@ origin/main.
 | `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
 
 **Run 5: 0 failures** at 73d14ad (code); docs after it: the release table.
+
+## Run 6 — 2026-11-21, run 5 plus pane-nav and the 200 % fixes
+
+| Branch @ head | Owner | What is new | Merge |
+|---|---|---|---|
+| `feat/pane-nav` @ 53594e7 | 88 | W0: `useNav`, the codemod (100 files), the pane-nav lint rule | clean |
+| `feat/tables` @ 27819f0 | 88 | device pass 5 notes | clean |
+| `feat/pages-parity` @ 1685c37 | ee | durations on grid cards, the login scroll (da2572f), slot-2 readiness flows | 2 files, below |
+| `fix/home-tile-names` @ e842db8 | ff | new: an app's name is never cut at 200 % | 1 file, below |
+| `fix/contacts-font-scale` @ a766921 | ff | new, off hygiene: Contacts rows, headers, A–Z at 200 % | 1 file, below |
+
+- `src/screens/pages/drive/ui.tsx`, `parts.tsx`: media-kind's `mediaKind()`
+  against Pages' new `DurationBadge`. **Both**: the badge added, `isVideo`
+  kept on `mediaKind()` (media-kind's rule: the type, never the name).
+- `app/__tests__/home.test.tsx`: search's Home-field test and the 200 % tests
+  both appended at the end. **Union**, each block closed.
+- `app/contacts/index.tsx`: the import line. pane-nav replaced `router` with
+  `useNav`; the fix added `useWindowDimensions`. **Both**, no `router` import.
+- The pane-nav codemod re-run over the merge: no change (its 4 skipped files
+  are its allowlist).
+
+| Gate (guarded.sh, Jest 1 worker, node 22.19.0) | Result |
+|---|---|
+| tsc | 0 errors |
+| eslint, 372 changed files (with the pane-nav and kav-height rules) | 0 errors, 0 warnings |
+| Jest, full | 326 suites passed; **4102 / 4102 tests passed, 0 failed** |
+| `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
+
+**Run 6: 0 failures** at d205479.

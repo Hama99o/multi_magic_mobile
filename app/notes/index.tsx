@@ -126,7 +126,14 @@ export default function NotesScreen() {
   const runOnSelection = async (action: (note: Note) => Promise<unknown>) => {
     setFailed(false);
     try {
-      for (const n of selectedNotes) await action(n);
+      // Each note leaves the selection once ITS action is done: a failure
+      // keeps only the notes not yet done, so a retry repeats nothing (a copy
+      // failing on the 2nd of 3 used to keep all 3 and copy the 1st again;
+      // review N3, 88).
+      for (const n of selectedNotes) {
+        await action(n);
+        setSelected((s) => s.filter((id) => id !== n.id));
+      }
       setSelected([]);
     } catch {
       setFailed(true);

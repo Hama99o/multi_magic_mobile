@@ -578,6 +578,28 @@ describe("the selection's ⋯ menu: make a copy and labels (web card menu; parit
     await waitFor(() => expect(screen.queryByTestId("notes-selection-count")).toBeNull());
   });
 
+  // Review N3 (88, 2026-11-21): a copy of three notes failing on the second
+  // kept ALL three selected, so Retry copied the first one again. A note leaves
+  // the selection once its own copy is made.
+  it("a copy failing midway keeps only the notes not yet copied, so a retry repeats nothing", async () => {
+    mock.onPost(/\/api\/v1\/note_app\/notes\/\d+\/duplicate/).reply((cfg) => {
+      const id = Number(cfg.url!.split("/")[5]);
+      const refused = id === 3 && mock.history.post.filter((r) => r.url === cfg.url).length === 1;
+      return refused ? [500, {}] : [200, { note: note(100 + id, { title: "copy" }) }];
+    });
+    open();
+    fireEvent(await screen.findByTestId("note-card-2"), "longPress");
+    fireEvent.press(screen.getByTestId("note-card-3"));
+    fireEvent.press(screen.getByTestId("note-card-4"));
+    fireEvent.press(screen.getByTestId("notes-selection-more"));
+    fireEvent.press(await screen.findByTestId("notes-selection-copy"));
+    await waitFor(() => expect(screen.getByTestId("notes-selection-count")).toHaveTextContent("2 selected"));
+    fireEvent.press(screen.getByTestId("notes-selection-more"));
+    fireEvent.press(await screen.findByTestId("notes-selection-copy"));
+    await waitFor(() => expect(mock.history.post.map((r) => Number(r.url!.split("/")[5]))).toEqual([2, 3, 3, 4]), { timeout: 5000 });
+    await waitFor(() => expect(screen.queryByTestId("notes-selection-count")).toBeNull(), { timeout: 5000 });
+  });
+
   it("with one note selected, Labels puts a label on it", async () => {
     mock.onPut("/api/v1/note_app/notes/3/toggle_tag").reply(200, { note: note(3, { tags: [{ id: 4, name: "home", color: "no_color" }] }) });
     open();

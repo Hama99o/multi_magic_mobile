@@ -48,6 +48,7 @@ export type Command =
   | { kind: "panel"; panel: Panel | null }
   | { kind: "sheet"; sheet: "noteColor" | "more" }
   | { kind: "none" }
+  | { kind: "dictate" }
   | { kind: "hideKeyboard" };
 
 export interface ToolbarInput {
@@ -66,6 +67,10 @@ export interface ToolbarInput {
   /** The caret is in the body (Keep's A key wakes up). */
   focused?: boolean;
   panel: Panel | null;
+  /** The phone has a speech recogniser (useSpeechToText's `available`): the mic key shows. */
+  canDictate?: boolean;
+  /** Dictation is on: the mic key is lit, and pressing it stops. */
+  listening?: boolean;
 }
 
 export interface ToolbarKey {
@@ -184,6 +189,9 @@ export function buildToolbar(input: ToolbarInput): { keys: ToolbarKey[] } {
       k("format", toggle("format"), false, !input.focused), // the Format panel replaces this row while open
       ...(input.nodes.table ? [k("table", { kind: "panel", panel: "table" })] : []),
       ...(inCodeBlock ? [k("codeLanguage", { kind: "panel", panel: "codeLanguage" } as Command, false, false, input.codeLanguage ?? "plain")] : []),
+      // The web's SpeechButton (NoteEditor.tsx:139). The words go in at the
+      // caret, so it waits for one, like A; while listening it stops.
+      ...(input.canDictate ? [k("dictate", { kind: "dictate" }, Boolean(input.listening), !input.listening && !input.focused)] : []),
       spacer(),
       k("undo", { kind: "undo" }, false, !input.canUndo),
       k("redo", { kind: "redo" }, false, !input.canRedo),

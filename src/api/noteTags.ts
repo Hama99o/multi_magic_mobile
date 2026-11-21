@@ -8,6 +8,7 @@
 import { http } from "./http";
 import { arr, num, obj } from "./parse";
 import { parseNote, parseTag, type Note, type NoteTag } from "./notes";
+import type { NoteColorKey } from "@/screens/notes/editor/noteColors";
 
 export const noteTagsApi = {
   /** Every label, in the web's order (position), all pages. */
@@ -23,9 +24,24 @@ export const noteTagsApi = {
     return out;
   },
 
-  create: async (name: string): Promise<NoteTag> => {
-    const res = await http.post("/api/v1/note_app/tags", { tag: { name } });
+  create: async (name: string, color?: NoteColorKey | null): Promise<NoteTag> => {
+    const res = await http.post("/api/v1/note_app/tags", { tag: { name, ...(color ? { color } : {}) } });
     return parseTag(obj(res.data, "tag").tag);
+  },
+
+  /** The label's colour (tag.rb enum); null clears it with `no_color`. */
+  setColor: async (tagId: number, color: NoteColorKey | null): Promise<NoteTag> => {
+    const res = await http.put(`/api/v1/note_app/tags/${tagId}`, { tag: { color: color ?? "no_color" } });
+    return parseTag(obj(res.data, "tag").tag);
+  },
+
+  /**
+   * A new order for every label. The server reorders inside one label's
+   * update (`tags_controller#update` with `tag_ids`), which also needs that
+   * label's name, as the web's `tagsApi.reorder` sends it.
+   */
+  reorder: async (orderedIds: number[], anchor: NoteTag): Promise<void> => {
+    await http.put(`/api/v1/note_app/tags/${anchor.id}`, { tag: { name: anchor.name, tag_ids: orderedIds } });
   },
 
   rename: async (tagId: number, name: string): Promise<NoteTag> => {

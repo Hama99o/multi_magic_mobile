@@ -20,6 +20,7 @@ import { useState } from "react";
 import { Alert, Modal, Pressable, ScrollView, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import UserMinusIcon from "lucide-react-native/dist/esm/icons/user-minus";
+import BellRingIcon from "lucide-react-native/dist/esm/icons/bell-ring";
 
 import { Text } from "@/components/reusables/text";
 import { KeyboardPadding } from "@/components/KeyboardPadding";
@@ -28,7 +29,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { failureMessage } from "@/api/failure";
 import type { Note, NoteCollaborator, ShareRole } from "@/api/notes";
 import { Avatar } from "@/screens/people/Avatar";
-import { useSetShareRole, useShareNote, useUnshareNote } from "./api/queries";
+import { useSendShareReminder, useSetShareRole, useShareNote, useUnshareNote } from "./api/queries";
 
 /** What the web offers to pick (an administrator made elsewhere still shows as one). */
 const PICKABLE: readonly ShareRole[] = ["viewer", "contributor"];
@@ -40,6 +41,9 @@ export function NoteShareSheet({ visible, note, onClose }: { visible: boolean; n
   const share = useShareNote();
   const unshare = useUnshareNote();
   const setRole = useSetShareRole();
+  const remind = useSendShareReminder();
+  // Who was just emailed a reminder (the web's "Send reminder"), said once below the field.
+  const [reminded, setReminded] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [role, setInviteRole] = useState<ShareRole>("viewer");
   const [failed, setFailed] = useState<string | null>(null);
@@ -52,6 +56,7 @@ export function NoteShareSheet({ visible, note, onClose }: { visible: boolean; n
   const run = async (fn: () => Promise<unknown>) => {
     setFailed(null);
     setSent(false);
+    setReminded(null);
     try {
       await fn();
       return true;
@@ -139,6 +144,8 @@ export function NoteShareSheet({ visible, note, onClose }: { visible: boolean; n
             </View>
             {failed ? (
               <Text testID="note-share-failed" style={{ color: colors.danger, fontSize: 13 }} accessibilityLiveRegion="polite">{failed}</Text>
+            ) : reminded ? (
+              <Text testID="note-share-reminded" tone="muted" style={{ fontSize: 13 }} accessibilityLiveRegion="polite">{t("notes.share.reminded", { name: reminded })}</Text>
             ) : sent ? (
               <Text testID="note-share-sent" tone="muted" style={{ fontSize: 13 }} accessibilityLiveRegion="polite">{t("notes.share.sent")}</Text>
             ) : null}
@@ -164,6 +171,18 @@ export function NoteShareSheet({ visible, note, onClose }: { visible: boolean; n
                       style={{ borderRadius: 999, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 4 }}
                     >
                       <Text style={{ fontSize: 13 }}>{roleLabel(u.role)}</Text>
+                    </Pressable>
+                    <Pressable
+                      testID={`note-share-user-${u.id}-remind`}
+                      onPress={() => void run(() => remind.mutateAsync({ id: note.id, userId: u.id })).then((ok) => ok && setReminded(u.name))}
+                      disabled={remind.isPending}
+                      accessibilityRole="button"
+                      accessibilityLabel={t("notes.share.remindNamed", { name: u.name })}
+                      accessibilityState={{ disabled: remind.isPending, busy: remind.isPending && remind.variables?.userId === u.id }}
+                      hitSlop={6}
+                      style={{ padding: 6 }}
+                    >
+                      <BellRingIcon size={20} color={colors.ink} />
                     </Pressable>
                     <Pressable
                       testID={`note-share-user-${u.id}-remove`}

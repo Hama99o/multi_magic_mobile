@@ -18,7 +18,7 @@
  * do not exist on the web (MISSING_FEATURES.md).
  */
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { ActivityIndicator, Modal, Pressable, RefreshControl, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
+import { ActivityIndicator, Modal, Platform, Pressable, RefreshControl, ScrollView, TextInput, View, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
 
@@ -26,11 +26,11 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { LoadFailure } from "@/components/LoadFailure";
 import { UnreadableNotice } from "@/components/UnreadableNotice";
-import { LayoutGrid, List, ListChecks, Menu, Palette, Pin, PinOff, Plus, Trash2, Users, X } from "@/components/icons";
+import { Copy, LayoutGrid, List, ListChecks, Menu, MoreVertical, Palette, Pin, PinOff, Plus, Tag, Trash2, Users, X } from "@/components/icons";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
 import { canEdit, type Note, type NoteTag } from "@/api/notes";
 import {
-  useArchiveNote, useCreateNote, useDestroyNoteForever, useNotesList, usePinNote, useRestoreNote, useSetNoteColor,
+  useArchiveNote, useCreateNote, useDestroyNoteForever, useDuplicateNote, useNotesList, usePinNote, useRestoreNote, useSetNoteColor,
   useTrashNote, useUnarchiveNote,
 } from "@/screens/notes/api/queries";
 import { NOTES_EDITOR_ENABLED } from "@/config/features";
@@ -42,9 +42,9 @@ import { useNotesView } from "@/stores/notesView.store";
 import { Avatar } from "@/screens/people/Avatar";
 import { cardPreview } from "@/screens/notes/cardPreview";
 import { masonry } from "@/screens/notes/masonry";
-import { NoteColorPicker } from "@/screens/notes/NoteColorPicker";
-import { noteColor, type NoteColorKey } from "@/screens/notes/editor/noteColors";
-import { EditLabelsSheet, NotesDrawer, type NotesView } from "@/screens/notes/labels";
+import { NoteColorPicker, useNoteColorLabels } from "@/screens/notes/NoteColorPicker";
+import { noteColor } from "@/screens/notes/editor/noteColors";
+import { EditLabelsSheet, NoteLabelsSheet, NotesDrawer, type NotesView } from "@/screens/notes/labels";
 import ArchiveIcon from "lucide-react-native/dist/esm/icons/archive";
 import ArchiveRestore from "lucide-react-native/dist/esm/icons/archive-restore";
 import RotateCcwIcon from "lucide-react-native/dist/esm/icons/rotate-ccw";
@@ -101,6 +101,7 @@ export default function NotesScreen() {
   const trash = useTrashNote();
   const destroyForever = useDestroyNoteForever();
   const createNote = useCreateNote();
+  const duplicate = useDuplicateNote();
   const notes = useMemo(() => data?.pages.flatMap((p) => p.notes) ?? [], [data]);
   const unreadable = data?.pages.reduce((n, p) => n + p.unreadable, 0) ?? 0;
   const pinned = notes.filter((n) => n.pinned);
@@ -112,6 +113,9 @@ export default function NotesScreen() {
   const selecting = selected.length > 0;
   const toggle = (id: number) => setSelected((s) => (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]));
   const [colorOpen, setColorOpen] = useState(false);
+  // The selection's ⋯ (Keep's): archive, make a copy, labels, delete.
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [labelsFor, setLabelsFor] = useState<number | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [failed, setFailed] = useState(false);
   const selectedNotes = notes.filter((n) => selected.includes(n.id));
@@ -171,12 +175,18 @@ export default function NotesScreen() {
       </View>
     ) : null;
 
-  const colorLabels = {
-    no_color: t("notes.grid.colors.no_color"), red: t("notes.grid.colors.red"), orange: t("notes.grid.colors.orange"),
-    yellow: t("notes.grid.colors.yellow"), green: t("notes.grid.colors.green"), teal: t("notes.grid.colors.teal"),
-    blue: t("notes.grid.colors.blue"), purple: t("notes.grid.colors.purple"), pink: t("notes.grid.colors.pink"),
-    gray: t("notes.grid.colors.gray"),
-  } satisfies Record<NoteColorKey, string>;
+  const colorLabels = useNoteColorLabels();
+  const live = view === "notes" || view === "pinned" || view === "reminders";
+  const labelsNote = labelsFor === null ? undefined : notes.find((n) => n.id === labelsFor);
+  // The selection's ⋯ (Keep's ⋮): what is in it depends on the view and the selection.
+  const selectionActions: { testID: string; label: string; icon: ReactNode; onPress: () => void }[] = [];
+  if (live) selectionActions.push({ testID: "notes-selection-archive", label: t("notes.views.archiveAction"), icon: <ArchiveIcon size={22} color={colors.ink} />, onPress: () => void runOnSelection((n) => archive.mutateAsync({ id: n.id })) });
+  selectionActions.push({ testID: "notes-selection-copy", label: t("notes.more.copy"), icon: <Copy size={22} color={colors.ink} />, onPress: () => void runOnSelection((n) => duplicate.mutateAsync({ id: n.id })) });
+  if (selectedNotes.length === 1 && canEdit(selectedNotes[0])) {
+    const only = selectedNotes[0];
+    selectionActions.push({ testID: "notes-selection-labels", label: t("notes.labels.title"), icon: <Tag size={22} color={colors.ink} />, onPress: () => setLabelsFor(only.id) });
+  }
+  selectionActions.push({ testID: "notes-selection-delete", label: t("notes.grid.delete"), icon: <Trash2 size={22} color={colors.ink} />, onPress: () => setConfirmDelete(true) });
 
   // Home, the other apps and Android's back live in the shared header
   // (AppHeader); the drawer's "Home" row goes the same way.
@@ -203,7 +213,7 @@ export default function NotesScreen() {
           <Text testID="notes-selection-count" style={{ flex: 1, fontSize: 18, fontWeight: "600" }}>
             {t("notes.grid.selected", { count: selected.length })}
           </Text>
-          {view === "notes" || view === "reminders"
+          {live
             ? iconKey(
                 "notes-selection-pin",
                 allPinned ? t("notes.grid.unpin") : t("notes.grid.pin"),
@@ -212,9 +222,6 @@ export default function NotesScreen() {
               )
             : null}
           {view !== "trash" ? iconKey("notes-selection-color", t("notes.grid.color"), () => setColorOpen(true), <Palette size={22} color={colors.ink} />) : null}
-          {view === "notes" || view === "reminders"
-            ? iconKey("notes-selection-archive", t("notes.views.archiveAction"), () => void runOnSelection((n) => archive.mutateAsync({ id: n.id })), <ArchiveIcon size={22} color={colors.ink} />)
-            : null}
           {view === "archive"
             ? iconKey("notes-selection-unarchive", t("notes.views.unarchiveAction"), () => void runOnSelection((n) => unarchive.mutateAsync({ id: n.id })), <ArchiveRestore size={22} color={colors.ink} />)
             : null}
@@ -223,7 +230,7 @@ export default function NotesScreen() {
             : null}
           {view === "trash"
             ? iconKey("notes-selection-forever", t("notes.views.deleteForever"), () => setConfirmForever(true), <Flame size={22} color={colors.danger} />)
-            : iconKey("notes-selection-delete", t("notes.grid.delete"), () => setConfirmDelete(true), <Trash2 size={22} color={colors.ink} />)}
+            : iconKey("notes-selection-more", t("notes.grid.more"), () => setMoreOpen(true), <MoreVertical size={22} color={colors.ink} />)}
         </View>
       ) : (
         <View
@@ -256,7 +263,7 @@ export default function NotesScreen() {
       {view !== "notes" ? (
         <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: metrics.space.xs }}>
           <Text testID="notes-view-title" style={{ flex: 1, fontSize: 18, fontWeight: "600" }} accessibilityRole="header">
-            {view === "archive" ? t("notes.views.archive") : view === "reminders" ? t("notes.views.reminders") : t("notes.views.trash")}
+            {view === "archive" ? t("notes.views.archive") : view === "reminders" ? t("notes.views.reminders") : view === "pinned" ? t("notes.views.pinned") : t("notes.views.trash")}
           </Text>
           {iconKey("notes-view-close", t("notes.labels.clearFilter"), () => setView("notes"), <X size={20} color={colors.inkMuted} />)}
         </View>
@@ -300,11 +307,11 @@ export default function NotesScreen() {
               </Text>
             ) : (
               <Text testID="notes-empty" tone="muted" style={{ textAlign: "center", marginTop: metrics.space.xl }}>
-                {view === "archive" ? t("notes.views.archiveEmpty") : view === "trash" ? t("notes.views.trashEmpty") : t("notes.empty")}
+                {view === "archive" ? t("notes.views.archiveEmpty") : view === "trash" ? t("notes.views.trashEmpty") : view === "pinned" ? t("notes.views.pinnedEmpty") : t("notes.empty")}
               </Text>
             )
           ) : null}
-          {section("pinned", t("notes.pinned"), pinned, true)}
+          {section("pinned", t("notes.pinned"), pinned, view !== "pinned")}
           {section("others", t("notes.others"), others, pinned.length > 0)}
           {isFetchingNextPage ? <ActivityIndicator color={colors.inkMuted} style={{ margin: metrics.space.md }} /> : null}
         </ScrollView>
@@ -361,6 +368,38 @@ export default function NotesScreen() {
         }}
       />
       <EditLabelsSheet visible={editLabels} onClose={() => setEditLabels(false)} />
+      <Modal visible={moreOpen} transparent animationType="slide" onRequestClose={() => setMoreOpen(false)}>
+        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.4)" }} onPress={() => setMoreOpen(false)} accessibilityLabel={t("common.close")} />
+        <View testID="notes-selection-menu" style={{ backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingVertical: metrics.space.sm }}>
+          {selectionActions.map(({ testID, label, icon, onPress }) => (
+              <Pressable
+                key={testID}
+                testID={testID}
+                onPress={() => {
+                  setMoreOpen(false);
+                  // iOS presents one modal at a time: the confirm or the labels
+                  // sheet waits for this one to slide away.
+                  setTimeout(onPress, Platform.OS === "ios" ? 350 : 0);
+                }}
+                accessibilityRole="button"
+                style={{ minHeight: 52, flexDirection: "row", alignItems: "center", gap: 20, paddingHorizontal: metrics.space.lg }}
+              >
+                {icon}
+                <Text style={{ fontSize: 16 }}>{label}</Text>
+              </Pressable>
+            ))}
+        </View>
+      </Modal>
+      {labelsNote ? (
+        <NoteLabelsSheet
+          visible
+          note={labelsNote}
+          onClose={() => {
+            setLabelsFor(null);
+            setSelected([]);
+          }}
+        />
+      ) : null}
       <NoteColorPicker
         visible={colorOpen}
         value={selectedNotes.length === 1 ? selectedNotes[0].color : null}
@@ -426,7 +465,7 @@ export default function NotesScreen() {
 /** A card's height, roughly, for balancing the two columns. */
 function estimateHeight(note: Note): number {
   const { lines } = cardPreview(note.html, 10);
-  return 48 + (note.title ? 24 : 0) + lines.length * 20 + (note.tags.length ? 30 : 0) + (note.sharedUsers.length ? 26 : 0);
+  return 64 + (note.title ? 24 : 0) + lines.length * 20 + (note.tags.length ? 30 : 0) + (note.sharedUsers.length ? 26 : 0);
 }
 
 function NoteCard({
@@ -440,7 +479,7 @@ function NoteCard({
   onLongPress(): void;
 }) {
   const colors = useColors();
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const tone = noteColor(note.color, mode);
   const { lines, truncated } = useMemo(() => cardPreview(note.html, maxLines), [note.html, maxLines]);
   const body = lines.join("\n") + (truncated ? "\n…" : "");
@@ -487,7 +526,12 @@ function NoteCard({
       {note.tags.length ? (
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 2 }}>
           {note.tags.map((tag) => (
-            <View key={tag.id} style={{ borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, backgroundColor: `${colors.ink}1f` }}>
+            <View
+              key={tag.id}
+              testID={`note-card-${note.id}-label-${tag.id}`}
+              style={{ flexDirection: "row", alignItems: "center", gap: 5, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 3, backgroundColor: `${colors.ink}1f` }}
+            >
+              {tag.color ? <View testID={`note-card-${note.id}-label-${tag.id}-dot`} style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: noteColor(tag.color, mode).dot }} /> : null}
               <Text style={{ fontSize: 12, color: colors.ink }}>{tag.name}</Text>
             </View>
           ))}
@@ -508,6 +552,10 @@ function NoteCard({
           {note.sharedUsers.length > 4 ? <Text style={{ fontSize: 12, color: colors.inkMuted, marginLeft: 4 }}>+{note.sharedUsers.length - 4}</Text> : null}
         </View>
       ) : null}
+      {/* The web card's footer: the last-edited date, small and secondary (parity #24). */}
+      <Text testID={`note-card-${note.id}-updated`} style={{ fontSize: 11, color: colors.inkMuted, alignSelf: "flex-end" }}>
+        {new Date(note.updatedAt).toLocaleDateString(i18n.language)}
+      </Text>
     </Pressable>
   );
 }

@@ -19,7 +19,7 @@ import { createNativeEditorDocumentHandle, RichTextEditor, type RichTextEditorRe
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { KeyboardPadding } from "@/components/KeyboardPadding";
-import { ChevronLeft, Copy, Pin, Share2, Trash2 } from "@/components/icons";
+import { ChevronLeft, Copy, Pin, Share2, Trash2, X } from "@/components/icons";
 import TagIcon from "lucide-react-native/dist/esm/icons/tag";
 import ArchiveIcon from "lucide-react-native/dist/esm/icons/archive";
 import ArchiveRestoreIcon from "lucide-react-native/dist/esm/icons/archive-restore";
@@ -34,6 +34,8 @@ import { NoteLabelsSheet } from "@/screens/notes/labels";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
 import { canEdit, canShare, type Note } from "@/api/notes";
 import { NoteShareSheet } from "@/screens/notes/ShareSheet";
+import { NoteLinksChip } from "@/screens/notes/NoteLinks";
+import { LANGUAGES, useSpeechToText } from "@/hooks/useSpeechToText";
 import { Avatar } from "@/screens/people/Avatar";
 import {
   fetchFreshNote, notesKeys, useArchiveNote, useUnarchiveNote, useCreateNote, useDuplicateNote, useLockNote, useNote, usePinNote,
@@ -354,7 +356,19 @@ export default function NoteEditScreen() {
   const pageFill = noteColorKey ? page.fill : colors.ground;
   const [codeSheet, setCodeSheet] = useState(false);
   const [languageQuery, setLanguageQuery] = useState("");
-  const labelsForToolbar = useMemo(() => toolbarLabels(t), [t]);
+  // Dictation: the app's own recogniser (the chat composer's hook). What is
+  // heard goes in at the caret, with a space after it so the next words do
+  // not run on; nothing reaches our server.
+  const speech = useSpeechToText((final) => {
+    editorRef.current?.insertText(`${final} `);
+  });
+  const baseToolbarLabels = useMemo(() => toolbarLabels(t), [t]);
+  const labelsForToolbar = {
+    ...baseToolbarLabels,
+    dictate: speech.listening
+      ? t("composer.stopDictating")
+      : t("composer.dictateIn", { language: LANGUAGES.find((l) => l.code === speech.lang)?.label ?? speech.lang }),
+  };
   // The textblock under the caret, from our copy of the engine's document.
   const caretBlock = caretPos !== null && engineDocRef.current ? textblockAt(engineDocRef.current, caretPos) : null;
   const headingLevel = caretBlock?.node.type === "heading" ? Number(caretBlock.node.attrs?.level ?? 1) : undefined;
@@ -363,7 +377,7 @@ export default function NoteEditScreen() {
   // Our document's block under the caret decides "in code" (B's active state
   // can lag behind a whole-document replace; seen on the device).
   const nodesForBar = caretBlock ? { ...active.nodes, codeBlock: caretBlock.node.type === "codeBlock" } : active.nodes;
-  const toolbarKeys = buildToolbar({ ...active, nodes: nodesForBar, ...history, hasSelection, panel: readOnly ? null : panel, headingLevel, codeLanguage, focused: focused && !readOnly })
+  const toolbarKeys = buildToolbar({ ...active, nodes: nodesForBar, ...history, hasSelection, panel: readOnly ? null : panel, headingLevel, codeLanguage, focused: focused && !readOnly, canDictate: speech.available, listening: speech.listening })
     .keys.map((k) => (readOnly && k.id !== "more" && k.id !== "spacer" ? { ...k, disabled: true } : k));
 
   /** Replace the engine's document with a structural edit of it (B has no command for these). */
@@ -439,6 +453,11 @@ export default function NoteEditScreen() {
     }
     if (command.kind === "sheet") {
       setSheet(command.sheet);
+      return;
+    }
+    if (command.kind === "dictate") {
+      if (speech.listening) speech.stop();
+      else void speech.start();
       return;
     }
     if (command.kind === "insert" && command.value === "image") {
@@ -828,6 +847,7 @@ export default function NoteEditScreen() {
           {note.sharedUsers.length > 5 ? <Text tone="muted" style={{ fontSize: 12 }}>+{note.sharedUsers.length - 5}</Text> : null}
         </Pressable>
       ) : null}
+      <NoteLinksChip note={note} />
       {noteReminder ? (
         <Pressable
           testID="note-edit-reminder-chip"
@@ -892,6 +912,23 @@ export default function NoteEditScreen() {
           />
         </View>
       </ReadOnlyAtomProvider>
+      {speech.listening ? (
+        // Proof it is hearing: the interim words, not in the note until final (as in the chat).
+        <View testID="note-edit-listening" style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.danger }} />
+          <Text tone="muted" numberOfLines={1} style={{ flex: 1, fontSize: 13 }}>
+            {speech.interim || t("composer.listening")}
+          </Text>
+          <Pressable testID="note-edit-dictation-cancel" onPress={speech.cancel} hitSlop={16} accessibilityRole="button" accessibilityLabel={t("composer.cancelDictation")}>
+            <X size={16} color={colors.inkMuted} />
+          </Pressable>
+        </View>
+      ) : null}
+      {speech.refused || speech.problem ? (
+        <Text testID="note-edit-mic-problem" tone="muted" style={{ fontSize: 12 }}>
+          {speech.problem ?? t("composer.micRefused")}
+        </Text>
+      ) : null}
       <View ref={barRef} collapsable={false} style={{ marginHorizontal: -metrics.space.lg }}>
         <EditorToolbar keys={toolbarKeys} labels={labelsForToolbar} colors={{ ...colors, surface: pageFill }} onCommand={onCommand} />
       </View>

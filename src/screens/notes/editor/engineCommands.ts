@@ -127,6 +127,7 @@ export function runCommand(ref: EngineRef, command: Command, ctx: CommandContext
     case "link":
     case "panel":
     case "sheet":
+    case "dictate":
       return "screen";
     case "none":
       return "done";

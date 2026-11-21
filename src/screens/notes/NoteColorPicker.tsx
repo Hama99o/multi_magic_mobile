@@ -4,6 +4,7 @@
  * screen. Used by the grid's selection bar and the note's palette key.
  */
 import { Modal, Pressable, View } from "react-native";
+import { useTranslation } from "react-i18next";
 import { Check } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { NOTE_COLOR_KEYS, noteColor, type NoteColorKey } from "./editor/noteColors";
@@ -51,4 +52,15 @@ export function NoteColorPicker({ visible, value, mode, colors, title, labels, o
       </View>
     </Modal>
   );
+}
+
+/** Each colour key's name, read aloud on its swatch. */
+export function useNoteColorLabels(): Record<NoteColorKey, string> {
+  const { t } = useTranslation();
+  return {
+    no_color: t("notes.grid.colors.no_color"), red: t("notes.grid.colors.red"), orange: t("notes.grid.colors.orange"),
+    yellow: t("notes.grid.colors.yellow"), green: t("notes.grid.colors.green"), teal: t("notes.grid.colors.teal"),
+    blue: t("notes.grid.colors.blue"), purple: t("notes.grid.colors.purple"), pink: t("notes.grid.colors.pink"),
+    gray: t("notes.grid.colors.gray"),
+  };
 }

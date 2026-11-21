@@ -1453,6 +1453,8 @@ export const en = {
       removeTitle: "Remove {{name}}?",
       removeBody: "They will no longer see this note.",
       viewOnly: "View only",
+      remindNamed: "Send {{name}} a reminder",
+      reminded: "Reminder sent to {{name}}.",
     },
     lock: {
       lock: "Lock note",
@@ -1475,6 +1477,8 @@ export const en = {
     },
     views: {
       reminders: "Reminders",
+      pinned: "Pinned",
+      pinnedEmpty: "No pinned notes.",
       archive: "Archive",
       trash: "Trash",
       archiveAction: "Archive",
@@ -1486,6 +1490,7 @@ export const en = {
       foreverBody: "This cannot be undone.",
       archiveEmpty: "No archived notes.",
       trashEmpty: "The trash is empty.",
+      inTrash: "In the trash",
     },
     labels: {
       drawerTitle: "MultiMagic Notes",
@@ -1499,6 +1504,16 @@ export const en = {
       deleteBody: "It is removed from every note that has it. The notes stay.",
       filter: "Notes labelled {{name}}",
       clearFilter: "Show all notes",
+      colorOf: "Colour of {{name}}",
+      moveUp: "Move {{name}} up",
+      moveDown: "Move {{name}} down",
+    },
+    links: {
+      chip_one: "In {{count}} page",
+      chip_other: "In {{count}} pages",
+      title: "Linked in pages",
+      ownerOnly: "Only the note’s owner can open these pages.",
+      gone: "A page that was deleted",
     },
     more: {
       edited: "Edited {{when}}",
@@ -1519,6 +1534,7 @@ export const en = {
       pin: "Pin",
       unpin: "Unpin",
       color: "Colour",
+      more: "More actions",
       delete: "Delete",
       deleteTitle_one: "Move this note to the trash?",
       deleteTitle_other: "Move {{count}} notes to the trash?",

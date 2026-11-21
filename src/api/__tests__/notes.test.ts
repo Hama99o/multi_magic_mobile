@@ -298,3 +298,34 @@ describe("sharing (audit #23: share_with_user_toggle, update_shared_user_rights)
     expect(canShare({ role: null })).toBe(false);
   });
 });
+
+describe("pinned only (the web's Pinned tab, ?pinned=true; parity #7)", () => {
+  it("lists only pinned notes", async () => {
+    mock.onGet("/api/v1/note_app/notes").reply(200, { notes: [note()], meta: { pagy: { page: 1, pages: 1 }, total_count: 1 } });
+    await notesApi.list(1, undefined, undefined, "pinned");
+    expect(mock.history.get[0].params).toEqual({ page: 1, pinned: "true" });
+  });
+});
+
+describe("linked in Pages (note_links#index; parity #34)", () => {
+  it("reads each link's page and space, and tolerates a page that is gone", async () => {
+    mock.onGet("/api/v1/note_app/notes/7/note_links").reply(200, {
+      note_links: [
+        { id: 1, position: 0, page_app_node_id: 40, note_app_note_id: 7, created_at: "2026-11-02T10:00:00Z", node: { id: 40, title: "Trip plan", kind: "document", page_app_space_id: 3, space: { id: 3, title: "Travel", icon: "✈️", color: "blue" } } },
+        { id: 2, position: 1, page_app_node_id: 41, note_app_note_id: 7, created_at: "2026-11-01T10:00:00Z", node: null },
+      ],
+    });
+    expect(await notesApi.noteLinks(7)).toEqual([
+      { id: 1, nodeId: 40, node: { id: 40, title: "Trip plan", kind: "document", spaceId: 3, space: { id: 3, title: "Travel", icon: "✈️" } } },
+      { id: 2, nodeId: 41, node: null },
+    ]);
+  });
+});
+
+describe("send a reminder to a collaborator (notes#send_reminder; parity #38)", () => {
+  it("posts the collaborator's id", async () => {
+    mock.onPost("/api/v1/note_app/notes/7/send_reminder").reply(200, { message: "Reminder sent" });
+    await notesApi.sendReminder(7, 12);
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ user_id: 12 });
+  });
+});

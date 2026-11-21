@@ -1469,6 +1469,8 @@ export const fr: Translations = {
       removeTitle: "Retirer {{name}} ?",
       removeBody: "Cette personne ne verra plus la note.",
       viewOnly: "Lecture seule",
+      remindNamed: "Envoyer un rappel à {{name}}",
+      reminded: "Rappel envoyé à {{name}}.",
     },
     lock: {
       lock: "Verrouiller la note",
@@ -1491,6 +1493,8 @@ export const fr: Translations = {
     },
     views: {
       reminders: "Rappels",
+      pinned: "Épinglées",
+      pinnedEmpty: "Aucune note épinglée.",
       archive: "Archives",
       trash: "Corbeille",
       archiveAction: "Archiver",
@@ -1502,6 +1506,7 @@ export const fr: Translations = {
       foreverBody: "C’est irréversible.",
       archiveEmpty: "Aucune note archivée.",
       trashEmpty: "La corbeille est vide.",
+      inTrash: "Dans la corbeille",
     },
     labels: {
       drawerTitle: "Notes MultiMagic",
@@ -1515,6 +1520,16 @@ export const fr: Translations = {
       deleteBody: "Il est retiré de toutes les notes qui l’ont. Les notes restent.",
       filter: "Notes avec le libellé {{name}}",
       clearFilter: "Afficher toutes les notes",
+      colorOf: "Couleur de {{name}}",
+      moveUp: "Monter {{name}}",
+      moveDown: "Descendre {{name}}",
+    },
+    links: {
+      chip_one: "Dans {{count}} page",
+      chip_other: "Dans {{count}} pages",
+      title: "Liée dans des pages",
+      ownerOnly: "Seul le propriétaire de la note peut ouvrir ces pages.",
+      gone: "Une page supprimée",
     },
     more: {
       edited: "Modifiée {{when}}",
@@ -1535,6 +1550,7 @@ export const fr: Translations = {
       pin: "Épingler",
       unpin: "Désépingler",
       color: "Couleur",
+      more: "Plus d’actions",
       delete: "Supprimer",
       deleteTitle_one: "Mettre cette note à la corbeille ?",
       deleteTitle_other: "Mettre {{count}} notes à la corbeille ?",

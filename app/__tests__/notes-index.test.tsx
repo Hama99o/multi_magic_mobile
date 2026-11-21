@@ -136,8 +136,9 @@ describe("multi-select (long-press)", () => {
     mock.onDelete(/\/api\/v1\/note_app\/notes\/\d+/).reply(200, {});
     open();
     fireEvent(await screen.findByTestId("note-card-3"), "longPress");
-    fireEvent.press(screen.getByTestId("notes-selection-delete"));
-    fireEvent.press(screen.getByTestId("notes-delete-confirm"));
+    fireEvent.press(screen.getByTestId("notes-selection-more"));
+    fireEvent.press(await screen.findByTestId("notes-selection-delete"));
+    fireEvent.press(await screen.findByTestId("notes-delete-confirm"));
     await waitFor(() => expect(mock.history.delete.map((r) => r.url)).toEqual(["/api/v1/note_app/notes/3"]));
   });
 
@@ -329,7 +330,8 @@ describe("selection on the main grid can archive", () => {
     mock.onPut("/api/v1/note_app/notes/3/archive").reply(200, { note: note(3, { status: "archived" }) });
     open();
     fireEvent(await screen.findByTestId("note-card-3"), "longPress");
-    fireEvent.press(screen.getByTestId("notes-selection-archive"));
+    fireEvent.press(screen.getByTestId("notes-selection-more"));
+    fireEvent.press(await screen.findByTestId("notes-selection-archive"));
     await waitFor(() => expect(mock.history.put.map((r) => r.url)).toEqual(["/api/v1/note_app/notes/3/archive"]));
   });
 });
@@ -463,5 +465,129 @@ describe("back to the app grid (Home) from Notes", () => {
     act(() => { handled = handlers.some((h) => h()); });
     expect(handled).toBe(true);
     expect(router.replace).toHaveBeenCalledWith("/home");
+  });
+});
+
+// ── Notes parity with the web (docs/parity/safezone-notes-pages.md §2) ─────
+
+describe("pinned only (the web's Pinned tab; parity #7)", () => {
+  it("the drawer's Pinned lists only pinned notes (?pinned=true), titled, with a way back", async () => {
+    mock.onGet("/api/v1/note_app/tags").reply(200, { tags: [], meta: { pagy: { page: 1, pages: 1 } } });
+    open();
+    await screen.findByText("Pinned seed");
+    fireEvent.press(screen.getByTestId("notes-menu"));
+    fireEvent.press(await screen.findByTestId("drawer-pinned"));
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === "/api/v1/note_app/notes" && r.params?.pinned === "true")).toBe(true));
+    expect(screen.getByTestId("notes-view-title")).toHaveTextContent("Pinned");
+    fireEvent.press(screen.getByTestId("notes-view-close"));
+    expect(screen.queryByTestId("notes-view-title")).toBeNull();
+  });
+});
+
+describe("label colour and order (web ManageLabelsModal and TagTabs; parity #11, #14, #33)", () => {
+  const tag = (id: number, name: string, color = "no_color") => ({ id, name, color, created_at: "2026-11-01T10:00:00Z", parent_id: null, position: id, description: null });
+  let tags: ReturnType<typeof tag>[];
+  beforeEach(() => {
+    tags = [tag(3, "dev-stuff", "teal"), tag(4, "home"), tag(5, "ideas")];
+    mock.onGet("/api/v1/note_app/tags").reply(() => [200, { tags, meta: { pagy: { page: 1, pages: 1 } } }]);
+  });
+  const editLabels = async () => {
+    open();
+    await screen.findByText("Pinned seed");
+    fireEvent.press(screen.getByTestId("notes-menu"));
+    fireEvent.press(await screen.findByTestId("drawer-edit-labels"));
+    await screen.findByTestId("labels-name-4");
+  };
+
+  it("a label's colour is picked from the web's ten, and can be cleared", async () => {
+    mock.onPut("/api/v1/note_app/tags/4").reply((cfg) => [200, { tag: tag(4, "home", JSON.parse(cfg.data).tag.color) }]);
+    await editLabels();
+    fireEvent.press(screen.getByTestId("labels-color-4"));
+    fireEvent.press(await screen.findByTestId("note-color-pink"));
+    await waitFor(() => expect(mock.history.put.map((r) => JSON.parse(r.data))).toEqual([{ tag: { color: "pink" } }]));
+    fireEvent.press(screen.getByTestId("labels-color-4"));
+    fireEvent.press(await screen.findByTestId("note-color-no_color"));
+    await waitFor(() => expect(mock.history.put.map((r) => JSON.parse(r.data))).toContainEqual({ tag: { color: "no_color" } }));
+  });
+
+  it("a new label can be made with a colour", async () => {
+    mock.onPost("/api/v1/note_app/tags").reply((cfg) => [200, { tag: tag(9, JSON.parse(cfg.data).tag.name, JSON.parse(cfg.data).tag.color) }]);
+    await editLabels();
+    fireEvent.press(screen.getByTestId("labels-new-color"));
+    fireEvent.press(await screen.findByTestId("note-color-blue"));
+    fireEvent.changeText(screen.getByTestId("labels-new"), "work");
+    fireEvent.press(screen.getByTestId("labels-create"));
+    await waitFor(() => expect(JSON.parse(mock.history.post[0].data)).toEqual({ tag: { name: "work", color: "blue" } }));
+  });
+
+  it("moves a label up or down; the server gets every id in the new order, and the drawer follows", async () => {
+    // The server applies the new order (tags_controller#update with tag_ids), as the refetch then shows.
+    mock.onPut(/\/api\/v1\/note_app\/tags\/\d+/).reply((cfg) => {
+      const order: number[] = JSON.parse(cfg.data).tag.tag_ids;
+      tags = order.map((id) => tags.find((x) => x.id === id)!);
+      return [200, { tag: tag(4, "home") }];
+    });
+    await editLabels();
+    expect(screen.getByTestId("labels-up-3").props.accessibilityState).toMatchObject({ disabled: true });
+    fireEvent.press(screen.getByTestId("labels-down-3"));
+    await waitFor(() => expect(mock.history.put).toHaveLength(1));
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ tag: { name: "home", tag_ids: [4, 3, 5] } });
+    const names = screen.getAllByTestId(/^labels-name-\d+$/).map((n) => n.props.testID);
+    expect(names).toEqual(["labels-name-4", "labels-name-3", "labels-name-5"]);
+  });
+
+  it("a label's colour shows on the card's chip and in the drawer", async () => {
+    open();
+    // A dot in the label's colour (the web's dot, tag.rb's teal = #14b8a6); a chip
+    // filled with it would vanish on a card of the same colour.
+    expect(await screen.findByTestId("note-card-2-label-3-dot")).toHaveStyle({ backgroundColor: "#14b8a6" });
+    fireEvent.press(screen.getByTestId("notes-menu"));
+    expect(await screen.findByTestId("drawer-label-3-dot")).toBeTruthy();
+    expect(screen.queryByTestId("drawer-label-4-dot")).toBeNull();
+  });
+});
+
+describe("the selection's ⋯ menu: make a copy and labels (web card menu; parity #16, #17)", () => {
+  beforeEach(() => {
+    mock.onGet("/api/v1/note_app/tags").reply(200, { tags: [{ id: 3, name: "dev-stuff", color: "teal" }, { id: 4, name: "home", color: "no_color" }], meta: { pagy: { page: 1, pages: 1 } } });
+  });
+
+  it("makes a copy of each selected note", async () => {
+    mock.onPost(/\/api\/v1\/note_app\/notes\/\d+\/duplicate/).reply((cfg) => [200, { note: note(100 + Number(cfg.url!.split("/")[5]), { title: "copy" }) }]);
+    open();
+    fireEvent(await screen.findByTestId("note-card-2"), "longPress");
+    fireEvent.press(screen.getByTestId("note-card-3"));
+    fireEvent.press(screen.getByTestId("notes-selection-more"));
+    fireEvent.press(await screen.findByTestId("notes-selection-copy"));
+    await waitFor(() => expect(mock.history.post.map((r) => r.url)).toEqual(["/api/v1/note_app/notes/2/duplicate", "/api/v1/note_app/notes/3/duplicate"]));
+    await waitFor(() => expect(screen.queryByTestId("notes-selection-count")).toBeNull());
+  });
+
+  it("with one note selected, Labels puts a label on it", async () => {
+    mock.onPut("/api/v1/note_app/notes/3/toggle_tag").reply(200, { note: note(3, { tags: [{ id: 4, name: "home", color: "no_color" }] }) });
+    open();
+    fireEvent(await screen.findByTestId("note-card-3"), "longPress");
+    fireEvent.press(screen.getByTestId("notes-selection-more"));
+    fireEvent.press(await screen.findByTestId("notes-selection-labels"));
+    fireEvent.press(await screen.findByTestId("note-label-4"));
+    await waitFor(() => expect(JSON.parse(mock.history.put[0].data)).toEqual({ tag_id: 4 }));
+  });
+
+  it("with two notes selected there is no Labels entry", async () => {
+    open();
+    fireEvent(await screen.findByTestId("note-card-2"), "longPress");
+    fireEvent.press(screen.getByTestId("note-card-3"));
+    fireEvent.press(screen.getByTestId("notes-selection-more"));
+    await screen.findByTestId("notes-selection-copy");
+    expect(screen.queryByTestId("notes-selection-labels")).toBeNull();
+  });
+});
+
+describe("the card's date (web NoteCard footer; parity #24)", () => {
+  it("every card ends with its last-edited date, small and muted, in the app's language", async () => {
+    open();
+    const date = await screen.findByTestId("note-card-3-updated");
+    expect(date).toHaveTextContent(new Date("2026-11-12T09:00:00Z").toLocaleDateString("en"));
+    expect(date).toHaveStyle({ fontSize: 11 });
   });
 });

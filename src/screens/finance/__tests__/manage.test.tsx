@@ -666,3 +666,23 @@ describe("in French", () => {
     expect(screen.getByText("1 opération")).toBeTruthy();
   });
 });
+
+// ── REVIEW (ee, 2026-11-21) of fix/finance-sweep 32ed64e ─────────────────
+// F2 (HIGH, duplicate money): "Run now" on a recurring income has no guard:
+// onRun={() => run.mutate(item.id)} (app/finance/recurring.tsx:143), and the
+// button is never disabled. Two taps, two incomes dated today.
+describe("REVIEW F2: Run now makes one income, however it is tapped", () => {
+  it("two taps while the first run is still on its way: ONE POST to /run", async () => {
+    mock.onPost(/recurring_incomes\/\d+\/run$/).reply(() => new Promise(() => {})); // held open
+    serve({ rexpenses: [], rincomes: [rincome(3, { source: "Salary", amount: "2400.0" })] });
+    renderScreen(<Recurring />);
+    fireEvent.press(await screen.findByTestId("finance-recurring-kind-income"));
+    const run = await screen.findByTestId("finance-recurring-run-3");
+    fireEvent.press(run);
+    fireEvent.press(run);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 50));
+    });
+    expect(mock.history.post.filter((r) => /recurring_incomes\/3\/run$/.test(r.url ?? ""))).toHaveLength(1);
+  });
+});

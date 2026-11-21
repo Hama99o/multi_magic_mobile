@@ -34,8 +34,7 @@ export default function DocHub() {
   const tile = tileColors("doc", useScheme());
 
   return (
-    <Screen measure>
-      <AppHeader app="doc" />
+    <Screen measure header={<AppHeader app="doc" />}>
       <ScrollView contentContainerStyle={{ gap: metrics.space.lg, paddingBottom: metrics.space.xl, paddingTop: metrics.space.sm }}>
         <Text tone="muted">{t("doc.intro")}</Text>
         <View style={{ flexDirection: "row", flexWrap: "wrap", gap: metrics.space.md }} testID="doc-tools">

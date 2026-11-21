@@ -36,8 +36,7 @@ export default function SignaturesScreen() {
     ]);
 
   return (
-    <Screen measure>
-      <AppHeader app="doc" title={t("doc.signatures.title")} back />
+    <Screen measure header={<AppHeader app="doc" title={t("doc.signatures.title")} back />}>
       {list.isPending ? (
         <RowsSkeleton />
       ) : list.isError ? (

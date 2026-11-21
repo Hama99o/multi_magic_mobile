@@ -110,8 +110,7 @@ export default function SignatureCreator() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Screen measure avoidKeyboard>
-        <AppHeader app="doc" title={editingId ? t("doc.creator.editTitle") : t("doc.creator.newTitle")} back onBack={leave} />
+      <Screen measure avoidKeyboard header={<AppHeader app="doc" title={editingId ? t("doc.creator.editTitle") : t("doc.creator.newTitle")} back onBack={leave} />}>
         <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: metrics.space.lg, paddingVertical: metrics.space.md }} scrollEnabled={!drawing}>
           <Segmented
             testID="doc-creator-mode"

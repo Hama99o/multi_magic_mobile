@@ -67,8 +67,7 @@ export default function ConvertScreen() {
   });
 
   return (
-    <Screen measure>
-      <AppHeader app="doc" title={t("doc.tools.convert.title")} back />
+    <Screen measure header={<AppHeader app="doc" title={t("doc.tools.convert.title")} back />}>
       <ScrollView contentContainerStyle={{ gap: metrics.space.md, paddingVertical: metrics.space.md }}>
         {!file ? (
           <IntakeCard testID="doc-convert-intake" icon={RefreshCw} help={t("doc.convert.help")} limits={t("doc.intake.anyFile")} onAdd={intake.openSheet} />

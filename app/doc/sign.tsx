@@ -143,8 +143,7 @@ export default function SignScreen() {
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
-      <Screen measure>
-        <AppHeader app="doc" title={t("doc.tools.sign.title")} back />
+      <Screen measure header={<AppHeader app="doc" title={t("doc.tools.sign.title")} back />}>
         <ScrollView contentContainerStyle={{ gap: metrics.space.md, paddingVertical: metrics.space.md }} scrollEnabled={!touching}>
           <SignatureStrip rows={rows} loading={signatures.isPending} failed={signatures.isError} selected={signatureId} onSelect={(id) => setSignatureId(id)} onAspect={(id, a) => setAspects((m) => (m[id] === a ? m : { ...m, [id]: a }))} />
 

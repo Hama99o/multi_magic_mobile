@@ -163,8 +163,7 @@ export default function TextEditorScreen() {
   const editingRun = editing ? byKey.get(editing) : undefined;
 
   return (
-    <Screen measure>
-      <AppHeader app="doc" title={t("doc.tools.text.title")} back />
+    <Screen measure header={<AppHeader app="doc" title={t("doc.tools.text.title")} back />}>
       <ScrollView contentContainerStyle={{ gap: metrics.space.md, paddingVertical: metrics.space.md }}>
         {!file ? (
           <IntakeCard testID="doc-text-intake" icon={Type} help={t("doc.text.help")} limits={`${t("doc.intake.pdfOnly")} ${t("doc.text.pdfNote")}`} onAdd={intake.openSheet} />

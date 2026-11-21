@@ -58,6 +58,7 @@ import Table from "lucide-react-native/dist/esm/icons/table";
 import Type from "lucide-react-native/dist/esm/icons/type";
 import Underline from "lucide-react-native/dist/esm/icons/underline";
 import Undo2 from "lucide-react-native/dist/esm/icons/undo-2";
+import MicIcon from "lucide-react-native/dist/esm/icons/mic";
 
 import { CODE_LANGUAGES } from "./blockEdits";
 import { HIGHLIGHT_COLORS, TEXT_COLORS, type Command, type ToolbarKey } from "./toolbarModel";
@@ -67,7 +68,7 @@ type Icon = React.ComponentType<{ color?: string; size?: number }>;
 
 const ICONS: Record<string, Icon> = {
   undo: Undo2, redo: Redo2, insert: Plus, format: Type, hideKeyboard: KeyboardOff,
-  noteColor: Palette, more: EllipsisVertical, closePanel: XIcon, table: Table2,
+  noteColor: Palette, more: EllipsisVertical, dictate: MicIcon, closePanel: XIcon, table: Table2,
   "table:addRowBefore": ArrowUpToLine, "table:addRowAfter": ArrowDownToLine,
   "table:addColumnBefore": ArrowLeftToLine, "table:addColumnAfter": ArrowRightToLine,
   "table:toggleHeaderRow": PanelTop, "table:toggleHeaderColumn": PanelLeft,

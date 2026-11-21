@@ -495,3 +495,43 @@ Owner, 2026-11-13: "use the query style well so it doesn't get hard". Every read
 Each optimistic mutation has a refused-by-the-server test (`src/screens/notes/__tests__/queries.test.tsx`) that checks the list and the open note change at once and come back exactly as they were.
 
 **One exception.** `reminderNotifications.ts` runs outside React (on sign-in, after a change, on a notification tap). It reads the reminders list with `notesApi.list` itself to schedule local notifications. Nothing it reads is shown on screen.
+
+## J · App parity with the web (2026-11-21)
+
+Source: the re-audit `docs/parity/safezone-notes-pages.md` §2, on branch
+`docs/mobile-parity-2026-11-20`, against multi_magic origin/master `f66f85ab`.
+Each row names the server route and the test that proves the phone uses it.
+
+| # | Web | Phone now | Route | Test |
+|---|---|---|---|---|
+| 7 | Pinned tab | Drawer › Pinned (`drawer-pinned`), its own view with an empty line | `GET /note_app/notes?pinned=true` | `notes-index` "pinned only" |
+| 11 | Drag the label tabs | Edit labels: ↑ ↓ on each row (`labels-up-*`, `labels-down-*`), the end ones disabled. A drag is the web's gesture; arrows are reachable with a screen reader | `PUT /note_app/tags/:id {tag:{name, tag_ids}}` (`tags_controller#update`) | `noteTags` "reorders", `notes-index` "moves a label" |
+| 14 | Label colour | A swatch on each row and on the new-label field; the picker is the notes' ten colours. "Default" sends `no_color` (the web sends nothing and cannot clear a colour) | `POST`/`PUT /note_app/tags {tag:{color}}` | `noteTags` "colour", `notes-index` "a label's colour" |
+| 33 | Coloured tag chips | A dot in the label's colour on each card chip, and the label's tag icon in its colour in the drawer and the Labels sheet (a filled chip would vanish on a card of the same colour) | — | `notes-index` "shows on the card's chip" |
+| 16, 17 | Card menu: Duplicate, Manage labels | Selection ⋯: Archive, Make a copy, Labels (one note), Delete, as in Keep's ⋮. Archive and Delete moved there: at 360 dp the bar had no room for two more keys | `POST …/duplicate`, `PUT …/toggle_tag` | `notes-index` "the selection's ⋯ menu" |
+| 29 | Restore / Delete forever on an open trashed note | The read view of a trashed note: "In the trash", Restore, Delete forever (asks first, then goes back); owner or administrator only (`note_policy#restore?`) | `PUT …/restore`, `DELETE …/destroy_permanently` | `notes-note` |
+| 34 | Linked in pages | A chip "In N pages" under the title (editor and read view) opens the list "space › page"; only the owner can open a page, as on the web; a deleted page says so | `GET …/notes/:id/note_links` | `notes` "linked in Pages", `notes-edit` "linked in Pages" |
+| 38 | Send reminder to a collaborator | A bell on each collaborator in the share sheet; "Reminder sent to …", or the server's refusal | `POST …/send_reminder {user_id}` | `notes-edit` "send a reminder" |
+
+| 24 | Card footer: last-edited date (`NoteCard.tsx:318-321`) | The same date at the card's foot, right, 11 pt, muted, in the app's language. Decided 2026-11-21 (Hello for the owner): our web wins over Keep | — | `notes-index` "the card's date" |
+| 36 | Dictation (`NoteEditor.tsx:139` SpeechButton) | A mic key in the editor bar, after A, only where the phone has a recogniser (`useSpeechToText`, the chat composer's hook: the device's engine, nothing sent to our server). The words go in at the caret with a space after; a strip shows the interim words and cancels; a refusal or problem says so. Off for a locked note or a reader | — | `toolbarModel` "dictation", `notes-edit` "dictation" |
+
+Device QA (qa_phone3, 2026-11-21, QA account on :3001, bundle grepped for
+`note-links`): `ours/parity-*.png`, sheet `ours/parity-contact-sheet.png`.
+
+| Checked on the device | Result |
+|---|---|
+| Drawer › Épinglées, its view, title and ✕ | works |
+| Label colour: picker, swatch, tag icon in the drawer, dot on the chip | works |
+| Label order: ↑ | works (positions 1-4 read back) |
+| Label order: ↓ | **server bug**: `Tag` has an unscoped `acts_as_list`, so the reorder loop shifts one global list (home went to 5, not 2). Sent to multi-magic-83, fixed at 6e32f81c on fix/notes-label-color (unmerged). The phone sends the web's exact request; nothing to change here |
+| Selection ⋯: Archive, Faire une copie, Libellés, Supprimer; the copy was made | works |
+| Trashed note's read view: "Dans la corbeille", Restore (server: published), Delete forever (asks, then the row is gone) | works |
+| Card date | works (fr 13/11/2026, en 11/13/2026) |
+| Dictation: mic key, the system's microphone prompt, "Écoute…" strip, cancel | works. Real speech NOT measured: the emulator runs `-no-audio` |
+| Share sheet opens; no collaborator on the QA notes, so no bell | the bell is proven by Jest only: inviting someone would email a real address |
+| Linked in pages | NOT measured on the device: no QA note is linked from a page |
+| 360 light fr, 411 light en, 800 dark fr | fits; the bottom sheets span the full 800 dp width (as before this change) |
+
+Cleanup: the copy (deleted forever from the read view), "home" back to no
+colour and first, the QA account back to French.

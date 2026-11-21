@@ -183,3 +183,17 @@ describe("inside a table (the web's TableButtonMenu, EDIT_EVERYTHING §3)", () =
     expect(key({ panel: "table" }, "table:addColumnAfter").command).toEqual({ kind: "table", op: "addColumnAfter" });
   });
 });
+
+describe("dictation (the web's SpeechButton in NoteEditor; parity #36)", () => {
+  it("a mic key after A, only when the phone can dictate", () => {
+    expect(ids({ focused: true })).not.toContain("dictate");
+    expect(ids({ focused: true, canDictate: true })).toEqual(["insert", "noteColor", "format", "dictate", "spacer", "undo", "redo", "spacer", "more"]);
+  });
+
+  it("dimmed until the caret is in the body (the words go where the caret is), lit while listening", () => {
+    expect(key({ focused: false, canDictate: true }, "dictate").disabled).toBe(true);
+    expect(key({ focused: true, canDictate: true }, "dictate")).toMatchObject({ disabled: false, active: false, command: { kind: "dictate" } });
+    // Listening, it stays pressable to stop, even if focus moved.
+    expect(key({ focused: false, canDictate: true, listening: true }, "dictate")).toMatchObject({ disabled: false, active: true });
+  });
+});

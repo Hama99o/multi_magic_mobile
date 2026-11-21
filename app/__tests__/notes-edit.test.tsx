@@ -83,6 +83,19 @@ jest.mock("@apollohg/react-native-rich-text-editor", () => {
     }),
   };
 });
+// Dictation: the app's own hook (the chat composer's), driven by hand here.
+const mockSpeech: { onFinal: ((text: string) => void) | null; state: Record<string, unknown> } = { onFinal: null, state: {} };
+jest.mock("@/hooks/useSpeechToText", () => ({
+  ...jest.requireActual("@/hooks/useSpeechToText"),
+  useSpeechToText: (onFinal: (text: string) => void) => {
+    mockSpeech.onFinal = onFinal;
+    return mockSpeech.state;
+  },
+}));
+const speechIdle = () => ({
+  available: false, status: "unavailable", listening: false, interim: "", lang: "fr-FR", setLang: jest.fn(),
+  start: jest.fn(async () => undefined), stop: jest.fn(), cancel: jest.fn(), refused: false, problem: null,
+});
 const mockLeave: { listeners: (() => void)[] } = { listeners: [] };
 const mockBoard = { text: "" };
 jest.mock("expo-clipboard", () => ({ setStringAsync: jest.fn(async (v: string) => { mockBoard.text = v; return true; }) }));
@@ -159,6 +172,7 @@ beforeEach(() => {
   mockEngine.init = null;
   mockEngine.calls = [];
   mockEngine.selections = [];
+  mockSpeech.state = speechIdle();
   server = note();
   mock.onGet("/api/v1/note_app/notes/7").reply(() => [200, { note: server }]);
   mock.onPut("/api/v1/note_app/notes/7").reply((cfg) => {
@@ -1150,5 +1164,105 @@ describe("sharing (audit #23: the web's Invite user panel)", () => {
     await waitFor(() => expect(mockEngine.props).not.toBeNull());
     expect(mockEngine.props!.editable).toBe(true);
     expect(screen.queryByTestId("note-edit-viewer-chip")).toBeNull();
+  });
+});
+
+// ── Notes parity with the web (docs/parity/safezone-notes-pages.md §2) ─────
+
+describe("send a reminder to a collaborator (web InviteUserModal; parity #38)", () => {
+  const ana = { id: 21, fullname: "Ana Example", email: "ana@example.test", avatar: null, note_role: "contributor" };
+
+  it("emails the collaborator and says so", async () => {
+    server = note({ shared_users: [ana], shared_count: 1 });
+    mock.onPost("/api/v1/note_app/notes/7/send_reminder").reply(200, { message: "Reminder sent" });
+    open();
+    fireEvent.press(await screen.findByTestId("note-edit-share"));
+    fireEvent.press(screen.getByTestId("note-share-user-21-remind"));
+    await waitFor(() => expect(mock.history.post.map((r) => [r.url, JSON.parse(r.data)])).toEqual([["/api/v1/note_app/notes/7/send_reminder", { user_id: 21 }]]));
+    expect(await screen.findByTestId("note-share-reminded")).toHaveTextContent(/Ana Example/);
+  });
+
+  it("a refusal is shown, not swallowed", async () => {
+    server = note({ shared_users: [ana], shared_count: 1 });
+    mock.onPost("/api/v1/note_app/notes/7/send_reminder").reply(500, {});
+    open();
+    fireEvent.press(await screen.findByTestId("note-edit-share"));
+    fireEvent.press(screen.getByTestId("note-share-user-21-remind"));
+    expect(await screen.findByTestId("note-share-failed")).toBeTruthy();
+    expect(screen.queryByTestId("note-share-reminded")).toBeNull();
+  });
+});
+
+describe("linked in Pages (web Show.tsx; parity #34)", () => {
+  const LINKS = "/api/v1/note_app/notes/7/note_links";
+  const link = (id: number, node: Record<string, unknown> | null) => ({ id, position: 0, page_app_node_id: 40 + id, note_app_note_id: 7, created_at: "2026-11-02T10:00:00Z", node });
+  const trip = { id: 41, title: "Trip plan", kind: "document", page_app_space_id: 3, space: { id: 3, title: "Travel", icon: "✈️", color: "blue" } };
+
+  it("no links, no chip", async () => {
+    mock.onGet(LINKS).reply(200, { note_links: [] });
+    open();
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === LINKS)).toBe(true));
+    expect(screen.queryByTestId("note-links")).toBeNull();
+  });
+
+  it("the owner sees where the note is linked and opens the page in Pages", async () => {
+    const { router } = jest.requireMock("expo-router");
+    mock.onGet(LINKS).reply(200, { note_links: [link(1, trip), link(2, null)] });
+    open();
+    fireEvent.press(await screen.findByTestId("note-links"));
+    expect(screen.getByTestId("note-link-1")).toHaveTextContent(/Travel.*Trip plan/);
+    expect(screen.getByTestId("note-link-2")).toBeTruthy();
+    fireEvent.press(screen.getByTestId("note-link-1"));
+    expect(router.push).toHaveBeenCalledWith({ pathname: "/pages/view", params: { spaceId: "3", nodeId: "41", title: "Trip plan" } });
+  });
+
+  it("someone the note is shared with sees the links but cannot open them (the web's rule: owner only)", async () => {
+    const { router } = jest.requireMock("expo-router");
+    router.push.mockClear();
+    server = note({ role: "contributor", is_shared: true });
+    mock.onGet(LINKS).reply(200, { note_links: [link(1, trip)] });
+    open();
+    fireEvent.press(await screen.findByTestId("note-links"));
+    expect(screen.getByTestId("note-link-1").props.accessibilityState).toMatchObject({ disabled: true });
+    fireEvent.press(screen.getByTestId("note-link-1"));
+    expect(router.push).not.toHaveBeenCalled();
+  });
+});
+
+describe("dictation (the web's SpeechButton; parity #36): the app's own recogniser", () => {
+  it("no recogniser on the phone, no mic", async () => {
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(screen.queryByTestId("tb-dictate")).toBeNull();
+  });
+
+  it("the mic listens; what is heard goes in at the caret; the strip shows it is listening and can cancel", async () => {
+    mockSpeech.state = { ...speechIdle(), available: true, status: "idle" };
+    const view = open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    act(() => (mockEngine.props!.onFocus as () => void)());
+    fireEvent.press(screen.getByTestId("tb-dictate"));
+    expect(mockSpeech.state.start).toHaveBeenCalled();
+    mockSpeech.state = { ...mockSpeech.state, listening: true, status: "listening", interim: "buy some" };
+    view.rerender(
+      <QueryClientProvider client={testQueryClient()}>
+        <NoteEditScreen />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByTestId("note-edit-listening")).toHaveTextContent("buy some");
+    act(() => {
+      mockSpeech.onFinal!("buy some milk");
+    });
+    expect(mockEngine.calls).toContainEqual(["insertText", "buy some milk "]);
+    fireEvent.press(screen.getByTestId("note-edit-dictation-cancel"));
+    expect(mockSpeech.state.cancel).toHaveBeenCalled();
+  });
+
+  it("a locked note or a reader cannot dictate", async () => {
+    mockSpeech.state = { ...speechIdle(), available: true, status: "idle" };
+    server = note({ role: "viewer", is_shared: true });
+    open();
+    await waitFor(() => expect(mockEngine.props).not.toBeNull());
+    expect(screen.getByTestId("tb-dictate").props.accessibilityState).toMatchObject({ disabled: true });
   });
 });

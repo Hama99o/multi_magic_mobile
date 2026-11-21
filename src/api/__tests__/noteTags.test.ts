@@ -58,3 +58,24 @@ it("creates a label straight on a note (create_and_assign_tag)", async () => {
   expect(JSON.parse(mock.history.post[0].data)).toEqual({ name: "new one" });
   expect(n.tags[0].name).toBe("new one");
 });
+
+describe("label colour and order (web ManageLabelsModal, TagTabs; parity #11, #14)", () => {
+  it("creates a label with a colour, and without one sends only the name", async () => {
+    mock.onPost("/api/v1/note_app/tags").reply(200, { tag: tag(6, "work", "blue") });
+    expect(await noteTagsApi.create("work", "blue")).toEqual({ id: 6, name: "work", color: "blue" });
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ tag: { name: "work", color: "blue" } });
+  });
+
+  it("sets a label's colour, and clears it with no_color (the web's undefined cannot clear)", async () => {
+    mock.onPut("/api/v1/note_app/tags/5").reply(200, { tag: tag(5, "ideas", "pink") });
+    expect(await noteTagsApi.setColor(5, "pink")).toEqual({ id: 5, name: "ideas", color: "pink" });
+    await noteTagsApi.setColor(5, null);
+    expect(mock.history.put.map((r) => JSON.parse(r.data))).toEqual([{ tag: { color: "pink" } }, { tag: { color: "no_color" } }]);
+  });
+
+  it("reorders through one label's update with every id in the new order (tags_controller#update)", async () => {
+    mock.onPut("/api/v1/note_app/tags/2").reply(200, { tag: tag(2, "home") });
+    await noteTagsApi.reorder([2, 1, 3], { id: 2, name: "home", color: null });
+    expect(JSON.parse(mock.history.put[0].data)).toEqual({ tag: { name: "home", tag_ids: [2, 1, 3] } });
+  });
+});

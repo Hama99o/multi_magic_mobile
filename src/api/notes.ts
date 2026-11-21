@@ -133,12 +133,39 @@ export function parseNote(value: unknown): Note {
   };
 }
 
+/** A page in Pages that links this note (`page_app/note_link_serializer.rb`). */
+export interface NoteLink {
+  id: number;
+  nodeId: number;
+  /** null when the page is gone. */
+  node: { id: number; title: string; kind: string; spaceId: number; space: { id: number; title: string; icon: string | null } | null } | null;
+}
+
+function parseNoteLink(value: unknown): NoteLink {
+  const l = obj(value, "note_link");
+  const n = l.node && typeof l.node === "object" ? (l.node as Record<string, unknown>) : null;
+  const sp = n?.space && typeof n.space === "object" ? (n.space as Record<string, unknown>) : null;
+  return {
+    id: id(l.id, "note_link.id"),
+    nodeId: id(l.page_app_node_id, "note_link.page_app_node_id"),
+    node: n
+      ? {
+          id: id(n.id, "note_link.node.id"),
+          title: optStr(n.title) ?? "",
+          kind: optStr(n.kind) ?? "",
+          spaceId: id(n.page_app_space_id, "note_link.node.page_app_space_id"),
+          space: sp ? { id: id(sp.id, "note_link.node.space.id"), title: optStr(sp.title) ?? "", icon: optStr(sp.icon) ?? null } : null,
+        }
+      : null,
+  };
+}
+
 export const notesApi = {
   /** Published notes the reader can see (their own and shared), pinned first, then last edited. */
-  list: async (page = 1, search?: string, tagId?: number, view: "notes" | "archive" | "trash" | "reminders" = "notes"): Promise<NoteList> => {
+  list: async (page = 1, search?: string, tagId?: number, view: "notes" | "pinned" | "archive" | "trash" | "reminders" = "notes"): Promise<NoteList> => {
     const path = view === "archive" ? "/api/v1/note_app/notes/archives" : view === "trash" ? "/api/v1/note_app/notes/trashes" : "/api/v1/note_app/notes";
     const res = await http.get(path, {
-      params: { page, ...(search ? { search } : {}), ...(tagId ? { tag_id: tagId } : {}), ...(view === "reminders" ? { reminders: "true" } : {}) },
+      params: { page, ...(search ? { search } : {}), ...(tagId ? { tag_id: tagId } : {}), ...(view === "reminders" ? { reminders: "true" } : {}), ...(view === "pinned" ? { pinned: "true" } : {}) },
     });
     const record = obj(res.data, "notes");
     const meta = obj(record.meta, "notes.meta");
@@ -195,6 +222,17 @@ export const notesApi = {
   setColor: async (noteId: number, color: NoteColorKey | null): Promise<Note> => {
     const res = await http.put(`/api/v1/note_app/notes/${noteId}`, { color: color ?? "no_color" });
     return parseNote(obj(res.data, "note").note);
+  },
+
+  /** The pages in Pages that link this note, newest first (the web's "Linked in pages"). */
+  noteLinks: async (noteId: number): Promise<NoteLink[]> => {
+    const res = await http.get(`/api/v1/note_app/notes/${noteId}/note_links`);
+    return readableRows(arr(obj(res.data, "note_links").note_links, "note_links.note_links"), parseNoteLink).rows;
+  },
+
+  /** Email a collaborator a reminder about the note (owner or administrator, `note_policy#send_reminder?`). */
+  sendReminder: async (noteId: number, userId: number): Promise<void> => {
+    await http.post(`/api/v1/note_app/notes/${noteId}/send_reminder`, { user_id: userId });
   },
 
   /** Make a copy (the web's duplicate: the caller's own copy, "(copy)" title, colour kept, no shares or tags). */

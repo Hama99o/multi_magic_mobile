@@ -11,6 +11,7 @@
  */
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, Share, TextInput, View } from "react-native";
+import { SheetFrame } from "@/components/SheetFrame";
 import { router, useLocalSearchParams, useNavigation } from "expo-router";
 import { useTranslation } from "react-i18next";
 import { useQueryClient } from "@tanstack/react-query";
@@ -19,7 +20,7 @@ import { createNativeEditorDocumentHandle, RichTextEditor, type RichTextEditorRe
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { KeyboardPadding } from "@/components/KeyboardPadding";
-import { ChevronLeft, Copy, Pin, Share2, Trash2 } from "@/components/icons";
+import { ChevronLeft, Copy, Pin, Share2, Trash2, X } from "@/components/icons";
 import TagIcon from "lucide-react-native/dist/esm/icons/tag";
 import ArchiveIcon from "lucide-react-native/dist/esm/icons/archive";
 import ArchiveRestoreIcon from "lucide-react-native/dist/esm/icons/archive-restore";
@@ -34,6 +35,8 @@ import { NoteLabelsSheet } from "@/screens/notes/labels";
 import { useColors, useMetrics, useScheme } from "@/hooks/useColors";
 import { canEdit, canShare, type Note } from "@/api/notes";
 import { NoteShareSheet } from "@/screens/notes/ShareSheet";
+import { NoteLinksChip } from "@/screens/notes/NoteLinks";
+import { LANGUAGES, useSpeechToText } from "@/hooks/useSpeechToText";
 import { Avatar } from "@/screens/people/Avatar";
 import {
   fetchFreshNote, notesKeys, useArchiveNote, useUnarchiveNote, useCreateNote, useDuplicateNote, useLockNote, useNote, usePinNote,
@@ -354,7 +357,19 @@ export default function NoteEditScreen() {
   const pageFill = noteColorKey ? page.fill : colors.ground;
   const [codeSheet, setCodeSheet] = useState(false);
   const [languageQuery, setLanguageQuery] = useState("");
-  const labelsForToolbar = useMemo(() => toolbarLabels(t), [t]);
+  // Dictation: the app's own recogniser (the chat composer's hook). What is
+  // heard goes in at the caret, with a space after it so the next words do
+  // not run on; nothing reaches our server.
+  const speech = useSpeechToText((final) => {
+    editorRef.current?.insertText(`${final} `);
+  });
+  const baseToolbarLabels = useMemo(() => toolbarLabels(t), [t]);
+  const labelsForToolbar = {
+    ...baseToolbarLabels,
+    dictate: speech.listening
+      ? t("composer.stopDictating")
+      : t("composer.dictateIn", { language: LANGUAGES.find((l) => l.code === speech.lang)?.label ?? speech.lang }),
+  };
   // The textblock under the caret, from our copy of the engine's document.
   const caretBlock = caretPos !== null && engineDocRef.current ? textblockAt(engineDocRef.current, caretPos) : null;
   const headingLevel = caretBlock?.node.type === "heading" ? Number(caretBlock.node.attrs?.level ?? 1) : undefined;
@@ -363,7 +378,7 @@ export default function NoteEditScreen() {
   // Our document's block under the caret decides "in code" (B's active state
   // can lag behind a whole-document replace; seen on the device).
   const nodesForBar = caretBlock ? { ...active.nodes, codeBlock: caretBlock.node.type === "codeBlock" } : active.nodes;
-  const toolbarKeys = buildToolbar({ ...active, nodes: nodesForBar, ...history, hasSelection, panel: readOnly ? null : panel, headingLevel, codeLanguage, focused: focused && !readOnly })
+  const toolbarKeys = buildToolbar({ ...active, nodes: nodesForBar, ...history, hasSelection, panel: readOnly ? null : panel, headingLevel, codeLanguage, focused: focused && !readOnly, canDictate: speech.available, listening: speech.listening })
     .keys.map((k) => (readOnly && k.id !== "more" && k.id !== "spacer" ? { ...k, disabled: true } : k));
 
   /** Replace the engine's document with a structural edit of it (B has no command for these). */
@@ -439,6 +454,11 @@ export default function NoteEditScreen() {
     }
     if (command.kind === "sheet") {
       setSheet(command.sheet);
+      return;
+    }
+    if (command.kind === "dictate") {
+      if (speech.listening) speech.stop();
+      else void speech.start();
       return;
     }
     if (command.kind === "insert" && command.value === "image") {
@@ -828,6 +848,7 @@ export default function NoteEditScreen() {
           {note.sharedUsers.length > 5 ? <Text tone="muted" style={{ fontSize: 12 }}>+{note.sharedUsers.length - 5}</Text> : null}
         </Pressable>
       ) : null}
+      <NoteLinksChip note={note} />
       {noteReminder ? (
         <Pressable
           testID="note-edit-reminder-chip"
@@ -892,6 +913,23 @@ export default function NoteEditScreen() {
           />
         </View>
       </ReadOnlyAtomProvider>
+      {speech.listening ? (
+        // Proof it is hearing: the interim words, not in the note until final (as in the chat).
+        <View testID="note-edit-listening" style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
+          <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: colors.danger }} />
+          <Text tone="muted" numberOfLines={1} style={{ flex: 1, fontSize: 13 }}>
+            {speech.interim || t("composer.listening")}
+          </Text>
+          <Pressable testID="note-edit-dictation-cancel" onPress={speech.cancel} hitSlop={16} accessibilityRole="button" accessibilityLabel={t("composer.cancelDictation")}>
+            <X size={16} color={colors.inkMuted} />
+          </Pressable>
+        </View>
+      ) : null}
+      {speech.refused || speech.problem ? (
+        <Text testID="note-edit-mic-problem" tone="muted" style={{ fontSize: 12 }}>
+          {speech.problem ?? t("composer.micRefused")}
+        </Text>
+      ) : null}
       <View ref={barRef} collapsable={false} style={{ marginHorizontal: -metrics.space.lg }}>
         <EditorToolbar keys={toolbarKeys} labels={labelsForToolbar} colors={{ ...colors, surface: pageFill }} onCommand={onCommand} />
       </View>
@@ -906,27 +944,24 @@ export default function NoteEditScreen() {
         onPick={pickColor}
         onClose={() => setSheet(null)}
       />
-      <Modal visible={sheet === "more"} transparent animationType="slide" onRequestClose={() => setSheet(null)}>
-        <Pressable style={{ flex: 1, backgroundColor: "rgba(0,0,0,0.45)" }} onPress={() => setSheet(null)} accessibilityLabel={t("common.close")} />
-        <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, paddingVertical: metrics.space.md, paddingHorizontal: metrics.space.lg }}>
-          <Text testID="note-more-edited" tone="muted" style={{ fontSize: 12, marginBottom: metrics.space.sm }}>
-            {t("notes.more.edited", { when: relativeTime(note.updatedAt) })}
-          </Text>
-          {(
-            [
-              ["note-more-delete", Trash2, t("notes.more.delete"), () => setSheet("confirmDelete")],
-              ["note-more-copy", Copy, t("notes.more.copy"), copyNote],
-              ["note-more-send", Share2, t("notes.more.send"), sendNote],
-              ["note-more-labels", TagIcon, t("notes.labels.title"), () => setSheet("labels")],
-            ] as const
-          ).map(([testID, Icon, label, onPress]) => (
-            <Pressable key={testID} testID={testID} onPress={onPress} accessibilityRole="button" style={{ minHeight: 52, flexDirection: "row", alignItems: "center", gap: 16 }}>
-              <Icon size={22} color={colors.ink} />
-              <Text style={{ fontSize: 16 }}>{label}</Text>
-            </Pressable>
-          ))}
-        </View>
-      </Modal>
+      <SheetFrame visible={sheet === "more"} onClose={() => setSheet(null)} closeLabel={t("common.close")} style={{ paddingVertical: metrics.space.md, paddingHorizontal: metrics.space.lg }}>
+        <Text testID="note-more-edited" tone="muted" style={{ fontSize: 12, marginBottom: metrics.space.sm }}>
+          {t("notes.more.edited", { when: relativeTime(note.updatedAt) })}
+        </Text>
+        {(
+          [
+            ["note-more-delete", Trash2, t("notes.more.delete"), () => setSheet("confirmDelete")],
+            ["note-more-copy", Copy, t("notes.more.copy"), copyNote],
+            ["note-more-send", Share2, t("notes.more.send"), sendNote],
+            ["note-more-labels", TagIcon, t("notes.labels.title"), () => setSheet("labels")],
+          ] as const
+        ).map(([testID, Icon, label, onPress]) => (
+          <Pressable key={testID} testID={testID} onPress={onPress} accessibilityRole="button" style={{ minHeight: 52, flexDirection: "row", alignItems: "center", gap: 16 }}>
+            <Icon size={22} color={colors.ink} />
+            <Text style={{ fontSize: 16 }}>{label}</Text>
+          </Pressable>
+        ))}
+      </SheetFrame>
       <ReminderSheet
         visible={sheet === "reminder"}
         value={noteReminder}
@@ -985,59 +1020,53 @@ export default function NoteEditScreen() {
           </View>
         </KeyboardPadding>
       </Modal>
-      <Modal visible={codeSheet} transparent animationType="slide" onRequestClose={() => setCodeSheet(false)}>
-        <KeyboardPadding>
-          <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.4)" }}>
-            <View style={{ backgroundColor: colors.surface, borderTopLeftRadius: 16, borderTopRightRadius: 16, padding: metrics.space.lg, gap: metrics.space.md, maxHeight: "75%" }}>
-              <View style={{ flexDirection: "row", alignItems: "center" }}>
-                <Text style={{ flex: 1, fontWeight: "700", fontSize: 17 }}>{t("notes.code.title")}</Text>
-                <Pressable testID="note-code-done" onPress={() => setCodeSheet(false)} hitSlop={8} style={{ padding: 8 }}>
-                  <Text style={{ color: colors.accent, fontWeight: "700" }}>{t("common.close")}</Text>
-                </Pressable>
-              </View>
-              <TextInput
-                testID="note-code-language-search"
-                autoFocus
-                value={languageQuery}
-                onChangeText={setLanguageQuery}
-                placeholder={t("notes.code.search")}
-                placeholderTextColor={colors.inkMuted}
-                autoCapitalize="none"
-                autoCorrect={false}
-                style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.ink, fontSize: 16 }}
-              />
-              <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }}>
-                {CODE_LANGUAGES.filter((l) => (l.id === null ? t("notes.code.plain") : l.name).toLowerCase().includes(languageQuery.trim().toLowerCase())).map((l) => (
-                  <Pressable
-                    key={l.id ?? "plain"}
-                    testID={`note-code-language-${l.id ?? "plain"}`}
-                    onPress={() => {
-                      applyStructural((doc, path) => setCodeLanguageAt(doc, path, l.id));
-                      setCodeSheet(false);
-                    }}
-                    accessibilityRole="button"
-                    accessibilityState={{ selected: (codeLanguage ?? null) === l.id }}
-                    style={{ minHeight: 48, justifyContent: "center", borderBottomWidth: 1, borderColor: colors.border }}
-                  >
-                    <Text style={{ fontWeight: (codeLanguage ?? null) === l.id ? "700" : "400" }}>{l.id === null ? t("notes.code.plain") : l.name}</Text>
-                  </Pressable>
-                ))}
-              </ScrollView>
+      <SheetFrame visible={codeSheet} onClose={() => setCodeSheet(false)} closeLabel={t("common.close")} keyboard maxHeight="75%" style={{ padding: metrics.space.lg, gap: metrics.space.md }}>
+          <View style={{ flexDirection: "row", alignItems: "center" }}>
+            <Text style={{ flex: 1, fontWeight: "700", fontSize: 17 }}>{t("notes.code.title")}</Text>
+            <Pressable testID="note-code-done" onPress={() => setCodeSheet(false)} hitSlop={8} style={{ padding: 8 }}>
+              <Text style={{ color: colors.accent, fontWeight: "700" }}>{t("common.close")}</Text>
+            </Pressable>
+          </View>
+          <TextInput
+            testID="note-code-language-search"
+            autoFocus
+            value={languageQuery}
+            onChangeText={setLanguageQuery}
+            placeholder={t("notes.code.search")}
+            placeholderTextColor={colors.inkMuted}
+            autoCapitalize="none"
+            autoCorrect={false}
+            style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.ink, fontSize: 16 }}
+          />
+          <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }}>
+            {CODE_LANGUAGES.filter((l) => (l.id === null ? t("notes.code.plain") : l.name).toLowerCase().includes(languageQuery.trim().toLowerCase())).map((l) => (
               <Pressable
-                testID="note-code-delete"
+                key={l.id ?? "plain"}
+                testID={`note-code-language-${l.id ?? "plain"}`}
                 onPress={() => {
-                  applyStructural(deleteBlockAt);
+                  applyStructural((doc, path) => setCodeLanguageAt(doc, path, l.id));
                   setCodeSheet(false);
                 }}
                 accessibilityRole="button"
-                style={{ minHeight: 48, justifyContent: "center" }}
+                accessibilityState={{ selected: (codeLanguage ?? null) === l.id }}
+                style={{ minHeight: 48, justifyContent: "center", borderBottomWidth: 1, borderColor: colors.border }}
               >
-                <Text style={{ color: colors.danger, fontWeight: "600" }}>{t("notes.code.delete")}</Text>
+                <Text style={{ fontWeight: (codeLanguage ?? null) === l.id ? "700" : "400" }}>{l.id === null ? t("notes.code.plain") : l.name}</Text>
               </Pressable>
-            </View>
-          </View>
-        </KeyboardPadding>
-      </Modal>
+            ))}
+          </ScrollView>
+          <Pressable
+            testID="note-code-delete"
+            onPress={() => {
+              applyStructural(deleteBlockAt);
+              setCodeSheet(false);
+            }}
+            accessibilityRole="button"
+            style={{ minHeight: 48, justifyContent: "center" }}
+          >
+            <Text style={{ color: colors.danger, fontWeight: "600" }}>{t("notes.code.delete")}</Text>
+          </Pressable>
+      </SheetFrame>
     </Screen>
   );
 }

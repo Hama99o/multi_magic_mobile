@@ -25,7 +25,7 @@ import { noteTagsApi } from "@/api/noteTags";
 import type { NoteColorKey } from "@/screens/notes/editor/noteColors";
 import type { NoteReminder } from "@/screens/notes/reminders";
 
-export type NotesListView = "notes" | "reminders" | "archive" | "trash";
+export type NotesListView = "notes" | "pinned" | "reminders" | "archive" | "trash";
 export interface NotesFilters {
   view: NotesListView;
   search: string;
@@ -39,6 +39,7 @@ export const notesKeys = {
   details: () => ["notes", "note"] as const,
   detail: (id: number) => ["notes", "note", id] as const,
   tags: () => ["notes", "tags"] as const,
+  links: (id: number) => ["notes", "links", id] as const,
 };
 
 // ── reads ──────────────────────────────────────────────────────────────────
@@ -57,6 +58,9 @@ export const useNote = (id: number) => useQuery({ queryKey: notesKeys.detail(id)
 export const fetchFreshNote = (qc: QueryClient, id: number) => qc.fetchQuery({ queryKey: notesKeys.detail(id), queryFn: () => notesApi.get(id), staleTime: 0 });
 
 export const useNoteTags = (enabled = true) => useQuery({ queryKey: notesKeys.tags(), queryFn: () => noteTagsApi.list(), enabled });
+
+/** The pages in Pages that link a note (the web's "Linked in pages"). */
+export const useNoteLinks = (id: number, enabled = true) => useQuery({ queryKey: notesKeys.links(id), queryFn: () => notesApi.noteLinks(id), enabled: enabled && id > 0 });
 
 // ── the optimistic machinery ───────────────────────────────────────────────
 
@@ -186,6 +190,9 @@ export const useUnshareNote = () =>
     },
   });
 
+/** Email a collaborator about the note (the web's "Send reminder"). Nothing in the cache changes. */
+export const useSendShareReminder = () => useMutation({ mutationFn: (v: { id: number; userId: number }) => notesApi.sendReminder(v.id, v.userId) });
+
 export const useSetShareRole = () =>
   useNoteChange<{ id: number; userId: number; role: ShareRole }>({
     call: (v) => notesApi.setShareRole(v.id, v.userId, v.role),
@@ -261,7 +268,7 @@ export function useCreateTagOnNote() {
 export function useCreateTag() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (v: { name: string }) => noteTagsApi.create(v.name),
+    mutationFn: (v: { name: string; color?: NoteColorKey | null }) => noteTagsApi.create(v.name, v.color),
     onSettled: () => void qc.invalidateQueries({ queryKey: notesKeys.tags() }),
   });
 }
@@ -288,3 +295,29 @@ function useTagChange<V extends { id: number }>(call: (v: V) => Promise<unknown>
 }
 export const useRenameTag = () => useTagChange<{ id: number; name: string }>((v) => noteTagsApi.rename(v.id, v.name), (t, v) => ({ ...t, name: v.name }));
 export const useRemoveTag = () => useTagChange<{ id: number }>((v) => noteTagsApi.remove(v.id), () => null);
+export const useSetTagColor = () =>
+  useTagChange<{ id: number; color: NoteColorKey | null }>((v) => noteTagsApi.setColor(v.id, v.color), (t, v) => ({ ...t, color: v.color }));
+
+/** A new order for the labels (optimistic: the drawer and the sheet move at once). */
+export function useReorderTags() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (v: { order: NoteTag[] }) => noteTagsApi.reorder(v.order.map((t) => t.id), v.order[0]),
+    onMutate: async (v) => {
+      const snap = await snapshot(qc, true);
+      qc.setQueriesData<NoteTag[]>({ queryKey: notesKeys.tags(), exact: true }, () => v.order);
+      return snap;
+    },
+    onError: (_e, _v, snap) => rollback(qc, snap),
+    onSettled: () => void qc.invalidateQueries({ queryKey: notesKeys.tags() }),
+  });
+}
+
+/** `tags` with the label at `from` moved one place up (-1) or down (+1); unchanged at an end. */
+export function moveTag(tags: NoteTag[], from: number, step: -1 | 1): NoteTag[] {
+  const to = from + step;
+  if (from < 0 || from >= tags.length || to < 0 || to >= tags.length) return tags;
+  const next = tags.slice();
+  [next[from], next[to]] = [next[to], next[from]];
+  return next;
+}

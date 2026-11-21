@@ -17,18 +17,19 @@
  * server's note into the open note and the cards, and refreshes both.
  */
 import { useState } from "react";
-import { Alert, Modal, Pressable, ScrollView, TextInput, View } from "react-native";
+import { Alert, Pressable, ScrollView, TextInput, View } from "react-native";
+import { SheetFrame } from "@/components/SheetFrame";
 import { useTranslation } from "react-i18next";
 import UserMinusIcon from "lucide-react-native/dist/esm/icons/user-minus";
+import BellRingIcon from "lucide-react-native/dist/esm/icons/bell-ring";
 
 import { Text } from "@/components/reusables/text";
-import { KeyboardPadding } from "@/components/KeyboardPadding";
 import { X } from "@/components/icons";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { failureMessage } from "@/api/failure";
 import type { Note, NoteCollaborator, ShareRole } from "@/api/notes";
 import { Avatar } from "@/screens/people/Avatar";
-import { useSetShareRole, useShareNote, useUnshareNote } from "./api/queries";
+import { useSendShareReminder, useSetShareRole, useShareNote, useUnshareNote } from "./api/queries";
 
 /** What the web offers to pick (an administrator made elsewhere still shows as one). */
 const PICKABLE: readonly ShareRole[] = ["viewer", "contributor"];
@@ -40,6 +41,9 @@ export function NoteShareSheet({ visible, note, onClose }: { visible: boolean; n
   const share = useShareNote();
   const unshare = useUnshareNote();
   const setRole = useSetShareRole();
+  const remind = useSendShareReminder();
+  // Who was just emailed a reminder (the web's "Send reminder"), said once below the field.
+  const [reminded, setReminded] = useState<string | null>(null);
   const [email, setEmail] = useState("");
   const [role, setInviteRole] = useState<ShareRole>("viewer");
   const [failed, setFailed] = useState<string | null>(null);
@@ -52,6 +56,7 @@ export function NoteShareSheet({ visible, note, onClose }: { visible: boolean; n
   const run = async (fn: () => Promise<unknown>) => {
     setFailed(null);
     setSent(false);
+    setReminded(null);
     try {
       await fn();
       return true;
@@ -94,104 +99,112 @@ export function NoteShareSheet({ visible, note, onClose }: { visible: boolean; n
   );
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <KeyboardPadding>
-        <View style={{ flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(0,0,0,0.45)" }}>
-          <View testID="note-share-sheet" style={{ backgroundColor: colors.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: metrics.space.lg, gap: metrics.space.sm, maxHeight: "85%" }}>
-            <View style={{ flexDirection: "row", alignItems: "center" }}>
-              <Text style={{ flex: 1, fontSize: 17, fontWeight: "700" }} accessibilityRole="header">{t("notes.share.title")}</Text>
-              <Pressable testID="note-share-close" onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("common.close")} style={{ padding: 8 }}>
-                <X size={22} color={colors.ink} />
-              </Pressable>
-            </View>
-            <TextInput
-              testID="note-share-email"
-              value={email}
-              onChangeText={(v) => {
-                setEmail(v);
-                setSent(false);
-              }}
-              placeholder={t("notes.share.email")}
-              accessibilityLabel={t("notes.share.email")}
-              placeholderTextColor={colors.inkMuted}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              returnKeyType="send"
-              onSubmitEditing={() => void invite()}
-              style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.ink, fontSize: 16 }}
-            />
-            <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <Text tone="muted" style={{ fontSize: 13 }}>{t("notes.share.role")}</Text>
-              {PICKABLE.map((r) => chip(`note-share-role-${r}`, roleLabel(r), role === r, () => setInviteRole(r)))}
-              <View style={{ flex: 1 }} />
-              <Pressable
-                testID="note-share-invite"
-                onPress={() => void invite()}
-                disabled={!canInvite}
-                accessibilityRole="button"
-                accessibilityState={{ disabled: !canInvite, busy: share.isPending }}
-                style={{ borderRadius: 999, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: canInvite ? colors.accent : colors.border }}
-              >
-                <Text style={{ color: colors.ground, fontWeight: "700" }}>{t("notes.share.invite")}</Text>
-              </Pressable>
-            </View>
-            {failed ? (
-              <Text testID="note-share-failed" style={{ color: colors.danger, fontSize: 13 }} accessibilityLiveRegion="polite">{failed}</Text>
-            ) : sent ? (
-              <Text testID="note-share-sent" tone="muted" style={{ fontSize: 13 }} accessibilityLiveRegion="polite">{t("notes.share.sent")}</Text>
-            ) : null}
-            {note.sharedUsers.length ? (
-              <Text tone="muted" style={{ fontSize: 12, fontWeight: "600", marginTop: metrics.space.sm }}>{t("notes.share.sharedWith")}</Text>
-            ) : null}
-            <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }}>
-              {note.sharedUsers.map((u) => (
-                <View key={u.id} style={{ paddingVertical: 6, borderBottomWidth: 1, borderColor: colors.border }}>
-                  <View testID={`note-share-user-${u.id}`} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}>
-                    <Avatar name={u.name} uri={u.avatar} userId={u.id} size={32} />
-                    <View style={{ flex: 1 }}>
-                      <Text numberOfLines={1} style={{ fontSize: 15 }}>{u.name}</Text>
-                      {u.email && u.email !== u.name ? <Text numberOfLines={1} tone="muted" style={{ fontSize: 12 }}>{u.email}</Text> : null}
-                    </View>
-                    <Pressable
-                      testID={`note-share-user-${u.id}-role`}
-                      onPress={() => setRolesOpenFor(rolesOpenFor === u.id ? null : u.id)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${t("notes.share.role")}: ${roleLabel(u.role)}`}
-                      accessibilityState={{ expanded: rolesOpenFor === u.id }}
-                      hitSlop={4}
-                      style={{ borderRadius: 999, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 4 }}
-                    >
-                      <Text style={{ fontSize: 13 }}>{roleLabel(u.role)}</Text>
-                    </Pressable>
-                    <Pressable
-                      testID={`note-share-user-${u.id}-remove`}
-                      onPress={() => confirmRemove(u)}
-                      accessibilityRole="button"
-                      accessibilityLabel={t("notes.share.removeNamed", { name: u.name })}
-                      hitSlop={6}
-                      style={{ padding: 6 }}
-                    >
-                      <UserMinusIcon size={20} color={colors.danger} />
-                    </Pressable>
-                  </View>
-                  {rolesOpenFor === u.id ? (
-                    <View style={{ flexDirection: "row", gap: 8, justifyContent: "flex-end", paddingBottom: 6 }}>
-                      {PICKABLE.map((r) =>
-                        chip(`note-share-user-${u.id}-role-${r}`, roleLabel(r), u.role === r, () => {
-                          setRolesOpenFor(null);
-                          if (u.role !== r) void run(() => setRole.mutateAsync({ id: note.id, userId: u.id, role: r }));
-                        }),
-                      )}
-                    </View>
-                  ) : null}
-                </View>
-              ))}
-            </ScrollView>
-          </View>
+    <SheetFrame visible={visible} onClose={onClose} closeLabel={t("common.close")} keyboard testID="note-share-sheet" maxHeight="85%" style={{ padding: metrics.space.lg, gap: metrics.space.sm }}>
+        <View style={{ flexDirection: "row", alignItems: "center" }}>
+          <Text style={{ flex: 1, fontSize: 17, fontWeight: "700" }} accessibilityRole="header">{t("notes.share.title")}</Text>
+          <Pressable testID="note-share-close" onPress={onClose} hitSlop={8} accessibilityRole="button" accessibilityLabel={t("common.close")} style={{ padding: 8 }}>
+            <X size={22} color={colors.ink} />
+          </Pressable>
         </View>
-      </KeyboardPadding>
-    </Modal>
+        <TextInput
+          testID="note-share-email"
+          value={email}
+          onChangeText={(v) => {
+            setEmail(v);
+            setSent(false);
+          }}
+          placeholder={t("notes.share.email")}
+          accessibilityLabel={t("notes.share.email")}
+          placeholderTextColor={colors.inkMuted}
+          keyboardType="email-address"
+          autoCapitalize="none"
+          autoCorrect={false}
+          autoComplete="email"
+          returnKeyType="send"
+          onSubmitEditing={() => void invite()}
+          style={{ borderWidth: 1, borderColor: colors.border, borderRadius: 10, padding: 12, color: colors.ink, fontSize: 16 }}
+        />
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          <Text tone="muted" style={{ fontSize: 13 }}>{t("notes.share.role")}</Text>
+          {PICKABLE.map((r) => chip(`note-share-role-${r}`, roleLabel(r), role === r, () => setInviteRole(r)))}
+          <View style={{ flex: 1 }} />
+          <Pressable
+            testID="note-share-invite"
+            onPress={() => void invite()}
+            disabled={!canInvite}
+            accessibilityRole="button"
+            accessibilityState={{ disabled: !canInvite, busy: share.isPending }}
+            style={{ borderRadius: 999, paddingHorizontal: 16, paddingVertical: 8, backgroundColor: canInvite ? colors.accent : colors.border }}
+          >
+            <Text style={{ color: colors.ground, fontWeight: "700" }}>{t("notes.share.invite")}</Text>
+          </Pressable>
+        </View>
+        {failed ? (
+          <Text testID="note-share-failed" style={{ color: colors.danger, fontSize: 13 }} accessibilityLiveRegion="polite">{failed}</Text>
+        ) : reminded ? (
+          <Text testID="note-share-reminded" tone="muted" style={{ fontSize: 13 }} accessibilityLiveRegion="polite">{t("notes.share.reminded", { name: reminded })}</Text>
+        ) : sent ? (
+          <Text testID="note-share-sent" tone="muted" style={{ fontSize: 13 }} accessibilityLiveRegion="polite">{t("notes.share.sent")}</Text>
+        ) : null}
+        {note.sharedUsers.length ? (
+          <Text tone="muted" style={{ fontSize: 12, fontWeight: "600", marginTop: metrics.space.sm }}>{t("notes.share.sharedWith")}</Text>
+        ) : null}
+        <ScrollView keyboardShouldPersistTaps="handled" style={{ flexGrow: 0 }}>
+          {note.sharedUsers.map((u) => (
+            <View key={u.id} style={{ paddingVertical: 6, borderBottomWidth: 1, borderColor: colors.border }}>
+              <View testID={`note-share-user-${u.id}`} style={{ flexDirection: "row", alignItems: "center", gap: 12, minHeight: 48 }}>
+                <Avatar name={u.name} uri={u.avatar} userId={u.id} size={32} />
+                <View style={{ flex: 1 }}>
+                  <Text numberOfLines={1} style={{ fontSize: 15 }}>{u.name}</Text>
+                  {u.email && u.email !== u.name ? <Text numberOfLines={1} tone="muted" style={{ fontSize: 12 }}>{u.email}</Text> : null}
+                </View>
+                <Pressable
+                  testID={`note-share-user-${u.id}-role`}
+                  onPress={() => setRolesOpenFor(rolesOpenFor === u.id ? null : u.id)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t("notes.share.role")}: ${roleLabel(u.role)}`}
+                  accessibilityState={{ expanded: rolesOpenFor === u.id }}
+                  hitSlop={4}
+                  style={{ borderRadius: 999, borderWidth: 1, borderColor: colors.border, paddingHorizontal: 10, paddingVertical: 4 }}
+                >
+                  <Text style={{ fontSize: 13 }}>{roleLabel(u.role)}</Text>
+                </Pressable>
+                <Pressable
+                  testID={`note-share-user-${u.id}-remind`}
+                  onPress={() => void run(() => remind.mutateAsync({ id: note.id, userId: u.id })).then((ok) => ok && setReminded(u.name))}
+                  disabled={remind.isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("notes.share.remindNamed", { name: u.name })}
+                  accessibilityState={{ disabled: remind.isPending, busy: remind.isPending && remind.variables?.userId === u.id }}
+                  hitSlop={6}
+                  style={{ padding: 6 }}
+                >
+                  <BellRingIcon size={20} color={colors.ink} />
+                </Pressable>
+                <Pressable
+                  testID={`note-share-user-${u.id}-remove`}
+                  onPress={() => confirmRemove(u)}
+                  accessibilityRole="button"
+                  accessibilityLabel={t("notes.share.removeNamed", { name: u.name })}
+                  hitSlop={6}
+                  style={{ padding: 6 }}
+                >
+                  <UserMinusIcon size={20} color={colors.danger} />
+                </Pressable>
+              </View>
+              {rolesOpenFor === u.id ? (
+                <View style={{ flexDirection: "row", gap: 8, justifyContent: "flex-end", paddingBottom: 6 }}>
+                  {PICKABLE.map((r) =>
+                    chip(`note-share-user-${u.id}-role-${r}`, roleLabel(r), u.role === r, () => {
+                      setRolesOpenFor(null);
+                      if (u.role !== r) void run(() => setRole.mutateAsync({ id: note.id, userId: u.id, role: r }));
+                    }),
+                  )}
+                </View>
+              ) : null}
+            </View>
+          ))}
+        </ScrollView>
+    </SheetFrame>
   );
 }

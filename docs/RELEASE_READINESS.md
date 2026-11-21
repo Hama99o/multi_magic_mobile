@@ -26,9 +26,9 @@ system font · **Dark** · **RTL** Persian/Pashto text in the user's content ·
 · **360 / 411 / 800** dp · **States** empty, loading, error · **Perm**
 permission denied · **Kill** kill and relaunch mid-task.
 
-Owners: **88** Tables (+ hygiene: Contacts, Finance) · **ee** Doc, Pages ·
-**ff** Flow, Notes, Search, the shell (Home, header, Apps sheet, sheets) ·
-the Assistant, Chats, SafeZone, Calendar: **unassigned** (Hello to assign).
+Owners (Hello, 2026-11-21): **88** Tables, Finance · **ee** Doc, Pages,
+the Assistant, Chats, SafeZone · **ff** Flow, Notes, Search, the shell
+(Home, header, Apps sheet, sheets), Calendar, Contacts.
 
 ## The table
 
@@ -39,15 +39,15 @@ the Assistant, Chats, SafeZone, Calendar: **unassigned** (Hello to assign).
 | Search (ff) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | N/A: search writes nothing | NOT MEASURED | NOT MEASURED | PASS 11-21 fr [S-411] | NOT MEASURED | PASS 11-21 empty [S-empty]; loading, error NOT MEASURED | N/A: no permission | NOT MEASURED |
 | Shell: Home, header, Apps sheet, sheet frame (ff) | NOT MEASURED | NOT MEASURED | **FAIL 11-21** [H-200] | NOT MEASURED | N/A: no user text | N/A | N/A | NOT MEASURED | NOT MEASURED | PASS 11-20 header slot [H-800] | NOT MEASURED | N/A | NOT MEASURED |
 | Tables (88) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
-| Contacts (88) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
+| Contacts (ff) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
 | Finance (88) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
 | Doc (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | **FAIL 11-21** inferred, not device-measured: text edit sheet on KAV "height"; fix 0c5c012, re-run owed (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
 | Pages (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | **FAIL 11-21** qa_phone: text-file Save under the keyboard (flow 33), note picker behind it (flow 34); fix 4124956, re-run owed in slot 2 (ee); shots in gitignored qa/evidence, no tracked path yet | NOT MEASURED (flow 42 widths not run; flows 30/35/38 passed at 360 dp, no column claim) | NOT MEASURED (flow 42 widths not run; flows 30/35/38 passed at 360 dp, no column claim) | NOT MEASURED (flow 42 widths not run; flows 30/35/38 passed at 360 dp, no column claim) | NOT MEASURED | NOT MEASURED | NOT MEASURED (flows 40/41 written, stopped at the picker; fixed 5958fde) |
-| Assistant (?) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
-| Chats (?) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
-| SafeZone (?) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
-| Calendar (?) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
-| Workspace | N/A: not in this build (no `app/workspace*` on integration/mm-mobile-next); Hello to confirm | | | | | | | | | | | | |
+| Assistant (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
+| Chats (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
+| SafeZone (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
+| Calendar (ff) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
+| Workspace | N/A for this build: blocked on the owner's landscape decision (G1); not in the tree | | | | | | | | | | | | |
 
 ## Evidence
 
@@ -85,6 +85,7 @@ right (a known dev-client toggle, not the app; to be off from the next slot).
   scroll to it).
 - The dev client's performance monitor toggles on a "p" key-up when nothing
   takes text (ee found it): every slot turns it off in its preflight.
-- Device sign-in on the :3020 demo stack: the demo password cannot be passed
-  inline any more (a permission refusal). Hello / the owner to decide how it
-  is provided; until then device runs use the :3001 QA account.
+- Device sign-in (Hello, decided 11-21): the :3001 QA account, credentials
+  read by name from the gitignored `.env`. The :3020 demo file is on the
+  owner's Tuesday list; until then every TWO-PERSON check (sharing, members,
+  a viewer's rights) is NOT MEASURED.

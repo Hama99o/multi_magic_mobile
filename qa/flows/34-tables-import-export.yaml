@@ -46,10 +46,13 @@ tags:
     id: "tables-import-paste"
 - tapOn:
     id: "tables-import-text"
-# UNPROVEN: whether Maestro's inputText types "\n" as a new line in a multiline
-# TextInput on this Android. If the summary says 1 row, that is the instrument,
-# not the app: paste through `adb shell cmd clipboard` instead and say so.
-- inputText: "Name\nQA pasted one\nQA pasted two"
+# MEASURED 2026-11-21: Maestro's inputText drops "\n" (the three lines arrived as one).
+# A line is typed, then Enter, which a multiline TextInput turns into a new line.
+- inputText: "Name"
+- pressKey: Enter
+- inputText: "QA pasted one"
+- pressKey: Enter
+- inputText: "QA pasted two"
 - takeScreenshot: t7-02-paste
 - tapOn:
     id: "tables-import-read"

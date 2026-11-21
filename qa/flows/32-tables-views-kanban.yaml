@@ -60,7 +60,11 @@ tags:
     id: "tables-kanban-chip-0"
 - assertVisible:
     id: "tables-kanban-column-0"
-# Reorder: the second card of the first column moves up.
+# Reorder: the second card of the first column moves up. It needs the table's own order:
+# FAILED 2026-11-21 on qa_phone because a board hid the order chip (newest first unproven
+# across columns), so "Move up" was never offered. Fixed in the app; this step proves it.
+- tapOn:
+    id: "tables-order"   # newest first → the table's order (personal), so a card can move within its column
 - longPressOn:
     id: "tables-kanban-0-card-1"
 - extendedWaitUntil:

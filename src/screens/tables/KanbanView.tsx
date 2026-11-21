@@ -84,7 +84,7 @@ export function KanbanView({
 
   return (
     <View style={{ flex: 1 }}>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} testID="tables-kanban-strip" style={{ flexGrow: 0 }} contentContainerStyle={{ gap: metrics.space.xs, paddingBottom: metrics.space.xs }}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} testID="tables-kanban-strip" style={{ flexGrow: 0, flexShrink: 0 }} contentContainerStyle={{ gap: metrics.space.xs, paddingBottom: metrics.space.xs }}>
         {columns.map((c, i) => {
           const isFolded = folded.includes(c.key);
           const on = !isFolded && shown[page]?.key === c.key;

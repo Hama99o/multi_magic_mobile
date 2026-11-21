@@ -85,8 +85,11 @@ tags:
 - takeScreenshot: t6-05-cleared
 - tapOn:
     id: "tables-toast-button"
+# All 25 back (Blue scarf is the OLDEST row: newest first puts it at the bottom, off screen; seen 2026-11-21).
 - extendedWaitUntil:
-    visible: "Blue scarf"
+    visible:
+      id: "tables-count"
+      text: "25 rows"
     timeout: 15000
 - takeScreenshot: t6-06-undone
 # Duplicate (columns only) and a new table.

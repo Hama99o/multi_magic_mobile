@@ -61,6 +61,10 @@ tags:
 # Exact name: wrong case, then a trailing space; Delete stays off. Cancelled.
 - tapOn:
     id: "tables-menu"
+# The menu is long: Delete is below the fold at 411 dp (seen on qa_phone, 2026-11-21).
+- scrollUntilVisible:
+    element:
+      id: "tables-options-deleteTable"
 - tapOn:
     id: "tables-options-deleteTable"
 - tapOn:

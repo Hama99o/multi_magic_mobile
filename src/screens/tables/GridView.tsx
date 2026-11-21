@@ -44,6 +44,7 @@ export function GridView({
   totalRows,
   onOpen,
   onEndReached,
+  bottomInset = 0,
 }: {
   rows: RecordRow[];
   title: FieldDefinition | null;
@@ -56,6 +57,8 @@ export function GridView({
   totalRows: number | null;
   onOpen: (row: RecordRow) => void;
   onEndReached: () => void;
+  /** Room kept free below the grid, for a button floating over the screen's bottom (the + button). */
+  bottomInset?: number;
 }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -77,7 +80,7 @@ export function GridView({
   };
 
   return (
-    <View testID="tables-grid" style={{ flex: 1, flexDirection: "row", borderTopWidth: 1, borderLeftWidth: 1, borderColor: colors.border }}>
+    <View testID="tables-grid" style={{ flex: 1, flexDirection: "row", borderTopWidth: 1, borderLeftWidth: 1, borderColor: colors.border, marginBottom: bottomInset }}>
       {title ? (
         <View style={{ width: titleWidth }}>
           <View style={[{ height: HEADER_H, justifyContent: "center", paddingHorizontal: metrics.space.sm, backgroundColor: colors.surface }, cellBorder]}>

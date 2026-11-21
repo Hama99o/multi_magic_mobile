@@ -12,7 +12,7 @@
 import MockAdapter from "axios-mock-adapter";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
-import { Alert } from "react-native";
+import { Alert, StyleSheet } from "react-native";
 import { useTablesUndo } from "@/stores/tablesUndo.store";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
@@ -569,6 +569,26 @@ describe("kanban and calendar (increment 4)", () => {
     expect(JSON.parse(mock.history.post.find((r) => r.url === `${B}/tables/10/records/reorder`)!.data)).toEqual({ ids: [502, 503, 501] });
   });
 
+  it("a board with two columns still shows Newest first, so Table order and Move up are reachable (qa_phone, 2026-11-21)", async () => {
+    mockParams.current = { id: "10", base: "3", view: "73" };
+    const inStock = { "2": { scalar_value: "in" } };
+    // Grouped by column, newest first within each: In stock [503, 501], Sold out [502].
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([row(503, "Grey coat", inStock), scarf, row(502, "Red hat", { "2": { scalar_value: "out" } })], { groups: [{ value: "in", count: 2 }, { value: "out", count: 1 }] }));
+    renderScreen(<TableScreen />);
+    expect(await screen.findByTestId("tables-order")).toBeTruthy();
+  });
+
+  it("the table strip and the board's chips never shrink under the list (their pills were cut at 411 dp, qa_phone 2026-11-21)", async () => {
+    mockParams.current = { id: "10", base: "3", view: "73" };
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }, { id: 11, name: "Offices", position: 1 }], { "10": 2 }), role: "editor" }] });
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf], { groups: [{ value: "in", count: 1 }] }));
+    renderScreen(<TableScreen />);
+    for (const id of ["tables-table-strip", "tables-kanban-strip"]) {
+      const style = StyleSheet.flatten((await screen.findByTestId(id)).props.style) as { flexShrink?: number };
+      expect([id, style.flexShrink]).toEqual([id, 0]);
+    }
+  });
+
   it("4b: a folded column leaves the pages, stays as a dimmed chip, writes no view, and its chip brings it back", async () => {
     mockParams.current = { id: "10", base: "3", view: "73" };
     mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf, row(502, "Red hat", { "2": { scalar_value: "out" } })], { groups: [{ value: "in", count: 1 }, { value: "out", count: 1 }] }));
@@ -971,6 +991,14 @@ describe("the tablet grid (increment 9)", () => {
     expect(a11yFindings()).toEqual([]);
     fireEvent.press(screen.getByTestId("tables-grid-row-1"));
     expect(router.push).toHaveBeenCalledWith(expect.objectContaining({ pathname: "/tables/record", params: expect.objectContaining({ id: "502" }) }));
+  });
+
+  it("the + button never covers the grid's summary bar: the grid stops above it (qa_phone at 800 dp, 2026-11-21)", async () => {
+    tablet();
+    renderScreen(<TableScreen />);
+    const grid = await screen.findByTestId("tables-grid");
+    expect(screen.getByTestId("tables-add-row")).toBeTruthy();
+    expect((StyleSheet.flatten(grid.props.style) as { marginBottom?: number }).marginBottom).toBeGreaterThanOrEqual(56 + 16);
   });
 
   it("an empty grid view on a tablet says it is empty, as the cards do, rather than drawing an empty grid", async () => {

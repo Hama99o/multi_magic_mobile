@@ -66,7 +66,14 @@ prime() {
   adb -s "$SERIAL" shell am start -a android.intent.action.VIEW -d "$1" "$APP_ID" >/dev/null
   local i
   for i in $(seq 1 90); do
-    adb -s "$SERIAL" logcat -d | grep -q 'Running "main"' && { echo "prime: bundle running"; return 0; }
+    if adb -s "$SERIAL" logcat -d | grep -q 'Running "main"'; then
+      echo "prime: bundle running"
+      # The dev client's floating gear sits ON the app's avatar (header-profile),
+      # and a tap there opens the dev menu instead (multi-magic-mobile-ff,
+      # measured on qa_phone 2026-11-21). Drag it to the bottom-left once.
+      sleep 3; adb -s "$SERIAL" shell input swipe 955 265 60 2150 900
+      return 0
+    fi
     sleep 2
   done
   echo "NOT MEASURED: the dev client never ran the bundle from $1"; exit 3

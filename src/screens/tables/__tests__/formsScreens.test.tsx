@@ -110,7 +110,9 @@ it("answers that do not load say so, with Try again", async () => {
   expect(await screen.findByTestId("tables-form-answers-failed")).toBeTruthy();
   mock.onGet(`${B}/forms/7/submissions`).reply(200, { submissions: [], meta: { total_count: 0, offset: 0, limit: 50 } });
   fireEvent.press(screen.getByText("Try again"));
-  await waitFor(() => expect(screen.queryByTestId("tables-form-answers-failed")).toBeNull());
+  // The refetch is an async chain; under a full run's load 1 s (the default) was not always enough
+  // (failed once in the Finance branch's gates, 2026-11-21). Bounded, not removed.
+  await waitFor(() => expect(screen.queryByTestId("tables-form-answers-failed")).toBeNull(), { timeout: 10_000 });
 });
 
 it("every tab of the builder names every control for a screen reader", async () => {

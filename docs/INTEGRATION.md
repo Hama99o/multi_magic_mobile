@@ -368,3 +368,29 @@ the same tree: 0.
 | `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
 
 **Run 9: 0 failures** at 20529af (code).
+
+## Run 10 — 2026-11-21, the review fixes and three new features
+
+| Branch @ head | Owner | What is new | Merge |
+|---|---|---|---|
+| `feat/flow-app` @ caed7f0 | ff | review fixes FL1 (a move sends the board on screen), FL2, FL3 (88's review) | clean |
+| `feat/notes-parity` @ df68693 | ff | review fixes N1a/b/c (dictation owner, mic stops on leaving), N2 (one reminder per tap) | clean |
+| `feat/global-search` @ bd5fddd | ff | review fixes S2 (SafeZone never in the recents), S1 (Pages hits open Pages), S3 | clean |
+| `feat/chats-ask` @ 7773bdd | 88 | "Ask the assistant" from a person thread | clean |
+| `feat/assistant-memory-review` @ 8a9488e | 88 | the "Is this still true?" card | clean |
+| `feat/safezone-rows` @ 5f8debe | 88 | the password strength badge (Weak/Fair/Strong) | clean |
+| `feat/doc-tools` @ 9665e6d | ee | double tap runs once; Save keeps every page; Retry sends the screen as it is | clean |
+| `qa/ee-readiness-ac` @ 3dbbe29 | ee | the Assistant and Chats readiness flows 60–68 | clean |
+
+The three review-fix branches were each verified independently by the
+reviewer (88), re-running its ORIGINAL red files against them: Flow 5/5,
+Search 3/3, Notes 3/3 (+ N1c). The pane-nav codemod: 0 files.
+
+| Gate (guarded.sh, Jest 1 worker, node 22.19.0) | Result |
+|---|---|
+| tsc | 0 errors |
+| eslint, 393 changed files | 0 errors, 0 warnings |
+| Jest, full | 337 suites passed; **4148 / 4148 tests passed, 0 failed** |
+| `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
+
+**Run 10: 0 failures** at eace8a3.

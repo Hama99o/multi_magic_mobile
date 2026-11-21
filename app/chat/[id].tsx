@@ -828,7 +828,7 @@ export default function PersonThread() {
             never sent, as every "ask" in this app (useAsk). */}
         <Pressable
           testID="thread-ask"
-          onPress={() => ask(t("thread.askQuestion", { name: title }))}
+          onPress={() => ask(t("thread.askQuestion", { name: detail?.displayName ?? title }))}
           accessibilityRole="button"
           accessibilityLabel={t("thread.ask")}
           hitSlop={8}

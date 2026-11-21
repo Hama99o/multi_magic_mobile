@@ -30,9 +30,12 @@ import ConvertScreen from "../doc/convert";
 import CompressScreen from "../doc/compress";
 import * as DocumentPicker from "expo-document-picker";
 
+const mockParams: { current: Record<string, string> } = { current: {} };
 jest.mock("expo-router", () => ({
+  // Doc tools listen for beforeRemove (unsaved work, review 88 D3).
+  useNavigation: () => ({ addListener: () => () => undefined, dispatch: jest.fn() }),
   router: { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: () => true, dismissTo: jest.fn() },
-  useLocalSearchParams: () => ({}),
+  useLocalSearchParams: () => mockParams.current,
   usePathname: () => "/doc",
   useFocusEffect: () => {},
 }));
@@ -86,6 +89,7 @@ const SIGNATURES = {
 let mock: MockAdapter;
 beforeEach(() => {
   mock = new MockAdapter(http);
+  mockParams.current = {};
   mock.onGet("/api/v1/doc_app/signatures").reply(200, SIGNATURES);
 });
 afterEach(async () => {
@@ -221,6 +225,42 @@ it("the signatures list keeps the server's order and asks before deleting", asyn
   fireEvent.press(screen.getByTestId("doc-signature-delete-2"));
   expect(alert).toHaveBeenCalledWith("Delete this signature?", expect.any(String), expect.any(Array));
   expect(mock.history.delete).toHaveLength(0);
+});
+
+// Review 88, D4: editing signature 2 while the list has not loaded (or failed)
+// found no `editing`, so Save sent `id: null` and POSTed a NEW signature: a
+// duplicate, the one he meant to edit left as it was.
+it("editing a signature whose list failed to load never creates a new one", async () => {
+  setWidth(360);
+  mockParams.current = { id: "2" };
+  mock.resetHandlers(); // beforeEach serves the list; this test needs it to fail
+  mock.onGet("/api/v1/doc_app/signatures").reply(500, {});
+  mock.onPost("/api/v1/doc_app/signatures").reply(201, { signature: { ...SIGNATURES.signatures[0], id: 3, name: "Signature 3" } });
+  show(<SignatureCreator />);
+  await waitFor(() => expect(mock.history.get.some((r) => r.url === "/api/v1/doc_app/signatures")).toBe(true));
+  fireEvent.press(await screen.findByTestId("doc-creator-mode-type"));
+  fireEvent.changeText(screen.getByTestId("doc-creator-text"), "Ada B");
+  await act(async () => {
+    fireEvent.press(screen.getByTestId("doc-creator-save"));
+  });
+  expect(mock.history.post.filter((r) => r.url === "/api/v1/doc_app/signatures")).toHaveLength(0);
+  mockParams.current = {};
+});
+
+// Review 88, D5: a delete the server refused said nothing.
+it("a delete the server refuses is said, not silent", async () => {
+  setWidth(360);
+  mock.onDelete("/api/v1/doc_app/signatures/2").reply(500, {});
+  const alert = jest.spyOn(Alert, "alert").mockImplementation(() => {});
+  show(<SignaturesScreen />);
+  await screen.findAllByTestId("doc-signature-row");
+  fireEvent.press(screen.getByTestId("doc-signature-delete-2"));
+  const buttons = alert.mock.calls[0][2] as { style?: string; onPress?: () => void }[];
+  await act(async () => {
+    buttons.find((b) => b.style === "destructive")!.onPress!();
+  });
+  await waitFor(() => expect(mock.history.delete).toHaveLength(1));
+  await waitFor(() => expect(alert).toHaveBeenCalledTimes(2));
 });
 
 it("a picked PDF is inspected and a locked one is said in plain words, by name", async () => {

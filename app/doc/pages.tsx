@@ -25,7 +25,7 @@ import { Button } from "@/components/reusables/button";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { APP_COLORS } from "@/theme/appColors";
-import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake, useRetry } from "@/screens/doc/ui";
+import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake, useRetry, useKeepUnsaved } from "@/screens/doc/ui";
 import { inspectionProblem, useInspect, useThumbnails } from "@/screens/doc/pdf";
 import { HISTORY, entriesFor, moveSelected, remove, rotate, splitName, toServer, type Entry } from "@/screens/doc/pageOps";
 
@@ -41,6 +41,8 @@ export default function PagesScreen() {
   const [results, setResults] = useState<DocResult[] | null>(null);
   const task = useDocTask();
   const { remember, retry } = useRetry();
+  // Work in progress asks before Change or Back drops it (review 88, D3).
+  const { guard } = useKeepUnsaved(history.length > 0);
 
   const intake = useIntake("pdf", false, (files) => {
     setFile(files[0]);
@@ -124,7 +126,7 @@ export default function PagesScreen() {
               file={file}
               note={entries.length ? t("doc.pages.count", { count: entries.length }) : problem ? null : t("doc.file.checking")}
               right={
-                <Pressable onPress={intake.openSheet} accessibilityRole="button" accessibilityLabel={t("doc.intake.change")} style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }} testID="doc-pages-change">
+                <Pressable onPress={guard(intake.openSheet)} accessibilityRole="button" accessibilityLabel={t("doc.intake.change")} style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }} testID="doc-pages-change">
                   <Text variant="label" tone="accent">
                     {t("doc.intake.change")}
                   </Text>

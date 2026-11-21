@@ -79,7 +79,10 @@ export default function SignatureCreator() {
     }
   }, [editing, padSize, restored]);
 
-  const ready = mode === "draw" ? hasInk(strokes) : text.trim().length > 0;
+  // Editing one that has not loaded (or whose list failed): never save, or Save
+  // would send no id and make a NEW signature beside it (review 88, D4).
+  const waitingForEditing = editingId != null && !editing;
+  const ready = !waitingForEditing && (mode === "draw" ? hasInk(strokes) : text.trim().length > 0);
 
   const leave = () => {
     if (!dirty) return router.back();
@@ -102,7 +105,7 @@ export default function SignatureCreator() {
         ? { name, kind: "draw", strokes, width: padSize.width, height: padSize.height, bgColor: drawBg, active: editing?.active }
         : { name, kind: "type", text: text.trim(), font: font.css, color: textColor, fontSize, bgColor: typeBg, active: editing?.active };
     save.mutate(
-      { id: editing?.id ?? null, input },
+      { id: editingId ?? null, input },
       {
         onSuccess: () => {
           setDirty(false);

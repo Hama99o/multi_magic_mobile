@@ -34,6 +34,7 @@ export const docEn = {
     remove: "Remove {{name}}",
     checking: "Checking…",
   },
+  unsaved: { title: "Leave without saving?", body: "What you changed in this document will be lost.", keep: "Keep editing", leave: "Leave" },
   busy: {
     uploading: "Sending… {{percent}}%",
     working: "Working on it…",
@@ -111,6 +112,7 @@ export const docEn = {
     deleteTitle: "Delete this signature?",
     deleteBody: "It is removed from your signatures. Documents you already signed keep it.",
     deleteConfirm: "Delete",
+    deleteFailed: "This signature could not be deleted. Try again.",
     cancel: "Cancel",
     active: "Active",
     loadFailed: "Your signatures could not be loaded.",

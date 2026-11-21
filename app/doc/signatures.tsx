@@ -8,6 +8,7 @@
 import { Alert, FlatList, Pressable, View } from "react-native";
 import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
+import { failureMessage } from "@/api/failure";
 import { Image as ExpoImage } from "expo-image";
 import type { Signature } from "@/api/doc";
 import { Pencil, Trash2 } from "@/components/icons";
@@ -33,7 +34,12 @@ export default function SignaturesScreen() {
   const confirmDelete = (s: Signature) =>
     Alert.alert(t("doc.signatures.deleteTitle"), t("doc.signatures.deleteBody"), [
       { text: t("doc.signatures.cancel"), style: "cancel" },
-      { text: t("doc.signatures.deleteConfirm"), style: "destructive", onPress: () => remove.mutate(s.id) },
+      {
+        text: t("doc.signatures.deleteConfirm"),
+        style: "destructive",
+        // A refused delete used to say nothing (review 88, D5).
+        onPress: () => remove.mutate(s.id, { onError: (e) => Alert.alert(failureMessage(e, t("doc.signatures.deleteFailed"))) }),
+      },
     ]);
 
   return (

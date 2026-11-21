@@ -27,7 +27,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { APP_COLORS } from "@/theme/appColors";
 import { kindOf, needsServerPreview } from "@/screens/doc/files";
-import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake, useRetry } from "@/screens/doc/ui";
+import { BusyCard, ErrorLine, FileRow, IntakeCard, ResultSheet, useDocTask, useIntake, useRetry, useKeepUnsaved } from "@/screens/doc/ui";
 import { PdfPage, inspectionProblem, useInspect } from "@/screens/doc/pdf";
 import { StampBar, StampView, placeAt, resize, toPlacements, turn, type Stamp } from "@/screens/doc/Placement";
 import { useSignatures } from "@/screens/doc/useSignatures";
@@ -52,6 +52,8 @@ export default function SignScreen() {
   const [results, setResults] = useState<DocResult[] | null>(null);
   const task = useDocTask();
   const { remember, retry } = useRetry();
+  // Work in progress asks before Change or Back drops it (review 88, D3).
+  const { guard } = useKeepUnsaved(stamps.length > 0);
 
   const signatures = useSignatures();
   const rows = useMemo(() => signatures.data?.rows ?? [], [signatures.data]);
@@ -155,7 +157,7 @@ export default function SignScreen() {
                 file={file}
                 note={kind === "pdf" && inspect.data ? t("doc.file.pages", { count: inspect.data.pages }) : kind === "pdf" && inspect.isPending ? t("doc.file.checking") : null}
                 right={
-                  <Pressable onPress={intake.openSheet} accessibilityRole="button" accessibilityLabel={t("doc.intake.change")} style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }} testID="doc-sign-change">
+                  <Pressable onPress={guard(intake.openSheet)} accessibilityRole="button" accessibilityLabel={t("doc.intake.change")} style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }} testID="doc-sign-change">
                     <Text variant="label" tone="accent">
                       {t("doc.intake.change")}
                     </Text>

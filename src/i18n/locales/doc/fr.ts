@@ -36,6 +36,7 @@ export const docFr: typeof docEn = {
     remove: "Retirer {{name}}",
     checking: "Vérification…",
   },
+  unsaved: { title: "Quitter sans enregistrer ?", body: "Ce que vous avez modifié dans ce document sera perdu.", keep: "Continuer", leave: "Quitter" },
   busy: {
     uploading: "Envoi… {{percent}} %",
     working: "Traitement en cours…",
@@ -113,6 +114,7 @@ export const docFr: typeof docEn = {
     deleteTitle: "Supprimer cette signature ?",
     deleteBody: "Elle est retirée de vos signatures. Les documents déjà signés la gardent.",
     deleteConfirm: "Supprimer",
+    deleteFailed: "Cette signature n’a pas pu être supprimée. Réessayez.",
     cancel: "Annuler",
     active: "Active",
     loadFailed: "Vos signatures n’ont pas pu être chargées.",

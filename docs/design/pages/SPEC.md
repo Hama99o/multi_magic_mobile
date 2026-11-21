@@ -163,7 +163,7 @@ take them directly.
 | image | `expo-image` (HEIC decodes on both platforms) |
 | video, audio | `expo-video`, native controls, **streamed** (a 2 GB clip is not downloaded to be watched) |
 | markdown, text | fetched and shown |
-| PDF, Office | iOS: WKWebView renders them. **Android's WebView cannot**, so there the screen says to open it through Share; claiming otherwise would be a blank page |
+| PDF, Office | iOS: WKWebView renders them (QuickLook's engine). **Android: a PDF is drawn on the phone by pdf.js** (`PdfView.tsx`, shipped in the app since 2026-11-21, so it opens offline); over 25 MB, or when pdf.js fails, the **server draws the pages** (`page_images`, multi_magic feat/mobile-gaps-2) and they show as images. An Office file on Android still goes to Share: the server image has no LibreOffice (the owner's decision list) |
 | anything else | a card with its size and Share or save |
 
 ---
@@ -185,7 +185,7 @@ notes, versions, share links, storage, zip export.
 | 4 | Share with people, share links with expiry, redeem, note links | **built**: note links in §6.1 |
 | 5 | Zip export / import with live progress, storage view | **built** (§6.1): polled every second, no socket |
 | follow-up | **Android uploads that survive the app being swiped away** (WorkManager or a foreground service). Today an Android upload runs while the process lives and is re-queued at the next launch | not started |
-| follow-up | Resumable uploads (server side: tus or chunked direct upload). Today a retry restarts the file from zero (`multi_magic` `PAGES_UX_2026.md` §10) | needs a server change, his "oui" |
+| follow-up | Resumable uploads. **The server already has them** (`/api/v1/page_app/uploads`: open, PATCH pieces with `Upload-Offset`, complete; checked on :3020 2026-11-21). The phone's queue does not use them yet, so a retry restarts the file from zero | phone work, not started |
 
 What a phone cannot do the web's way: **upload a folder** (iOS has no folder
 picker; a zip import covers it), keyboard shortcuts, drag and drop.
@@ -229,13 +229,10 @@ editor change was needed: everything else already runs through engine B in
 JavaScript.
 
 **Still open, sized (2026-11-20):**
-- **#46, XLSX preview, about half a day.** It needs a parser (SheetJS, about
-  1 MB minified, from its own CDN tarball; the npm `xlsx` package stopped at
-  0.18.5). Its first sheet would feed the CSV table that already exists
-  (`csv.ts` limits: 200 rows, 20 columns). **Blocker: a decision, not code.**
-  `node_modules` is one symlinked tree shared by every worktree on this box,
-  so adding a dependency changes every sibling's install. Until then an
-  `.xlsx` file goes to the system viewer.
+- **#46, XLSX preview: built (M10).** The server reads the workbook
+  (`spreadsheet_preview`) and the phone draws each sheet as a tab
+  (`WorkbookView.tsx`); no parser on the phone. `.xls` stays with the system
+  viewer (the owner's decision).
 - **#24, upload a folder: built (M9), not yet on a device.** Every file is
   copied into Documents when it is queued, so the queue never depends on a
   picked folder's URI still opening after a restart. On relaunch, a half copy

@@ -67,6 +67,18 @@ export interface Ancestor {
   title: string;
 }
 
+export interface PageImage {
+  index: number;
+  /** Absolute and signed; load it without the Authorization header. */
+  url: string;
+  width: number;
+  height: number;
+}
+export interface PageImages {
+  pageCount: number;
+  pages: PageImage[];
+}
+
 export interface PageNode {
   id: number;
   spaceId: number;
@@ -511,6 +523,26 @@ export const pagesApi = {
    * as "2026-11-21". A refusal (unreadable, empty, no_sheet, too_large) comes
    * back as an error with the server's own sentence in the reader's language.
    */
+  /**
+   * A PDF's pages as images the server drew (multi_magic feat/mobile-gaps-2):
+   * the fallback when the phone's own pdf.js cannot (`PdfView.tsx`). Each url
+   * is signed for one hour and loads with NO Authorization header; a 403 on
+   * it means "ask for the list again".
+   */
+  pageImages: async (nodeId: number, from: number, count: number): Promise<PageImages> => {
+    const res = await http.get(`/api/v1/page_app/nodes/${nodeId}/page_images`, { params: { from, count } });
+    const body = obj(res.data, "page images");
+    const pages: PageImage[] = [];
+    for (const raw of Array.isArray(body.pages) ? body.pages : []) {
+      const r = (typeof raw === "object" && raw !== null ? raw : {}) as Record<string, unknown>;
+      const url = absoluteUrl(optStr(r.url));
+      const index = optNum(r.index);
+      const width = optNum(r.width);
+      const height = optNum(r.height);
+      if (url && index != null && width && height) pages.push({ index, url, width, height });
+    }
+    return { pageCount: optNum(body.page_count) ?? pages.length, pages };
+  },
   spreadsheetPreview: async (nodeId: number, sheet: number): Promise<SpreadsheetPreview> => {
     const res = await http.get(`/api/v1/page_app/nodes/${nodeId}/spreadsheet_preview`, { params: { sheet } });
     const body = obj(res.data, "spreadsheet preview");

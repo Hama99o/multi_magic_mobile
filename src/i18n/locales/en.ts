@@ -2014,6 +2014,7 @@ export const en = {
       seek: "Position in the recording",
       pdfTooBig: "This PDF is too big to show here. Open it in your phone’s PDF app: Share or save.",
       pdfFailed: "Could not show this PDF here. Open it in your phone’s PDF app: Share or save.",
+      pdfPage: "Page {{n}} of {{count}}",
       position: "{{n}} of {{total}}",
       grid: "Grid view",
       list: "List view",

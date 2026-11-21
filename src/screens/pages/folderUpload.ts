@@ -90,13 +90,29 @@ export function checkRoom(bytes: number, room: { serverAvailable: number; server
   return null;
 }
 
-/** Makes every folder, parent first; the map is "Trip/Day 1" → its new id. */
-export async function mirrorFolders(folders: string[][], parentId: number | null, create: (parentId: number | null, title: string) => Promise<number>): Promise<Map<string, number>> {
+/**
+ * Makes every folder, parent first; the map is "Trip/Day 1" → its new id. If one
+ * fails, the root it made goes (`remove`, the trash: its children with it) before
+ * the error is thrown, so a retry does not leave a second, duplicate tree beside
+ * an empty first one (review 88, P6).
+ */
+export async function mirrorFolders(
+  folders: string[][],
+  parentId: number | null,
+  create: (parentId: number | null, title: string) => Promise<number>,
+  remove?: (id: number) => Promise<unknown>,
+): Promise<Map<string, number>> {
   const ids = new Map<string, number>();
-  for (const path of folders) {
-    const under = path.length === 1 ? parentId : ids.get(path.slice(0, -1).join("/"));
-    if (under === undefined) throw new Error(`folder upload: no parent made for ${path.join("/")}`);
-    ids.set(path.join("/"), await create(under, path[path.length - 1]));
+  try {
+    for (const path of folders) {
+      const under = path.length === 1 ? parentId : ids.get(path.slice(0, -1).join("/"));
+      if (under === undefined) throw new Error(`folder upload: no parent made for ${path.join("/")}`);
+      ids.set(path.join("/"), await create(under, path[path.length - 1]));
+    }
+  } catch (error) {
+    const roots = folders.filter((path) => path.length === 1 && ids.has(path[0])).map((path) => ids.get(path[0]) as number);
+    for (const id of roots) await remove?.(id).catch(() => undefined);
+    throw error;
   }
   return ids;
 }

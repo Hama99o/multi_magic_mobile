@@ -84,3 +84,68 @@ describe("mirrorFolders", () => {
     expect(create).toHaveBeenCalledTimes(2);
   });
 });
+
+// Review 88, P6 (2026-11-21): a mirror that failed partway left its folders
+// behind, so retrying the upload made a second, duplicate tree. It now puts
+// what it made in the trash (the root takes its children) before failing.
+describe("mirrorFolders: a failure leaves nothing behind", () => {
+  it("the root it made goes to the trash, then the error is thrown", async () => {
+    let next = 100;
+    const create = jest.fn(async (_p: number | null, title: string) => {
+      if (title === "raw") throw new Error("422");
+      return next++;
+    });
+    const remove = jest.fn(async () => undefined);
+    await expect(mirrorFolders([["Trip"], ["Trip", "Day 1"], ["Trip", "Day 1", "raw"]], 7, create, remove)).rejects.toThrow("422");
+    expect(remove).toHaveBeenCalledTimes(1);
+    expect(remove).toHaveBeenCalledWith(100); // "Trip", the root this upload made
+  });
+
+  it("nothing made yet: nothing to remove", async () => {
+    const create = jest.fn(async () => {
+      throw new Error("422");
+    });
+    const remove = jest.fn(async () => undefined);
+    await expect(mirrorFolders([["Trip"]], 7, create, remove)).rejects.toThrow("422");
+    expect(remove).not.toHaveBeenCalled();
+  });
+});
+
+// Review 88, P5 (2026-11-21): files were queued folder by folder, each folder
+// waiting for the copies of the one before. A kill partway left the later
+// folders' files with no row at all: missing, and nothing said so. Every row is
+// now registered in ONE call before any copy, so a kill leaves visible rows
+// ("add it again"), never silence.
+describe("startFolderUpload: every file has its row before any copy", () => {
+  it("hands all folders' files over at once, each with its own folder", async () => {
+    jest.resetModules();
+    jest.doMock("@/api/pages", () => ({ pagesApi: { createFolder: jest.fn(async (_s: number, _p: number | null, title: string) => ({ id: title === "Trip" ? 1 : 2 })), trash: jest.fn() } }));
+    jest.doMock("@/api/storage", () => ({ storageApi: { show: jest.fn() } }));
+    jest.doMock("expo-file-system", () => ({ Directory: class {}, Paths: {} }));
+    const { startFolderUpload } = require("../pickFolder") as typeof import("../pickFolder");
+    const walked = {
+      folders: [["Trip"], ["Trip", "Day 1"]],
+      files: [
+        { path: ["Trip"], name: "a.jpg", uri: "content://a", size: 1, mimeType: "image/jpeg" },
+        { path: ["Trip", "Day 1"], name: "b.jpg", uri: "content://b", size: 1, mimeType: "image/jpeg" },
+      ],
+      totalBytes: 2,
+      skipped: 0,
+      truncated: false,
+    };
+    const calls: unknown[][] = [];
+    // The first folder's copies never finish (a kill would land here).
+    const enqueueGroups = jest.fn((groups: unknown) => {
+      calls.push([groups]);
+      return new Promise<number>(() => {});
+    });
+    void startFolderUpload(walked, { spaceId: 3, parentId: null, label: "QA" }, enqueueGroups as never);
+    await new Promise((r) => setTimeout(r, 20));
+    expect(enqueueGroups).toHaveBeenCalledTimes(1);
+    const groups = calls[0][0] as { files: { name: string }[]; destination: { parentId: number } }[];
+    expect(groups.map((g) => [g.destination.parentId, g.files.map((f) => f.name)])).toEqual([
+      [1, ["a.jpg"]],
+      [2, ["b.jpg"]],
+    ]);
+  });
+});

@@ -123,6 +123,7 @@ export default function Folder() {
   const hydrateUploads = useUploads((s) => s.hydrate);
   const hydrateView = useViewPrefs((s) => s.hydrate);
   const enqueue = useUploads((s) => s.enqueue);
+  const enqueueGroups = useUploads((s) => s.enqueueGroups);
 
   useEffect(() => {
     void hydrateUploads();
@@ -188,15 +189,15 @@ export default function Folder() {
       {
         text: t("pages.folderUpload.start"),
         onPress: () =>
-          void startFolderUpload(walked, { spaceId, parentId, label: destination.label }, enqueue)
+          void startFolderUpload(walked, { spaceId, parentId, label: destination.label }, enqueueGroups)
             .then(() => client.invalidateQueries({ queryKey: pagesKeys.all }))
             .catch((e: unknown) => {
-              void client.invalidateQueries({ queryKey: pagesKeys.all }); // folders made before the failure show
+              void client.invalidateQueries({ queryKey: pagesKeys.all }); // what it made went to the trash
               Alert.alert(failureMessage(e, t("pages.folderUpload.failed")));
             }),
       },
     ]);
-  }, [t, i18n.language, destination, spaceId, parentId, enqueue, client]);
+  }, [t, i18n.language, destination, spaceId, parentId, enqueueGroups, client]);
 
   // Import a ZIP here (parity #25): its folders and files land in this folder.
   const [importing, setImporting] = useState<Transfer | null>(null);

@@ -41,13 +41,22 @@ export async function planFolderUpload(onReading?: () => void): Promise<FolderPl
   return { kind: "ready", walked };
 }
 
-/** Makes the folders under `parentId`, then queues every file into its own folder. */
+/**
+ * Makes the folders under `parentId`, then queues every file into its own folder,
+ * all rows in one call (`enqueueGroups`) so a kill partway leaves no file without
+ * a row (review 88, P5). A mirror that fails puts what it made in the trash (P6).
+ */
 export async function startFolderUpload(
   walked: Walked,
   where: { spaceId: number; parentId: number | null; label: string },
-  enqueue: (files: IncomingFile[], destination: Destination) => Promise<number>,
+  enqueueGroups: (groups: { files: IncomingFile[]; destination: Destination }[]) => Promise<number>,
 ): Promise<number> {
-  const ids = await mirrorFolders(walked.folders, where.parentId, async (parentId, title) => (await pagesApi.createFolder(where.spaceId, parentId, title)).id);
+  const ids = await mirrorFolders(
+    walked.folders,
+    where.parentId,
+    async (parentId, title) => (await pagesApi.createFolder(where.spaceId, parentId, title)).id,
+    (id) => pagesApi.trash(where.spaceId, id),
+  );
   const byFolder = new Map<string, IncomingFile[]>();
   for (const f of walked.files) {
     const key = f.path.join("/");
@@ -55,11 +64,11 @@ export async function startFolderUpload(
     list.push({ uri: f.uri, name: f.name, mimeType: f.mimeType, size: f.size });
     byFolder.set(key, list);
   }
-  let queued = 0;
+  const groups: { files: IncomingFile[]; destination: Destination }[] = [];
   for (const [key, files] of byFolder) {
     const folderId = ids.get(key);
     if (folderId === undefined) continue; // made above for every path a file has
-    queued += await enqueue(files, { spaceId: where.spaceId, parentId: folderId, label: [where.label, ...key.split("/")].filter(Boolean).join(" / ") });
+    groups.push({ files, destination: { spaceId: where.spaceId, parentId: folderId, label: [where.label, ...key.split("/")].filter(Boolean).join(" / ") } });
   }
-  return queued;
+  return enqueueGroups(groups);
 }

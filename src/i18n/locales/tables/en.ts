@@ -133,6 +133,14 @@ export const tablesEn = {
     colorBy: "Colour the cards by",
     noColor: "No colour",
   },
+  grid: {
+    rows_one: "1 row",
+    rows_other: "{{count}} rows",
+    filled_one: "1 filled",
+    filled_other: "{{count}} filled",
+    sum: "Σ {{sum}} · avg {{avg}}",
+    openRow: "Open row {{row}}",
+  },
   forms: {
     title: "Forms",
     hint: "Pages people fill to add rows",
@@ -260,10 +268,11 @@ export const tablesEn = {
     failed: "The import could not start.",
     refused: {
       too_large: "This file is over 50 MB.",
-      unsupported_type: "This kind of file cannot be imported. Use CSV, Excel or ODS.",
+      unsupported_type: "This kind of file cannot be imported. Use CSV, .xlsx or ODS; save an old .xls as .xlsx first.",
       unreadable: "This file could not be read.",
       empty: "There is nothing to import.",
       no_sheet: "This file has no sheet to read.",
+      upload_expired: "This file has expired here. Choose it again.",
       needs_server: "An Excel file is read on the web for now. Save it as CSV, or import it from the web.",
       missing: "The file could not be read here. Try a CSV.",
       other: "The file could not be read. Check the connection and try again.",

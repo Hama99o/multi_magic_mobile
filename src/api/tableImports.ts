@@ -1,7 +1,8 @@
 /**
  * TABLE IMPORTS (increment 7): the server's background import
  * (`imports_controller.rb`) and its spreadsheet preview (multi-magic-83's
- * draft contract, 2026-11-21, branch feat/spreadsheet-preview, not landed).
+ * contract, branch feat/spreadsheet-preview 11e7db65, checked on :3020
+ * 2026-11-21; `docs/table_app/SPREADSHEET_PREVIEW.md` there).
  *
  * The file goes up ONCE: the preview keeps it and answers an `upload` id,
  * which `create` sends instead of the file. A paste is a small "paste.csv"
@@ -126,14 +127,14 @@ export function parsePreview(raw: unknown): Sheet {
 }
 
 /** Why a preview was refused, in the contract's words (or "missing": the endpoint is not deployed yet). */
-export type PreviewRefusal = "too_large" | "unsupported_type" | "unreadable" | "empty" | "no_sheet" | "missing" | "other";
+export type PreviewRefusal = "too_large" | "unsupported_type" | "unreadable" | "empty" | "no_sheet" | "upload_expired" | "missing" | "other";
 
 export function previewRefusal(e: unknown): PreviewRefusal {
   const r = (e as { response?: { status?: number; data?: { reason?: unknown } } })?.response;
   if (!r) return "other";
   if (r.status === 404) return "missing";
   const reason = typeof r.data?.reason === "string" ? r.data.reason : null;
-  return reason && ["too_large", "unsupported_type", "unreadable", "empty", "no_sheet"].includes(reason) ? (reason as PreviewRefusal) : r.status === 413 ? "too_large" : "other";
+  return reason && ["too_large", "unsupported_type", "unreadable", "empty", "no_sheet", "upload_expired"].includes(reason) ? (reason as PreviewRefusal) : r.status === 413 ? "too_large" : "other";
 }
 
 const fileForm = (f: LocalFile) => ({ uri: f.uri, name: f.name, type: f.mimeType }) as unknown as Blob;
@@ -151,10 +152,13 @@ export const tableImportsApi = {
   },
 
   /** Start the import: the preview's upload, or the CSV file when the phone read it itself. 409: one is already running. */
-  async create(tableId: number, input: { upload: string } | { file: LocalFile }, columns: Record<string, unknown>[], opts: { upsertOn: number | null; idempotencyKey: string }): Promise<TableImport> {
+  async create(tableId: number, input: { upload: string; sheet: number } | { file: LocalFile }, columns: Record<string, unknown>[], opts: { upsertOn: number | null; idempotencyKey: string }): Promise<TableImport> {
     const form = new FormData();
-    if ("upload" in input) form.append("upload", input.upload);
-    else form.append("file", fileForm(input.file));
+    // The sheet goes with the upload, so the import reads the sheet that was previewed.
+    if ("upload" in input) {
+      form.append("upload", input.upload);
+      form.append("sheet", String(input.sheet));
+    } else form.append("file", fileForm(input.file));
     form.append("columns", JSON.stringify(columns));
     if (opts.upsertOn) form.append("upsert_on", String(opts.upsertOn));
     form.append("idempotency_key", opts.idempotencyKey);

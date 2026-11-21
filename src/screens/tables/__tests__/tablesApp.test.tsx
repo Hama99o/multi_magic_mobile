@@ -99,6 +99,8 @@ beforeEach(async () => {
   mockParams.current = {};
   router.push.mockClear();
   router.setParams.mockClear();
+  // A phone, unless a test says otherwise: Jest's window is 750 wide, past the tablet grid's 720 (increment 9).
+  jest.spyOn(require("react-native"), "useWindowDimensions").mockReturnValue({ width: 411, height: 900, scale: 2, fontScale: 1 });
   await AsyncStorage.clear();
   await i18n.changeLanguage("en");
 });
@@ -194,7 +196,8 @@ describe("a table (T1–T6)", () => {
     mock.onGet(`${B}/tables/10/records`).reply(200, page([row(502, "Red hat"), scarf]));
     renderScreen(<TableScreen />);
     await screen.findByText("Red hat");
-    expect(await screen.findByText("Newest first")).toBeTruthy();
+    // At a phone's 411 dp the chip is its icon, and the sentence is its name (`compactToolbar`).
+    expect(await screen.findByLabelText("Newest first")).toBeTruthy();
   });
 
   it("search goes to the server as a parameter, never into the view", async () => {
@@ -932,6 +935,36 @@ describe("the table's columns (increment 6b; the web's column menu)", () => {
     await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
     fireEvent.press(screen.getByTestId("tables-menu"));
     expect(within(await screen.findByTestId("tables-options")).queryByText("Columns")).toBeNull();
+  });
+});
+
+describe("the tablet grid (increment 9)", () => {
+  const tablet = () => jest.spyOn(require("react-native"), "useWindowDimensions").mockReturnValue({ width: 1024, height: 768, scale: 2, fontScale: 1 });
+  beforeEach(() => {
+    mockParams.current = { id: "10", base: "3" };
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody());
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf, row(502, "Red hat")]));
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }]), role: "editor" }] });
+    mock.onGet(`${B}/tables/10/records/summary`).reply(200, { summary: { "1": { filled: 2 }, "3": 1 } });
+  });
+
+  it("a tablet shows a grid view as a grid: the title column held, the summary under it", async () => {
+    tablet();
+    renderScreen(<TableScreen />);
+    expect(await screen.findByTestId("tables-grid")).toBeTruthy();
+    expect(screen.queryByTestId("tables-rows")).toBeNull();
+    expect(within(screen.getByTestId("tables-grid-titles")).getByText("Red hat")).toBeTruthy();
+    expect((await screen.findByTestId("tables-grid-summary-rows")).props.children).toBe("2 rows");
+    expect(screen.getByTestId("tables-grid-summary-3").props.children).toBe("1 filled");
+    fireEvent.press(screen.getByTestId("tables-grid-row-1"));
+    expect(router.push).toHaveBeenCalledWith(expect.objectContaining({ pathname: "/tables/record", params: expect.objectContaining({ id: "502" }) }));
+  });
+
+  it("a phone keeps the cards, and asks for no summary", async () => {
+    renderScreen(<TableScreen />);
+    expect(await screen.findByTestId("tables-rows")).toBeTruthy();
+    expect(screen.queryByTestId("tables-grid")).toBeNull();
+    expect(mock.history.get.some((r) => r.url === `${B}/tables/10/records/summary`)).toBe(false);
   });
 });
 

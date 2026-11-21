@@ -99,9 +99,9 @@ export default function ImportScreen() {
     setMessage(null);
     try {
       const columns = importColumns(step.sheet, step.targets);
-      const source: { upload: string } | { file: LocalFile } =
+      const source: { upload: string; sheet: number } | { file: LocalFile } =
         step.sheet.source.kind === "upload"
-          ? { upload: step.sheet.source.upload }
+          ? { upload: step.sheet.source.upload, sheet: step.sheet.sheet }
           : (() => {
               const file = new File(Paths.cache, `${Date.now()}-${step.sheet.source.filename.replace(/\.[^.]+$/, "")}.csv`);
               file.create();
@@ -112,7 +112,11 @@ export default function ImportScreen() {
       await client.invalidateQueries({ queryKey: tablesKeys.imports(tableId) });
       router.back();
     } catch (e) {
-      setMessage(failureMessage(e, t("tables.import.failed")));
+      if (previewRefusal(e) === "upload_expired") {
+        // The server's copy is past its hour or already taken: the file has to go up again.
+        setStep({ kind: "source" });
+        setMessage(t("tables.import.refused.upload_expired"));
+      } else setMessage(failureMessage(e, t("tables.import.failed")));
     } finally {
       setBusy(false);
     }

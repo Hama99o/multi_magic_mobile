@@ -1,0 +1,106 @@
+# TABLES 6: the table's admin (2026-11-21, increment 6a–6c).
+#
+# Needs the fixture (`tables_fixture.py up`). Everything it makes or clears is
+# inside "[qa] Tables device", deleted by `tables_fixture.py down`.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: rename the table; duplicate it (columns only); a new table; the
+# columns sheet, a new decimal column through the field editor; clear every
+# row, then Undo brings them back (the toast's button). Edit base colour.
+# CANNOT TELL YOU: a viewer's menu (one account); the column trash after 30
+# days; a link column to another base.
+appId: ${APP_ID}
+tags:
+  - tables
+  - writes-fixture
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-tables"
+- tapOn: "\\[qa\\] Tables device"
+- extendedWaitUntil:
+    visible:
+      id: "tables-menu"
+    timeout: 30000
+# Rename.
+- tapOn:
+    id: "tables-menu"
+- takeScreenshot: t6-01-menu
+- tapOn:
+    id: "tables-options-rename"
+- tapOn:
+    id: "tables-rename-name"
+- eraseText
+- inputText: "Items QA"
+- tapOn:
+    id: "tables-rename-save"
+- assertVisible: "Items QA"
+# The columns sheet and a new decimal column.
+- tapOn:
+    id: "tables-menu"
+- tapOn:
+    id: "tables-options-columns"
+- extendedWaitUntil:
+    visible:
+      id: "tables-columns"
+    timeout: 10000
+- takeScreenshot: t6-02-columns
+- tapOn:
+    id: "tables-columns-add"
+- extendedWaitUntil:
+    visible:
+      id: "tables-field-editor"
+    timeout: 10000
+- tapOn:
+    id: "tables-field-editor-name"
+- inputText: "Weight"
+- tapOn:
+    id: "tables-field-editor-type-decimal"
+- takeScreenshot: t6-03-field-editor
+- tapOn:
+    id: "tables-field-editor-save"
+# lint: anchored-ok — the new column's own name, typed above, is the whole title node of its row in the columns sheet
+- assertVisible: "Weight"
+- back
+# Clear every row, then Undo.
+- tapOn:
+    id: "tables-menu"
+- tapOn:
+    id: "tables-options-clear"
+- assertVisible: "Clear every row of Items QA\\?"
+- takeScreenshot: t6-04-clear-confirm
+- tapOn: "Clear"
+- extendedWaitUntil:
+    visible:
+      id: "tables-toast-button"
+    timeout: 15000
+- takeScreenshot: t6-05-cleared
+- tapOn:
+    id: "tables-toast-button"
+- extendedWaitUntil:
+    visible: "Blue scarf"
+    timeout: 15000
+- takeScreenshot: t6-06-undone
+# Duplicate (columns only) and a new table.
+- tapOn:
+    id: "tables-menu"
+- tapOn:
+    id: "tables-options-duplicate"
+- tapOn:
+    id: "tables-duplicate-columnsOnly"
+- takeScreenshot: t6-07-duplicated
+- tapOn:
+    id: "tables-menu"
+- tapOn:
+    id: "tables-options-newTable"
+- tapOn:
+    id: "tables-new-table-name"
+- inputText: "QA new table"
+- tapOn:
+    id: "tables-new-table-save"
+- extendedWaitUntil:
+    visible: "QA new table"
+    timeout: 15000
+- takeScreenshot: t6-08-new-table

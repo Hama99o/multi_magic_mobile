@@ -1,0 +1,49 @@
+# TABLES 9: the grid on a tablet (2026-11-21, increment 9, ced0326).
+#
+# Run on a TABLET-WIDTH screen (≥ 720 dp), e.g. `wm size 1600x2560` +
+# `wm density 320` (800 dp), then force-stop and relaunch the app before
+# this flow (React Native caches the window size at startup: CLAUDE.md, QA).
+# READ-ONLY on the fixture (`tables_fixture.py up`): 25 rows, a Price column.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: a grid view drawn as the grid; the header; the summary bar
+# ("25 rows", filled per column, the Price sum); the columns scrolled
+# sideways with the title column held; a tap on a row opens its page.
+# CANNOT TELL YOU: the phone (no grid, 31-tables-browse covers the cards);
+# a view's own column widths (set on the web only); dark mode unless the run
+# switches it.
+appId: ${APP_ID}
+tags:
+  - tables
+  - read-only
+  - tablet
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-tables"
+- tapOn: "\\[qa\\] Tables device"
+- extendedWaitUntil:
+    visible:
+      id: "tables-grid"
+    timeout: 30000
+- assertVisible:
+    id: "tables-grid-summary-rows"
+    text: "25 rows"
+- takeScreenshot: t9-01-grid
+- swipe:
+    from:
+      id: "tables-grid-scroll"
+    direction: LEFT
+- assertVisible:
+    id: "tables-grid-titles"
+- takeScreenshot: t9-02-scrolled
+- tapOn:
+    id: "tables-grid-row-0"
+- extendedWaitUntil:
+    visible:
+      id: "tables-record-title"
+    timeout: 30000
+- takeScreenshot: t9-03-row
+- back

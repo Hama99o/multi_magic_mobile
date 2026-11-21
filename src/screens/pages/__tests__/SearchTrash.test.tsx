@@ -17,6 +17,7 @@ const base = {
   starred: false,
   childrenCount: 0,
   thumbnailUrl: null,
+  durationSeconds: null,
   ownerName: "Qa MOBILE",
   updatedAt: "2026-11-06T10:00:00Z",
   createdAt: null,

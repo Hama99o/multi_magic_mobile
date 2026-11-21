@@ -12,7 +12,7 @@ import { LinkedNotesSheet } from "../LinkedNotesSheet";
 
 jest.mock("expo-router", () => ({ router: { push: jest.fn() } }));
 
-const node = { id: 9, spaceId: 3, parentId: null, title: "Trip", kind: "folder", starred: false, childrenCount: 0, attachmentUrl: null, thumbnailUrl: null, mimeType: null, fileSize: null, ownerName: null, updatedAt: "2026-11-20T21:00:00Z", createdAt: null, deletedAt: null, space: null, html: null, ancestors: [] } as PageNode;
+const node = { id: 9, spaceId: 3, parentId: null, title: "Trip", kind: "folder", starred: false, childrenCount: 0, attachmentUrl: null, thumbnailUrl: null, mimeType: null, fileSize: null, durationSeconds: null, ownerName: null, updatedAt: "2026-11-20T21:00:00Z", createdAt: null, deletedAt: null, space: null, html: null, ancestors: [] } as PageNode;
 const note = (id: number, title: string) => ({ id, title, data: {}, content: "", status: "active", created_at: "2026-11-01T10:00:00Z", updated_at: "2026-11-01T10:00:00Z" });
 
 let mock: MockAdapter;

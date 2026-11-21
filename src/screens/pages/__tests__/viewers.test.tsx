@@ -26,6 +26,7 @@ const photo = (id: number, title: string): PageNode => ({
   thumbnailUrl: null,
   mimeType: "image/jpeg",
   fileSize: 100_000,
+  durationSeconds: null,
   ownerName: null,
   updatedAt: "2026-11-07T10:00:00Z",
   createdAt: null,

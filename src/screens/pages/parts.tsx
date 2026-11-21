@@ -30,6 +30,7 @@ import {
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { relativeTime } from "@/lib/relativeTime";
+import { clock } from "@/lib/clock";
 import type { PageNode } from "@/api/pages";
 
 type Translate = (key: string, options?: Record<string, unknown>) => string;
@@ -202,6 +203,23 @@ export function PlayBadge({ size, corner = false }: { size: number; corner?: boo
       testID="pages-play-badge"
     >
       <Play size={size} color="#FFFFFF" fill="#FFFFFF" />
+    </View>
+  );
+}
+
+/**
+ * A video's or a sound's length, bottom-left of a grid tile on a dark tint
+ * (SPEC §1.1; Google Photos, Snapchat's camera roll). Drawn only when the
+ * server's analyzer gave one (`durationSeconds`, feat/mobile-gaps-2).
+ */
+export function DurationBadge({ node }: { node: PageNode }) {
+  const mime = node.mimeType ?? "";
+  if (node.durationSeconds == null || !(mime.startsWith("video/") || mime.startsWith("audio/"))) return null;
+  return (
+    <View pointerEvents="none" style={{ position: "absolute", left: 6, bottom: 6, paddingHorizontal: 6, paddingVertical: 2, borderRadius: 8, backgroundColor: "rgba(0,0,0,0.55)" }}>
+      <Text style={{ color: "#FFFFFF", fontSize: 12, fontVariant: ["tabular-nums"] }} testID="pages-duration">
+        {clock(node.durationSeconds)}
+      </Text>
     </View>
   );
 }

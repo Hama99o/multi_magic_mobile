@@ -50,7 +50,7 @@ import { useColors, useMetrics } from "@/hooks/useColors";
 import { relativeTime } from "@/lib/relativeTime";
 import { useUploads } from "@/stores/uploads.store";
 import { SORTS, type PageNode, type SortBy, type SortDir } from "@/api/pages";
-import { PlayBadge, formatBytes } from "../parts";
+import { DurationBadge, PlayBadge, formatBytes } from "../parts";
 
 // ── Type: icon and colour ───────────────────────────────────────────────────
 
@@ -482,6 +482,7 @@ export function GridCard({
           ) : (
             <FileTypeIcon node={node} size={Math.round(previewHeight * 0.4)} />
           )}
+          <DurationBadge node={node} />
         </View>
       ) : null}
     </Pressable>

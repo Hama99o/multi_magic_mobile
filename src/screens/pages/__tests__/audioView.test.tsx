@@ -35,7 +35,8 @@ const mockNode = {
 jest.mock("@/api/pages", () => ({ ...jest.requireActual("@/api/pages"), pagesApi: { node: jest.fn(async () => mockNode), children: jest.fn() } }));
 
 /* eslint-disable import/first */
-import Viewer, { clock } from "../../../../app/pages/view";
+import Viewer from "../../../../app/pages/view";
+import { clock } from "@/lib/clock";
 
 async function open() {
   render(

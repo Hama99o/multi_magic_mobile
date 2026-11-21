@@ -29,6 +29,7 @@ import { useVideoPlayer, VideoView } from "expo-video";
 import { WebView } from "react-native-webview";
 import { Screen } from "@/components/ScreenContainer";
 import { KeyboardPadding } from "@/components/KeyboardPadding";
+import { clock } from "@/lib/clock";
 import { Text } from "@/components/reusables/text";
 import { Button } from "@/components/reusables/button";
 import { LoadFailure } from "@/components/LoadFailure";
@@ -150,14 +151,6 @@ function AudioCard({ player, node }: { player: Player; node: PageNode }) {
   );
 }
 
-/** 0:07, 3:45, 1:02:03 — a player's clock. */
-export function clock(seconds: number): string {
-  const s = Math.max(0, Math.floor(seconds || 0));
-  const h = Math.floor(s / 3600);
-  const m = Math.floor((s % 3600) / 60);
-  const sec = String(s % 60).padStart(2, "0");
-  return h > 0 ? `${h}:${String(m).padStart(2, "0")}:${sec}` : `${m}:${sec}`;
-}
 
 /**
  * A text or Markdown file, and its edit (parity #49; web `NodeViewer`

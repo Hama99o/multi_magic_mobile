@@ -112,6 +112,7 @@ export const docEn = {
     deleteTitle: "Delete this signature?",
     deleteBody: "It is removed from your signatures. Documents you already signed keep it.",
     deleteConfirm: "Delete",
+    deleteFailed: "This signature could not be deleted. Try again.",
     cancel: "Cancel",
     active: "Active",
     loadFailed: "Your signatures could not be loaded.",

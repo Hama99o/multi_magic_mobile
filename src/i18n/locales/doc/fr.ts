@@ -114,6 +114,7 @@ export const docFr: typeof docEn = {
     deleteTitle: "Supprimer cette signature ?",
     deleteBody: "Elle est retirée de vos signatures. Les documents déjà signés la gardent.",
     deleteConfirm: "Supprimer",
+    deleteFailed: "Cette signature n’a pas pu être supprimée. Réessayez.",
     cancel: "Annuler",
     active: "Active",
     loadFailed: "Vos signatures n’ont pas pu être chargées.",

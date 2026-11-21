@@ -59,8 +59,8 @@ appId: ${APP_ID}
     commands:
       # lint: anchored-ok — Expo Go's own developer-menu button, whose whole
       # node is "Continue" (native, English-only, not an app string). The app's
-      # French "Continuer à modifier" (doc.creator.keep) contains it, which is
-      # what the linter sees; a `.*` here would match that too, so it stays exact.
+      # French "Continuer à modifier" contains it, which is what the linter
+      # sees; a `.*` here would match that too, so it stays exact.
       - tapOn: "Continue"
 
 # AND THE DEV CLIENT'S MENU, which is a different menu with different words.
@@ -89,6 +89,27 @@ appId: ${APP_ID}
     commands:
       - tapOn:
           id: "chat-close"
+
+# REOPENED INSIDE AN APP (2026-11-21). Since 80c2273 a signed-in launch
+# reopens the last app the person was in, never Home (the owner's rule,
+# `app/index.tsx`). Measured on qa_phone with the shared dev client: after
+# one Pages flow, the next launch sat on Pages home, which is none of the
+# three states above, and flows 31-41 all failed asserting `sign-in-email`
+# on an app that was signed in. The header's own Home button (the app mark,
+# `header-home` in `AppHeader.tsx`) is how a person goes back to Home.
+- runFlow:
+    when:
+      visible:
+        id: "header-home"
+      notVisible:
+        id: "home-tile-pages"
+    commands:
+      - tapOn:
+          id: "header-home"
+      - extendedWaitUntil:
+          visible:
+            id: "home-tile-pages"
+          timeout: 30000
 
 # NO "Back from a pushed screen" step any more. `launchApp` restarts the
 # app, so the stack is fresh: Home, the assistant or sign-in, never a pushed
@@ -142,7 +163,13 @@ appId: ${APP_ID}
 - assertVisible:
     id: "home-tile-pages"
 
-# Then the assistant, the way he opens it: the tile on Home.
+# Then the assistant, the way he opens it: the tile on Home. SCROLL TO IT
+# first (2026-11-21, qa_phone): at 360 dp and at a 200 % system font the
+# tile is below the fold, and a tap on an off-screen id fails "not found", so
+# every flow failed signing in at those sizes.
+- scrollUntilVisible:
+    element:
+      id: "home-tile-ai"
 - tapOn:
     id: "home-tile-ai"
 - extendedWaitUntil:

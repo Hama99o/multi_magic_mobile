@@ -10,7 +10,7 @@
  * for `DragReorder`, never a gesture on a recycled cell.
  */
 import { useMemo, useRef, useState } from "react";
-import { FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
+import { FlatList, Pressable, RefreshControl, TextInput, View, useWindowDimensions } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { Card, Column, Person } from "@/api/flow";
 import type { FieldDefinition, Tag } from "@/api/fields";
@@ -75,10 +75,11 @@ export function BoardColumn({
   const metrics = useMetrics();
   const { t } = useTranslation();
   const [adding, setAdding] = useState(false);
+  const { fontScale } = useWindowDimensions();
   // Each tile's height is known from its card (`tileHeight`), so the list
   // still lays out without measuring: exact offsets, stable recycling.
   const layout = useMemo(() => {
-    const heights = cards.map((c) => tileHeight(tileShape(c, fields, tagsByCategory, people)));
+    const heights = cards.map((c) => tileHeight(tileShape(c, fields, tagsByCategory, people), fontScale));
     const offsets: number[] = [];
     let at = 0;
     for (const h of heights) {
@@ -86,7 +87,7 @@ export function BoardColumn({
       at += h + GAP;
     }
     return { heights, offsets };
-  }, [cards, fields, tagsByCategory, people]);
+  }, [cards, fields, tagsByCategory, people, fontScale]);
   const hex = colorHex(column.color) ?? tint;
   const count = filtered && cards.length !== total ? t("flow.board.countOf", { shown: cards.length, total }) : String(total);
 

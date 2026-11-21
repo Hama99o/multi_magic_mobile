@@ -131,8 +131,18 @@ export function tileShape(card: Card, fields: FieldDefinition[], tagsByCategory:
 /** A tile's parts in dp: padding, the two-line title box, and each optional row with the gap above it. */
 export const TILE = { pad: 12, title: 40, badges: 22, meta: 22, gap: 6 } as const;
 
-export const tileHeight = ({ badges, meta }: TileShape) =>
-  2 * TILE.pad + TILE.title + (badges ? TILE.badges + TILE.gap : 0) + (meta ? TILE.meta + TILE.gap : 0);
+/**
+ * The text rows grow with the system font scale (`useWindowDimensions().fontScale`):
+ * Android scales a Text's fontSize AND lineHeight by it, so at 200 % the
+ * title box must be twice as tall to hold its two lines. Padding and gaps stay
+ * as they are, and a smaller font never shrinks a row (its icons do not scale).
+ */
+export const textScale = (fontScale: number) => Math.max(1, fontScale);
+
+export const tileHeight = ({ badges, meta }: TileShape, fontScale = 1) => {
+  const k = textScale(fontScale);
+  return 2 * TILE.pad + TILE.title * k + (badges ? TILE.badges * k + TILE.gap : 0) + (meta ? TILE.meta * k + TILE.gap : 0);
+};
 
 // ── Filter and order ─────────────────────────────────────────────────────
 

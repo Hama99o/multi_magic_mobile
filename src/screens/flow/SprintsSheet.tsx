@@ -20,12 +20,21 @@ import { SheetButton } from "@/components/fields/FieldRow";
 import { Calendar, Check, CircleCheck, Pencil, Play, Trash2, X } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import type { Tokens } from "@/theme/tokens";
 import { MonthGrid } from "@/screens/calendar/MonthGrid";
 import { formatDay, startOfMonth, todayKey } from "@/screens/calendar/dates";
 import { Pill } from "./parts";
 import { useDeleteSprint, useSaveSprint, useSprintStatus } from "./useFlowMutations";
 
-const STATUS_COLOR: Record<SprintStatus, string> = { planning: "#64748b", active: "#22c55e", completed: "#3b82f6" };
+/**
+ * A status pill's colour, from the theme (src/theme/tokens.ts). Planning is
+ * `ink`, not `inkMuted`: the pill's words sit on a tint of their own colour,
+ * and muted ink on its tint is under 4.5:1 in light mode
+ * (`__tests__/sprintStatus.test.ts`).
+ */
+export function sprintStatusColor(colors: Tokens, status: SprintStatus): string {
+  return status === "active" ? colors.success : status === "completed" ? colors.info : colors.ink;
+}
 
 export function sprintLabel(scope: SprintScope, sprints: Sprint[], t: (k: string) => string): string {
   if (scope === "all") return t("flow.sprints.all");
@@ -107,7 +116,7 @@ export function SprintsSheet({
                 <Text numberOfLines={1} style={{ fontWeight: "600", flexShrink: 1 }}>
                   {s.title}
                 </Text>
-                <Pill label={t(`flow.sprints.status.${s.status}`)} color={STATUS_COLOR[s.status]} />
+                <Pill label={t(`flow.sprints.status.${s.status}`)} color={sprintStatusColor(colors, s.status)} />
               </View>
               {s.goal ? (
                 <Text variant="caption" tone="muted" numberOfLines={2}>

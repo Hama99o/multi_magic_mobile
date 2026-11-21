@@ -207,7 +207,8 @@ export default function PageEditorScreen() {
       if (ok) go();
       else askToLeave(go);
     });
-  }, [saveNow, askToLeave]);
+    // `router` is useNav()'s value since pane-nav (a hook value, so a dependency).
+  }, [saveNow, askToLeave, router]);
 
   // ── Toolbar ───────────────────────────────────────────────────────────────
   const barRef = useRef<View | null>(null);

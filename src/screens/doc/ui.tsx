@@ -227,6 +227,10 @@ export function useDocTask() {
   const [state, setState] = useState<TaskState>({ busy: false, progress: null, step: null, error: null });
   const controller = useRef<AbortController | null>(null);
   const mounted = useRef(true);
+  // A ref, not `busy`: two taps in one frame both arrive before React has
+  // re-rendered the disabled button, and a second run used to abort the first
+  // on the phone only while the server kept computing it (readiness 2×tap).
+  const inFlight = useRef(false);
 
   useEffect(() => {
     mounted.current = true;
@@ -237,7 +241,8 @@ export function useDocTask() {
   }, []);
 
   const run = useCallback(async <T,>(work: (opts: CallOptions & { step: (n: number, total: number) => void }) => Promise<T>): Promise<T | null> => {
-    controller.current?.abort();
+    if (inFlight.current) return null;
+    inFlight.current = true;
     const mine = new AbortController();
     controller.current = mine;
     setState({ busy: true, progress: null, step: null, error: null });
@@ -253,12 +258,15 @@ export function useDocTask() {
       const err = error instanceof DocError ? error : new DocError("unknown");
       if (mounted.current && controller.current === mine) setState({ busy: false, progress: null, step: null, error: err.reason === "cancelled" ? null : err });
       return null;
+    } finally {
+      if (controller.current === mine || controller.current === null) inFlight.current = false;
     }
   }, []);
 
   const cancel = useCallback(() => {
     controller.current?.abort();
     controller.current = null;
+    inFlight.current = false;
     setState({ busy: false, progress: null, step: null, error: null });
   }, []);
 

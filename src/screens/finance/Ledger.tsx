@@ -117,7 +117,7 @@ export function Ledger({ kind, header, openId }: { kind: Kind; header?: ReactNod
   const exportX = useMutation({
     mutationFn: async () => {
       const label = !year ? "all" : month ? `${year}-${String(month).padStart(2, "0")}` : String(year);
-      const uri = await financeApi.expenses.export({ page: 1, ...filters }, `expenses-${label}`);
+      const uri = await financeApi.expenses.export({ page: 1, ...filters, oneTime }, `expenses-${label}`);
       if (await Sharing.isAvailableAsync()) await Sharing.shareAsync(uri);
     },
     onError: () => setFailure(t("finance.ledger.exportFailed")),

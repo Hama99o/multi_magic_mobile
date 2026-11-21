@@ -80,6 +80,13 @@ export type ScreenProps = {
   avoidKeyboard?: boolean;
   /** The page colour, under the status bar too (a coloured note). Default: the theme's ground. */
   background?: string;
+  /**
+   * The shared `AppHeader`. Drawn full width above everything else, OUTSIDE
+   * the 640 dp measure and outside a scrolling body, so the top is the same
+   * on every screen (the owner's rule). Inside the measure, at 800 dp, its
+   * labelled buttons left a long title a few dp (2026-11-20).
+   */
+  header?: ReactNode;
 };
 
 export function Screen({
@@ -88,6 +95,7 @@ export function Screen({
   measure = true,
   avoidKeyboard = false,
   background,
+  header,
 }: ScreenProps) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -194,6 +202,12 @@ export function Screen({
         paddingBottom: insets.bottom,
       }}
     >
+      {header ? (
+        // AppHeader's arithmetic assumes the screen's 16 dp gutter (`GUTTER`).
+        <View testID="screen-header" style={{ paddingHorizontal: metrics.space.lg }}>
+          {header}
+        </View>
+      ) : null}
       {keyboardAware ? (
         <KeyboardTargetContext.Provider value={targets}>{content}</KeyboardTargetContext.Provider>
       ) : (

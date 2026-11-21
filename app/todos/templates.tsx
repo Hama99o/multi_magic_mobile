@@ -43,8 +43,7 @@ export default function TemplatesScreen() {
     ]);
 
   return (
-    <Screen measure>
-      <AppHeader app="todos" title={t("todos.templates")} back />
+    <Screen measure header={<AppHeader app="todos" title={t("todos.templates")} back />}>
       <Text tone="muted" style={{ paddingVertical: metrics.space.md }}>
         {t("todos.templatesHint")}
       </Text>

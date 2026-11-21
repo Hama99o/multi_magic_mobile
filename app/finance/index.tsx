@@ -42,8 +42,7 @@ export default function FinanceScreen() {
   };
 
   return (
-    <Screen measure>
-      <AppHeader app="finance" />
+    <Screen measure header={<AppHeader app="finance" />}>
 
       {/* The app's own row: its five tabs, and ⋮ for the rest (recurring, categories, reports, trash). */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.xs, marginTop: metrics.space.sm, marginBottom: metrics.space.md }}>

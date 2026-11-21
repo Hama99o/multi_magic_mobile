@@ -155,8 +155,7 @@ export default function TodoListScreen() {
   // A half-swiped row goes back to 0 on scroll and on new data (src/components/swipeReset.tsx).
   const [swipeToken, resetSwipes] = useSwipeResetToken(items.map((x) => (x.kind === "task" ? x.todo.id : x.kind)).join());
   return (
-    <Screen measure avoidKeyboard>
-      <AppHeader app="todos" title={group?.name ?? t("todos.title")} back />
+    <Screen measure avoidKeyboard header={<AppHeader app="todos" title={group?.name ?? t("todos.title")} back />}>
       {/* The list's own row, under the shared header: its actions. */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
         {reordering ? (

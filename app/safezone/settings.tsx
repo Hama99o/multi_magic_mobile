@@ -21,8 +21,7 @@ export default function SafeZoneSettingsScreen() {
   const metrics = useMetrics();
   const { t } = useTranslation();
   return (
-    <Screen avoidKeyboard>
-      <AppHeader app="safezone" title={t("safezone.settings.title")} back />
+    <Screen avoidKeyboard header={<AppHeader app="safezone" title={t("safezone.settings.title")} back />}>
       <View style={{ height: metrics.space.md }} />
       <SafeZoneGate>
         <Settings />

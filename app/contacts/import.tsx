@@ -177,8 +177,7 @@ export default function ImportContacts() {
       </Pressable>
     );
     return (
-      <Screen measure>
-        {header(t("contacts.import.title"))}
+      <Screen measure header={header(t("contacts.import.title"))}>
         <View style={{ gap: metrics.space.md }}>
           {option("contacts-import-one", <UserPlus size={24} color={colors.accent} />, t("contacts.import.one"), t("contacts.import.oneBody"), () => void pickOne())}
           {option("contacts-import-phone", <BookUser size={24} color={colors.accent} />, t("contacts.import.phone"), t("contacts.import.phoneBody"), () => void fromPhone())}
@@ -206,8 +205,7 @@ export default function ImportContacts() {
   if (stage.kind === "pick") {
     const allOn = chosen.size === stage.contacts.length;
     return (
-      <Screen measure>
-        {header(t("contacts.import.pickTitle", { count: chosen.size }), () => setStage({ kind: "choose" }))}
+      <Screen measure header={header(t("contacts.import.pickTitle", { count: chosen.size }), () => setStage({ kind: "choose" }))}>
         {stage.limited ? (
           <View style={{ gap: metrics.space.xs, paddingBottom: metrics.space.sm }}>
             <Text testID="contacts-import-limited" variant="caption" tone="muted">
@@ -338,8 +336,7 @@ export default function ImportContacts() {
     </View>
   );
   return (
-    <Screen measure>
-      {header(t("contacts.import.doneTitle"))}
+    <Screen measure header={header(t("contacts.import.doneTitle"))}>
       <View style={{ gap: metrics.space.md }}>
         <SharedRestToPages rest={params.rest} />
         <Text testID="contacts-import-summary" variant="title" style={{ fontSize: 22 }} accessibilityLiveRegion="polite">

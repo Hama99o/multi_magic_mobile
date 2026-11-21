@@ -73,8 +73,7 @@ export default function TrashScreen() {
     ]);
 
   return (
-    <Screen measure>
-      <AppHeader app="finance" title={t("finance.manage.trash.title")} back />
+    <Screen measure header={<AppHeader app="finance" title={t("finance.manage.trash.title")} back />}>
       <View style={{ height: metrics.space.md }} />
       <Segmented
         testID="finance-trash-kind"

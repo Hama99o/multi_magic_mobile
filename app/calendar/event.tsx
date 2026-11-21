@@ -92,8 +92,7 @@ export default function EventDetail() {
 
   if (!event) {
     return (
-      <Screen>
-        <AppHeader app="calendar" back />
+      <Screen header={<AppHeader app="calendar" back />}>
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: metrics.space.lg }}>
           {error || eventId === 0 ? (
             <>
@@ -156,8 +155,7 @@ export default function EventDetail() {
   const icon = (Icon: typeof Bell) => <Icon size={18} color={colors.inkMuted} />;
 
   return (
-    <Screen>
-      <AppHeader app="calendar" title={title} back />
+    <Screen header={<AppHeader app="calendar" title={title} back />}>
       {canWrite ? (
         // The event's own row, under the shared header: edit.
         <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>

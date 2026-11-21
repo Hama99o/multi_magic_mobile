@@ -40,8 +40,7 @@ export default function ContactFamilyTree() {
   const byName = (a: FamilyNode, b: FamilyNode) => (a.id === root?.id ? -1 : b.id === root?.id ? 1 : a.name.localeCompare(b.name));
 
   return (
-    <Screen measure>
-      <AppHeader app="contacts" title={root?.name ? t("contacts.tree.of", { name: root.name }) : t("contacts.tree.title")} back />
+    <Screen measure header={<AppHeader app="contacts" title={root?.name ? t("contacts.tree.of", { name: root.name }) : t("contacts.tree.title")} back />}>
       <LoadFailure error={query.error} loadFailed={t("contacts.tree.loadFailed")} hasData={Boolean(query.data)} updatedAt={query.dataUpdatedAt} onRetry={() => void query.refetch()} testID="family-tree-load-failed" />
       {!query.data && !query.error ? <ActivityIndicator style={{ marginTop: metrics.space.xl }} /> : null}
       <ScrollView contentContainerStyle={{ gap: metrics.space.lg, paddingTop: metrics.space.md, paddingBottom: 48 }}>

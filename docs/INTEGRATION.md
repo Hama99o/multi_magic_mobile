@@ -414,3 +414,36 @@ run (killed by guarded.sh's watchdog; see the hidden-criteria lows below).
 | `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
 
 **Run 11: 0 failures** at 608e198.
+
+## Run 12 — 2026-11-21, the review's lows and Tables' leads
+
+| Branch @ head | Owner | What is new | Merge |
+|---|---|---|---|
+| `feat/flow-app` @ 8178128 | ff | FL4 (an unlink of a pending link deletes the real one), a new card's guess only where it belongs, one comment per answer; the test renamed `.pending.test` | 1 file, below |
+| `feat/notes-parity` @ 053d842 | ff | N3 (a note leaves the selection once its action is done) | clean |
+| `feat/global-search` @ f351273 | ff | S4 (Ask keeps a half-typed question) | clean |
+| `feat/tables-field-ids` @ bc8e5ce | 88 | field_ids + Tables fce270e: T1, T3, ee's leads L1–L4 | clean |
+
+- `src/components/fields/useFieldWrites.ts`: ff's FL4 (pending links) met
+  Tables' `target.send` (row writes through Tables' own endpoints).
+  **Combined**: the pending promise is kept on whatever `send.link ?? core`
+  returns, and an unlink removes through `send.unlink ?? core`, so Tables'
+  endpoints get the same protection. Both had added
+  `__tests__/useFieldWrites.test.tsx`: Tables' keeps the name, ff's moved to
+  `useFieldWrites.pending.test.tsx` on its branch (1adda95). 88 read the
+  result and agreed.
+
+**First full Jest: 1 failure, ff's.** `queryKeys.test` "reads every cache
+access" refuses `setQueryData(key)` with a key read back from the cache:
+ff's `editCardsIn` did that. Fixed on feat/flow-app (8178128:
+`setQueriesData(flowKeys.boards(P), predicate)`), re-merged, re-gated.
+ff's branch gates now include `src/__tests__` and `src/i18n/__tests__`.
+
+| Gate (guarded.sh, Jest 1 worker, node 22.19.0) | Result |
+|---|---|
+| tsc | 0 errors |
+| eslint, 399 changed files | 0 errors, 0 warnings |
+| Jest, full | 343 suites passed; **4172 / 4172 tests passed, 0 failed** |
+| `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
+
+**Run 12: 0 failures** at 6838d18.

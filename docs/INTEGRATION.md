@@ -197,3 +197,20 @@ their box, passed here.
 
 Next: run 3 adds `feat/tables` @ ced0326 (import fix + tablet grid, touches
 `keys.ts` / `keys.test.ts`).
+
+## Run 3 — 2026-11-21, run 2 plus `feat/tables` @ 889b41b
+
+Tables moved past the ced0326 88 announced: a1d6073 (import the previewed
+sheet, upload_expired), ced0326 (tablet grid, increment 9), 889b41b (device
+flows). Merged on top of run 2 (6da137b): **clean**. `keys.ts` checked after
+the merge: parses, 14 exports, 14 `};`, `tablesKeys.summary` inside its
+block. No new heads from ee.
+
+| Gate (guarded.sh, ee's emulator up, Jest 1 worker, node 22.19.0) | Result |
+|---|---|
+| tsc | 0 errors |
+| Jest, full | 319 suites passed; **4049 / 4049 tests passed, 0 failed** |
+| `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
+
+**Run 3: 0 failures.** `integration/mm-mobile-next` @ 6da137b is the base
+for 88's W0 (useNav).

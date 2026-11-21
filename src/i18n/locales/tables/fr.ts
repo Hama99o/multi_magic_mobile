@@ -576,6 +576,7 @@ export const tablesFr = {
     column: "Colonne",
     value: "Nouvelle valeur",
     emptyHint: "Laissez vide pour effacer",
+    notANumber: "Saisissez un nombre, ou laissez vide pour effacer",
     hint_one: "Cette valeur remplace celle de la ligne sélectionnée. Vous pourrez annuler.",
     hint_other: "Cette valeur remplace celle des {{count}} lignes sélectionnées. Vous pourrez annuler.",
     apply_one: "Appliquer à 1 ligne",

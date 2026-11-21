@@ -48,6 +48,7 @@ import { FieldsSheet } from "@/screens/tables/FieldsSheet";
 import { SaveViewSheet } from "@/screens/tables/SaveViewSheet";
 import { ViewsSheet } from "@/screens/tables/ViewsSheet";
 import { useTableAdmin } from "@/screens/tables/useTableAdmin";
+import { useTableExport } from "@/screens/tables/useTableExport";
 import { DeleteByNameSheet } from "@/screens/tables/DeleteByNameSheet";
 import { BulkEditSheet } from "@/screens/tables/BulkEditSheet";
 import { ShareSheet } from "@/screens/tables/ShareSheet";
@@ -56,7 +57,7 @@ import { Alert } from "react-native";
 import { GROUP_HEADER, layoutOf, listItems, type ListItem } from "@/screens/tables/grouping";
 import { colorHex } from "@/screens/flow/logic";
 import { useTablesUndo } from "@/stores/tablesUndo.store";
-import { cardFields, CARD_FIELDS, differsFromShared, effectiveQuery, orderedFields } from "@/screens/tables/personalView";
+import { cardFields, CARD_FIELDS, differsFromShared, effectiveQuery, orderedFields, visibleFields } from "@/screens/tables/personalView";
 import { usePersonalLayer } from "@/screens/tables/usePersonalLayer";
 
 const SEARCH_DELAY_MS = 400;
@@ -260,6 +261,8 @@ export default function TableScreen() {
 
   const switchTable = (id: number) => router.setParams({ id: String(id), view: undefined });
   const admin = useTableAdmin({ table: table.data, base, editable, onOpenTable: switchTable });
+  // Increment 7: the view as this person sees it, as Excel or CSV (everyone who can open the table).
+  const exporter = useTableExport({ tableId, query: shared, fieldIds: view ? visibleFields(fields, view, layer).map((f) => f.id) : [] });
 
   const menu: SheetAction[] = [
     { key: "ask", label: t("tables.ask"), icon: Sparkles, onPress: () => ask(t("tables.askQuestion", { table: table.data?.name ?? "", base: base?.name ?? "" })) },
@@ -268,6 +271,7 @@ export default function TableScreen() {
     { key: "activity", label: t("tables.activity.open"), icon: MessageSquareText, onPress: () => router.push({ pathname: "/tables/activity", params: { table: String(tableId) } }) },
     ...(personal && editable ? [{ key: "save", label: t("tables.saveView.title"), hint: t("tables.saveView.hint"), icon: Save, onPress: () => setTimeout(() => setSheet("save"), 320) }] : []),
     ...(personal ? [{ key: "reset", label: t("tables.backToShared"), hint: t("tables.backToSharedHint"), icon: RotateCcw, onPress: reset }] : []),
+    ...(exporter.action ? [exporter.action] : []),
     ...admin.actions,
     // The owner, 2026-11-20: a table and a base can be deleted from the phone, by typing the name.
     ...(editable ? [{ key: "deleteTable", label: t("tables.remove.tableAction"), icon: Trash2, danger: true, onPress: () => setTimeout(() => setSheet("deleteTable"), 320) }] : []),
@@ -705,6 +709,7 @@ export default function TableScreen() {
       ) : null}
       <ActionSheet open={sheet === "menu"} title={table.data?.name ?? ""} actions={menu} onClose={() => setSheet(null)} testID="tables-options" />
       {admin.sheets}
+      {exporter.sheet}
     </Screen>
   );
 }

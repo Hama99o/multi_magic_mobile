@@ -80,6 +80,9 @@ const SAME_IN_BOTH = new Set([
   "tables.fieldEditor.type",
   "tables.fieldEditor.options",
   "tables.fieldEditor.optionLabel",
+  // A file format's name, the same in both.
+  "tables.export.xlsx",
+  "tables.export.csv",
   "fields.more_one",
   "fields.more_other",
   // Signs and letters (the web's French keeps them): >, ≥, <, ≤, A → Z, 1 → 9.

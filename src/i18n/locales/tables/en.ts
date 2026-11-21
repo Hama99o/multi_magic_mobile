@@ -133,6 +133,16 @@ export const tablesEn = {
     colorBy: "Colour the cards by",
     noColor: "No colour",
   },
+  export: {
+    action: "Export…",
+    hint: "This view as you see it: your filters, sort and columns",
+    preparing: "Preparing the file…",
+    xlsx: "Excel (.xlsx)",
+    csv: "CSV (.csv)",
+    failed: "The file could not be made.",
+    backgroundTitle: "A big table",
+    backgroundBody: "The file is being made. Your bell will ring when it is ready to download.",
+  },
   fieldEditor: {
     newTitle: "New column",
     editTitle: "Edit {{column}}",

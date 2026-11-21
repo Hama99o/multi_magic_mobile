@@ -132,6 +132,16 @@ export const tablesFr = {
     colorBy: "Colorer les cartes selon",
     noColor: "Sans couleur",
   },
+  export: {
+    action: "Exporter…",
+    hint: "Cette vue telle que vous la voyez : vos filtres, votre tri et vos colonnes",
+    preparing: "Préparation du fichier…",
+    xlsx: "Excel (.xlsx)",
+    csv: "CSV (.csv)",
+    failed: "Le fichier n’a pas pu être créé.",
+    backgroundTitle: "Une grande table",
+    backgroundBody: "Le fichier est en préparation. Votre cloche sonnera quand il sera prêt à télécharger.",
+  },
   fieldEditor: {
     newTitle: "Nouvelle colonne",
     editTitle: "Modifier {{column}}",

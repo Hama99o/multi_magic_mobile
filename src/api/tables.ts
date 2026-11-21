@@ -24,7 +24,8 @@
  * - A link cell carries every linked id, but titles for the first 12 only
  *   (`RecordPresenter::LINK_PREVIEW`); `selected_count` says how many there are.
  */
-import { http } from "./http";
+import { File, Paths } from "expo-file-system";
+import { authHeaders, BASE_URL, http } from "./http";
 import { absoluteUrl } from "./conversations";
 import { UPLOAD_TIMEOUT_MS } from "./ai";
 import { ApiShapeError, arr, id, obj, optStr, readable, readableRows, str } from "./parse";
@@ -403,6 +404,37 @@ export interface HistoryItem {
 export const HISTORY_KINDS = ["rows", "columns", "imports", "links", "sharing", "table"] as const;
 export type HistoryKind = (typeof HISTORY_KINDS)[number];
 
+export const EXPORT_FORMATS = ["xlsx", "csv"] as const;
+export type ExportFormat = (typeof EXPORT_FORMATS)[number];
+
+export interface TableExport {
+  id: number;
+  tableId: number;
+  status: string;
+  format: string;
+  rowCount: number | null;
+  filename: string | null;
+  errorMessage: string | null;
+  ready: boolean;
+}
+
+function parseExport(raw: unknown): TableExport {
+  const e = obj(raw, "export");
+  return {
+    id: id(e.id, "export.id"),
+    tableId: id(e.table_id, "export.table_id"),
+    status: optStr(e.status) ?? "",
+    format: optStr(e.format) ?? "xlsx",
+    rowCount: typeof e.row_count === "number" ? e.row_count : null,
+    filename: optStr(e.filename),
+    errorMessage: optStr(e.error_message),
+    ready: e.ready === true,
+  };
+}
+
+/** A file name the cache accepts: no path separators or control characters. */
+const safeName = (name: string) => name.replace(/[\\/:*?"<>|\u0000-\u001f]+/g, "_").slice(0, 120);
+
 export interface FieldUsage {
   filledCount: number;
   rowCount: number;
@@ -737,6 +769,39 @@ export const tablesApi = {
         return { column: optStr(x.column) ?? "", table: optStr(x.table) ?? "" };
       }),
     };
+  },
+
+  // ── Export (increment 7; the web's export menu, `exports_controller.rb`) ──
+
+  /**
+   * The view as the person sees it (search, filters, sorts, visible columns in
+   * order), as CSV or Excel. A small one comes back ready; a big one is made in
+   * the background and polled (`exportStatus`), with a bell when it is done.
+   * The server takes no "newest first" here (`Exporter::QUERY_KEYS`), so the
+   * file follows the view's own sorts.
+   */
+  async startExport(tableId: number, format: ExportFormat, query: { search?: string; filters?: FilterCondition[]; match?: "and" | "or"; sorts?: SortRule[]; fieldIds: number[] }): Promise<TableExport> {
+    const q: Record<string, unknown> = { field_ids: query.fieldIds };
+    if (query.search?.trim()) q.search = query.search.trim();
+    if (query.filters?.length) {
+      q.filters = query.filters.map((f) => ({ field_id: f.fieldId, op: f.op, value: f.value }));
+      if (query.match) q.match = query.match;
+    }
+    if (query.sorts?.length) q.sorts = query.sorts.map((s) => ({ field_id: s.fieldId, direction: s.direction }));
+    const { data } = await http.post(`${BASE}/tables/${tableId}/exports`, { format_type: format, query: q });
+    return parseExport(obj(data, "export response").export);
+  },
+
+  async exportStatus(exportId: number): Promise<TableExport> {
+    const { data } = await http.get(`${BASE}/exports/${exportId}`);
+    return parseExport(obj(data, "export response").export);
+  },
+
+  /** The ready file into the cache, for the share sheet. */
+  async downloadExport(e: TableExport): Promise<string> {
+    const target = new File(Paths.cache, `${Date.now()}-${safeName(e.filename ?? `table-${e.tableId}.${e.format}`)}`);
+    const file = await File.downloadFileAsync(`${BASE_URL}${BASE}/exports/${e.id}/download`, target, { headers: await authHeaders(), idempotent: true });
+    return file.uri;
   },
 
   /** A new column (6c). `body` is `fieldBody(...)` from the editor: the server's own names, as `fields#create` permits. */

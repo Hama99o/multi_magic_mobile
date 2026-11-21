@@ -451,3 +451,18 @@ describe("columns (increment 6b): the web's column menu", () => {
     expect(await tablesApi.trashedFields(10)).toEqual([{ id: 2, name: "Price", fieldType: "decimal", deletedAt: "2026-11-20T10:00:00Z", purgeAt: "2026-12-20T10:00:00Z", filledCount: 12 }]);
   });
 });
+
+describe("export (increment 7)", () => {
+  it("posts the view as the person sees it, in the exporter's names (arrays, not the index's JSON strings)", async () => {
+    mock.onPost(`${BASE}/tables/10/exports`).reply(201, { export: { id: 7, table_id: 10, status: "done", format: "xlsx", row_count: 3, filename: "Items.xlsx", error_message: null, ready: true } });
+    const e = await tablesApi.startExport(10, "xlsx", { search: " scarf ", filters: [{ fieldId: 2, op: "any_of", value: ["in"] }], match: "and", sorts: [{ fieldId: 1, direction: "asc" }], fieldIds: [1, 2, 5] });
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ format_type: "xlsx", query: { field_ids: [1, 2, 5], search: "scarf", filters: [{ field_id: 2, op: "any_of", value: ["in"] }], match: "and", sorts: [{ field_id: 1, direction: "asc" }] } });
+    expect(e).toEqual({ id: 7, tableId: 10, status: "done", format: "xlsx", rowCount: 3, filename: "Items.xlsx", errorMessage: null, ready: true });
+  });
+
+  it("no search, filter or sort sends only the columns", async () => {
+    mock.onPost(`${BASE}/tables/10/exports`).reply(201, { export: { id: 8, table_id: 10, status: "pending", format: "csv", ready: false } });
+    await tablesApi.startExport(10, "csv", { search: " ", filters: [], sorts: [], fieldIds: [1] });
+    expect(JSON.parse(mock.history.post[0].data)).toEqual({ format_type: "csv", query: { field_ids: [1] } });
+  });
+});

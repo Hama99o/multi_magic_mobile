@@ -33,6 +33,7 @@ jest.mock("expo-router", () => ({
   Link: ({ children }: { children: unknown }) => children,
 }));
 jest.mock("expo-clipboard", () => require("@/__tests__/screenMocks").clipboard);
+jest.mock("expo-sharing", () => ({ isAvailableAsync: jest.fn(async () => true), shareAsync: jest.fn(async () => undefined) }));
 
 const router = mockedRouter as unknown as { push: jest.Mock; setParams: jest.Mock; back: jest.Mock };
 const B = "/api/v1/table_app";
@@ -931,6 +932,32 @@ describe("the table's columns (increment 6b; the web's column menu)", () => {
     await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
     fireEvent.press(screen.getByTestId("tables-menu"));
     expect(within(await screen.findByTestId("tables-options")).queryByText("Columns")).toBeNull();
+  });
+});
+
+describe("export (increment 7)", () => {
+  beforeEach(() => {
+    mockParams.current = { id: "10", base: "3" };
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody());
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }]), role: "viewer" }] });
+  });
+  afterEach(() => jest.restoreAllMocks());
+
+  it("a VIEWER exports the view as Excel; the ready file goes to the share sheet", async () => {
+    const api = jest.requireActual<typeof import("@/api/tables")>("@/api/tables").tablesApi;
+    const download = jest.spyOn(api, "downloadExport").mockResolvedValue("file:///cache/Items.xlsx");
+    const Sharing = jest.requireMock<{ shareAsync: jest.Mock }>("expo-sharing");
+    mock.onPost(`${B}/tables/10/exports`).reply(201, { export: { id: 7, table_id: 10, status: "done", format: "xlsx", filename: "Items.xlsx", ready: true } });
+    renderScreen(<TableScreen />);
+    await screen.findByText("Blue scarf");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    fireEvent.press(screen.getByTestId("tables-menu"));
+    fireEvent.press(await within(await screen.findByTestId("tables-options")).findByText("Export…"));
+    fireEvent.press(await within(await screen.findByTestId("tables-export")).findByText("Excel (.xlsx)"));
+    await waitFor(() => expect(Sharing.shareAsync).toHaveBeenCalledWith("file:///cache/Items.xlsx", { dialogTitle: "Items.xlsx" }));
+    expect(JSON.parse(mock.history.post[0].data).format_type).toBe("xlsx");
+    expect(download).toHaveBeenCalledTimes(1);
   });
 });
 

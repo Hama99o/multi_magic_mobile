@@ -197,6 +197,12 @@ describe("recordsParams: the query the phone sends (never the view)", () => {
     });
   });
 
+  it("the server's echo is what the rows carry: past its cap of 200 ids, a column asked but not sent is not loaded", async () => {
+    mock.onGet(`${BASE}/tables/10/records`).reply(200, { records: [{ id: 1, position: 1, created_at: "x", updated_at: "x", values: { "1": { scalar_value: "A" } } }], meta: { offset: 0, limit: 100, has_more: false, field_ids: [1, 2] } });
+    const page = await tablesApi.records(10, { fieldIds: [1, 2, 3] }, 0);
+    expect(page.rows[0].loadedFieldIds).toEqual([1, 2]); // 3 was asked, not sent: the row page will fetch it
+  });
+
   it("rows are marked partial only when the server did project (prod ignores field_ids until its deploy)", () => {
     const r = (values: Record<number, unknown>) => ({ id: 1, position: 1, createdAt: "x", updatedAt: "x", values, linkLabels: {}, linkCounts: {} }) as never;
     // A server that ignored it sent a column nobody asked for: not projected, nothing marked.

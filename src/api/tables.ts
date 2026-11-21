@@ -980,7 +980,10 @@ export const tablesApi = {
     const body = obj(data, "records response");
     const meta = body.meta && typeof body.meta === "object" ? (body.meta as Record<string, unknown>) : {};
     const { rows: read, unreadable } = readableRows(arr(body.records, "records"), parseRecord);
-    const rows = projected(read, query.fieldIds, meta.field_ids) ? read.map((r) => ({ ...r, loadedFieldIds: query.fieldIds })) : read;
+    // The columns the rows carry: the server's own list when it echoes one (it sends at most 200 ids,
+    // multi-magic-83 aa9c8f26), else the ones asked.
+    const echoed = Array.isArray(meta.field_ids) ? meta.field_ids.filter((n): n is number => typeof n === "number") : null;
+    const rows = projected(read, query.fieldIds, meta.field_ids) ? read.map((r) => ({ ...r, loadedFieldIds: echoed ?? query.fieldIds })) : read;
     return {
       rows,
       unreadable,

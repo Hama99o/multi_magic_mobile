@@ -204,7 +204,7 @@ const COMPOSED = [
   // Reordering a card within its column (`table.tsx`, MoveWithin).
   ...["top", "up", "down"].map((v) => `tables.kanban.within.${v}`),
   // Why an import could not read its file (`importFlow.ts` ReadOutcome, `tableImports.ts` PreviewRefusal).
-  ...["too_large", "unsupported_type", "unreadable", "empty", "no_sheet", "needs_server", "missing", "other"].map((v) => `tables.import.refused.${v}`),
+  ...["too_large", "unsupported_type", "unreadable", "empty", "no_sheet", "upload_expired", "needs_server", "missing", "other"].map((v) => `tables.import.refused.${v}`),
   // The access modes of a form (`tableForms.ts` ACCESS_MODES): each name and hint.
   ...["public", "signed_in", "only_me", "invited"].flatMap((v) => [`tables.forms.access.${v}`, `tables.form.accessHint.${v}`]),
   // The column editor (`FieldEditorSheet.tsx`): relations, rollup functions, why Save is off.

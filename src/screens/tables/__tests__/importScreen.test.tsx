@@ -119,6 +119,25 @@ it("through the server's preview: its sheets, and the import sent with its uploa
   expect(sent.find(([f]) => f === "upload")).toEqual(["upload", "signed-1"]);
   expect(JSON.parse(String(sent.find(([f]) => f === "columns")?.[1]))).toEqual([{ field_id: 1 }, { new_field_name: "Colour", new_field_type: "single_select", options: ["Blue", "Red"] }]);
   expect(appended.filter(([f]) => f === "file")).toHaveLength(1); // once, to the preview; never again
+  expect(appended.filter(([f]) => f === "sheet")).toEqual([["sheet", "0"]]); // the previewed sheet, with the upload
+});
+
+it("an upload past its hour sends the person back to choose the file again", async () => {
+  mock.onPost(`${B}/tables/10/imports/preview`).reply(200, {
+    upload: "signed-1", filename: "stock.xlsx", sheets: [{ index: 0, name: "Stock" }], sheet: 0,
+    headers: ["Name"], unnamed: [false], row_count: 3, truncated: false, sample: [["Scarf"]],
+    guesses: [{ type: "text", fill_rate: 1, samples: ["Scarf"], options: [], refused: {} }],
+  });
+  mock.onPost(`${B}/tables/10/imports`).reply(422, { message: "this upload has expired: send the file again", reason: "upload_expired" });
+  const files = jest.requireActual<typeof import("@/screens/pages/addFiles")>("@/screens/pages/addFiles");
+  jest.spyOn(files, "pickDocuments").mockResolvedValue({ files: [{ uri: "file:///docs/stock.xlsx", name: "stock.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", size: 9000 }] });
+  renderScreen(<Import />);
+  fireEvent.press(await enabled("tables-import-file"));
+  fireEvent.press(await screen.findByTestId("tables-import-start"));
+  expect((await screen.findByTestId("tables-import-message")).props.children).toBe("This file has expired here. Choose it again.");
+  expect(screen.getByTestId("tables-import-file")).toBeTruthy(); // back at the start, the file to choose again
+  expect(screen.queryByTestId("tables-import-start")).toBeNull();
+  expect(router.back).not.toHaveBeenCalled();
 });
 
 it("an Excel file while the preview is not deployed says to use CSV or the web", async () => {

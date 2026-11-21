@@ -52,6 +52,7 @@ it("names why a preview was refused, and a 404 as not deployed yet (the phone th
   expect(previewRefusal(err(413))).toBe("too_large");
   expect(previewRefusal(err(422, "unreadable"))).toBe("unreadable");
   expect(previewRefusal(err(422, "no_sheet"))).toBe("no_sheet");
+  expect(previewRefusal(err(422, "upload_expired"))).toBe("upload_expired");
   expect(previewRefusal(new Error("offline"))).toBe("other");
 });
 
@@ -66,6 +67,7 @@ it("starts the import with the preview's upload, not the file again", async () =
   const started = await tablesImport();
   expect(appended).toEqual([
     ["upload", "signed-1"],
+    ["sheet", "1"],
     ["columns", JSON.stringify([{ field_id: 1 }, {}])],
     ["upsert_on", "1"],
     ["idempotency_key", "k1"],
@@ -73,7 +75,7 @@ it("starts the import with the preview's upload, not the file again", async () =
   expect(started).toMatchObject({ id: 4, status: "queued", percent: 0 });
 });
 
-const tablesImport = () => tableImportsApi.create(10, { upload: "signed-1" }, [{ field_id: 1 }, {}], { upsertOn: 1, idempotencyKey: "k1" });
+const tablesImport = () => tableImportsApi.create(10, { upload: "signed-1", sheet: 1 }, [{ field_id: 1 }, {}], { upsertOn: 1, idempotencyKey: "k1" });
 
 it("the banner's import: latest, or none", async () => {
   mock.onGet(`${B}/tables/10/imports/latest`).reply(200, { import: null });

@@ -259,10 +259,11 @@ export const tablesFr = {
     failed: "L’import n’a pas pu démarrer.",
     refused: {
       too_large: "Ce fichier dépasse 50 Mo.",
-      unsupported_type: "Ce type de fichier ne peut pas être importé. Utilisez CSV, Excel ou ODS.",
+      unsupported_type: "Ce type de fichier ne peut pas être importé. Utilisez CSV, .xlsx ou ODS ; enregistrez un ancien .xls en .xlsx.",
       unreadable: "Ce fichier n’a pas pu être lu.",
       empty: "Il n’y a rien à importer.",
       no_sheet: "Ce fichier n’a aucune feuille à lire.",
+      upload_expired: "Ce fichier a expiré ici. Choisissez-le à nouveau.",
       needs_server: "Un fichier Excel se lit sur le web pour l’instant. Enregistrez-le en CSV, ou importez-le depuis le web.",
       missing: "Le fichier n’a pas pu être lu ici. Essayez un CSV.",
       other: "Le fichier n’a pas pu être lu. Vérifiez la connexion et réessayez.",

@@ -28,6 +28,7 @@
  */
 import axios, { type AxiosProgressEvent, type AxiosResponse } from "axios";
 import { Directory, File, Paths } from "expo-file-system";
+import { DOC_CACHE } from "@/lib/docCache";
 import { absoluteUrl } from "./conversations";
 import { http } from "./http";
 import { arr, id, num, obj, optStr, readableRows, str } from "./parse";
@@ -164,7 +165,7 @@ export function safeName(name: string): string {
 
 /** Each result in its own folder, so two "merged.pdf" never overwrite each other. */
 function resultDir(): Directory {
-  const dir = new Directory(Paths.cache, "doc", `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+  const dir = new Directory(Paths.cache, DOC_CACHE, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
   dir.create({ intermediates: true, idempotent: true });
   return dir;
 }

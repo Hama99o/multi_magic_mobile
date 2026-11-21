@@ -11,6 +11,8 @@ import "@/styles/global.css";
 // initialised before the first `t()` runs, and a screen importing it lazily
 // would render one frame of raw keys.
 import "@/i18n";
+// Doc results are deleted when a session ends (src/lib/docCache.ts): registered from launch.
+import "@/lib/docCache";
 import { useCallback, useEffect, useState } from "react";
 import { Stack, router } from "expo-router";
 import { StatusBar } from "expo-status-bar";

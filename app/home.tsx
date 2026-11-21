@@ -39,6 +39,8 @@ import { addDays, todayKey } from "@/screens/calendar/dates";
 import { eventColor } from "@/screens/calendar/colors";
 
 const GAP = 10;
+/** The system font scale from which a phone's Home grid takes 2 columns. */
+const LARGE_FONT = 1.5;
 /** The web's `UpcomingCard`: 30 days ahead, the first five. */
 const UPCOMING_DAYS = 30;
 const UPCOMING_SHOWN = 5;
@@ -97,7 +99,8 @@ function Tile({ entry, width, index, lastUsed, badge, onPress }: { entry: TileEn
             </View>
           ) : null}
         </View>
-        <Text variant="label" style={{ fontSize: 16 }} numberOfLines={1}>
+        {/* One line, never "…": a name too wide for its tile shrinks to fit. */}
+        <Text variant="label" style={{ fontSize: 16 }} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6}>
           {title}
         </Text>
         <Text variant="caption" tone="muted" numberOfLines={2}>
@@ -207,10 +210,12 @@ export default function Home() {
   const badges = useShellBadges();
   const first = user?.firstName?.trim();
   // 3 columns on a phone, 4 from 600 dp, 6 from 900 dp: equal tiles, never a
-  // lonely full-width last one (owner, 2026-11-15).
-  const { width: windowWidth } = useWindowDimensions();
+  // lonely full-width last one (owner, 2026-11-15). At a large system font
+  // (>= 150 %) a phone takes 2: an app's name is never cut (Hello, 2026-11-21;
+  // device: "SafeZ…", "Finan…", "Doc T…" at 200 % in 3 columns).
+  const { width: windowWidth, fontScale } = useWindowDimensions();
   const [gridWidth, setGridWidth] = useState(windowWidth - 2 * metrics.space.lg);
-  const columns = gridWidth >= 900 ? 6 : gridWidth >= 600 ? 4 : 3;
+  const columns = gridWidth >= 900 ? 6 : gridWidth >= 600 ? 4 : fontScale >= LARGE_FONT ? 2 : 3;
   const tileWidth = Math.floor((gridWidth - GAP * (columns - 1)) / columns);
   const [lastApp, setLastApp] = useState<HomeApp | null>(null);
   useEffect(() => {

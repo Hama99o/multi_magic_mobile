@@ -1,0 +1,19 @@
+# Put the app's theme choice on "System", so the slot driver's
+# `cmd uimode night yes|no` decides light or dark (`theme.store.ts`: only the
+# "system" choice follows the device). Same pane as set-language.yaml.
+appId: ${APP_ID}
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-open-profile"
+- tapOn:
+    id: "profile-open-theme"
+- assertVisible:
+    id: "theme-row"
+- tapOn:
+    id: "theme-system"
+- assertVisible:
+    id: "theme-system"
+    selected: true
+- tapOn:
+    id: "profile-close"

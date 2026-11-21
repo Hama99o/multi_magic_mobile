@@ -1,0 +1,135 @@
+# THE HIDDEN-CRITERIA SWEEP ON A DEVICE (Hello, 2026-11-21), ff's apps.
+#
+# 1. Flow's board at a 200 % system font (fix 025020e). Jest proved the tile
+#    asks for the right height (`fontScale.test.tsx`); only a device shows the
+#    two-line title is whole and the pills' words are not cut. The slot driver
+#    sets `settings put system font_scale 2.0` and relaunches the app (React
+#    Native reads the font scale at startup), runs this, and puts it back.
+#    The QA account has no Flow project, so this makes "[qa] Font 200" with
+#    two cards and DELETES it at the end (the QA-account rule).
+# 2. Notes' + tapped twice (fix 887b603). Maestro's doubleTapOn sends two
+#    taps 100 ms apart, before the create answers on this box. The slot
+#    driver counts the QA account's notes made in the window (read-only psql):
+#    the proof is ONE. The note made is deleted from its editor (to the
+#    trash, which the driver empties by its id afterwards through the app's
+#    own trash view if one is left).
+#
+# English only: the cleanup taps the alert's "Delete" words.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: the board's tiles at 200 % (a picture); one note per double tap.
+# DOES NOT COVER: a double tap faster than 100 ms (Jest's three taps in one
+#   act() do that, `notes-index.test.tsx`), every sheet at 200 %.
+appId: ${APP_ID}
+tags:
+  - sweep
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+
+# ── 1. Flow at 200 % ───────────────────────────────────────────────────────
+- tapOn:
+    id: "home-tile-flow"
+- extendedWaitUntil:
+    visible:
+      id: "flow-tabs"
+    timeout: 60000
+- runFlow:
+    when:
+      visible:
+        id: "flow-empty-create"
+    commands:
+      - tapOn:
+          id: "flow-empty-create"
+- runFlow:
+    when:
+      visible:
+        id: "flow-new-project"
+    commands:
+      - tapOn:
+          id: "flow-new-project"
+- extendedWaitUntil:
+    visible:
+      id: "flow-project-sheet"
+    timeout: 10000
+- tapOn:
+    id: "flow-project-title"
+- inputText: "[qa] Font 200"
+- takeScreenshot: reports/46-font200-${W}-project-sheet
+- tapOn:
+    id: "flow-project-save"
+- extendedWaitUntil:
+    visible:
+      id: "flow-board-pager"
+    timeout: 60000
+- tapOn:
+    id: "flow-column-1-add"
+- tapOn:
+    id: "flow-quick-add-input"
+- inputText: "[qa] A title long enough to need its second line"
+- tapOn:
+    id: "flow-quick-add-submit"
+- extendedWaitUntil:
+    visible:
+      id: "flow-card"
+      text: "\\[qa\\] A title long.*"
+    timeout: 20000
+- inputText: "[qa] Short"
+- tapOn:
+    id: "flow-quick-add-submit"
+- extendedWaitUntil:
+    visible:
+      id: "flow-card"
+      text: "\\[qa\\] Short.*"
+    timeout: 20000
+- tapOn:
+    id: "flow-quick-add-cancel"
+- takeScreenshot: reports/46-font200-${W}-board
+# Clean up: the project goes, with its confirm naming it.
+- back
+- extendedWaitUntil:
+    visible:
+      id: "flow-tabs"
+    timeout: 20000
+- longPressOn: "\\[qa\\] Font 200.*"
+- tapOn: "Delete project"
+- extendedWaitUntil:
+    visible: "Delete “\\[qa\\] Font 200”\\?"
+    timeout: 10000
+- tapOn: "Delete"
+- extendedWaitUntil:
+    notVisible: "\\[qa\\] Font 200.*"
+    timeout: 20000
+- back
+
+# ── 2. Notes: + tapped twice ───────────────────────────────────────────────
+- extendedWaitUntil:
+    visible:
+      id: "home-tile-notes"
+    timeout: 20000
+- tapOn:
+    id: "home-tile-notes"
+- extendedWaitUntil:
+    visible:
+      id: "notes-new"
+    timeout: 30000
+- doubleTapOn:
+    id: "notes-new"
+- extendedWaitUntil:
+    visible:
+      id: "note-toolbar"
+    timeout: 30000
+- tapOn:
+    id: "tb-more"
+- tapOn:
+    id: "note-more-delete"
+- tapOn:
+    id: "note-more-delete-confirm"
+- extendedWaitUntil:
+    visible:
+      id: "notes-new"
+    timeout: 20000
+# A second editor pushed by the second tap would sit here instead of the grid.
+- assertNotVisible:
+    id: "note-toolbar"

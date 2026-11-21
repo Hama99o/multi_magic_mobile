@@ -1,0 +1,106 @@
+# NOTES SHEETS ON THE ONE SHEET FRAME (Hello for the owner, 2026-11-21:
+# "Notes bottom sheets span the full width at 800 dp").
+#
+# Every Notes sheet now draws through `src/components/SheetFrame.tsx`: a
+# bottom sheet the width of the screen on a phone, a centred 560 dp card on a
+# tablet (>= SPLIT_AT, 800 dp). Jest proves the frame's width and position
+# (`SheetFrame.test.tsx`, `notes-index` "sheets on a tablet"); only a device
+# shows the card actually sits centred with the scrim around it, in both
+# themes. This opens each sheet on an invented "[qa-shot]" note, takes its
+# picture, and closes it with Back. It WRITES NOTHING: no colour is picked, no
+# reminder saved, no one invited.
+#
+# Run by the slot driver at 411 and 800 dp, light and dark: W and THEME name
+# the shots (`docs/design/app-shell/ours/`).
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: the editor's colour, ⋮, reminder, share and Labels sheets; the
+#   drawer's Edit labels; each opened from where a person opens it.
+# DOES NOT COVER: the grid's selection ⋯ (a long press, which Maestro's
+#   longPressOn does not land here: CLAUDE.md, the 06-people-chat note), the
+#   code-language sheet (needs a code block), "Linked in Pages" (needs a link).
+appId: ${APP_ID}
+tags:
+  - notes
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-notes"
+# Only the invented notes: the QA account also holds copies of real notes.
+- tapOn:
+    id: "notes-search"
+- inputText: "qa-shot"
+- pressKey: Enter
+- extendedWaitUntil:
+    visible: "\\[qa-shot\\] Groceries"
+    timeout: 30000
+
+# The drawer's Edit labels sheet.
+- tapOn:
+    id: "notes-menu"
+- tapOn:
+    id: "drawer-edit-labels"
+- extendedWaitUntil:
+    visible:
+      id: "labels-close"
+    timeout: 15000
+- takeScreenshot: reports/44-${W}-${THEME}-edit-labels
+- tapOn:
+    id: "labels-close"
+
+# A note's editor, and each sheet it opens.
+- tapOn: "\\[qa-shot\\] Groceries"
+- extendedWaitUntil:
+    visible:
+      id: "note-toolbar"
+    timeout: 30000
+
+- tapOn:
+    id: "tb-noteColor"
+- extendedWaitUntil:
+    visible:
+      id: "note-color-no_color"
+    timeout: 10000
+- takeScreenshot: reports/44-${W}-${THEME}-color
+- pressKey: Back
+
+- tapOn:
+    id: "tb-more"
+- extendedWaitUntil:
+    visible:
+      id: "note-more-edited"
+    timeout: 10000
+- takeScreenshot: reports/44-${W}-${THEME}-more
+- tapOn:
+    id: "note-more-labels"
+- extendedWaitUntil:
+    visible:
+      id: "note-labels-close"
+    timeout: 10000
+- takeScreenshot: reports/44-${W}-${THEME}-note-labels
+- tapOn:
+    id: "note-labels-close"
+
+- tapOn:
+    id: "note-edit-reminder"
+- extendedWaitUntil:
+    visible:
+      id: "reminder-save"
+    timeout: 10000
+- takeScreenshot: reports/44-${W}-${THEME}-reminder
+- pressKey: Back
+
+- tapOn:
+    id: "note-edit-share"
+- extendedWaitUntil:
+    visible:
+      id: "note-share-sheet"
+    timeout: 10000
+- takeScreenshot: reports/44-${W}-${THEME}-share
+- tapOn:
+    id: "note-share-close"
+
+- tapOn:
+    id: "note-edit-back"

@@ -1,0 +1,34 @@
+# Cleanup for 46-sweep-device: the empty note its double tap made, which 46
+# moved to the trash, is deleted for ever (the QA-account rule: delete what
+# you create). NOTE_ID comes from the slot driver's read-only count of the
+# notes made in 46's window; this runs only when that count is exactly one.
+#
+# ── FLOW_REGISTER note ─────────────────────────────────────────────────────
+# COVERS: nothing new; it puts the QA account back.
+appId: ${APP_ID}
+tags:
+  - sweep
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- tapOn:
+    id: "home-tile-notes"
+- tapOn:
+    id: "notes-menu"
+- tapOn:
+    id: "drawer-trash"
+# lint: dbid-ok — THIS note is the subject: the one 46 made, by its id.
+- tapOn:
+    id: "note-card-${NOTE_ID}"
+- tapOn:
+    id: "note-forever"
+- extendedWaitUntil:
+    visible: "Delete this note forever\\?"
+    timeout: 10000
+- tapOn: "Delete forever"
+# lint: dbid-ok — the same note, gone.
+- extendedWaitUntil:
+    notVisible:
+      id: "note-card-${NOTE_ID}"
+    timeout: 20000

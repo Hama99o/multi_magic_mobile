@@ -30,8 +30,8 @@ case "$API_LOCAL" in *:3020*) ;; *) echo "REFUSED: seed writes; API_LOCAL must b
 QA_EMAIL="${QA_EMAIL:-demo@example.com}"
 SERIAL="${SERIAL:?set SERIAL to the claimed device, e.g. emulator-5580}"
 APP_ID="${APP_ID:-com.multimagics.mobile}"
-OUT="$DIR/reports/pages-parity-$(date +%Y%m%d-%H%M)"
-STATE="$DIR/reports/.pages-parity.state"   # space/note ids for clean (gitignored reports/)
+OUT="$DIR/evidence/pages-parity-$(date +%Y%m%d-%H%M)"   # gitignored: screenshots and dumps of a real session
+STATE="$DIR/evidence/.pages-parity.state"   # space/note ids for clean (gitignored)
 SPACE_TITLE="QA Parity"
 mkdir -p "$OUT"
 

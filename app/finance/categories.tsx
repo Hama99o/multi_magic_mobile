@@ -77,8 +77,7 @@ export default function CategoriesScreen() {
 
   const title = parent ? parent.name : t("finance.manage.categories.title");
   return (
-    <Screen measure>
-      <AppHeader app="finance" title={title} back />
+    <Screen measure header={<AppHeader app="finance" title={title} back />}>
       {parent ? (
         <Text variant="caption" tone="muted" numberOfLines={1} style={{ paddingTop: metrics.space.sm }} testID="finance-categories-subtitle">
           {t("finance.manage.categories.subcategories")}

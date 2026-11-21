@@ -23,7 +23,7 @@ import type { FieldDefinition, RecordOption } from "@/api/fields";
 import { FieldRow, ChoiceRow } from "@/components/fields/FieldRow";
 import { useFieldWrites } from "@/components/fields/useFieldWrites";
 import { BottomSheet } from "@/components/BottomSheet";
-import { ArrowRightLeft, CircleDot, Columns3, Ellipsis, Kanban, Pencil, Sparkles, Trash2, UserRound } from "@/components/icons";
+import { ArrowRightLeft, CircleDot, Columns3, Ellipsis, Kanban, Pencil, Sparkles, Trash2 } from "@/components/icons";
 import { RichText } from "@/components/RichText";
 import { Screen } from "@/components/ScreenContainer";
 import { AppHeader } from "@/components/shell/AppHeader";
@@ -51,8 +51,7 @@ export default function CardScreen() {
   const { t } = useTranslation();
   if (!Number.isInteger(projectId) || projectId <= 0 || !Number.isInteger(cardId) || cardId <= 0) {
     return (
-      <Screen measure>
-        <AppHeader app="flow" back />
+      <Screen measure header={<AppHeader app="flow" back />}>
         <EmptyState testID="flow-card-bad-link" icon={Kanban} title={t("flow.card.notFound")} />
       </Screen>
     );
@@ -191,24 +190,21 @@ function CardView({ projectId, cardId }: { projectId: number; cardId: number }) 
 
   if (card.isPending && !c) {
     return (
-      <Screen measure>
-        <AppHeader app="flow" back title={parts?.project.title} />
+      <Screen measure header={<AppHeader app="flow" back title={parts?.project.title} />}>
         <RowsSkeleton rows={6} testID="flow-card-loading" />
       </Screen>
     );
   }
   if (!c) {
     return (
-      <Screen measure>
-        <AppHeader app="flow" back title={parts?.project.title} />
+      <Screen measure header={<AppHeader app="flow" back title={parts?.project.title} />}>
         <LoadFailure error={card.error} loadFailed={t("flow.card.loadFailed")} hasData={false} updatedAt={0} onRetry={() => void card.refetch()} testID="flow-card-failed" />
       </Screen>
     );
   }
 
   return (
-    <Screen measure avoidKeyboard>
-      <AppHeader app="flow" back title={parts?.project.title ?? t("flow.title")} />
+    <Screen measure avoidKeyboard header={<AppHeader app="flow" back title={parts?.project.title ?? t("flow.title")} />}>
       <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: metrics.space.xl }} testID="flow-card">
         <View style={{ flexDirection: "row", alignItems: "flex-start", gap: metrics.space.sm, marginTop: metrics.space.xs }}>
           {editingTitle ? (
@@ -275,7 +271,6 @@ function CardView({ projectId, cardId }: { projectId: number; cardId: number }) 
         <View style={{ marginTop: metrics.space.md, padding: metrics.space.md, borderRadius: metrics.radius.lg, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}>
           <PropertyRow testID="flow-card-column" icon={Columns3} label={t("flow.card.column")} value={column?.title ?? "—"} dot={colorHex(column?.color) ?? undefined} onPress={powers.editCards ? () => setSheet("column") : undefined} />
           <PropertyRow testID="flow-card-sprint" icon={CircleDot} label={t("flow.card.sprint")} value={sprint?.title ?? t("flow.sprints.noSprint")} onPress={powers.editCards ? () => setSheet("sprint") : undefined} />
-          <PropertyRow testID="flow-card-creator" icon={UserRound} label={t("flow.card.creator")} value={c.creator.name || "—"} />
           {fields.map((f) => (
             <FieldRow key={f.id} testID={`flow-field-${f.key}`} field={f} value={c.fieldValues[f.id]} editable={powers.editCards} writes={writes} known={known} onError={setNote} />
           ))}

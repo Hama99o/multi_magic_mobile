@@ -10,7 +10,7 @@
  * its cards go back to the backlog (`sprint.rb` `dependent: :nullify`; the
  * web deletes on one click).
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, Pressable, TextInput, View } from "react-native";
 import { useTranslation } from "react-i18next";
 import type { Sprint, SprintScope, SprintStatus } from "@/api/flow";
@@ -164,6 +164,7 @@ function SprintForm({ projectId, sprint, onClose }: { projectId: number; sprint:
   const colors = useColors();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
+  const firstInput = useRef<TextInput>(null);
   const today = todayKey();
   const [title, setTitle] = useState(sprint?.title ?? "");
   const [goal, setGoal] = useState(sprint?.goal ?? "");
@@ -214,7 +215,7 @@ function SprintForm({ projectId, sprint, onClose }: { projectId: number; sprint:
   );
 
   return (
-    <BottomSheet
+    <BottomSheet focusRef={sprint ? undefined : firstInput}
       open
       title={sprint ? t("flow.sprints.edit") : t("flow.sprints.new")}
       onClose={onClose}
@@ -224,7 +225,7 @@ function SprintForm({ projectId, sprint, onClose }: { projectId: number; sprint:
       <View style={{ gap: metrics.space.md }}>
         <View style={{ gap: metrics.space.xs }}>
           <Text variant="label">{t("flow.sprints.name")}</Text>
-          <TextInput testID="flow-sprint-title" value={title} onChangeText={setTitle} autoFocus={!sprint} placeholder={t("flow.sprints.namePlaceholder")} placeholderTextColor={colors.inkMuted} accessibilityLabel={t("flow.sprints.name")} style={{ ...input, minHeight: 48, borderColor: tried && !title.trim() ? colors.danger : colors.border }} />
+          <TextInput testID="flow-sprint-title" value={title} onChangeText={setTitle} ref={firstInput} placeholder={t("flow.sprints.namePlaceholder")} placeholderTextColor={colors.inkMuted} accessibilityLabel={t("flow.sprints.name")} style={{ ...input, minHeight: 48, borderColor: tried && !title.trim() ? colors.danger : colors.border }} />
           {tried && !title.trim() ? (
             <Text tone="danger" variant="caption" accessibilityLiveRegion="polite">
               {t("flow.sprints.nameRequired")}

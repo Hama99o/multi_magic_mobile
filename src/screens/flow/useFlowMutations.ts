@@ -122,6 +122,14 @@ export function useDeleteProject(opts: { onDone?: () => void; onError?: OnError 
 
 // ── Cards ────────────────────────────────────────────────────────────────
 
+/**
+ * A placeholder card's id until the server answers: negative, so it never
+ * meets a real one, and unique even for two adds in one millisecond (two
+ * `-Date.now()` guesses once shared a list key on the device).
+ */
+let guessSeq = 0;
+const nextGuessId = () => -(Date.now() * 1000 + (guessSeq++ % 1000));
+
 export function useCreateCard(projectId: number, opts: { onError?: (e: unknown, title: string) => void } = {}) {
   return useOptimistic({
     run: (input: { title: string; columnId: number; sprintId: number | null }) => flowApi.createCard(projectId, input),
@@ -130,7 +138,7 @@ export function useCreateCard(projectId: number, opts: { onError?: (e: unknown, 
       editCards(client, projectId, (cards) => {
         const last = Math.max(0, ...cards.filter((c) => c.columnId === columnId).map((c) => c.position));
         const guess: Card = {
-          id: -Date.now(), projectId, columnId, sprintId, title, description: null, position: last + 1, dueDate: null,
+          id: nextGuessId(), projectId, columnId, sprintId, title, description: null, position: last + 1, dueDate: null,
           creator: { id: 0, name: "" }, commentsCount: 0, fieldValues: {}, createdAt: "", updatedAt: "",
         };
         return [...cards, guess];
@@ -232,7 +240,7 @@ export function useAddComment(projectId: number, cardId: number, me: { id: numbe
     apply: (client, content) => {
       client.setQueryData<Comment[]>(flowKeys.comments(projectId, cardId), (rows) => [
         ...(rows ?? []),
-        { id: -Date.now(), content, user: me, createdAt: new Date().toISOString(), updatedAt: "" },
+        { id: nextGuessId(), content, user: me, createdAt: new Date().toISOString(), updatedAt: "" },
       ]);
       editCard(client, projectId, cardId, (c) => ({ ...c, commentsCount: c.commentsCount + 1 }));
     },

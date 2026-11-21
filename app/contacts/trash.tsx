@@ -42,8 +42,7 @@ export default function ContactsTrash() {
   const busy = (c: Contact) => (restore.isPending && restore.variables === c.id) || (destroy.isPending && destroy.variables === c.id);
 
   return (
-    <Screen measure>
-      <AppHeader app="contacts" title={t("contacts.trash.title")} back />
+    <Screen measure header={<AppHeader app="contacts" title={t("contacts.trash.title")} back />}>
       <LoadFailure error={trash.error} loadFailed={t("contacts.trash.loadFailed")} hasData={Boolean(trash.data)} updatedAt={trash.dataUpdatedAt} onRetry={() => void trash.refetch()} testID="contacts-trash-load-failed" />
       {error ? (
         <Text testID="contacts-trash-error" tone="danger" style={{ paddingBottom: metrics.space.sm }}>

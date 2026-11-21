@@ -217,6 +217,21 @@ describe("the header (M1, M2, M3, M10)", () => {
       expect(screen.getByTestId("header-ai-label")).toHaveTextContent("AI");
       expect(screen.getByTestId("header-chats-label")).toHaveTextContent("Chats");
     });
+
+    // The owner: "the top must be identical everywhere". On 2026-11-20 a
+    // header that sized itself from a 640 dp column dropped its button names
+    // there and kept them on full-width screens: two looks on one tablet.
+    // The header follows the WINDOW; a screen gives it the full width through
+    // `Screen`'s `header` slot (src/components/ScreenContainer.tsx).
+    it("at 800 dp the buttons carry the same names wherever the header is laid out", async () => {
+      widthOf(800);
+      counts(0, 0);
+      open("finance");
+      const header = await screen.findByTestId("app-header");
+      act(() => fireEvent(header, "layout", { nativeEvent: { layout: { x: 0, y: 0, width: 640 - 2 * 16, height: 56 } } }));
+      expect(screen.getByTestId("header-chats-label")).toHaveTextContent("Chats");
+      expect(screen.getByTestId("header-ai-label")).toHaveTextContent("AI");
+    });
   });
 
   it.each([

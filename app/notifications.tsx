@@ -236,8 +236,7 @@ export default function Notifications() {
   const unread = data?.pages[0]?.unreadCount ?? 0;
 
   return (
-    <Screen measure>
-      <AppHeader app="notifications" />
+    <Screen measure header={<AppHeader app="notifications" />}>
       {/* The app's own row: mark all read, clear the read ones, refresh. */}
       <View
         style={{

@@ -20,7 +20,7 @@ import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { APP_COLORS } from "@/theme/appColors";
 import { formatDay } from "@/screens/calendar/dates";
-import { assigneesOf, colorHex, dueOf, initials, isOverdue, labelsOf, priorityOf } from "./logic";
+import { TILE, assigneesOf, colorHex, dueOf, initials, isOverdue, labelsOf, priorityOf, tileHeight, tileShape } from "./logic";
 
 export const FLOW_COLOR = APP_COLORS.flow;
 /** The dark glyph every app badge uses on its solid colour (`appColors.ts` GLYPH). */
@@ -72,11 +72,10 @@ export function RolePill({ role }: { role: FlowRole }) {
 }
 
 /**
- * A card on the board. Height is fixed by construction: labels row (always
- * drawn, empty or not), a two-line title box, and one meta row.
+ * A card on the board. Its height is known before it is drawn
+ * (`tileHeight(tileShape(…))` in `logic.ts`): a two-line title box, and the
+ * badge row and the meta row only when the card has something to put in them.
  */
-export const TILE_HEIGHT = 112;
-
 export function CardTile({
   card,
   fields,
@@ -105,6 +104,7 @@ export function CardTile({
   const late = isOverdue(due, today);
   const labels = labelsOf(card, fields, tagsByCategory);
   const assignees = assigneesOf(card, fields, people);
+  const shape = tileShape(card, fields, tagsByCategory, people);
   const pending = card.id < 0;
 
   const parts = [
@@ -129,30 +129,33 @@ export function CardTile({
       accessibilityLabel={parts.join(". ")}
       accessibilityHint={onLongPress ? t("flow.tile.hint") : undefined}
       style={{
-        height: TILE_HEIGHT,
-        padding: metrics.space.md,
+        height: tileHeight(shape),
+        padding: TILE.pad,
+        gap: TILE.gap,
         borderRadius: metrics.radius.md,
         backgroundColor: pressed ? colors.border : colors.surface,
         borderWidth: 1,
         borderColor: colors.border,
         opacity: pending ? 0.6 : 1,
-        justifyContent: "space-between",
       }}
     >
-      <View style={{ flexDirection: "row", gap: 4, height: 18, overflow: "hidden" }}>
+      {shape.badges ? (
+      <View style={{ flexDirection: "row", gap: 4, height: TILE.badges, overflow: "hidden" }}>
         {priority ? <Pill label={priority.label} color={priority.color ?? colors.inkMuted} /> : null}
         {labels.slice(0, 3).map((l) => (
-          <View key={l.id} style={{ paddingHorizontal: 6, height: 18, justifyContent: "center", borderRadius: 4, backgroundColor: `${l.color ?? colors.inkMuted}33` }}>
+          <View key={l.id} style={{ paddingHorizontal: 6, height: TILE.badges, justifyContent: "center", borderRadius: 4, backgroundColor: `${l.color ?? colors.inkMuted}33` }}>
             <Text numberOfLines={1} style={{ fontSize: 11, lineHeight: 14, fontWeight: "600", color: colors.ink, maxWidth: 90 }}>
               {l.label}
             </Text>
           </View>
         ))}
       </View>
-      <Text numberOfLines={2} style={{ fontWeight: "600", fontSize: 15, lineHeight: 20, height: 40 }}>
+      ) : null}
+      <Text numberOfLines={2} style={{ fontWeight: "600", fontSize: 15, lineHeight: 20, height: TILE.title }}>
         {card.title}
       </Text>
-      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, height: 22 }}>
+      {shape.meta ? (
+      <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, height: TILE.meta }}>
         {due ? (
           <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
             <Calendar size={13} color={late ? colors.danger : colors.inkMuted} />
@@ -178,10 +181,15 @@ export function CardTile({
           ))}
         </View>
       </View>
+      ) : null}
     </Pressable>
   );
 }
 
+/**
+ * Each option as wide as its label, the rest shared out: equal thirds cut
+ * "Commentaires (1)" to "Commentaire…" in French at 411 dp (device, 2026-11-20).
+ */
 export function Segmented<T extends string>({ value, options, onChange, testID }: { value: T; options: { value: T; label: string }[]; onChange: (v: T) => void; testID: string }) {
   const colors = useColors();
   const metrics = useMetrics();
@@ -197,7 +205,7 @@ export function Segmented<T extends string>({ value, options, onChange, testID }
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={o.label}
-            style={{ flex: 1, minHeight: 40, borderRadius: metrics.radius.pill, alignItems: "center", justifyContent: "center", paddingHorizontal: metrics.space.md, backgroundColor: on ? colors.accent : "transparent" }}
+            style={{ flexGrow: 1, flexShrink: 1, flexBasis: "auto", minHeight: 40, borderRadius: metrics.radius.pill, alignItems: "center", justifyContent: "center", paddingHorizontal: metrics.space.md, backgroundColor: on ? colors.accent : "transparent" }}
           >
             <Text variant="label" tone={on ? "onAccent" : "muted"} numberOfLines={1}>
               {o.label}

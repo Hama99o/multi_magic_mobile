@@ -12,7 +12,7 @@
  */
 import MockAdapter from "axios-mock-adapter";
 import { Alert } from "react-native";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import type { ReactElement } from "react";
 import i18n from "@/i18n";
@@ -77,6 +77,8 @@ describe("the projects list", () => {
     mock.onGet(`${B}/projects`).reply(200, { projects: [], meta: { pagy: { page: 1, pages: 1 } } });
     renderScreen(<Flow />);
     expect(await screen.findByTestId("flow-empty")).toBeTruthy();
+    // One way to create here, not two (device, 2026-11-20).
+    expect(screen.queryByTestId("flow-new-project")).toBeNull();
     fireEvent.press(screen.getByTestId("flow-empty-create"));
     expect(screen.getByTestId("flow-project-sheet")).toBeTruthy();
   });
@@ -86,7 +88,7 @@ describe("the projects list", () => {
     mock.onPost(`${B}/projects`).reply(201, { project: project(12, "[qa] Made") });
     renderScreen(<Flow />);
     await screen.findByTestId("flow-empty");
-    fireEvent.press(screen.getByTestId("flow-new-project"));
+    fireEvent.press(screen.getByTestId("flow-empty-create"));
     fireEvent.press(screen.getByTestId("flow-project-save"));
     expect(screen.getByTestId("flow-project-title-error")).toBeTruthy();
     expect(mock.history.post).toHaveLength(0);
@@ -169,6 +171,45 @@ describe("the board", () => {
     hold();
   });
 
+  // Device, 2026-11-20 (qa_phone3): one Enter on Android fired
+  // onSubmitEditing twice and the server got the same card twice; the two
+  // guesses also shared `-Date.now()` as their id, a duplicate list key.
+  it("sends a card ONCE when one Enter fires submit twice, and two quick adds in one millisecond keep distinct rows", async () => {
+    let hold!: () => void;
+    const held = new Promise<void>((r) => (hold = r));
+    mock.onGet(`${B}/projects/7/board`).reply(200, boardAs("member"));
+    let n = 0;
+    mock.onPost(`${B}/projects/7/cards`).reply(async (cfg) => {
+      await held;
+      const title = JSON.parse(cfg.data).card.title;
+      return [201, { card: { ...cardsOnly[0], id: 960 + n++, title, position: 9, field_values: {} } }];
+    });
+    const now = jest.spyOn(Date, "now").mockReturnValue(1_800_000_000_000);
+    const errors = jest.spyOn(console, "error");
+    try {
+      renderScreen(<Board />);
+      await screen.findByTestId("flow-column-1");
+      fireEvent.press(screen.getByTestId("flow-column-1-add"));
+      const input = screen.getByTestId("flow-quick-add-input");
+      fireEvent.changeText(input, "[qa] Once");
+      // Both events in one batch, as the device delivers them: no re-render between.
+      act(() => {
+        input.props.onSubmitEditing();
+        input.props.onSubmitEditing();
+      });
+      fireEvent.changeText(input, "[qa] Twice");
+      fireEvent(input, "submitEditing");
+      expect(await screen.findByText("[qa] Twice")).toBeTruthy();
+      expect(screen.getAllByText("[qa] Once")).toHaveLength(1);
+      expect(errors.mock.calls.flat().join(" ")).not.toMatch(/same key/);
+      expect(bodies("post", `${B}/projects/7/cards`).map((b) => (b as { card: { title: string } }).card.title)).toEqual(["[qa] Once", "[qa] Twice"]);
+    } finally {
+      now.mockRestore();
+      errors.mockRestore();
+      hold();
+    }
+  });
+
   it("moves a card to the next column through `move`, then sends both columns' order", async () => {
     mock.onGet(`${B}/projects/7/board`).reply(200, boardAs("member"));
     mock.onPut(`${B}/projects/7/cards/900/move`).reply(200, { card: { ...cardsOnly[0], flow_app_column_id: 15 } });
@@ -216,7 +257,7 @@ describe("the board", () => {
     mock.onGet(`${B}/projects/7/board`).reply(200, { ...board, cards: cardsOnly });
     renderScreen(<Board />);
     await screen.findByText("Write the brief");
-    expect(screen.getByTestId("flow-sprint-chip").props.accessibilityLabel).toContain("No sprint (backlog)");
+    expect(screen.getByTestId("flow-sprint-chip").props.accessibilityLabel).toContain("Not in a sprint");
     fireEvent.press(screen.getByTestId("flow-sprint-chip"));
     expect(screen.queryByTestId("flow-scope-all")).toBeNull();
   });

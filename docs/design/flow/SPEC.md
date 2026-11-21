@@ -71,7 +71,55 @@ them; nobody forks them.
 4. **Colours are data**: project colours are names, column colours hexes, both as the web stores them; not theme tokens.
 5. Flow's app colour is **mint** `#3ecf9a` (`MINT`), clear of the icon's teal and green.
 
-## QA (to run when Hello gives the slot)
+## QA — the device plan (to run when Hello gives the slot)
 
-On `qa_phone2`, QA account only, everything created named `[qa] …` and deleted after:
-projects list → create → board (pager, chips, filter, sprint switch) → quick add → move → card (each field type, comment, link note, history) → columns → fields → members (add by email, role, remove) → delete project. 360 / 411 / 800 dp, light and dark, en and fr.
+**Rig.** `qa_phone2` only (claim it: `./qa/qa.sh claim flow`), Metro 3029, API
+3001 through `10.0.2.2`, `nvm use` first. The QA account only, never the
+owner's (`.env` `QA_EMAIL`). Everything this run makes is named `[qa] …` and
+deleted at the end; nothing is seeded. Name the AVD in the report
+(`pgrep -af qemu-system`). Force-stop and relaunch after every `wm density`
+(RN caches the window size).
+
+**Matrix.** Each screen at **360, 411 and 800 dp** (`wm size` / `wm density`),
+**light and dark**, **en and fr**. That is 12 shots per screen; a contact sheet of
+them goes to MultiMagic Pages and to Hello, and the three-width set to `ours/`.
+
+| # | Screen / state | How it is reached | Passes when |
+|---|---|---|---|
+| Q1 | Projects list, empty | fresh QA account (or after cleanup) | empty state + "Create your first project"; no overlap at 360 fr |
+| Q2 | Projects list, rows | after Q3 | newest first; stats line fits 360 fr; role pill absent for owner |
+| Q3 | New project sheet | FAB | keyboard does not cover Save (edge-to-edge, `KeyboardPadding`); empty title refused |
+| Q4 | Board, phone | the new project | one column per page with the next peeking; chips scroll; chip jumps; snapping lands on a column edge |
+| Q5 | Board, tablet (800 dp) | same | columns side by side, 300 dp each, no peeking clip |
+| Q6 | Quick add | + in To Do | card shows at once, field stays open for the next |
+| Q7 | Long press menu, Move to…, Move to next | a card | the board follows the card to its new column; history says "moved it from To Do to Done" |
+| Q8 | Reorder mode | column ⋯ › Reorder | drag by the grip moves the card; ▲▼ too; Done returns to the list; **no row overlap after leaving the mode** (recycled-cell rule) |
+| Q9 | Filter sheet | Filter | the count badge; "1 of 2" in the column header; Clear |
+| Q10 | Sprints | sprint chip | create (dates, end before start refused), start, complete, switch scope, delete (confirm says cards go back) |
+| Q11 | Card | tap a card | each field type opens its editor; date grid; time wheel; option colours; record picker search; **attachment from Photos and from Files**, opens, removes |
+| Q12 | Description | Add a description | the Notes editor opens and the text comes back rendered |
+| Q13 | Comments, notes, history | card tabs | composer above the keyboard; long press → Copy / Edit / Delete; link a `[qa]` note and open it |
+| Q14 | Columns screen | board ⋯ › Columns | rename, colour, Final, reorder, add, delete (confirm names the target) |
+| Q15 | Fields screen | board ⋯ › Project fields | types in words (fr too); add a select with options; labels editor; delete confirmed |
+| Q16 | Members | board ⋯ | search finds a user; role sheet; invite by email is **opened and cancelled** (an email would go to a real address) |
+| Q17 | **Viewer** | needs a second account made viewer on a QA project | no + / ⋯ / field editors; comment still possible. **Needs a throwaway second account: if none exists this is NOT MEASURED** (jest covers it: `flowApp.test.tsx` "gives a viewer…") |
+| Q18 | **Long board, paging** | a QA project with 250 `[qa]` cards made through the REST API as the QA account, deleted after | the "Loading cards… n of 250" pill, then every card; scroll a 120-card column without jank; counts right |
+| Q19 | **Offline** | `svc wifi disable; svc data disable` on the emulator, then back | the offline banner; a write fails and is put back with its sentence; Retry after reconnect |
+| Q20 | **Error** | API stopped is NOT allowed (shared backend): use `qa/faults.sh` proxy 5xx | `LoadFailure` with Retry on projects, board and card |
+| Q21 | Links | `adb shell am start -d 'multimagic://flow/card?projectId=…&id=…'` and a chat link | opens the card with Home under it |
+| Q22 | Reopen | kill on a board, relaunch | reopens that board |
+| Q23 | Cleanup | delete the QA project(s) | none of `[qa] …` left (checked with a GET as the QA account) |
+
+`qa/flows/28-flow.yaml` covers Q1-Q7 and Q23 automatically; the rest is driven
+by hand with screenshots, each with its verdict in the report.
+
+## Receipts
+
+| Gate | Result | When |
+|---|---|---|
+| `tsc --noEmit` | rc 0 | 2026-11-20 15:11 |
+| `eslint --max-warnings 0 app src` | rc 0 | 2026-11-20 15:12 |
+| Jest, full, `--maxWorkers=1` | 3419/3420; the one failure (a nameless "Show older" button, `a11y.test.tsx`) fixed and its suite rerun green | 2026-11-20 15:20-15:36 |
+| Planted breaks | viewer given `editCards`, tile due date read from the card's column: 5 tests red; restored | 2026-11-20 15:17 |
+| `npm run bundle` (node 22.19.0) | rc 0, android Hermes bundle 8 MB | 2026-11-20 15:52 |
+| Device QA | NOT MEASURED (awaiting the slot) | — |

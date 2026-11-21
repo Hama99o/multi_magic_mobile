@@ -108,6 +108,32 @@ export function initials(name: string): string {
   return (words[0][0] + words[words.length - 1][0]).toUpperCase();
 }
 
+/**
+ * What a tile draws besides its title, so its height is known before it is
+ * drawn: a recycled list needs a fixed height per row (the owner's rule), and
+ * one height for every card left a title-only card two thirds empty (device,
+ * 2026-11-20). Fixed per card, not measured.
+ */
+export interface TileShape {
+  /** Priority or labels. */
+  badges: boolean;
+  /** Due date, comments or assignees. */
+  meta: boolean;
+}
+
+export function tileShape(card: Card, fields: FieldDefinition[], tagsByCategory: Record<number, Tag[]>, people: Person[]): TileShape {
+  return {
+    badges: priorityOf(card, fields) !== null || labelsOf(card, fields, tagsByCategory).length > 0,
+    meta: dueOf(card, fields) !== null || card.commentsCount > 0 || assigneesOf(card, fields, people).length > 0,
+  };
+}
+
+/** A tile's parts in dp: padding, the two-line title box, and each optional row with the gap above it. */
+export const TILE = { pad: 12, title: 40, badges: 22, meta: 22, gap: 6 } as const;
+
+export const tileHeight = ({ badges, meta }: TileShape) =>
+  2 * TILE.pad + TILE.title + (badges ? TILE.badges + TILE.gap : 0) + (meta ? TILE.meta + TILE.gap : 0);
+
 // ── Filter and order ─────────────────────────────────────────────────────
 
 export interface BoardFilter {

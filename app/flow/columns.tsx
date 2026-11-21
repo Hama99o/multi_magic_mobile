@@ -8,7 +8,7 @@
  * sentence is shown as it comes (`column.rb#relocate_cards_before_destroy`).
  * The order is changed in Reorder mode (drag, or ▲ ▼), sent once.
  */
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Alert, Pressable, ScrollView, Switch, TextInput, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -62,8 +62,7 @@ export default function ColumnsScreen() {
   };
 
   return (
-    <Screen measure>
-      <AppHeader app="flow" back title={t("flow.columns.title")} />
+    <Screen measure header={<AppHeader app="flow" back title={t("flow.columns.title")} />}>
       {project.data ? (
         <Text tone="muted" variant="caption" numberOfLines={1} style={{ marginBottom: metrics.space.xs }}>
           {project.data.title}
@@ -112,7 +111,7 @@ export default function ColumnsScreen() {
               </View>
               {manage ? (
                 <Pressable testID="flow-column-delete" onPress={() => confirmDelete(col)} accessibilityRole="button" accessibilityLabel={t("flow.columns.delete", { title: col.title })} style={{ width: 44, height: 44, alignItems: "center", justifyContent: "center" }}>
-                  <Trash2 size={18} color={colors.danger} />
+                  <Trash2 size={18} color={colors.inkMuted} />
                 </Pressable>
               ) : null}
             </View>
@@ -173,17 +172,32 @@ function ColumnForm({ title, initial, withColor, onSave, onClose, busy = false, 
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
+  const firstInput = useRef<TextInput>(null);
   const [name, setName] = useState(initial);
+  // One save per Enter: Android can deliver it twice in one tick (`useSubmitText`).
+  const sent = useRef(false);
+  const save = () => {
+    const v = name.trim();
+    if (!v || sent.current) return;
+    sent.current = true;
+    // Long enough to swallow the duplicate, short enough that a refused save can be retried.
+    setTimeout(() => (sent.current = false), 500);
+    onSave(v);
+  };
+  const edit = (v: string) => {
+    sent.current = false;
+    setName(v);
+  };
   return (
-    <BottomSheet open title={title} onClose={onClose} testID="flow-column-form" footer={<SheetButton testID="flow-column-form-save" label={t("fields.save")} busy={busy} disabled={!name.trim()} onPress={() => onSave(name.trim())} />}>
+    <BottomSheet focusRef={firstInput} open title={title} onClose={onClose} testID="flow-column-form" footer={<SheetButton testID="flow-column-form-save" label={t("fields.save")} busy={busy} disabled={!name.trim()} onPress={save} />}>
       <View style={{ gap: metrics.space.md }}>
         <TextInput
           testID="flow-column-form-name"
           value={name}
-          onChangeText={setName}
-          autoFocus
+          onChangeText={edit}
+          ref={firstInput}
           returnKeyType="done"
-          onSubmitEditing={() => name.trim() && onSave(name.trim())}
+          onSubmitEditing={save}
           placeholder={t("flow.columns.namePlaceholder")}
           placeholderTextColor={colors.inkMuted}
           accessibilityLabel={t("flow.columns.name")}

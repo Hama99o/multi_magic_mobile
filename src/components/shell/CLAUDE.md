@@ -19,6 +19,15 @@ phones too.
   340 dp, where the title would have less than about 56 dp, does it give way
   to the app's badge alone (`COMPACT_BELOW`, `BADGE_ONLY_BELOW` in
   `AppHeader.tsx`).
+- **The header goes in `Screen`'s `header` slot, never inside the screen**
+  (2026-11-20): `<Screen measure header={<AppHeader app="todos" />}>`. The
+  slot is full width, outside the 640 dp measure and above a scrolling
+  body, so the top is the same on every screen at every width. Written
+  inside a measured `Screen`, at 800 dp the labelled buttons left a long
+  title a few dp; sizing the header from that column instead dropped the
+  labels on those screens only, two looks on one tablet (both measured,
+  `docs/design/app-shell/ours/800-*`). `ScreenContainer.header.test.tsx`
+  fails on any `<AppHeader` written as the first child of a `<Screen>`.
 - **An app's name is never cut on a phone, in any language** (mm-40 saw
   "Discussio…" at FR 360 dp). Below 400 dp the gaps tighten (6 dp around
   the title, none between the 36 dp buttons). The title shrinks to fit

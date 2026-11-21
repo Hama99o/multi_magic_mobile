@@ -90,8 +90,7 @@ export default function SharedIntoContactsScreen() {
   };
 
   return (
-    <Screen measure>
-      <AppHeader app="contacts" title={picking ? t("contacts.share.pickTitle") : t("contacts.share.title")} back onBack={picking ? () => setPicking(false) : undefined} />
+    <Screen measure header={<AppHeader app="contacts" title={picking ? t("contacts.share.pickTitle") : t("contacts.share.title")} back onBack={picking ? () => setPicking(false) : undefined} />}>
       <View style={{ height: metrics.space.md }} />
 
       {error ? (

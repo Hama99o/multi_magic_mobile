@@ -39,8 +39,7 @@ export default function SafeZoneItemScreen() {
   // The item's name, once it is open; the app's name while it loads or is locked.
   const [title, setTitle] = useState<string | null>(null);
   return (
-    <Screen measure>
-      <AppHeader app="safezone" title={title ?? undefined} back />
+    <Screen measure header={<AppHeader app="safezone" title={title ?? undefined} back />}>
       {/* The item's own row, under the shared header: edit. */}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
         <EditKey />

@@ -67,8 +67,7 @@ function scopeFromParam(v: string | undefined): SprintScope {
 function BadLink() {
   const { t } = useTranslation();
   return (
-    <Screen measure>
-      <AppHeader app="flow" back />
+    <Screen measure header={<AppHeader app="flow" back />}>
       <EmptyState testID="flow-board-bad-link" icon={Kanban} title={t("flow.board.notFound")} />
     </Screen>
   );
@@ -199,10 +198,12 @@ function Board({ projectId, initialScope }: { projectId: number; initialScope: S
   ];
 
   return (
-    <Screen measure={false}>
-      <View style={{ paddingHorizontal: metrics.space.lg }}>
-        <AppHeader app="flow" back title={project?.title ?? t("flow.title")} />
-      </View>
+    <Screen measure={false} header={<AppHeader app="flow" back title={project?.title ?? t("flow.title")} />}>
+      {/* Edge to edge: `Screen` adds a 16 dp gutter and every row below adds
+          its own, so without this the board had two (device, 2026-11-20): the
+          next column's peek was gone, since `columnWidth` is measured from the
+          whole window. The header is in `Screen`'s slot, full width. */}
+      <View style={{ flex: 1, marginHorizontal: -metrics.space.lg }}>
 
       {/* The board's own row: sprint, search, filter, ⋯ */}
       <View style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingHorizontal: metrics.space.lg, paddingBottom: metrics.space.sm }}>
@@ -212,7 +213,7 @@ function Board({ projectId, initialScope }: { projectId: number; initialScope: S
           disabled={!project}
           accessibilityRole="button"
           accessibilityLabel={t("flow.board.showing", { what: sprintLabel(shownScope, sprints, t) })}
-          style={{ flex: 1, flexDirection: "row", alignItems: "center", gap: 6, minHeight: 40, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
+          style={{ flexGrow: 1, flexShrink: 1, maxWidth: 360, marginRight: "auto", flexDirection: "row", alignItems: "center", gap: 6, minHeight: 40, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
         >
           <Text variant="label" numberOfLines={1} style={{ flexShrink: 1 }}>
             {sprintLabel(shownScope, sprints, t)}
@@ -293,6 +294,10 @@ function Board({ projectId, initialScope }: { projectId: number; initialScope: S
           ref={pager}
           testID="flow-board-pager"
           horizontal
+          // Taps reach the quick add's "Add" with the keyboard up. Without
+          // this the outer list took the first tap to close the keyboard and
+          // the card was never sent (28-flow on qa_phone3, 2026-11-20).
+          keyboardShouldPersistTaps="handled"
           data={columns}
           keyExtractor={(c) => String(c.id)}
           showsHorizontalScrollIndicator={false}
@@ -362,6 +367,7 @@ function Board({ projectId, initialScope }: { projectId: number; initialScope: S
           />
         </BottomSheet>
       ) : null}
+      </View>
     </Screen>
   );
 }

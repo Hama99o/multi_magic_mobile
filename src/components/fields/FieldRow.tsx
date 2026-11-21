@@ -20,7 +20,7 @@
  *   attachment(s) → the files listed in the row; add from photos or files;
  *   created_time, last_modified_time, lookup, rollup → read only.
  */
-import { createElement, useEffect, useMemo, useState } from "react";
+import { createElement, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, Alert, FlatList, Linking, Pressable, Switch, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
@@ -270,6 +270,7 @@ function TextSheet({ field, value, writes, onClose, testID }: { field: FieldDefi
   const initial = scalar(value);
   const [text, setText] = useState(initial == null ? "" : String(initial));
   const [tried, setTried] = useState(false);
+  const inputRef = useRef<TextInput>(null);
   const problem = textProblem(field, text, t);
   const multiline = field.fieldType === "long_text";
   const kind = field.fieldType;
@@ -303,6 +304,7 @@ function TextSheet({ field, value, writes, onClose, testID }: { field: FieldDefi
       open
       title={field.name}
       onClose={onClose}
+      focusRef={inputRef}
       testID={testID}
       footer={
         <View style={{ flexDirection: "row", gap: metrics.space.sm }}>
@@ -322,10 +324,10 @@ function TextSheet({ field, value, writes, onClose, testID }: { field: FieldDefi
       }
     >
       <TextInput
+        ref={inputRef}
         testID={`${testID}-input`}
         value={text}
         onChangeText={setText}
-        autoFocus
         multiline={multiline}
         keyboardType={keyboard}
         autoCapitalize={kind === "email" || kind === "url" ? "none" : "sentences"}
@@ -467,7 +469,8 @@ function SelectSheet({ field, value, writes, onClose, testID }: { field: FieldDe
               onClose();
             }}
           />
-        ) : !field.required && optionsFor(field, value).length ? (
+          // A select with its own "None" option (Flow's priority) already has the way to empty it: no second button that does the same (device, 2026-11-20).
+        ) : !field.required && optionsFor(field, value).length && !field.config.options.some((o) => o.value === "none") ? (
           <SheetButton
             testID={`${testID}-clear`}
             label={t("fields.clear")}

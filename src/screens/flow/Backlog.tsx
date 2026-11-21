@@ -12,6 +12,7 @@ import { useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
+import { useSubmitText } from "@/lib/useSubmitText";
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { flowKeys } from "@/api/keys";
 import { flowApi, type Project } from "@/api/flow";
@@ -206,18 +207,18 @@ function InlineAdd({ onAdd, onClose }: { onAdd: (title: string) => void; onClose
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
-  const [title, setTitle] = useState("");
+  const title = useSubmitText();
   return (
     <TextInput
       testID="flow-backlog-add-input"
-      value={title}
-      onChangeText={setTitle}
+      value={title.value}
+      onChangeText={title.onChangeText}
       autoFocus
       submitBehavior="submit"
       returnKeyType="done"
       onSubmitEditing={() => {
-        if (title.trim()) onAdd(title.trim());
-        setTitle("");
+        const v = title.take();
+        if (v) onAdd(v);
       }}
       onBlur={onClose}
       placeholder={t("flow.board.cardTitle")}

@@ -223,8 +223,7 @@ export default function Home() {
   const badgeOf = (key: HomeApp) => (key === "chats" ? capBadge(badges.chats, 9) : key === "notifications" ? capBadge(badges.notifications, 99) : null);
 
   return (
-    <Screen measure={false}>
-      <AppHeader app="home" />
+    <Screen measure={false} header={<AppHeader app="home" />}>
       <ScrollView
         contentContainerStyle={{ gap: metrics.space.lg, paddingTop: metrics.space.lg, paddingBottom: metrics.space.xl, width: "100%", maxWidth: 1100, alignSelf: "center" }}
         showsVerticalScrollIndicator={false}

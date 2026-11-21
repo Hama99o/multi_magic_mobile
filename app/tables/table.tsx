@@ -40,7 +40,7 @@ import { calendarable, columnValue, kanbanable, kanbanColumns, monthFilters, mov
 import { scalar } from "@/components/fields/display";
 import { todayKey } from "@/screens/calendar/dates";
 import type { FieldDefinition } from "@/api/fields";
-import { ArrowDown, ArrowRightLeft, ArrowUp, CalendarDays, Kanban, MessageSquareText, Trash2, Users } from "@/components/icons";
+import { ArrowDown, ArrowRightLeft, ArrowUp, CalendarDays, Kanban, MessageSquareText, Trash2, Upload, Users } from "@/components/icons";
 import type { ViewType } from "@/api/tables";
 import type { LucideIcon } from "lucide-react-native";
 import { FilterSortSheet } from "@/screens/tables/FilterSortSheet";
@@ -49,6 +49,7 @@ import { SaveViewSheet } from "@/screens/tables/SaveViewSheet";
 import { ViewsSheet } from "@/screens/tables/ViewsSheet";
 import { useTableAdmin } from "@/screens/tables/useTableAdmin";
 import { useTableExport } from "@/screens/tables/useTableExport";
+import { ImportBanner } from "@/screens/tables/ImportBanner";
 import { DeleteByNameSheet } from "@/screens/tables/DeleteByNameSheet";
 import { BulkEditSheet } from "@/screens/tables/BulkEditSheet";
 import { ShareSheet } from "@/screens/tables/ShareSheet";
@@ -272,6 +273,8 @@ export default function TableScreen() {
     ...(personal && editable ? [{ key: "save", label: t("tables.saveView.title"), hint: t("tables.saveView.hint"), icon: Save, onPress: () => setTimeout(() => setSheet("save"), 320) }] : []),
     ...(personal ? [{ key: "reset", label: t("tables.backToShared"), hint: t("tables.backToSharedHint"), icon: RotateCcw, onPress: reset }] : []),
     ...(exporter.action ? [exporter.action] : []),
+    // Increment 7: a file or a paste into this table (people who edit it).
+    ...(editable ? [{ key: "import", label: t("tables.import.action"), hint: t("tables.import.actionHint"), icon: Upload, onPress: () => router.push({ pathname: "/tables/import", params: { table: String(tableId) } }) }] : []),
     ...admin.actions,
     // The owner, 2026-11-20: a table and a base can be deleted from the phone, by typing the name.
     ...(editable ? [{ key: "deleteTable", label: t("tables.remove.tableAction"), icon: Trash2, danger: true, onPress: () => setTimeout(() => setSheet("deleteTable"), 320) }] : []),
@@ -493,6 +496,7 @@ export default function TableScreen() {
           <Text tone="danger">{failure}</Text>
         </Pressable>
       ) : null}
+      {Number.isFinite(tableId) ? <ImportBanner tableId={tableId} canEdit={editable} /> : null}
       <LoadFailure error={table.error ?? (records.data ? null : records.error)} loadFailed={t("tables.tableLoadFailed")} hasData={Boolean(records.data)} updatedAt={records.dataUpdatedAt} onRetry={() => void (table.error ? table.refetch() : records.refetch())} testID="tables-table-failed" />
       <UnreadableNotice count={unreadable} />
 

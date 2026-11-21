@@ -203,6 +203,8 @@ const COMPOSED = [
   ...["kanban", "calendar", "gallery"].flatMap((v) => [`tables.viewsSheet.column.${v}`, `tables.viewsSheet.noColumn.${v}`]),
   // Reordering a card within its column (`table.tsx`, MoveWithin).
   ...["top", "up", "down"].map((v) => `tables.kanban.within.${v}`),
+  // Why an import could not read its file (`importFlow.ts` ReadOutcome, `tableImports.ts` PreviewRefusal).
+  ...["too_large", "unsupported_type", "unreadable", "empty", "no_sheet", "needs_server", "missing", "other"].map((v) => `tables.import.refused.${v}`),
   // The column editor (`FieldEditorSheet.tsx`): relations, rollup functions, why Save is off.
   ...["one_to_many", "many_to_one", "one_to_one", "many_to_many"].flatMap((v) => [`tables.fieldEditor.relations.${v}.label`, `tables.fieldEditor.relations.${v}.sentence`]),
   ...["count", "sum", "avg", "min", "max"].map((v) => `tables.fieldEditor.functions.${v}`),
@@ -224,6 +226,9 @@ const PLURAL = new Set([
   "tables.find.showCount",
   "tables.bulk.selected",
   "tables.admin.cleared",
+  "tables.import.summary",
+  "tables.import.wouldRefuse",
+  "tables.import.start",
   "tables.columns.deleteFilled",
   "tables.columns.trashedLine",
   "tables.bulk.editTitle",

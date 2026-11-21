@@ -935,6 +935,36 @@ describe("the table's columns (increment 6b; the web's column menu)", () => {
   });
 });
 
+describe("the import banner (increment 7)", () => {
+  const imp = (over: Record<string, unknown>) => ({ import: { id: 4, table_id: 10, status: "running", filename: "stock.csv", total_rows: 200, processed_rows: 50, created_count: 0, updated_count: 0, error_count: 0, error_message: null, cancel_requested: false, percent: 25, has_errors: false, dismissed_at: null, ...over } });
+  beforeEach(() => {
+    mockParams.current = { id: "10", base: "3" };
+    mock.onGet(`${B}/tables/10`).reply(200, tableBody());
+    mock.onGet(`${B}/tables/10/records`).reply(200, page([scarf]));
+    mock.onGet(`${B}/bases`).reply(200, { bases: [{ ...base(3, "[qa] Shop", [{ id: 10, name: "Items", position: 0 }]), role: "editor" }] });
+  });
+
+  it("a running import shows its progress, and an editor can stop it", async () => {
+    mock.onGet(`${B}/tables/10/imports/latest`).reply(200, imp({}));
+    mock.onPost(`${B}/imports/4/cancel`).reply(200, imp({ cancel_requested: true }));
+    renderScreen(<TableScreen />);
+    expect((await screen.findByTestId("tables-import-banner-line")).props.children).toBe("Importing stock.csv: 50 / 200 rows (25 %)");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    fireEvent.press(await screen.findByTestId("tables-import-banner-stop"));
+    await waitFor(() => expect(mock.history.post.map((r) => r.url)).toEqual([`${B}/imports/4/cancel`]));
+  });
+
+  it("a finished import says its counts; Close hides it for every device", async () => {
+    mock.onGet(`${B}/tables/10/imports/latest`).reply(200, imp({ status: "done", processed_rows: 200, created_count: 190, updated_count: 8, error_count: 2, percent: 100, has_errors: true }));
+    mock.onPost(`${B}/imports/4/dismiss`).reply(200, imp({ status: "done", dismissed_at: "now" }));
+    renderScreen(<TableScreen />);
+    expect((await screen.findByTestId("tables-import-banner-counts")).props.children).toBe("190 added · 8 updated · 2 refused");
+    await waitFor(() => expect(mock.history.get.some((r) => r.url === `${B}/bases`)).toBe(true));
+    fireEvent.press(await screen.findByTestId("tables-import-banner-close"));
+    await waitFor(() => expect(mock.history.post.map((r) => r.url)).toEqual([`${B}/imports/4/dismiss`]));
+  });
+});
+
 describe("export (increment 7)", () => {
   beforeEach(() => {
     mockParams.current = { id: "10", base: "3" };

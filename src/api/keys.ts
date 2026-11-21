@@ -230,6 +230,8 @@ export const tablesKeys = {
   members: <B extends number>(baseId: B) => ["tables", "members", baseId] as const,
   /** What a delete would take with it (`tables#impact`), read when the delete sheet opens. */
   impact: <T extends number>(tableId: T) => ["tables", "impact", tableId] as const,
+  /** The running or last import of a table (`imports#latest`, increment 7): the banner. */
+  imports: <T extends number>(tableId: T) => ["tables", "imports", tableId] as const,
   /** The column trash (`fields#trashed`, increment 6b). */
   trashedFields: <T extends number>(tableId: T) => ["tables", "trashed", tableId] as const,
   rows: <T extends number>(tableId: T) => ["tables", "rows", tableId] as const,

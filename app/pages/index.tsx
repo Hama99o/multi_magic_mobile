@@ -248,7 +248,7 @@ export default function PagesHome() {
             }}
             refreshing={drive.isRefetching}
             onRefresh={() => void drive.refetch()}
-            onOpen={(node) => openNode(node, { trail: node.space?.title ?? "" })}
+            onOpen={(node) => openNode(router, node, { trail: node.space?.title ?? "" })}
             showSpace
             locationOf={(node) => node.space?.title ?? ""}
             onSelectingChange={setSelecting}

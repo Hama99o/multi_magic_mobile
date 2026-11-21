@@ -253,7 +253,7 @@ export function SearchView() {
         }}
         refreshing={found.isRefetching}
         onRefresh={() => void found.refetch()}
-        onOpen={(node) => openNode(node, { trail: node.space?.title ?? "" })}
+        onOpen={(node) => openNode(router, node, { trail: node.space?.title ?? "" })}
         showSpace
         locationOf={(node) => node.space?.title ?? ""}
         bottomPadding={metrics.space.xl}

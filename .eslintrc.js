@@ -448,20 +448,15 @@ config.overrides = [
     },
   },
   {
-    // pane-nav: the files that may still use expo-router's singleton. The first
-    // five navigate the whole app ON PURPOSE (or are the hook itself); the last
-    // four are the codemod's hand-fix list, a module helper calling router, and
-    // leave this list when they are fixed.
+    // pane-nav: the files that may still use expo-router's singleton: the hook
+    // itself, and the four that navigate the WHOLE app on purpose (the app
+    // switcher's openApp, the last place, back to Home, the share intent).
     files: [
       "src/lib/nav.ts",
       "src/apps/registry.ts",
       "src/apps/lastPlace.ts",
       "src/hooks/useBackToHome.ts",
       "src/screens/pages/ShareIntentBridge.tsx",
-      "app/calendar/index.tsx",
-      "app/search.tsx",
-      "src/screens/pages/navigation.ts",
-      "src/screens/safezone/HealthPanel.tsx",
     ],
     rules: {
       "no-restricted-syntax": strip(restricted.filter((entry) => entry.id !== "pane-nav")),

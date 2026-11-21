@@ -29,7 +29,7 @@
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AccessibilityInfo, FlatList, Pressable, RefreshControl, View } from "react-native";
-import { router } from "expo-router";
+import { useNav, type Nav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -88,14 +88,16 @@ export function headingFor(
   return { label: pretty, isToday: false };
 }
 
-function open(occurrence: Occurrence) {
-  router.push({ pathname: "/calendar/event", params: { id: String(occurrence.event.id), on: occurrence.on } });
+/** `nav` is the screen's `useNav()`, so in a Workspace pane the event opens in that pane. */
+function open(nav: Nav, occurrence: Occurrence) {
+  nav.push({ pathname: "/calendar/event", params: { id: String(occurrence.event.id), on: occurrence.on } });
 }
 
 /** The Undo bar's height; the + sits above it while it shows. */
 const UNDO_BAR_HEIGHT = 52;
 
 export default function Calendar() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const insets = useSafeAreaInsets();
@@ -276,7 +278,7 @@ export default function Calendar() {
                 </Text>
               );
             }
-            return <EventRow occurrence={item.occurrence} onPress={() => open(item.occurrence)} />;
+            return <EventRow occurrence={item.occurrence} onPress={() => open(router, item.occurrence)} />;
           }}
           refreshControl={refreshControl}
           ListFooterComponent={
@@ -339,7 +341,7 @@ export default function Calendar() {
               </Text>
             ) : null
           }
-          renderItem={({ item }) => <EventRow occurrence={item} onPress={() => open(item)} />}
+          renderItem={({ item }) => <EventRow occurrence={item} onPress={() => open(router, item)} />}
           refreshControl={refreshControl}
           contentContainerStyle={{ paddingBottom: 96 }}
           showsVerticalScrollIndicator={false}

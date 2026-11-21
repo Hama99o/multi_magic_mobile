@@ -104,6 +104,7 @@ function SharedRow({ item }: { item: SharedItem }) {
 }
 
 export default function Drive() {
+  const router = useNav();
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -177,7 +178,7 @@ export default function Drive() {
           }}
           refreshing={nodesQuery.isRefetching}
           onRefresh={() => void nodesQuery.refetch()}
-          onOpen={(node) => openNode(node, { trail: node.space?.title ?? "" })}
+          onOpen={(node) => openNode(router, node, { trail: node.space?.title ?? "" })}
           showSpace
           locationOf={(node) => node.space?.title ?? ""}
           bottomPadding={metrics.space.xl}

@@ -334,7 +334,7 @@ export default function Folder() {
           }}
           refreshing={isRefetching}
           onRefresh={() => void refetch()}
-          onOpen={(node) => openNode(node, { trail: here })}
+          onOpen={(node) => openNode(router, node, { trail: here })}
           locationOf={() => here}
           bottomPadding={96 + insets.bottom}
           onSelectingChange={setSelecting}

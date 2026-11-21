@@ -19,6 +19,14 @@ export function letterIndexAt(y: number, top: number, height: number, count: num
   return Math.max(0, Math.min(count - 1, Math.floor(((y - top) / Math.max(1, height)) * count)));
 }
 
+/**
+ * The strip does not grow with the system font past 120 %: 27 letters on 15 dp
+ * lines are ~810 dp at 200 %, taller than a phone's list, and the last letters
+ * fell off the screen. A scrub index is a control, not reading text (iOS's own
+ * section index ignores Dynamic Type); the list it scrubs does grow.
+ */
+const INDEX_FONT_CAP = 1.2;
+
 export function AzIndex({ letters, onJump, testID }: { letters: string[]; onJump: (letter: string) => void; testID: string }) {
   const colors = useColors();
   const { t } = useTranslation();
@@ -86,7 +94,7 @@ export function AzIndex({ letters, onJump, testID }: { letters: string[]; onJump
         }}
       >
         {letters.map((letter) => (
-          <Text key={letter} testID={`${testID}-${letter}`} variant="caption" style={{ color: colors.accent, fontWeight: "600", fontSize: 11, lineHeight: 15 }}>
+          <Text key={letter} testID={`${testID}-${letter}`} variant="caption" maxFontSizeMultiplier={INDEX_FONT_CAP} style={{ color: colors.accent, fontWeight: "600", fontSize: 11, lineHeight: 15 }}>
             {letter}
           </Text>
         ))}

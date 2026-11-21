@@ -12,7 +12,7 @@
  * the trash, the duplicates and the WhatsApp country.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
-import { AccessibilityInfo, ActivityIndicator, Pressable, RefreshControl, ScrollView, SectionList, TextInput, View } from "react-native";
+import { AccessibilityInfo, ActivityIndicator, Pressable, RefreshControl, ScrollView, SectionList, TextInput, View, useWindowDimensions } from "react-native";
 import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -45,8 +45,18 @@ import { useFavourite, useRestoreContact, useTrashContact } from "@/screens/cont
 import { ContactCard } from "@/screens/contacts/ContactCard";
 import { useSplit } from "@/screens/contacts/split";
 
+/**
+ * A row and a section header have FIXED heights (getItemLayout: a jump to Z
+ * never measures), but Android scales fontSize AND lineHeight by the system
+ * font scale. So the text part grows with it: a row holds the name (body, 22)
+ * and the subtitle (caption, 17), a header its label (label, 18); padding does
+ * not grow, and a smaller font never shrinks them (Hello's sweep, 2026-11-21).
+ */
 const ROW = 64;
 const HEADER = 32;
+const textScale = (fontScale: number) => Math.max(1, fontScale);
+export const rowHeight = (fontScale: number) => Math.max(ROW, Math.ceil((22 + 17) * textScale(fontScale)) + 24);
+export const headerHeight = (fontScale: number) => Math.max(HEADER, Math.ceil(18 * textScale(fontScale)) + 14);
 const UNDO_MS = 8000;
 const UNDO_MS_SCREEN_READER = 30_000;
 const SEARCH_DEBOUNCE_MS = 250;
@@ -54,15 +64,15 @@ const SEARCH_DEBOUNCE_MS = 250;
 /** Where every row and header sits, for `getItemLayout`: a jump to Z must not
  *  depend on rows that were never rendered. SectionList counts a header and a
  *  (zero-height) footer per section. */
-function layoutOf(sections: Section[]) {
+function layoutOf(sections: Section[], row: number, header: number) {
   const out: { length: number; offset: number }[] = [];
   let offset = 0;
   for (const s of sections) {
-    out.push({ length: HEADER, offset });
-    offset += HEADER;
+    out.push({ length: header, offset });
+    offset += header;
     for (let i = 0; i < s.data.length; i++) {
-      out.push({ length: ROW, offset });
-      offset += ROW;
+      out.push({ length: row, offset });
+      offset += row;
     }
     out.push({ length: 0, offset });
   }
@@ -124,7 +134,10 @@ function ContactsList({ pane = false, openId = null, onOpen }: { pane?: boolean;
     const rows = sectionsOf(found.map((c) => ({ ...c, favorite: false })));
     return rows.length ? [{ key: "results", data: rows.flatMap((s) => s.data) }] : [];
   }, [book.data, server.data, searching, term, typed]);
-  const layout = useMemo(() => layoutOf(sections), [sections]);
+  const { fontScale } = useWindowDimensions();
+  const row = rowHeight(fontScale);
+  const header = headerHeight(fontScale);
+  const layout = useMemo(() => layoutOf(sections, row, header), [sections, row, header]);
   const letters = useMemo(() => sections.map((s) => s.key).filter((k) => k !== FAVOURITES && k !== "results"), [sections]);
 
   const jump = useCallback(
@@ -355,7 +368,7 @@ function ContactsList({ pane = false, openId = null, onOpen }: { pane?: boolean;
             stickySectionHeadersEnabled
             keyboardShouldPersistTaps="handled"
             keyboardDismissMode="on-drag"
-            getItemLayout={(_data, index) => ({ ...(layout[index] ?? { length: ROW, offset: ROW * index }), index })}
+            getItemLayout={(_data, index) => ({ ...(layout[index] ?? { length: row, offset: row * index }), index })}
             onScrollToIndexFailed={() => undefined}
             refreshControl={<RefreshControl refreshing={book.isRefetching} onRefresh={reload} tintColor={colors.inkMuted} />}
             ListHeaderComponent={
@@ -399,7 +412,7 @@ function ContactsList({ pane = false, openId = null, onOpen }: { pane?: boolean;
             }
             renderSectionHeader={({ section }) =>
               section.key === "results" ? null : (
-                <View style={{ height: HEADER, justifyContent: "flex-end", backgroundColor: colors.ground }}>
+                <View testID={`contacts-section-${section.key}-frame`} style={{ height: header, justifyContent: "flex-end", backgroundColor: colors.ground }}>
                   <Text testID={`contacts-section-${section.key}`} variant="label" tone={section.key === FAVOURITES ? "accent" : "muted"} accessibilityRole="header">
                     {section.key === FAVOURITES ? `★ ${t("contacts.list.favourites")}` : section.key}
                   </Text>
@@ -422,7 +435,7 @@ function ContactsList({ pane = false, openId = null, onOpen }: { pane?: boolean;
                   accessibilityActions={selecting ? undefined : [{ name: "longpress", label: t("contacts.list.moreActions") }]}
                   onAccessibilityAction={(e) => e.nativeEvent.actionName === "longpress" && setPressed(item)}
                   style={{
-                    height: ROW,
+                    height: row,
                     flexDirection: "row",
                     alignItems: "center",
                     gap: metrics.space.md,

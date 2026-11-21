@@ -180,6 +180,18 @@ export function routeForWebPath(path: string | null | undefined, label?: string 
     const view = id("view");
     return { pathname: "/tables/table", params: view ? { id: table[2], base: table[1], view } : { id: table[2], base: table[1] } };
   }
+  // Global search hits for SafeZone (multi_magic services/search/sources.rb).
+  const safe: Record<string, { kind: "passwords" | "payment_cards" | "identities"; param: string }> = {
+    "/safezone/passwords": { kind: "passwords", param: "password" },
+    "/safezone/payment-cards": { kind: "payment_cards", param: "card" },
+    "/safezone/identities": { kind: "identities", param: "identity" },
+  };
+  const vault = safe[pathname];
+  if (vault) {
+    if (!query.has(vault.param)) return "/safezone";
+    const record = id(vault.param);
+    return record ? { pathname: "/safezone/item", params: { kind: vault.kind, id: record } } : null;
+  }
   if (pathname === "/profile/me/api-keys") return "/ai-keys";
   if (pathname === "/ai") return "/chat";
   return null;

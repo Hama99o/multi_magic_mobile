@@ -22,7 +22,7 @@ import { useCallback, useRef, useState } from "react";
 import { I18nManager, Pressable, View, useWindowDimensions } from "react-native";
 import { router } from "expo-router";
 import { useTranslation } from "react-i18next";
-import { Bell, ChevronLeft, LayoutGrid, MessageSquare, Sparkles, type LucideIcon } from "@/components/icons";
+import { Bell, ChevronLeft, LayoutGrid, MessageSquare, Sparkles, type LucideIcon, Search } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useMe } from "@/hooks/useMe";
@@ -269,6 +269,12 @@ export function AppHeader({
       )}
 
       <View style={{ flexDirection: "row", alignItems: "center", gap: buttonGapFor(width) }} testID="header-buttons">
+        {/* The web's TopNav search key, first and icon only, as there. Tablets
+            only: on a phone a sixth key would cut an app's name, so search
+            opens from Home and the Apps sheet (docs/design/search/SPEC.md §C). */}
+        {tablet ? (
+          <HeaderButton icon={Search} label={t("search.open")} name={null} size={size} onPress={() => once(() => router.push("/search"))} testID="header-search" />
+        ) : null}
         <HeaderButton
           icon={MessageSquare}
           label={badges.chats ? t("shell.chatsWaiting", { count: badges.chats }) : t("chat.chats")}

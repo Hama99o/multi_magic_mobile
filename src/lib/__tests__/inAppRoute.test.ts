@@ -183,3 +183,32 @@ describe("routeForWebPath never throws on a damaged path", () => {
     expect(routeForWebPath("/calendar?event=1&on=%E0%A4%A")).toEqual({ pathname: "/calendar/event", params: { id: "1" } });
   });
 });
+
+// Global search (docs/design/search/SPEC.md §A): the paths Search::Sources
+// sends for finance and SafeZone hits (multi_magic services/search/sources.rb).
+describe("routeForWebPath: the search hits for finance and SafeZone", () => {
+  it("an expense or an income opens its entry form, a loan its screen", () => {
+    // Integration: fix/hygiene-step0's finance routes win (the entry opens on its ledger tab, its sheet up).
+    expect(routeForWebPath("/finance/expenses?expense=12")).toEqual({ pathname: "/finance", params: { tab: "expenses", entry: "12" } });
+    expect(routeForWebPath("/finance/income?income=7")).toEqual({ pathname: "/finance", params: { tab: "income", entry: "7" } });
+    expect(routeForWebPath("/finance/loans?loan=4")).toEqual({ pathname: "/finance/loan", params: { id: "4" } });
+  });
+
+  it("a list with no record opens that tab; a record id that does not read is not guessed", () => {
+    expect(routeForWebPath("/finance/expenses")).toEqual({ pathname: "/finance", params: { tab: "expenses" } });
+    expect(routeForWebPath("/finance/loans")).toEqual({ pathname: "/finance", params: { tab: "loans" } });
+    expect(routeForWebPath("/finance/expenses?expense=new")).toBeNull();
+  });
+
+  it("a password, a card or an identity opens the SafeZone item (behind its PIN)", () => {
+    expect(routeForWebPath("/safezone/passwords?password=41")).toEqual({ pathname: "/safezone/item", params: { kind: "passwords", id: "41" } });
+    expect(routeForWebPath("/safezone/payment-cards?card=5")).toEqual({ pathname: "/safezone/item", params: { kind: "payment_cards", id: "5" } });
+    expect(routeForWebPath("/safezone/identities?identity=9")).toEqual({ pathname: "/safezone/item", params: { kind: "identities", id: "9" } });
+    expect(routeForWebPath("/safezone/passwords")).toBe("/safezone");
+  });
+
+  it("a Flow card opens it (feat/flow-app); Doc has no screen", () => {
+    expect(routeForWebPath("/flow/3?card=9")).toEqual({ pathname: "/flow/card", params: { projectId: "3", id: "9" } });
+    expect(routeForWebPath("/doc/sign")).toBeNull();
+  });
+});

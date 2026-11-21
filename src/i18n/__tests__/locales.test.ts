@@ -124,6 +124,14 @@ const SAME_IN_BOTH = new Set([
   "pages.storage.apps.contacts",
   "pages.storage.apps.ai",
   "pages.storage.file",
+  // Global search: a product name and words French spells the same way.
+  "search.groups.flow",
+  "search.kinds.note",
+  "search.kinds.contact",
+  "search.kinds.conversation",
+  "search.kinds.message",
+  "search.kinds.signature",
+  "search.kinds.document",
   "pages.searchChips.type",
   // "Pause" is the French word too (a player button).
   "pages.view.pause",

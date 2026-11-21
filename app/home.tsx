@@ -24,7 +24,7 @@ import { useQuery } from "@tanstack/react-query";
 import { ASSISTANT_GRADIENT, HOME_APPS, tileColors, type HomeApp } from "@/theme/appColors";
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
-import { Sparkles } from "@/components/icons";
+import { Sparkles, Search } from "@/components/icons";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { AppMark } from "@/components/shell/AppMark";
 import { GradientFill } from "@/components/shell/GradientFill";
@@ -180,6 +180,30 @@ function ComingUp() {
   );
 }
 
+/**
+ * Global search on a phone (docs/design/search/SPEC.md §C): the header has no
+ * room for the web's search key below a tablet, so Home opens it from here.
+ */
+function SearchField() {
+  const colors = useColors();
+  const metrics = useMetrics();
+  const { t } = useTranslation();
+  return (
+    <Pressable
+      accessibilityRole="search"
+      accessibilityLabel={t("search.placeholder")}
+      onPress={() => router.push("/search")}
+      style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, minHeight: 48, paddingHorizontal: metrics.space.md, borderRadius: metrics.radius.pill, backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.border }}
+      testID="home-search"
+    >
+      <Search size={18} color={colors.inkMuted} />
+      <Text tone="muted" numberOfLines={1} style={{ flex: 1 }}>
+        {t("search.placeholder")}
+      </Text>
+    </Pressable>
+  );
+}
+
 function AskBox() {
   const colors = useColors();
   const metrics = useMetrics();
@@ -233,6 +257,7 @@ export default function Home() {
             {first ? t("home.greetingName", { name: first }) : t("home.greeting")}
           </Text>
         </View>
+        <SearchField />
         <AskBox />
         <ComingUp />
         <View style={{ gap: metrics.space.sm }} testID="home-apps">

@@ -1352,6 +1352,30 @@ export const en = {
     },
   },
 
+  search: {
+    open: "Search",
+    placeholder: "Search everything",
+    everything: "Search everything",
+    everythingFor: "Search everything for “{{query}}”",
+    clear: "Clear the search",
+    clearRecents: "Clear",
+    ask: "Ask the assistant: “{{query}}”",
+    askAbout: "Tell me about “{{title}}” ({{kind}}).",
+    empty: "Nothing found for “{{query}}”.",
+    loadFailed: "Search did not answer.",
+    sections: { recents: "Recent", apps: "Go to", commands: "Create" },
+    groups: { flow: "Flow", doc: "PDF tools" },
+    kinds: {
+      note: "Note", space: "Space", file: "File", todoGroup: "List", task: "Task", event: "Event",
+      contact: "Contact", expense: "Expense", income: "Income", loan: "Loan", password: "Password",
+      paymentCard: "Card", identity: "ID", project: "Project", card: "Card", conversation: "Conversation",
+      message: "Message", signature: "Signature", document: "Document",
+    },
+    commands: {
+      newExpense: "New expense", newIncome: "New income", newLoan: "New loan",
+      newContact: "New contact", newEvent: "New event", newPassword: "New password",
+    },
+  },
   shell: {
     home: "Home",
     homeBody: "All your apps",

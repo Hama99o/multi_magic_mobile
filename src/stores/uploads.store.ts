@@ -124,6 +124,8 @@ interface UploadsState {
   hydrated: boolean;
   hydrate: () => Promise<void>;
   enqueue: (files: IncomingFile[], destination: Destination) => Promise<number>;
+  /** Several folders at once: EVERY row first, then the copies (a folder upload, review 88 P5). */
+  enqueueGroups: (groups: { files: IncomingFile[]; destination: Destination }[]) => Promise<number>;
   retry: (id: string) => void;
   cancel: (id: string) => void;
   clearFinished: () => void;
@@ -539,7 +541,13 @@ export const useUploads = create<UploadsState>((set, get) => {
             ? { ...item, status: "queued" as const, attempts: 0, retryAt: 0 }
             : item,
       );
-      set({ items, hydrated: true });
+      // MERGED, not replaced: a share that arrived while AsyncStorage was read
+      // (a cold start from the share sheet) is already queued, and replacing
+      // the list dropped its row, then the sweep deleted its copy (review 88, S2).
+      set((state) => {
+        const known = new Set(items.map((item) => item.id));
+        return { items: [...items, ...state.items.filter((item) => !known.has(item.id))], hydrated: true };
+      });
       sweepCopies(stored.filter((item) => item.status === "preparing").map((item) => item.id), get().items);
       if (!appStateWired) {
         appStateWired = true;
@@ -554,17 +562,22 @@ export const useUploads = create<UploadsState>((set, get) => {
       pump();
     },
 
-    enqueue: async (files, destination) => {
+    enqueue: (files, destination) => get().enqueueGroups([{ files, destination }]),
+    enqueueGroups: async (groups) => {
       // THE ROWS FIRST, then the copies. Copying a big clip into the app takes
       // seconds; the row says "Preparing…" meanwhile, and each file starts
       // sending as soon as ITS copy is done, while the next is still copying.
-      const rows: UploadItem[] = files.map((file) => ({
+      // Every group's rows go in at once: a folder upload killed partway leaves
+      // a row for each file (said "add it again" on relaunch), never silence.
+      const files = groups.flatMap((g) => g.files);
+      const destinations = groups.flatMap((g) => g.files.map(() => g.destination));
+      const rows: UploadItem[] = files.map((file, index) => ({
         id: newId(),
         localUri: file.uri,
         fileName: nameFor(file),
         mimeType: file.mimeType || "application/octet-stream",
         size: file.size ?? 0,
-        destination,
+        destination: destinations[index],
         status: "preparing" as const,
         sent: 0,
         error: null,

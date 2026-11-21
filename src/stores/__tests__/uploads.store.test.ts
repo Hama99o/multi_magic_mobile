@@ -405,6 +405,29 @@ describe("how it ends", () => {
   });
 });
 
+// Review 88, S2 (2026-11-21): a file shared into the app at a cold start is
+// queued while `hydrate` is still reading AsyncStorage. hydrate then set
+// `items` to the STORED rows only (dropping the new one) and swept every copy
+// folder no remaining row named: the shared file's row and its copy were gone.
+describe("a share that arrives while the queue is still loading", () => {
+  it("keeps its row and its copy when the stored queue lands", async () => {
+    let release: (v: string | null) => void = () => {};
+    // Once only (consumed by hydrate's read). No mockRestore: AsyncStorage's mock is
+    // already a jest.fn, and restoring it strips its implementation for every later test.
+    jest.spyOn(AsyncStorage, "getItem").mockImplementationOnce(() => new Promise((r) => (release = r)));
+    store = load();
+    const loading = store.useUploads.getState().hydrate();
+    await store.useUploads.getState().enqueue([picked("shared.jpg", 10)], DEST);
+    const { id, localUri } = store.useUploads.getState().items[0];
+    expect(mockFiles.has(localUri)).toBe(true);
+    release(JSON.stringify([]));
+    await loading;
+    await flush();
+    expect(store.useUploads.getState().items.map((i) => i.id)).toContain(id);
+    expect(mockFiles.has(localUri)).toBe(true);
+  });
+});
+
 describe("resumable, piece by piece (PageApp::ResumableUpload on the server)", () => {
   // His iPhone over 2-bar 5G, 2026-11-07: a 543 MB clip in ONE request
   // restarted from zero at every drop and never finished. In pieces, a drop

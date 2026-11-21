@@ -124,6 +124,7 @@ export default function Folder() {
   const hydrateUploads = useUploads((s) => s.hydrate);
   const hydrateView = useViewPrefs((s) => s.hydrate);
   const enqueue = useUploads((s) => s.enqueue);
+  const enqueueGroups = useUploads((s) => s.enqueueGroups);
 
   useEffect(() => {
     void hydrateUploads();
@@ -189,15 +190,15 @@ export default function Folder() {
       {
         text: t("pages.folderUpload.start"),
         onPress: () =>
-          void startFolderUpload(walked, { spaceId, parentId, label: destination.label }, enqueue)
+          void startFolderUpload(walked, { spaceId, parentId, label: destination.label }, enqueueGroups)
             .then(() => client.invalidateQueries({ queryKey: pagesKeys.all }))
             .catch((e: unknown) => {
-              void client.invalidateQueries({ queryKey: pagesKeys.all }); // folders made before the failure show
+              void client.invalidateQueries({ queryKey: pagesKeys.all }); // what it made went to the trash
               Alert.alert(failureMessage(e, t("pages.folderUpload.failed")));
             }),
       },
     ]);
-  }, [t, i18n.language, destination, spaceId, parentId, enqueue, client]);
+  }, [t, i18n.language, destination, spaceId, parentId, enqueueGroups, client]);
 
   // Import a ZIP here (parity #25): its folders and files land in this folder.
   const [importing, setImporting] = useState<Transfer | null>(null);
@@ -211,6 +212,9 @@ export default function Folder() {
       setPageError(null);
       try {
         const made = await pagesApi.createPage(spaceId, parentId, name);
+        // The folder stays mounted under the editor: list the new page now,
+        // not after a pull to refresh (review 88, P3; lists are newest first).
+        void client.invalidateQueries({ queryKey: pagesKeys.all });
         setNamingPage(false);
         router.push({ pathname: "/pages/edit", params: { spaceId: String(spaceId), nodeId: String(made.id), title: made.title } });
       } catch (e) {
@@ -219,7 +223,7 @@ export default function Folder() {
         setPageBusy(false);
       }
     },
-    [spaceId, parentId, t, router],
+    [spaceId, parentId, t, router, client],
   );
   const importZip = useCallback(async () => {
     try {

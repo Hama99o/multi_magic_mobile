@@ -58,10 +58,27 @@ export function KeyboardPadding({ children }: { children: ReactNode }) {
     }).start();
   }, [bottom]);
 
+  // WINDOW coordinates, because the keyboard's screenY is in them. onLayout's
+  // y is relative to the parent: under a header that put the wrapper ~110 dp
+  // too high and Save stayed under the keyboard (device, Pages flow 33,
+  // 2026-11-24). onLayout's frame stays the fallback where nothing can be
+  // measured (a test renderer with no host node).
+  const host = useRef<View | null>(null);
+  const measure = useCallback(() => {
+    const node = host.current as unknown as { measureInWindow?: (cb: (x: number, y: number, w: number, h: number) => void) => void } | null;
+    // Update at once from what we have, then correct when the window frame
+    // arrives (measureInWindow is async on device, a no-op under Jest's mock).
+    update();
+    node?.measureInWindow?.((x, y, width, height) => {
+      if (height > 0) frame.current = { x, y, width, height };
+      update();
+    });
+  }, [update]);
+
   useEffect(() => {
     const shown = Keyboard.addListener("keyboardDidShow", (e) => {
       keyboardY.current = e.endCoordinates.screenY;
-      update();
+      measure();
     });
     const hidden = Keyboard.addListener("keyboardDidHide", () => {
       keyboardY.current = null;
@@ -71,16 +88,19 @@ export function KeyboardPadding({ children }: { children: ReactNode }) {
       shown.remove();
       hidden.remove();
     };
-  }, [update]);
+  }, [measure, update]);
+
 
   return (
     // The wrapper's frame never changes with the keyboard (the spacer is
     // inside it), which is what makes the overlap stable, as KAV's padding is.
     <View
+      ref={host}
+      collapsable={false}
       style={{ flex: 1 }}
       onLayout={(e) => {
         frame.current = e.nativeEvent.layout;
-        update();
+        measure();
       }}
     >
       <View style={{ flex: 1 }}>{children}</View>

@@ -7,7 +7,7 @@
  * server's order with a confirm before delete, and a tool's result opens the
  * Share / Save sheet. Invented values only.
  */
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react-native";
 import { Alert } from "react-native";
 import { QueryClientProvider } from "@tanstack/react-query";
 import MockAdapter from "axios-mock-adapter";
@@ -24,6 +24,7 @@ import SignScreen from "../doc/sign";
 import SignatureCreator from "../doc/signature";
 import SignaturesScreen from "../doc/signatures";
 import MergeScreen from "../doc/merge";
+import { EditSheet } from "../doc/text";
 import PagesScreen from "../doc/pages";
 import TextEditorScreen from "../doc/text";
 import ConvertScreen from "../doc/convert";
@@ -305,4 +306,17 @@ it("a busy server is said plainly and Retry runs the same compress again (Hello,
   fireEvent.press(screen.getByTestId("doc-error-retry"));
   await waitFor(() => expect(mock.history.post.filter((r) => r.url?.endsWith("/compress"))).toHaveLength(2));
   await waitFor(() => expect(screen.queryByText("Server busy, try again in a moment.")).toBeNull());
+});
+
+// DEVICE FAIL 2026-11-24 (qa_phone, flow 48): with the keyboard up the Edit
+// line sheet ends at the keyboard and the colour rows fill it; Done was the
+// last thing in the ScrollView, out of sight. Clear and Done sit OUTSIDE the
+// scrolling part, so they stay on screen whatever the fields' height.
+it("the edit-line sheet keeps Done outside its scrolling fields", () => {
+  const run = { text: "Trip to Lyon", font: "Helvetica", size: 24, color: "#000000", alphabet: null } as unknown as Parameters<typeof EditSheet>[0]["run"];
+  show(<EditSheet run={run} draft={{ text: "Trip to Lyon" } as Parameters<typeof EditSheet>[0]["draft"]} onChange={jest.fn()} onClose={jest.fn()} />);
+  const { ScrollView } = require("react-native");
+  const scroll = screen.UNSAFE_getByType(ScrollView);
+  expect(within(scroll).queryByTestId("doc-text-done")).toBeNull();
+  expect(screen.getByTestId("doc-text-done")).toBeTruthy();
 });

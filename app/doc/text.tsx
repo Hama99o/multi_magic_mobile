@@ -441,7 +441,7 @@ const FAMILIES: { key: Family; label: string }[] = [
   { key: "mono", label: "doc.text.fontMono" },
 ];
 
-function EditSheet({ run, draft, onChange, onClose }: { run: TextRun; draft: Draft; onChange: (c: Partial<Draft>) => void; onClose: () => void }) {
+export function EditSheet({ run, draft, onChange, onClose }: { run: TextRun; draft: Draft; onChange: (c: Partial<Draft>) => void; onClose: () => void }) {
   const colors = useColors();
   const metrics = useMetrics();
   const { t } = useTranslation();
@@ -449,7 +449,10 @@ function EditSheet({ run, draft, onChange, onClose }: { run: TextRun; draft: Dra
   const size = Math.round(draft.size ?? run.size);
   return (
     <KeyboardSheet onClose={onClose} testID="doc-text-sheet">
-      <ScrollView keyboardShouldPersistTaps="handled" contentContainerStyle={{ gap: metrics.space.md }}>
+      {/* The fields scroll; Clear and Done do not. With the keyboard up the sheet
+          ends at the keyboard and the colour rows fill it, so Done at the end of
+          the scroll was out of sight (device, flow 48, 2026-11-24). */}
+      <ScrollView keyboardShouldPersistTaps="handled" style={{ flexShrink: 1 }} contentContainerStyle={{ gap: metrics.space.md }}>
         <Text variant="label" accessibilityRole="header">
           {t("doc.text.sheetTitle")}
         </Text>
@@ -491,15 +494,15 @@ function EditSheet({ run, draft, onChange, onClose }: { run: TextRun; draft: Dra
         <SectionLabel>{t("doc.text.highlight")}</SectionLabel>
         {/* Tap the chosen one again to take the highlight off (the web's toggle). */}
         <Swatches testID="doc-text-highlight" values={HIGHLIGHTS} value={draft.highlight ?? ""} onChange={(h) => onChange({ highlight: draft.highlight === h ? undefined : h })} />
-        <View style={{ flexDirection: "row", gap: metrics.space.sm }}>
-          <View style={{ flex: 1 }}>
-            <Button testID="doc-text-clear" tone="neutral" label={t("doc.text.clearLine")} onPress={() => onChange({ text: "" })} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Button testID="doc-text-done" label={t("doc.text.done")} onPress={onClose} />
-          </View>
-        </View>
       </ScrollView>
+      <View testID="doc-text-sheet-actions" style={{ flexDirection: "row", gap: metrics.space.sm, paddingTop: metrics.space.md }}>
+        <View style={{ flex: 1 }}>
+          <Button testID="doc-text-clear" tone="neutral" label={t("doc.text.clearLine")} onPress={() => onChange({ text: "" })} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Button testID="doc-text-done" label={t("doc.text.done")} onPress={onClose} />
+        </View>
+      </View>
     </KeyboardSheet>
   );
 }

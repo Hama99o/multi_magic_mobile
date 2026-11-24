@@ -83,3 +83,39 @@ it("the spacer ends at the keyboard's overlap, and back at 0", async () => {
   hide();
   await waitFor(() => expect(height()).toBe(0), { timeout: 2_000 });
 });
+
+// DEVICE FAIL 2026-11-24 (qa_phone, :3030, flows 33 and 48): onLayout's `y` is
+// relative to the PARENT, the keyboard's `screenY` is in WINDOW coordinates.
+// Under a header the wrapper sits at y 0 in its parent but ~110 dp down the
+// window, so the lift came out 110 dp short and Save stayed under the keyboard.
+// The overlap must use the wrapper's window position (measureInWindow).
+it("lifts by the overlap in WINDOW coordinates, not the parent-relative y", () => {
+  const listeners: Record<string, Listener> = {};
+  jest.spyOn(Keyboard, "addListener").mockImplementation((name, fn) => {
+    listeners[name] = fn as Listener;
+    return { remove: jest.fn() } as unknown as ReturnType<typeof Keyboard.addListener>;
+  });
+  const { started } = watchTimings();
+  // Jest's View mock carries measureInWindow as a no-op; the device answers.
+  const { View } = jest.requireActual("react-native");
+  jest
+    .spyOn(View.prototype, "measureInWindow")
+    .mockImplementation(((cb: (x: number, y: number, w: number, h: number) => void) => cb(0, 110, 400, 685)) as never);
+  render(
+    <KeyboardPadding>
+      <Text>content</Text>
+    </KeyboardPadding>,
+  );
+  fireEvent(screen.getByTestId("keyboard-padding").parent!.parent!, "layout", {
+    nativeEvent: { layout: { x: 0, y: 0, width: 400, height: 685 } },
+  });
+  act(() =>
+    listeners.keyboardDidShow({
+      duration: 0,
+      easing: "keyboard",
+      endCoordinates: { screenX: 0, screenY: 577, width: 400, height: 337 },
+    }),
+  );
+  // 110 + 685 - 577 = 218 dp; the parent-relative arithmetic gave 108.
+  expect(started.at(-1)).toEqual(expect.objectContaining({ toValue: 218 }));
+});

@@ -10,6 +10,12 @@ tags: [pages, parity, shots]
 ---
 - runFlow: pages-open-trip.yaml
 - takeScreenshot: reports/42-folder-${WIDTH}
+# Earlier flows leave copies in Trip, so at 360 dp or 200 % font the workbook
+# can be below the fold (device, 2026-11-24): scroll to it, as a person would.
+- scrollUntilVisible:
+    element: "c-budget.xlsx"
+    direction: DOWN
+    timeout: 20000
 - tapOn: "c-budget.xlsx"
 - extendedWaitUntil:
     visible: "Lyon"

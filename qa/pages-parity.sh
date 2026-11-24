@@ -30,7 +30,8 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 export PATH="$HOME/.maestro/bin:${ANDROID_HOME:-$HOME/Android/Sdk}/platform-tools:$PATH"
 
 API_LOCAL="${API_LOCAL:-http://localhost:3020}"
-case "$API_LOCAL" in *:3020*) ;; *) echo "REFUSED: seed writes; API_LOCAL must be the :3020 sandbox, not $API_LOCAL"; exit 2;; esac
+case "$API_LOCAL" in *:3020*|*:3030*) ;;  # :3030 = mm-ee-live, a copy of the sandbox DB (2026-11-24)
+   *) echo "REFUSED: seed writes; API_LOCAL must be the :3020 sandbox, not $API_LOCAL"; exit 2;; esac
 QA_EMAIL="${QA_EMAIL:-demo@example.com}"
 SERIAL="${SERIAL:?set SERIAL to the claimed device, e.g. emulator-5580}"
 APP_ID="${APP_ID:-com.multimagics.mobile}"
@@ -98,7 +99,7 @@ device() {
   local d; d=$(mktemp -d)
   mkdir -p "$d/qa-folder/sub"; printf 'two\n' > "$d/qa-folder/two.txt"; printf 'three\n' > "$d/qa-folder/sub/three.txt"; printf 'hidden\n' > "$d/qa-folder/.hidden"
   python3 -c "open('$d/qa-folder/one.jpg','wb').write(bytes.fromhex('ffd8ffe000104a46494600010100000100010000ffdb004300080606070605080707070909080a0c140d0c0b0b0c1912130f141d1a1f1e1d1a1c1c20242e2720222c231c1c2837292c30313434341f27393d38323c2e333432ffc0000b080001000101011100ffc4001f0000010501010101010100000000000000000102030405060708090a0bffda0008010100003f00d2cf20ffd9'))"
-  adb -s "$SERIAL" shell rm -rf /sdcard/Download/qa-folder /sdcard/Download/qa-big.bin
+  adb -s "$SERIAL" shell rm -rf /sdcard/Download/qa-folder /sdcard/Download/qa-big.bin /sdcard/Download/qa-huge.bin
   adb -s "$SERIAL" push "$d/qa-folder" /sdcard/Download/ >/dev/null
   # 300 MB: long enough to copy and to send that a kill lands inside each.
   adb -s "$SERIAL" shell "dd if=/dev/zero of=/sdcard/Download/qa-big.bin bs=1048576 count=300 2>/dev/null"
@@ -107,8 +108,12 @@ device() {
   # measured 2026-11-21, 300 MB was copied before "Preparing…" could be read.
   # 1.5 GB, only when the device has room for it AND its copy (+500 MB margin).
   local free_kb; free_kb=$(adb -s "$SERIAL" shell df /data | awk 'NR==2{print $4}')
-  if [ "${free_kb:-0}" -gt $(( (1536*2+500)*1024 )) ]; then
-    adb -s "$SERIAL" shell "dd if=/dev/zero of=/sdcard/Download/qa-huge.bin bs=1048576 count=1536 2>/dev/null"; echo "device: qa-huge.bin 1.5 GB"
+  # The cell is about interrupting a copy, not the size (Hello, 2026-11-24): the
+  # biggest file that fits twice plus the margin, capped at 800 MB, at least
+  # 800 MB (300 MB copied too fast). The size goes in the readiness cell.
+  local mb=$(( (${free_kb:-0}/1024 - 500) / 2 )); [ $mb -gt 800 ] && mb=800  # 1302 MB tripped the AVD's lowmemorykiller (2.5 GB RAM) and Maestro's session died mid-assert (2026-11-24)
+  if [ $mb -ge 800 ]; then
+    adb -s "$SERIAL" shell "dd if=/dev/zero of=/sdcard/Download/qa-huge.bin bs=1048576 count=$mb 2>/dev/null"; echo "device: qa-huge.bin ${mb} MB"
   else echo "device: no room for qa-huge.bin (free ${free_kb} KB): flow 40 will be NOT MEASURED"; fi
   adb -s "$SERIAL" shell am broadcast -a android.intent.action.MEDIA_SCANNER_SCAN_FILE -d file:///sdcard/Download >/dev/null 2>&1
   rm -rf "$d"; echo "device: qa-folder (3 files + a hidden one), qa-big.bin 300 MB, qa-offline.txt in Download"
@@ -139,8 +144,8 @@ prime() {
       echo "prime: bundle running"
       # The dev client's floating gear sits ON the app's avatar (header-profile),
       # and a tap there opens the dev menu instead (multi-magic-mobile-ff,
-      # measured on qa_phone 2026-11-21). Drag it to the bottom-left once.
-      sleep 3; adb -s "$SERIAL" shell input swipe 955 265 60 2150 900
+      # measured on qa_phone 2026-11-21). Drag it to mid-left, where no flow taps.
+      sleep 3; adb -s "$SERIAL" shell input swipe 955 265 40 1250 900; adb -s "$SERIAL" shell input swipe 110 2226 40 1250 900  # mid-left: bottom-left covered the Pages Home tab (2026-11-24)
       return 0
     fi
     sleep 2
@@ -155,14 +160,35 @@ flow() { # flow <file> : one flow, its own log, and the verdict line
   local rc=$?; echo "$n: $([ $rc = 0 ] && echo PASS || echo FAIL rc=$rc)" | tee -a "$OUT/verdicts.txt"
 }
 
+# Flow 40: kill the app the moment a PARTIAL copy of qa-huge.bin is in its
+# pages-uploads folder. ON THE DEVICE, as the app's own uid (run-as), every
+# ~10 ms: an 800 MB copy finished inside one adb round trip (2026-11-24,
+# "838860800 of 838860800 when seen"). One verdict line.
+kill_mid_copy() {
+  local full; full=$(adb -s "$SERIAL" shell stat -c %s /sdcard/Download/qa-huge.bin | tr -d '\r')
+  adb -s "$SERIAL" shell run-as "$APP_ID" sh <<EOS 2>&1 | tr -d '\r' | tail -1
+touch files/.k40; i=0
+while [ \$i -lt 30000 ]; do
+  for f in \$(find files/pages-uploads -name 'qa-huge*' -newer files/.k40 2>/dev/null); do
+    s=\$(stat -c %s "\$f")
+    if [ "\$s" -gt 0 ] && [ "\$s" -lt $full ]; then p=\$(pidof $APP_ID); kill -9 \$p; echo "kill40: app killed (pid \$p) with its copy at \$s of $full bytes: MID-COPY"; exit 0; fi
+    if [ "\$s" -ge $full ]; then echo "kill40: copy already complete (\$s of $full bytes) when seen: NOT mid-copy"; exit 0; fi
+  done
+  i=\$((i+1)); sleep 0.01
+done
+echo "kill40: no copy seen: NOT MEASURED"
+EOS
+}
+
 run() {
   need_pw; prime "$PP_DEEP_LINK"
   : > "$OUT/verdicts.txt"
-  for f in 30 31 32 33 34 35 36 37 38 39; do flow "$(ls "$DIR"/flows/${f}-*.yaml)"; done
+  for f in 30 31 32 33 34 35 36 37 38 39; do flow "$(ls "$DIR"/flows/${f}-pages-*.yaml)"; done
   # The kill tests: the copies listed before, between and after.
   for k in 40-pages-kill-mid-copy 41-pages-kill-mid-upload; do
     { echo "== $k before"; list_copies; } >> "$OUT/copies.txt"
-    flow "$DIR/flows/$k.yaml"
+    [ "$k" = 40-pages-kill-mid-copy ] && { kill_mid_copy | tee -a "$OUT/kill40.txt" & }
+    flow "$DIR/flows/$k.yaml"; wait
     { echo "== $k after relaunch"; list_copies; } >> "$OUT/copies.txt"
   done
   echo "verdicts: $OUT/verdicts.txt  copies: $OUT/copies.txt"
@@ -195,6 +221,7 @@ columns() { # the readiness columns this rig can set (docs/RELEASE_READINESS.md)
   [ -f "$STATE" ] && { . "$STATE"; TOK=$(token)
     echo "2x-tap count of '[qa] twice' in Trip: $(api GET "/page_app/spaces/$space/nodes?parent_id=$trip&per_page=100" | python3 -c "import json,sys;d=json.load(sys.stdin);print(sum(1 for n in d.get('nodes',[]) if n.get('title')=='[qa] twice'))")" | tee -a "$OUT/verdicts.txt"; unset TOK; }
   # Offline: wifi and data off around flow 45, back on for 46. Restored on any exit path below.
+  flow "$DIR/flows/pages-open-trip.yaml"   # online: the dev build loads its bundle, then we cut the network
   adb -s "$SERIAL" shell svc wifi disable; adb -s "$SERIAL" shell svc data disable
   flow "$DIR/flows/45-pages-offline-upload-waits.yaml"
   adb -s "$SERIAL" shell svc wifi enable; adb -s "$SERIAL" shell svc data enable
@@ -219,6 +246,14 @@ clean() {
 case "${1:-}" in
   smoke) need_pw; prime "$PP_DEEP_LINK"; flow "$DIR/flows/00-smoke-signed-in.yaml"; echo "LOOK: $OUT/00-smoke-signed-in (00-smoke-home.png) before the batch";;
   seed) seed;; device) device;; run) run;; widths) widths;; columns) columns;; clean) clean;;
+  # Re-run named flows only (e.g. `only 33 34 40`), primed once, same verdict lines.
+  only) need_pw; prime "$PP_DEEP_LINK"; shift; for n in "$@"; do [ "$n" = 40 ] && { kill_mid_copy | tee -a "$OUT/kill40.txt" & }; flow "$(ls "$DIR"/flows/${n}-pages-*.yaml | head -1)"; wait; done;;
+  # 45 then 46 with the network cut between them, as in `columns`.
+  offline) need_pw; prime "$PP_DEEP_LINK"; flow "$DIR/flows/pages-open-trip.yaml"
+    adb -s "$SERIAL" shell svc wifi disable; adb -s "$SERIAL" shell svc data disable
+    flow "$DIR/flows/45-pages-offline-upload-waits.yaml"
+    adb -s "$SERIAL" shell svc wifi enable; adb -s "$SERIAL" shell svc data enable
+    flow "$DIR/flows/46-pages-offline-upload-sends-when-back.yaml";;
   all) seed && device && run; widths; columns; clean;;
   *) sed -n 2,13p "$0"; exit 2;;
 esac

@@ -17,7 +17,8 @@ DIR="$(cd "$(dirname "$0")" && pwd)"
 . "$DIR/qa.config.sh"
 export PATH="$HOME/.maestro/bin:${ANDROID_HOME:-$HOME/Android/Sdk}/platform-tools:$PATH"
 API_LOCAL="${API_LOCAL:-http://localhost:3020}"
-case "$API_LOCAL" in *:3020*) ;; *) echo "REFUSED: API_LOCAL must be the :3020 sandbox, not $API_LOCAL"; exit 2;; esac
+case "$API_LOCAL" in *:3020*|*:3030*) ;;  # :3030 = mm-ee-live, a copy of the sandbox DB (2026-11-24)
+   *) echo "REFUSED: API_LOCAL must be the :3020 sandbox, not $API_LOCAL"; exit 2;; esac
 QA_EMAIL="${QA_EMAIL:-demo@example.com}"
 SERIAL="${SERIAL:?set SERIAL to the claimed device}"
 APP_ID="${APP_ID:-com.multimagics.mobile}"
@@ -71,7 +72,7 @@ prime() {
       # The dev client's floating gear sits ON the app's avatar (header-profile),
       # and a tap there opens the dev menu instead (multi-magic-mobile-ff,
       # measured on qa_phone 2026-11-21). Drag it to the bottom-left once.
-      sleep 3; adb -s "$SERIAL" shell input swipe 955 265 60 2150 900
+      sleep 3; adb -s "$SERIAL" shell input swipe 955 265 40 1250 900; adb -s "$SERIAL" shell input swipe 110 2226 40 1250 900  # mid-left: bottom-left covered the Pages Home tab (2026-11-24)
       return 0
     fi
     sleep 2

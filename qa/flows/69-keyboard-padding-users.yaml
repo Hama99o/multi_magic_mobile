@@ -1,0 +1,111 @@
+# KEYBOARD PADDING, EVERY USER OF IT (Hello, 2026-11-24): 53b9793 moved the
+# shared KeyboardPadding to window coordinates, so each screen that uses it is
+# re-checked with the keyboard up: Notes edit, Tables form, Tables activity,
+# and Chats' new-conversation sheet. Run once light, once dark (MODE).
+#
+# COVERS: the focused field and its Save/Send control are on screen, above the
+#         keyboard, on each of the four screens (asserted + a shot each).
+# CANNOT TELL YOU: that the lift animates smoothly (a recording), or anything
+#         about sending: nothing is sent, started or saved on purpose here.
+# Writes on the :3030 copy only: one empty note and one form (the demo account).
+appId: ${APP_ID}
+tags: [readiness, keyboard]
+---
+- runFlow: login.yaml
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
+
+# 1. Notes edit: a new note, the body focused, the toolbar above the keyboard.
+- tapOn:
+    id: "home-tile-notes"
+- tapOn:
+    id: "notes-new"
+- tapOn:
+    id: "note-edit-body"
+- inputText: "kbd"
+- assertVisible:
+    id: "note-toolbar"
+- takeScreenshot: reports/69-notes-kbd-${MODE}
+- back
+- back
+
+# 2. Tables form: a new form on the sandbox base, its title field focused.
+- tapOn:
+    id: "header-home"
+- tapOn:
+    id: "home-tile-tables"
+- tapOn: "Hatiwal Ventes"
+- extendedWaitUntil:
+    visible:
+      id: "tables-menu"
+    timeout: 30000
+- tapOn:
+    id: "tables-menu"
+- tapOn:
+    id: "tables-options-forms"
+- tapOn:
+    id: "tables-forms-new"
+- extendedWaitUntil:
+    visible:
+      id: "tables-form-tabs"
+    timeout: 15000
+- tapOn: "Page"
+- tapOn:
+    id: "tables-form-title"
+- inputText: " kbd"
+- assertVisible:
+    id: "tables-form-title"
+- takeScreenshot: reports/69-tables-form-kbd-${MODE}
+# Keyboard, form editor, then the Forms list: back until the table (device, 2026-11-24).
+- repeat:
+    while:
+      notVisible:
+        id: "tables-menu"
+    times: 4
+    commands:
+      - back
+
+# 3. Tables activity: the comment box focused, Send above the keyboard.
+- tapOn:
+    id: "tables-menu"
+- tapOn:
+    id: "tables-options-activity"
+- tapOn:
+    id: "tables-comment-input"
+- inputText: "kbd"
+- assertVisible:
+    id: "tables-comment-send"
+- takeScreenshot: reports/69-tables-activity-kbd-${MODE}
+- back
+- back
+
+# 4. Chats: the new-conversation sheet, its name field focused, Start visible.
+# A pushed screen has a back arrow, not Home: back until Home (device, 2026-11-24).
+- repeat:
+    while:
+      notVisible:
+        id: "header-home"
+    times: 5
+    commands:
+      - back
+- tapOn:
+    id: "header-home"
+- tapOn:
+    id: "home-tile-chats"
+- tapOn:
+    id: "chats-new"
+# The name field is the Group tab's; One person opens on a people search.
+- tapOn: "Group"
+- tapOn:
+    id: "new-conversation-name"
+- inputText: "kbd"
+- assertVisible:
+    id: "new-conversation-start"
+- takeScreenshot: reports/69-chats-new-kbd-${MODE}
+- back
+- back

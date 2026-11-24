@@ -35,8 +35,14 @@ tags: [pages, parity]
     visible: "Saved"
     timeout: 15000
 - takeScreenshot: reports/36-page-typed
-# A selection, then Link.
-- doubleTapOn: "Hello from the phone"
+# A selection, then Link. A long press selects a word on Android; the double
+# tap left no selection in this editor, so the bar never showed Link (device,
+# 2026-11-24: the + · T · undo · redo row, keyboard up and clear).
+- longPressOn: "Hello from the phone"
+- extendedWaitUntil:
+    visible:
+      id: "tb-link"
+    timeout: 10000
 - tapOn:
     id: "tb-link"
 - tapOn:
@@ -47,11 +53,22 @@ tags: [pages, parity]
 - extendedWaitUntil:
     visible: "Saved"
     timeout: 15000
-# A code block with a language.
+# A code block with a language. The link save leaves "phone" selected, and a
+# selection shows the marks row, which has no Format key (toolbarModel.ts:179,
+# measured on device 2026-11-24): a tap in the line collapses it to a caret.
+- tapOn: "Hello from the phone"
+- extendedWaitUntil:
+    visible:
+      id: "tb-format"
+    timeout: 10000
 - tapOn:
     id: "tb-format"
 - tapOn:
     id: "tb-block:codeBlock"
+# The Format panel stays open after a pick; the language key is on the main
+# row (toolbarModel.ts:190), so close the panel first (device, 2026-11-24).
+- tapOn:
+    id: "tb-closePanel"
 - tapOn:
     id: "tb-codeLanguage"
 - tapOn:

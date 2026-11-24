@@ -732,6 +732,7 @@ released, Metro stopped.
 | `66-chats-ask-the-assistant-from-a-thread.yaml` | **UNRUN. SENDS NOTHING.** Chats "ask the assistant" (88, 7773bdd): thread → assistant with "About my conversation with …" composed and unsent, then cleared. An empty list stops, photographed. | The answer. |
 | `67-chats-keyboard-draft-not-sent.yaml` | **UNRUN. SENDS NOTHING.** Readiness Kbd, Chats: the thread composer and Send above the keyboard; the draft is erased. | Sending (a send reaches another person). |
 | `68-chats-shots.yaml` | **UNRUN. PICTURES.** The chats list and the first thread at ${SHOT}. | Asserts no behaviour. |
+| `69-keyboard-padding-users.yaml` | **PASS light + dark (2026-11-24, qa_phone emulator-5580, :3030 local stack, shots looked at).** WRITES on the :3030 copy only (one empty note, one form draft); SENDS NOTHING.** Every other user of the shared KeyboardPadding after 53b9793, keyboard up, light and dark (MODE): Notes edit (toolbar), Tables form (title field), Tables activity (Send), Chats new-conversation sheet (Start), a shot each. | The lift animation, any send/save, and the Pages/Doc users (30–49). |
 | `800-light-en` | **NOT ATTEMPTED — see below** |
 | `800-dark-en` | **NOT ATTEMPTED** |
 | `360-light-fr` | **NOT ATTEMPTED** |

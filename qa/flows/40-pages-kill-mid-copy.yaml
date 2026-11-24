@@ -3,7 +3,7 @@
 # this phone, and the driver's listing shows no copy left behind
 # (`pages-parity.sh run` lists Documents/pages-uploads before and after).
 #
-# COVERS: the row reaching "Preparing…", the kill, the relaunch, the row's
+# COVERS: a kill inside the copy (proved by the relaunch wording), the kill, the relaunch, the row's
 # missing-file wording.
 # CANNOT TELL YOU: on its own, the disk (the driver's listing is the proof).
 appId: ${APP_ID}
@@ -22,13 +22,21 @@ tags: [pages, parity, kill]
     timeout: 20000
 - tapOn: "sdk_gphone.*"
 - tapOn: "Download"
-# 1.5 GB (pages-parity.sh device): 300 MB was copied before "Preparing…"
-# could be read (2026-11-21), so the kill landed after the copy.
+# THE DRIVER KILLS THE APP (2026-11-24). Maestro's look for "Preparing…" came
+# after an 800 MB copy had finished, 1302 MB tripped the 2.5 GB AVD's
+# lowmemorykiller, and a killApp straight after the pick landed before the app
+# even had the file. So `pages-parity.sh` watches the app's pages-uploads folder
+# and force-stops it the moment a PARTIAL qa-huge.bin is there, logging the
+# bytes copied (kill40.txt). The relaunch wording below is the app-side proof:
+# only a row still "preparing" at launch says the file is no longer on this
+# phone (uploads.store.ts:536); one killed after its copy comes back "checking".
 - tapOn: "qa-huge.bin"
+# A wait, not a check: nothing named this ever shows; it gives the driver's
+# watcher up to 30 s to stop the app.
 - extendedWaitUntil:
-    visible: "Preparing…"
-    timeout: 20000
-- killApp
+    visible: "kill40 sentinel never shown"
+    timeout: 30000
+    optional: true  # lint: optional-ok — a timed wait for the driver's kill; kill40.txt and the relaunch wording are the proof
 - launchApp:
     stopApp: false
 - runFlow: pages-open-trip.yaml

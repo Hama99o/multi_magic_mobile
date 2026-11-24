@@ -34,8 +34,15 @@ tags: [doc, readiness]
 - tapOn: "qa-doc.pdf"
 - extendedWaitUntil:
     visible:
-      id: "doc-text-line"
+      id: "doc-text-legend"
     timeout: 60000
+# The editable lines sit below Save, off screen on a phone: scroll to them
+# (a visible-wait does not scroll; measured 2026-11-24, run on :3030).
+- scrollUntilVisible:
+    element:
+      id: "doc-text-line"
+    direction: DOWN
+    timeout: 20000
 - tapOn:
     id: "doc-text-line"
 - tapOn:

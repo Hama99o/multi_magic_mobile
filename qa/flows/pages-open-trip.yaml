@@ -24,6 +24,9 @@ appId: ${APP_ID}
     timeout: 30000
 # lint: anchored-ok — the seeded folder "Trip" is a whole row title in the space
 - tapOn: "Trip"
-- extendedWaitUntil:
-    visible: "a-notes.txt"
+# Scroll, not a visible-wait: leftovers from earlier flows push the seeded
+# files below the fold at 360 dp and 200 % font (device, 2026-11-24).
+- scrollUntilVisible:
+    element: "a-notes.txt"
+    direction: DOWN
     timeout: 30000

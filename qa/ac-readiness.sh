@@ -32,7 +32,7 @@ prime() { # the bundle running before any flow (2026-11-21: the launcher trap)
   for i in $(seq 1 90); do
     if adb -s "$SERIAL" logcat -d | grep -q 'Running "main"'; then
       echo "prime: bundle running"
-      sleep 3; adb -s "$SERIAL" shell input swipe 955 265 60 2150 900   # the dev gear off the avatar
+      sleep 3; adb -s "$SERIAL" shell input swipe 955 265 40 1250 900; adb -s "$SERIAL" shell input swipe 110 2226 40 1250 900  # mid-left: bottom-left covered the Pages Home tab (2026-11-24)   # the dev gear off the avatar
       return 0
     fi
     sleep 2

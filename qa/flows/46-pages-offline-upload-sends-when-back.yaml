@@ -8,7 +8,10 @@ appId: ${APP_ID}
 tags: [pages, readiness, offline]
 ---
 - runFlow: pages-open-trip.yaml
-- extendedWaitUntil:
-    visible: "qa-offline.txt"
+# Scroll, not a visible-wait: by name it sorts after qa-huge.bin, below the
+# fold at 411 dp (device, 2026-11-24; the server had it at 22:51:49).
+- scrollUntilVisible:
+    element: "qa-offline.txt"
+    direction: DOWN
     timeout: 180000
 - takeScreenshot: reports/46-offline-sent

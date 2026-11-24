@@ -7,7 +7,13 @@
 appId: ${APP_ID}
 tags: [pages, readiness, offline]
 ---
-- runFlow: pages-open-trip.yaml
+# The driver opened Trip ONLINE before cutting the network: a dev build cannot
+# load its bundle offline, so relaunching here stopped at the dev launcher
+# (measured 2026-11-24). This flow starts on Trip and does not relaunch.
+- extendedWaitUntil:
+    visible:
+      id: "pages-add"
+    timeout: 20000
 - tapOn:
     id: "pages-add"
 - tapOn:
@@ -18,6 +24,11 @@ tags: [pages, readiness, offline]
     timeout: 20000
 - tapOn: "sdk_gphone.*"
 - tapOn: "Download"
+# The picker's grid puts qa-offline.txt below the fold (device, 2026-11-24).
+- scrollUntilVisible:
+    element: "qa-offline.txt"
+    direction: DOWN
+    timeout: 20000
 - tapOn: "qa-offline.txt"
 - extendedWaitUntil:
     visible: "Waiting for a connection"

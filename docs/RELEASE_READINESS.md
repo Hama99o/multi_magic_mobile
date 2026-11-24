@@ -35,16 +35,16 @@ the Assistant, Chats, SafeZone · **ff** Flow, Notes, Search, the shell
 | App (owner) | Off | Slow | 200% | Dark | RTL | 2×tap | Kbd | 360 | 411 | 800 | States | Perm | Kill |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|
 | Flow (ff) | PASS 11-20 [F-off] | NOT MEASURED | PASS 11-21 [F-200] | PASS 11-20 [F-dark] | NOT MEASURED | NOT MEASURED (Jest only [F-2x]) | NOT MEASURED | PASS 11-20 [F-360] | PASS 11-20 [F-411] | PASS 11-20 [F-800] | PASS 11-20 empty [F-empty]; error NOT MEASURED | N/A: Flow asks no permission | NOT MEASURED |
-| Notes (ff) | NOT MEASURED | NOT MEASURED | NOT MEASURED | PASS 11-21 [N-dark] | PASS 11-13 [N-rtl] | PASS 11-21 [N-2x] | PASS 11-13 [N-kbd] | PASS 11-21 [N-360] | PASS 11-21 [N-411] | PASS 11-21 [N-800] | NOT MEASURED | NOT MEASURED (microphone, dictation) | NOT MEASURED |
+| Notes (ff) | NOT MEASURED | NOT MEASURED | NOT MEASURED | PASS 11-21 [N-dark] | PASS 11-13 [N-rtl] | PASS 11-21 [N-2x] | PASS 11-13 [N-kbd]; re-checked 11-24 after 53b9793 [K-69] | PASS 11-21 [N-360] | PASS 11-21 [N-411] | PASS 11-21 [N-800] | NOT MEASURED | NOT MEASURED (microphone, dictation) | NOT MEASURED |
 | Search (ff) | NOT MEASURED | NOT MEASURED | NOT MEASURED | PASS 11-21 [S-dark] | NOT MEASURED | N/A: search writes nothing | NOT MEASURED | PASS 11-21 [S-360] | PASS 11-21 fr [S-411] | PASS 11-21 [S-800] | PASS 11-21 empty [S-empty]; loading, error NOT MEASURED | N/A: no permission | NOT MEASURED |
 | Shell: Home, header, Apps sheet, sheet frame (ff) | NOT MEASURED | NOT MEASURED | PASS 11-21 [H-200b]: 2 columns, every app name whole (was FAIL 08:48 [H-200], fixed e842db8) | NOT MEASURED | N/A: no user text | N/A | N/A | NOT MEASURED | NOT MEASURED | PASS 11-20 header slot [H-800] | NOT MEASURED | N/A | NOT MEASURED |
-| Tables (88) | PASS 11-21 flow 37: offline failure, then Try again recovers [T-man] | NOT MEASURED | **FAIL 11-21** table-tab pills cut at the bottom at 411 dp; fixed b5dfdf9, device re-check owed (88). Cards and delete sheet fit [T-man] | NOT MEASURED (only the 800 dp grid seen dark, flow 36) | NOT MEASURED | PASS 11-21 flow 37: a double tap on Add a row made one row, 25 → 26 [T-man] | PASS 11-21 delete-by-name sheet and field editor, keyboard up [T-man] | NOT MEASURED | PASS 11-21 flows 33, 35 (:3001), 37 [T-man] | **FAIL 11-21** + button covered the grid summary's last cell; fixed b5dfdf9, re-check owed (88). Grid, header, summary pass light and dark, flow 36 [T-man] | NOT MEASURED on device beyond the offline error (Jest: import, answers, empty grid) | NOT MEASURED (a viewer needs a 2nd account; two-person checks wait for demo.env) | NOT MEASURED |
+| Tables (88) | PASS 11-21 flow 37: offline failure, then Try again recovers [T-man] | NOT MEASURED | **FAIL 11-21** table-tab pills cut at the bottom at 411 dp; fixed b5dfdf9, device re-check owed (88). Cards and delete sheet fit [T-man] | NOT MEASURED (only the 800 dp grid seen dark, flow 36) | NOT MEASURED | PASS 11-21 flow 37: a double tap on Add a row made one row, 25 → 26 [T-man] | PASS 11-21 delete-by-name sheet and field editor, keyboard up [T-man]; form title and activity Send re-checked 11-24 after 53b9793 [K-69] | NOT MEASURED | PASS 11-21 flows 33, 35 (:3001), 37 [T-man] | **FAIL 11-21** + button covered the grid summary's last cell; fixed b5dfdf9, re-check owed (88). Grid, header, summary pass light and dark, flow 36 [T-man] | NOT MEASURED on device beyond the offline error (Jest: import, answers, empty grid) | NOT MEASURED (a viewer needs a 2nd account; two-person checks wait for demo.env) | NOT MEASURED |
 | Contacts (ff) | NOT MEASURED | NOT MEASURED | PASS 11-21 header and a one-line row at 200 %, nothing spills [C-200]; the two-line row (name + subtitle) not shown | NOT MEASURED | NOT MEASURED | PASS 11-21 one contact from a double-tapped Save [C-2x] | PASS 11-21 [C-kbd] | NOT MEASURED | PASS 11-21 [C-200] | NOT MEASURED | PASS 11-21 empty book [C-empty]; loading, error NOT MEASURED | NOT MEASURED | NOT MEASURED |
 | Finance (88) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
-| Doc (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | **FAIL 11-21** inferred, not device-measured: text edit sheet on KAV "height"; fix 0c5c012, re-run owed (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
-| Pages (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | **FAIL 11-21** qa_phone: text-file Save under the keyboard (flow 33), note picker behind it (flow 34); fix 4124956, re-run owed in slot 2 (ee); shots in gitignored qa/evidence, no tracked path yet | NOT MEASURED (flow 42 widths not run; flows 30/35/38 passed at 360 dp, no column claim) | NOT MEASURED (flow 42 widths not run; flows 30/35/38 passed at 360 dp, no column claim) | NOT MEASURED (flow 42 widths not run; flows 30/35/38 passed at 360 dp, no column claim) | NOT MEASURED | NOT MEASURED | NOT MEASURED (flows 40/41 written, stopped at the picker; fixed 5958fde) |
+| Doc (ee) | NOT MEASURED | NOT MEASURED | PASS 11-24 [D-200] | PASS 11-24 [D-dark] | NOT MEASURED | NOT MEASURED | PASS 11-24 [D-kbd]: the edit-line sheet keeps Done above the keyboard (was FAIL 11-21; fixed 53b9793, red-first Jest) | PASS 11-24 [D-w] | PASS 11-24 [D-w] | PASS 11-24 [D-w] | NOT MEASURED | NOT MEASURED | NOT MEASURED |
+| Pages (ee) | PASS 11-24 [P-off]: offline the upload waits, back online it arrives | NOT MEASURED | PASS 11-24 [P-200]: names whole, dates truncate | PASS 11-24 [P-dark] | PASS 11-24 [P-rtl] | PASS 11-24 [P-2x]: one folder per double tap, 3 runs, 3 folders | PASS 11-24 [P-kbd]: text-file Save and the page editor's toolbar above the keyboard (was FAIL 11-21; fixes 4124956, 53b9793) | PASS 11-24 [P-w] | PASS 11-24 [P-w] | PASS 11-24 [P-w] | PASS 11-24 empty folder [P-empty]; loading, error NOT MEASURED | NOT MEASURED | PASS 11-24 kill mid-UPLOAD resumes, no copy left [P-kill]; kill mid-COPY **NOT MEASURED** on the AVD (real-phone RC list) |
 | Assistant (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
-| Chats (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
+| Chats (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED: thread composer (flow 67) not run; new-conversation sheet PASS 11-24 [K-69] | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
 | SafeZone (ee) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED |
 | Calendar (ff) | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | NOT MEASURED | PASS 11-21 one event from a double-tapped Save [K-2x] | PASS 11-21 [K-kbd] | NOT MEASURED | PASS 11-21 [K-411] | NOT MEASURED | PASS 11-21 list + month views [K-411]; empty day, error NOT MEASURED | NOT MEASURED | NOT MEASURED |
 | Workspace | N/A for this build: blocked on the owner's landscape decision (G1); not in the tree | | | | | | | | | | | | |
@@ -84,6 +84,23 @@ right (a known dev-client toggle, not the app; to be off from the next slot).
 - **[T-man]** `docs/design/tables/sweep/MANIFEST.md`, "Device pass 4" (pass 5 to be added by 88).
 - **[H-800]** `docs/design/app-shell/ours/800-header-slot-contact-sheet.png`.
 
+**2026-11-24, ee:** `qa_phone` (emulator-5580) against a local stack on
+**:3030** (container `mm-ee-live`, multi_magic at origin/master 8075f963, DB
+`multi_magic_eelive_development`, a copy of the QA database, never prod;
+upload storage on /data). Signed in as the QA account only, invented data;
+credentials read by name from a gitignored 600 file. Shots in
+`docs/release/evidence/2026-11-24-ee/`, every one looked at.
+
+- **[D-kbd]** `48-doc-text-keyboard.png`: Done on screen over the keyboard (flow 48).
+- **[D-w]** `49-doc-text-{360,411,800}.png` (flow 49). **[D-dark]** `49-doc-text-411-dark.png`. **[D-200]** `49-doc-text-411-font200.png`, `49-doc-hub-411-font200.png`: nothing cut.
+- **[P-w]** `42-folder-{360,411,800}.png` (flow 42). **[P-dark]** `42-folder-411-dark.png`. **[P-200]** `42-folder-411-font200.png`. **[P-rtl]** `44-rtl-list.png` (flow 44, Persian titles).
+- **[P-2x]** `43-double-tap.png` (flow 43); read-only DB count: one "[qa] twice" folder per run (3 runs, ids 33, 41, 52).
+- **[P-kbd]** `33-text-saved.png` (flow 33), `36-page-link-code.png` (flow 36).
+- **[P-off]** `45-offline-waiting.png`, `46-offline-sent.png` (flows 45, 46); the server had the file at 22:51:49.
+- **[P-empty]** `47-empty-folder.png` (flow 47). **[P-kill]** `41-after-kill-mid-upload.png` (flow 41); the app's copy folder empty after the relaunch.
+- **[K-69]** `69-{notes,tables-form,tables-activity,chats-new}-kbd-{light,dark}.png` (flow 69): every other user of the shared KeyboardPadding after 53b9793, keyboard up: Notes toolbar, Tables form title, Tables activity Send, Chats new-conversation name and Start.
+- **Pages kill mid-copy, NOT MEASURED (measured cause):** 1302 MB tripped the AVD's lowmemorykiller (2.5 GB RAM; the app was not killed); 800 MB was copied before Maestro, adb, or an on-device 10 ms poll saw a partial file. The copy streams (uploads.store.ts:259 → expo-file-system fsops/Utilities.kt:87), and the relaunch rule is Jest-covered (uploads.store.test.ts:574).
+
 ## Notes from owners
 
 - 88 (11-21): Contacts and Finance are all NOT MEASURED on the 13 columns. Finance's device pass 3 proved swipe reveal/delete, no stale offset on Loans, Expense Undo restoring row and total (`docs/design/hygiene-step0/MANIFEST.md` rows 124-126), none of them a column here. Contacts: My family and the who-is-it sheet are Jest only; the keyboard over that sheet is ⚠ in the manifest (C2).
@@ -101,3 +118,7 @@ right (a known dev-client toggle, not the app; to be off from the next slot).
   read by name from the gitignored `.env`. The :3020 demo file is on the
   owner's Tuesday list; until then every TWO-PERSON check (sharing, members,
   a viewer's rights) is NOT MEASURED.
+
+- **Owner's real-phone RC checklist (Hello, 11-24):** Pages kill mid-copy,
+  and a copy over 800 MB (1.2 GB target). No emulator on this box can show
+  either (see the Evidence note).

@@ -95,7 +95,16 @@ EOF
   echo "seeded: space $sid ($SPACE_TITLE), folder Trip $trip, note $note"
 }
 
+# Big fixtures grow the AVD's images on / and the server's upload storage
+# (on /data for the :3030 stack): stop below 5 GB free on either (Hello,
+# 2026-11-25, after a run left / at 1.9 GB).
+disk_ok() {
+  local m g; for m in / /data; do g=$(df -BG --output=avail "$m" | tail -1 | tr -dc 0-9)
+    [ "${g:-0}" -ge 5 ] || { echo "NOT MEASURED: $m has ${g} GB free (< 5 GB): no big-file cell"; return 1; }; done
+}
+
 device() {
+  disk_ok || exit 3
   local d; d=$(mktemp -d)
   mkdir -p "$d/qa-folder/sub"; printf 'two\n' > "$d/qa-folder/two.txt"; printf 'three\n' > "$d/qa-folder/sub/three.txt"; printf 'hidden\n' > "$d/qa-folder/.hidden"
   python3 -c "open('$d/qa-folder/one.jpg','wb').write(bytes.fromhex('ffd8ffe000104a46494600010100000100010000ffdb004300080606070605080707070909080a0c140d0c0b0b0c1912130f141d1a1f1e1d1a1c1c20242e2720222c231c1c2837292c30313434341f27393d38323c2e333432ffc0000b080001000101011100ffc4001f0000010501010101010100000000000000000102030405060708090a0bffda0008010100003f00d2cf20ffd9'))"
@@ -181,7 +190,7 @@ EOS
 }
 
 run() {
-  need_pw; prime "$PP_DEEP_LINK"
+  need_pw; disk_ok || exit 3; prime "$PP_DEEP_LINK"
   : > "$OUT/verdicts.txt"
   for f in 30 31 32 33 34 35 36 37 38 39; do flow "$(ls "$DIR"/flows/${f}-pages-*.yaml)"; done
   # The kill tests: the copies listed before, between and after.
@@ -247,7 +256,7 @@ case "${1:-}" in
   smoke) need_pw; prime "$PP_DEEP_LINK"; flow "$DIR/flows/00-smoke-signed-in.yaml"; echo "LOOK: $OUT/00-smoke-signed-in (00-smoke-home.png) before the batch";;
   seed) seed;; device) device;; run) run;; widths) widths;; columns) columns;; clean) clean;;
   # Re-run named flows only (e.g. `only 33 34 40`), primed once, same verdict lines.
-  only) need_pw; prime "$PP_DEEP_LINK"; shift; for n in "$@"; do [ "$n" = 40 ] && { kill_mid_copy | tee -a "$OUT/kill40.txt" & }; flow "$(ls "$DIR"/flows/${n}-pages-*.yaml | head -1)"; wait; done;;
+  only) need_pw; disk_ok || exit 3; prime "$PP_DEEP_LINK"; shift; for n in "$@"; do [ "$n" = 40 ] && { kill_mid_copy | tee -a "$OUT/kill40.txt" & }; flow "$(ls "$DIR"/flows/${n}-pages-*.yaml | head -1)"; wait; done;;
   # 45 then 46 with the network cut between them, as in `columns`.
   offline) need_pw; prime "$PP_DEEP_LINK"; flow "$DIR/flows/pages-open-trip.yaml"
     adb -s "$SERIAL" shell svc wifi disable; adb -s "$SERIAL" shell svc data disable

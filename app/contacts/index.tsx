@@ -309,7 +309,8 @@ function ContactsList({ pane = false, openId = null, onOpen }: { pane?: boolean;
             testID="contacts-search"
             value={typed}
             onChangeText={setTyped}
-            placeholder={t("contacts.list.searchPlaceholder", { count })}
+            // The count only once the book has loaded: a failed load is not "0 contacts".
+            placeholder={book.data ? t("contacts.list.searchPlaceholder", { count }) : t("contacts.list.search")}
             placeholderTextColor={colors.inkMuted}
             returnKeyType="search"
             autoCorrect={false}

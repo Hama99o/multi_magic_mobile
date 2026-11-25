@@ -139,6 +139,18 @@ const alertButtons = () => ((Alert.alert as jest.Mock).mock.calls.at(-1)?.[2] ??
 
 // ── THE LIST ───────────────────────────────────────────────────────────────
 describe("the list", () => {
+  // Found on a device, 2026-11-25 (flow 130, contacts 500): under "Could not
+  // load your contacts." the search field read "Search 0 contacts", a count
+  // the app did not have. The number is only said once the book has loaded.
+  it("a failed load never says how many contacts there are", async () => {
+    mock.onGet(BASE).reply(500, { error: "boom" });
+    renderScreen(<Contacts />);
+    expect(await screen.findByTestId("contacts-load-failed")).toBeTruthy();
+    const field = screen.queryByTestId("contacts-search");
+    if (field) expect(field.props.placeholder).toBe("Search contacts");
+    expect(screen.queryByPlaceholderText(/Search 0 contacts/)).toBeNull();
+  });
+
   it("reads every page and lays it out A–Z, favourites first", async () => {
     mock.onGet(BASE).reply((config) =>
       config.params.page === 1

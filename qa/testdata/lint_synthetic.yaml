@@ -32,3 +32,10 @@ appId: host.exp.exponent
 # lint: dbid-ok — the synthetic case for a justified one
 - tapOn:
     id: "theme-dark"
+# SHOTSCREEN: a shot after a tap fires; one after a testID assert is silent.
+- tapOn:
+    id: "composer-input"
+- takeScreenshot: reports/synthetic-unguarded
+- assertVisible:
+    id: "composer-input"
+- takeScreenshot: reports/synthetic-guarded

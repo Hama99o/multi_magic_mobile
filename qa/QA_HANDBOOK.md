@@ -92,6 +92,22 @@ Every instrument was green and every one was reading a true thing about the
 wrong subject. So every flow ends in a screenshot, and the screenshot is the
 artefact.
 
+### And a screenshot is evidence only of the screen it shows — 2026-11-25
+
+**Rule: every `takeScreenshot` comes right after an `assertVisible` (or
+`extendedWaitUntil: visible`) of that screen's own testID — an `id:`, never
+`".*"`.** `flow_lint.py` fails a shot without one (`SHOTSCREEN`); where a
+shot is genuinely of whatever is on screen (a crash page, a system dialog),
+mark the line above `# lint: shot-ok — <why>`.
+
+What it cost: flow 105 typed into Search, then ran `hideKeyboard` and took
+the picture. Gboard had gone into its floating mode, so no docked IME was up,
+and Maestro's `hideKeyboard` fell back to **Back** — which popped Search to
+Home. Every step had passed, so the flow passed, and the "Search, dark" and
+"Search, 800 dp" shots were photographs of Home. Only looking at them caught
+it. An assert of `search-input` between the two steps turns that into a FAIL
+that names the step.
+
 ## Change one thing, wait, read it back
 
 Changing `wm size`/`wm density` under a running app ANR'd SystemUI twice and

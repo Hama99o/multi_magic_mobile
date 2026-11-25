@@ -45,6 +45,13 @@ Each class is a failure already paid for, here or in the sibling rig:
              sign-in shape (after a password on the auth root) is exempt;
              everywhere else say why Back is safe, or `pressKey: Enter` on a
              single-line field instead.
+  SHOTSCREEN A `takeScreenshot` whose step just before (other screenshots
+             aside) is not an `assertVisible` / `extendedWaitUntil: visible`
+             of a testID (`id:`, not ".*"). A picture is evidence only of
+             the screen it shows: on 2026-11-25 a hideKeyboard fell back to
+             Back, popped Search to Home, and two "PASS" shots of Search were
+             photographs of Home. Assert the screen's own testID right before
+             the shot, or mark `# lint: shot-ok — <why>` on the line above.
   DATE       A hardcoded year.
   RUNFLOW    A `runFlow:` pointing at a file that does not exist.
   APPID      A flow whose `appId` is not `${APP_ID}`. The rig drives EITHER
@@ -249,6 +256,66 @@ def owner_of(lines, i):
     return None
 
 
+SHOT_WARNINGS = []
+BASELINE = os.path.join(ROOT, "qa", "testdata", "shotscreen_baseline.txt")
+
+
+def blob_sha(text):
+    """git's blob hash of this content, so a baseline line names exact bytes."""
+    import hashlib
+    data = text.encode("utf-8")
+    return hashlib.sha1(b"blob %d\0" % len(data) + data).hexdigest()
+
+
+_BASE = None
+
+
+def shot_baseline():
+    global _BASE
+    if _BASE is None:
+        _BASE = set()
+        if os.path.isfile(BASELINE):
+            for ln in io.open(BASELINE, encoding="utf-8"):
+                if ln.strip() and not ln.startswith("#"):
+                    _BASE.add(ln.split()[0])
+    return _BASE
+
+
+def shot_guard(lines, i):
+    """True when the step before lines[i] (a takeScreenshot; earlier
+    screenshots in a row are skipped) asserts a testID is visible; else a
+    short description of what came before instead."""
+    ind = len(lines[i]) - len(lines[i].lstrip())
+    for k in range(i - 1, -1, -1):
+        s = lines[k]
+        st = s.strip()
+        if not st or st.startswith("#"):
+            continue
+        at = len(s) - len(s.lstrip())
+        if at < ind:
+            return "the start of its command list"
+        if at > ind or not st.startswith("- "):
+            continue
+        if st.startswith("- takeScreenshot"):
+            continue
+        body = [st]
+        for j in range(k + 1, len(lines)):
+            t = lines[j]
+            if t.strip() and not t.strip().startswith("#") and len(t) - len(t.lstrip()) <= ind:
+                break
+            body.append(t.strip())
+        text = " ".join(body)
+        if not re.match(r"- (assertVisible|extendedWaitUntil)\b", st):
+            return st
+        if re.search(r"\bnotVisible:", text):
+            return st
+        m = re.search(r'id:\s*["\']([^"\']+)["\']', text)
+        if not m or m.group(1).strip() == ".*":
+            return st
+        return True
+    return "the start of the flow"
+
+
 def check(path, strings, literals, templates):
     hits = []
     text = io.open(path, encoding="utf-8").read()
@@ -328,6 +395,24 @@ def check(path, strings, literals, templates):
                          f"hideKeyboard after {prev[:30]!r} — can reach the app as BACK "
                          f"with no IME up and pop a pushed screen; justify it in a "
                          f"comment above, or `pressKey: Enter` on a single-line field"))
+
+    # ── SHOTSCREEN ──────────────────────────────────────────────────────────
+    # A flow byte-identical to its baselined blob only warns (Hello's backlog
+    # rule, 2026-11-25); any edit changes the hash and the check fails.
+    grandfathered = blob_sha(text) in shot_baseline()
+    for i, raw in enumerate(lines, 1):
+        if not re.match(r"\s*- takeScreenshot\b", raw):
+            continue
+        if i >= 2 and "lint: shot-ok" in lines[i - 2]:
+            continue
+        before = shot_guard(lines, i - 1)
+        if before is not True and grandfathered:
+            SHOT_WARNINGS.append(f"{os.path.basename(path)}:{i}")
+        elif before is not True:
+            hits.append((i, "SHOTSCREEN",
+                         f"screenshot after {before[:40]!r} with no assert of the screen's "
+                         f"own testID just before it — it can photograph another screen "
+                         f"and still PASS"))
 
     for i, raw in enumerate(lines, 1):
         line = raw.strip()
@@ -445,8 +530,10 @@ def unregistered(flow_paths, register_path):
 # flat `\{[^}]*\}` stops at — so it reuses ID_EXPR's own nesting pattern.
 # Caught by this detector finding `event-repeats` and silently missing the two
 # template handles it exists for.
+# `ActivityIndicator` takes size= and color= too, but it is ONE native node
+# (2026-11-25: `search-searching` and `notes-loading` were flagged, falsely).
 ICON_ID = re.compile(
-    r"<[A-Z][A-Za-z]*\s+(?=[^>]*\bsize=)(?=[^>]*\bcolor=)[^>]*?"
+    r"<(?!ActivityIndicator\b)[A-Z][A-Za-z]*\s+(?=[^>]*\bsize=)(?=[^>]*\bcolor=)[^>]*?"
     r"testID\s*=\s*(\{(?:[^{}]|\{[^{}]*\})*\}|\"[^\"]*\")"
 )
 
@@ -688,7 +775,7 @@ def main(argv):
         hits = check(fixture, s, lits, tpls)
         got = {k for _, k, _ in hits}
         need = {"TESTID", "DBID", "ANCHORED", "SELFTYPED", "TOOTHLESS", "OPTIONAL", "JSFUNC",
-                "REGEXMETA", "HIDEKEY", "DATE", "RUNFLOW", "APPID", "BADTYPE"}
+                "REGEXMETA", "HIDEKEY", "DATE", "RUNFLOW", "APPID", "BADTYPE", "SHOTSCREEN"}
         for line, kind, why in hits:
             print(f"  L{line:<3} {kind:<12} {why[:64]}")
         missing = need - got
@@ -753,6 +840,11 @@ def main(argv):
         print(f"  {kind:<12} qa/flows/{name}  {why}")
         total += 1
 
+    if SHOT_WARNINGS:
+        print(f"  {'SHOTWARN':<12} {len(SHOT_WARNINGS)} unguarded screenshot(s) in "
+              f"{len({w.split(':')[0] for w in SHOT_WARNINGS})} baselined flow(s) — not counted; "
+              f"each gets its asserts the next time the flow is touched "
+              f"(qa/testdata/shotscreen_baseline.txt)")
     helper_set = helpers(all_flows)
     n_flows = len([p for p in all_flows if os.path.abspath(p) not in helper_set])
     print(f"\n  {total} finding(s) · {len(paths)} file(s) linted · {n_flows} flows and "

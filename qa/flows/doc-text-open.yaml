@@ -1,0 +1,26 @@
+# Helper: from a signed-in app, open Doc → Edit text and pick ${FILE} from
+# Download. Ends on the picked file, whatever the tool then draws (the
+# caller asserts it: the page, the busy card, or the error).
+appId: ${APP_ID}
+---
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-doc"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-doc"
+- tapOn:
+    id: "doc-tool-text"
+- tapOn:
+    id: "doc-text-intake-add"
+- tapOn:
+    id: "doc-intake-files"
+- extendedWaitUntil:
+    visible: "sdk_gphone.*"
+    timeout: 20000
+- tapOn: "sdk_gphone.*"
+- tapOn: "Download"
+- tapOn: ${FILE}

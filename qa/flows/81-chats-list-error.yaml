@@ -1,0 +1,27 @@
+# Readiness "States" (error), Chats list. The driver answers every
+# /api/v1/conversations request with Rails' 500 at the fault proxy and
+# cold-starts the app, so there is no kept list to fall back on.
+# 81b (run after the driver clears the fault) taps Try again.
+#
+# COVERS: the list's failure sentence and its way out, photographed.
+# CANNOT TELL YOU: a 429 or a timeout (other branches of failureMessage).
+appId: ${APP_ID}
+tags: [chats, readiness, states]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-chats"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-chats"
+- extendedWaitUntil:
+    visible:
+      id: "chats-load-failed"
+    timeout: 30000
+- assertVisible:
+    id: "chats-load-failed-sentence"
+- takeScreenshot: reports/81-chats-list-error

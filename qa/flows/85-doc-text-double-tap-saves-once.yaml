@@ -1,0 +1,44 @@
+# Readiness "2×tap", Doc: one line edited, then a double tap on Save. The
+# driver counts POST /api/v1/doc_app/pdf/edit at the fault proxy (must be 1).
+# The result is not saved to the phone (Done).
+#
+# COVERS: one result sheet after a double tap; the count is the driver's.
+# CANNOT TELL YOU: a tap faster than Maestro's doubleTapOn.
+appId: ${APP_ID}
+tags: [doc, readiness, doubletap]
+---
+- runFlow: login.yaml
+- runFlow:
+    file: doc-text-open.yaml
+    env:
+      FILE: "qa-doc.pdf"
+- extendedWaitUntil:
+    visible:
+      id: "doc-text-legend"
+    timeout: 60000
+- scrollUntilVisible:
+    element:
+      id: "doc-text-line"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "doc-text-line"
+- tapOn:
+    id: "doc-text-input"
+- inputText: " twice"
+- tapOn:
+    id: "doc-text-done"
+- scrollUntilVisible:
+    element:
+      id: "doc-text-save"
+    direction: DOWN
+    timeout: 20000
+- doubleTapOn:
+    id: "doc-text-save"
+- extendedWaitUntil:
+    visible:
+      id: "doc-result-sheet"
+    timeout: 60000
+- takeScreenshot: reports/85-doc-double-tap-result
+- tapOn:
+    id: "doc-result-done"

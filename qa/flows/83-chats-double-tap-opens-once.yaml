@@ -1,0 +1,35 @@
+# Readiness "2×tap", Chats: a double tap on a conversation row pushes ONE
+# thread, so a single Back returns to the list (two pushes would need two).
+# Sends nothing.
+#
+# COVERS: the row's double tap. CANNOT TELL YOU: a tap faster than Maestro's
+#   doubleTapOn; Send's double tap (a send reaches another person).
+appId: ${APP_ID}
+tags: [chats, readiness, doubletap]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-chats"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-chats"
+# lint: dbid-ok — the QA account has one thread; any row is the subject
+- doubleTapOn:
+    id: "chat-row-.*"
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: "people-composer-input"
+    timeout: 20000
+- back
+- extendedWaitUntil:
+    visible:
+      id: "chats-list"
+    timeout: 10000
+- assertNotVisible:
+    id: "people-composer-input"
+- takeScreenshot: reports/83-chats-after-one-back

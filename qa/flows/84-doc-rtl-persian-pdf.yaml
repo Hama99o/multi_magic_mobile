@@ -1,0 +1,39 @@
+# Readiness "RTL", Doc: a PDF whose words are Persian (invented, printed by
+# Chrome from an RTL page with Noto Sans Arabic; pushed as qa-doc-fa.pdf).
+# The driver pushes the file. Nothing is saved: the sheet is closed unchanged.
+#
+# COVERS: the page picture, the "Lines on this page" rows and the edit sheet's
+#   field holding Persian, photographed and asserted by its words.
+# CANNOT TELL YOU: Persian TYPED (Maestro cannot type it on Android), saving
+#   an edited Persian line (the server's shaping), an RTL app language.
+appId: ${APP_ID}
+tags: [doc, readiness, rtl]
+---
+- runFlow: login.yaml
+- runFlow:
+    file: doc-text-open.yaml
+    env:
+      FILE: "qa-doc-fa.pdf"
+- extendedWaitUntil:
+    visible:
+      id: "doc-text-legend"
+    timeout: 60000
+- takeScreenshot: reports/84-doc-rtl-page
+- scrollUntilVisible:
+    element:
+      id: "doc-text-line"
+    direction: DOWN
+    timeout: 20000
+- assertVisible: ".*لیون.*"
+- takeScreenshot: reports/84-doc-rtl-lines
+- tapOn: ".*لیون.*"
+- extendedWaitUntil:
+    visible:
+      id: "doc-text-done"
+    timeout: 10000
+- assertVisible:
+    id: "doc-text-input"
+    text: ".*لیون.*"
+- takeScreenshot: reports/84-doc-rtl-sheet
+- tapOn:
+    id: "doc-text-done"

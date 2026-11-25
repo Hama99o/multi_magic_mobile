@@ -1,0 +1,20 @@
+# Readiness "Off", Doc: the driver signs in ONLINE (login.yaml), then turns
+# wifi and data off. A PDF picked offline must say why nothing comes.
+#
+# COVERS: the tool's error line, photographed. Its way out is "Change file"
+#   (ErrorLine offers Retry only for "busy", by design); 87c takes it.
+# CANNOT TELL YOU: a job cut off half-way (see 88).
+appId: ${APP_ID}
+tags: [doc, readiness, offline]
+---
+- runFlow:
+    file: doc-text-open.yaml
+    env:
+      FILE: "qa-doc.pdf"
+- extendedWaitUntil:
+    visible:
+      id: "doc-error"
+    timeout: 60000
+- assertVisible:
+    id: "doc-text-change"
+- takeScreenshot: reports/86-doc-offline

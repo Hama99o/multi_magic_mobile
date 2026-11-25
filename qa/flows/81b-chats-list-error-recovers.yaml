@@ -1,0 +1,16 @@
+# Follows 81 on the same screen (no launch): the fault is cleared by the
+# driver, then Try again brings the rows.
+#
+# COVERS: the error state's way out works. CANNOT TELL YOU: pull-to-refresh.
+appId: ${APP_ID}
+tags: [chats, readiness, states]
+---
+- tapOn: "Try again|Réessayer"
+# lint: dbid-ok — the QA account has one thread; any row is the subject
+- extendedWaitUntil:
+    visible:
+      id: "chat-row-.*"
+    timeout: 30000
+- assertNotVisible:
+    id: "chats-load-failed"
+- takeScreenshot: reports/81b-chats-list-recovered

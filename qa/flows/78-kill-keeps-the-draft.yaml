@@ -5,6 +5,10 @@
 # in state (app/chat/[id].tsx). Nothing is sent: both drafts are erased.
 #
 # COVERS: the Assistant draft and the thread draft across a process death.
+#   And the header after the relaunch: nobody is typing, so no "typing…"
+#   (2026-11-25: it showed; my own echo plus a restored draft announcing
+#   typing, fixed 005aee1). Held over ~3 checks a few seconds apart, since the
+#   echo arrives after the channel subscribes.
 # CANNOT TELL YOU: Android's own low-memory kill (same process death, other
 #   trigger) or a draft mid-dictation.
 appId: ${APP_ID}
@@ -40,6 +44,17 @@ tags: [readiness, kill]
     index: 0
 - tapOn:
     id: "people-composer-input"
+# A kept draft is the feature under test, so a draft left by an earlier run is
+# here too, and a tap puts the cursor inside it (2026-11-25: "[qa] thread
+# dra[qa] thread draft keptft kept"). Start from an empty field, with the
+# composer's own ✕: eraseText deletes BACKWARD from the cursor only.
+- runFlow:
+    when:
+      visible: "Clear|Effacer"
+    commands:
+      - tapOn: "Clear|Effacer"
+- tapOn:
+    id: "people-composer-input"
 - inputText: "[qa] thread draft kept"
 - stopApp
 # The last-place rule reopens the thread itself (app/index.tsx).
@@ -52,3 +67,13 @@ tags: [readiness, kill]
     timeout: 120000
 - takeScreenshot: reports/78-thread-after-kill
 - assertVisible: "\\[qa\\] thread draft kept"
+- repeat:
+    times: 3
+    commands:
+      - waitForAnimationToEnd:
+          timeout: 2000
+      - assertNotVisible:
+          id: "thread-typing"
+- takeScreenshot: reports/78-thread-after-kill-settled
+- tapOn: "Clear|Effacer"
+- assertNotVisible: "\\[qa\\] thread draft kept"

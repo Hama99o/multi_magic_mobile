@@ -1,0 +1,22 @@
+# Readiness "States", Doc. The driver makes /api/v1/doc_app wait 8 s
+# (loading), then 87b runs with a 500 (error) and 87c with the fault cleared.
+#
+# COVERS: the busy card while the page is read, photographed.
+# CANNOT TELL YOU: the server-busy (503) branch: flow 50, with 83's slot.
+appId: ${APP_ID}
+tags: [doc, readiness, states]
+---
+- runFlow: login.yaml
+- runFlow:
+    file: doc-text-open.yaml
+    env:
+      FILE: "qa-doc.pdf"
+- extendedWaitUntil:
+    visible:
+      id: "doc-busy"
+    timeout: 10000
+- takeScreenshot: reports/87-doc-loading
+- extendedWaitUntil:
+    visible:
+      id: "doc-text-legend"
+    timeout: 60000

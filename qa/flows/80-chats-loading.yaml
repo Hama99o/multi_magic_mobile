@@ -1,0 +1,49 @@
+# Readiness "States" (loading), Chats. The driver makes every
+# /api/v1/conversations request wait 8 s at the fault proxy (:3040 → :3030)
+# and cold-starts the app.
+#
+# What a cold start draws while it loads (measured 2026-11-25): EITHER the
+# list kept from the last session with the refresh spinner, OR, with nothing
+# kept, the rows' skeleton (both seen, one run each). A thread opens on the
+# one message the list knew (lastKnownMessages) until its page comes.
+#
+# COVERS: both loading pictures, then the real page arriving in the thread.
+# CANNOT TELL YOU: which of the two list pictures a given run will draw.
+appId: ${APP_ID}
+tags: [chats, readiness, states]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-chats"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-chats"
+# lint: dbid-ok — the QA account has one thread; any row is the subject
+- extendedWaitUntil:
+    visible:
+      id: "chat-row-.*|rows-skeleton"
+    timeout: 4000
+- takeScreenshot: reports/80-chats-list-loading
+# lint: dbid-ok — as above
+- extendedWaitUntil:
+    visible:
+      id: "chat-row-.*"
+    timeout: 30000
+# The row's NAME, not its centre: while the slow refresh runs, Android's
+# refresh spinner sits over the first row's centre and takes the tap
+# (2026-11-25). The thread's person is the second invented QA account.
+- tapOn: "Sam Rivera"
+- extendedWaitUntil:
+    visible:
+      id: "people-composer-input"
+    timeout: 4000
+- assertNotVisible: "\\[qa\\] hello from the second QA account"
+- takeScreenshot: reports/80-chats-thread-loading
+- extendedWaitUntil:
+    visible: "\\[qa\\] hello from the second QA account"
+    timeout: 30000
+- takeScreenshot: reports/80-chats-thread-loaded

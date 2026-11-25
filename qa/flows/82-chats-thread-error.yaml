@@ -1,0 +1,28 @@
+# Readiness "States" (error), a Chats thread. The driver answers
+# /api/v1/conversations/ (the thread's messages, not the list) with a 500 and
+# cold-starts the app. 82b, after the fault is cleared, taps Try again.
+#
+# COVERS: the thread's failure sentence and Try again, photographed.
+# CANNOT TELL YOU: a failure while older messages load (paging).
+appId: ${APP_ID}
+tags: [chats, readiness, states]
+---
+- runFlow: login.yaml
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-chats"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-chats"
+# lint: dbid-ok — the QA account has one thread; any row is the subject
+- tapOn:
+    id: "chat-row-.*"
+    index: 0
+- extendedWaitUntil:
+    visible:
+      id: "thread-load-failed"
+    timeout: 30000
+- takeScreenshot: reports/82-chats-thread-error

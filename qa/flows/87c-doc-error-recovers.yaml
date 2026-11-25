@@ -1,0 +1,24 @@
+# Follows 87b or 86 on the same screen (no launch), the fault cleared or the
+# network back (driver). The way out of a failed read is "Change file" (a
+# read failure offers no Retry: ErrorLine shows it for "busy" only).
+# COVERS: picking the file again reads the page and the error goes.
+appId: ${APP_ID}
+tags: [doc, readiness, states]
+---
+- tapOn:
+    id: "doc-text-change"
+- tapOn:
+    id: "doc-intake-files"
+- extendedWaitUntil:
+    visible: "sdk_gphone.*"
+    timeout: 20000
+- tapOn: "sdk_gphone.*"
+- tapOn: "Download"
+- tapOn: "qa-doc.pdf"
+- extendedWaitUntil:
+    visible:
+      id: "doc-text-legend"
+    timeout: 60000
+- assertNotVisible:
+    id: "doc-error"
+- takeScreenshot: reports/87c-doc-recovered

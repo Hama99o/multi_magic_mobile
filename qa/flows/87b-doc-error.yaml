@@ -1,0 +1,16 @@
+# Readiness "States" (error), Doc: /api/v1/doc_app answers 500 (driver).
+# COVERS: the error line and Retry, photographed. 87c retries after the
+#   driver clears the fault.
+appId: ${APP_ID}
+tags: [doc, readiness, states]
+---
+- runFlow: login.yaml
+- runFlow:
+    file: doc-text-open.yaml
+    env:
+      FILE: "qa-doc.pdf"
+- extendedWaitUntil:
+    visible:
+      id: "doc-error"
+    timeout: 60000
+- takeScreenshot: reports/87b-doc-error

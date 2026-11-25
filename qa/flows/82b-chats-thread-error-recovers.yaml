@@ -1,0 +1,12 @@
+# Follows 82 on the same screen (no launch), the fault cleared by the driver.
+# COVERS: the thread's Try again brings the messages.
+appId: ${APP_ID}
+tags: [chats, readiness, states]
+---
+- tapOn: "Try again|Réessayer"
+- extendedWaitUntil:
+    visible: "\\[qa\\] hello from the second QA account"
+    timeout: 30000
+- assertNotVisible:
+    id: "thread-load-failed"
+- takeScreenshot: reports/82b-chats-thread-recovered

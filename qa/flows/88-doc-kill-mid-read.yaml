@@ -1,0 +1,33 @@
+# Readiness "Kill", Doc: the page read held 20 s at the proxy (driver), the
+# app FORCE-STOPPED while the busy card shows (stopApp), relaunched.
+#
+# COVERS: after the relaunch nothing is stuck busy and the app is usable
+#   (photographed); the tool opened again reads a PDF.
+# CANNOT TELL YOU: a kill mid-SAVE to the phone (a real phone, large file).
+appId: ${APP_ID}
+tags: [doc, readiness, kill]
+---
+- runFlow: login.yaml
+- runFlow:
+    file: doc-text-open.yaml
+    env:
+      FILE: "qa-doc.pdf"
+- extendedWaitUntil:
+    visible:
+      id: "doc-busy"
+    timeout: 10000
+- stopApp
+- launchApp:
+    stopApp: false
+- openLink: ${DEEP_LINK}
+# A real screen of the app, not the dev client's loading page (2026-11-25:
+# `visible: ".*"` matched that page and passed with nothing measured).
+- extendedWaitUntil:
+    visible:
+      id: "doc-text-intake|doc-text-change|doc-tools|header-home|composer-input"
+    timeout: 120000
+- waitForAnimationToEnd:
+    timeout: 5000
+- assertNotVisible:
+    id: "doc-busy"
+- takeScreenshot: reports/88-doc-after-kill

@@ -1,0 +1,42 @@
+# Readiness "Kbd", SafeZone: a new password's form with the keyboard up: the
+# focused field and Save on screen. Cancelled: NOTHING is saved.
+#
+# COVERS: title field focused and typed; Save REACHED with the keyboard up.
+#   Save is the form's last row (edit.tsx:180), below the fold when the
+#   keyboard is up; the form scrolls above the keyboard (its frame ended at
+#   y 1517 of 2400, device 2026-11-25), so Save is scrolled to, as a person does.
+# CANNOT TELL YOU: a picture of it (FLAG_SECURE).
+appId: ${APP_ID}
+tags: [safezone, readiness, keyboard]
+---
+- runFlow: sz-open.yaml
+- runFlow: sz-pin-P.yaml
+- extendedWaitUntil:
+    visible:
+      id: "safezone-add"
+    timeout: 30000
+- tapOn:
+    id: "safezone-add"
+- extendedWaitUntil:
+    visible:
+      id: "safezone-form"
+    timeout: 15000
+- tapOn:
+    id: "safezone-form-field-title"
+- inputText: "[qa] kbd"
+- assertVisible:
+    id: "safezone-form-field-title"
+- scrollUntilVisible:
+    element:
+      id: "safezone-form-save"
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: "safezone-form-field-password"
+- scrollUntilVisible:
+    element:
+      id: "safezone-form-save"
+    direction: DOWN
+    timeout: 15000
+- tapOn:
+    id: "safezone-form-cancel"

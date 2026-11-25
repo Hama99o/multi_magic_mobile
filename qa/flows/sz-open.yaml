@@ -1,0 +1,25 @@
+# SUBFLOW: SafeZone's LOCK screen, from wherever the app reopens. Since
+# 48de822 (owner, 2026-11-15: "not same as web") one PIN keeps the vault open
+# for the server's 2-minute window, renewed while SafeZone is on screen, and a
+# cold start inside it reopens the vault. So a flow that needs the lock may
+# find the vault still open: the padlock locks it, the way a person would.
+appId: ${APP_ID}
+---
+- runFlow: sz-reach.yaml
+# lint: optional-ok — settles which of the two states drew; the wait below decides
+- extendedWaitUntil:
+    visible:
+      id: "safezone-unlock"
+    timeout: 15000
+    optional: true
+- runFlow:
+    when:
+      visible:
+        id: "safezone-lock"
+    commands:
+      - tapOn:
+          id: "safezone-lock"
+- extendedWaitUntil:
+    visible:
+      id: "safezone-unlock"
+    timeout: 30000

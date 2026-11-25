@@ -1,0 +1,33 @@
+# Readiness 200% / 360 / 800 / Dark, SafeZone, BY THE VIEW TREE: FLAG_SECURE
+# blacks out every picture, so this asserts that every PIN key, "Forgot", and
+# the vault's Add and Search are ON SCREEN at the size the driver set. Run once
+# per size (SHOT names it).
+#
+# COVERS: nothing pushed off screen, no key unreachable.
+# CANNOT TELL YOU: clipping inside a control, colours, contrast: a picture is
+#   needed for those, and Android cannot take one here (iOS can).
+appId: ${APP_ID}
+tags: [safezone, readiness, layout]
+---
+- runFlow: sz-open.yaml
+- assertVisible:
+    id: "safezone-pin-key-1"
+- assertVisible:
+    id: "safezone-pin-key-5"
+- assertVisible:
+    id: "safezone-pin-key-9"
+- assertVisible:
+    id: "safezone-pin-key-0"
+- assertVisible:
+    id: "safezone-forgot"
+- runFlow: sz-pin-P.yaml
+- extendedWaitUntil:
+    visible:
+      id: "safezone-add"
+    timeout: 30000
+- assertVisible:
+    id: "safezone-search"
+- assertVisible:
+    id: "safezone-list"
+- tapOn:
+    id: "safezone-lock"

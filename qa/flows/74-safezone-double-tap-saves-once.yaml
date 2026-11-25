@@ -1,0 +1,37 @@
+# Readiness "2×tap", SafeZone: a double tap on Save makes ONE password. The
+# driver counts the QA account's rows before and after (read-only, :3030
+# copy) and deletes the one this made, by id.
+#
+# COVERS: the button's single submit, as the server sees it.
+# CANNOT TELL YOU: a faster double tap than Maestro's (~100 ms).
+appId: ${APP_ID}
+tags: [safezone, readiness]
+---
+- runFlow: sz-open.yaml
+- runFlow: sz-pin-P.yaml
+- extendedWaitUntil:
+    visible:
+      id: "safezone-add"
+    timeout: 30000
+- tapOn:
+    id: "safezone-add"
+- extendedWaitUntil:
+    visible:
+      id: "safezone-form"
+    timeout: 15000
+- tapOn:
+    id: "safezone-form-field-title"
+- inputText: "[qa-2x] twice"
+- scrollUntilVisible:
+    element:
+      id: "safezone-form-save"
+    direction: DOWN
+    timeout: 15000
+- doubleTapOn:
+    id: "safezone-form-save"
+# A save opens the new item's page (device, 2026-11-25), not the list.
+- extendedWaitUntil:
+    visible:
+      id: "safezone-item-title"
+    timeout: 30000
+- assertVisible: "\\[qa-2x\\] twice"

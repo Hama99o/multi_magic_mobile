@@ -1,0 +1,17 @@
+# SUBFLOW: type the RIGHT six-digit PIN on SafeZone's pad. The digits come
+# from the driver's environment (MAESTRO_SZ_P1..6, never argv, never a file
+# in the repo).
+appId: ${APP_ID}
+---
+- tapOn:
+    id: "safezone-pin-key-${MAESTRO_SZ_P1}"
+- tapOn:
+    id: "safezone-pin-key-${MAESTRO_SZ_P2}"
+- tapOn:
+    id: "safezone-pin-key-${MAESTRO_SZ_P3}"
+- tapOn:
+    id: "safezone-pin-key-${MAESTRO_SZ_P4}"
+- tapOn:
+    id: "safezone-pin-key-${MAESTRO_SZ_P5}"
+- tapOn:
+    id: "safezone-pin-key-${MAESTRO_SZ_P6}"

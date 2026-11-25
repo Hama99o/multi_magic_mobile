@@ -1,0 +1,19 @@
+# Readiness "Off", SafeZone: the RIGHT PIN with the network off. The driver
+# opens the lock screen ONLINE (sz-open), then cuts the network; this flow only
+# types. The vault stays locked and a notice says why; the PIN is not
+# counted as wrong.
+#
+# COVERS: the notice, still locked, no "wrong PIN".
+# CANNOT TELL YOU: the wording's fit at 360 dp (FLAG_SECURE: no picture).
+appId: ${APP_ID}
+tags: [safezone, readiness, offline]
+---
+- runFlow: sz-pin-P.yaml
+- extendedWaitUntil:
+    visible:
+      id: "safezone-pin-notice"
+    timeout: 30000
+- assertNotVisible:
+    id: "safezone-wrong-pin"
+- assertNotVisible:
+    id: "safezone-lock"

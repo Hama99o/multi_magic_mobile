@@ -3,7 +3,7 @@
 #
 #   qa/ac-readiness.sh smoke     FIRST: open the bundle, sign in, shoot Home;
 #                                look at the shot before running anything else
-#   qa/ac-readiness.sh run       61 offline, 62 mic refused, 63 2×tap, 64 kill,
+#   qa/ac-readiness.sh run       61 offline, 62 mic refused, 63 2×tap (AI_KEYLESS=1 only), 64 kill (NOT MEASURED),
 #                                65 memory state, 66 ask from a thread, 67 keyboard
 #   qa/ac-readiness.sh shots     60 and 68 at 360, 411, 800, 411 dark, 411 at 200 %
 #
@@ -26,6 +26,9 @@ DEEP_LINK_AC="multimagic://expo-development-client/?url=http%3A%2F%2F10.0.2.2%3A
 OUT="$DIR/evidence/ac-readiness-$(date +%Y%m%d-%H%M)"; mkdir -p "$OUT"
 
 prime() { # the bundle running before any flow (2026-11-21: the launcher trap)
+  # Cold start: a running app takes the deep link without reloading, so no
+  # 'Running "main"' line ever comes (2026-11-25, offline61 then mic62).
+  adb -s "$SERIAL" shell am force-stop "$APP_ID"
   adb -s "$SERIAL" logcat -c
   adb -s "$SERIAL" shell am start -a android.intent.action.VIEW -d "$DEEP_LINK_AC" "$APP_ID" >/dev/null
   local i
@@ -57,14 +60,22 @@ trap restore EXIT
 
 run() {
   prime
+  flow "$DIR/flows/login.yaml"   # online: bundle loaded, signed in, on the Assistant
   adb -s "$SERIAL" shell svc wifi disable; adb -s "$SERIAL" shell svc data disable
   flow "$DIR/flows/61-assistant-offline-says-so.yaml"
   adb -s "$SERIAL" shell svc wifi enable; adb -s "$SERIAL" shell svc data enable
-  adb -s "$SERIAL" shell pm revoke "$APP_ID" android.permission.RECORD_AUDIO
+  adb -s "$SERIAL" shell pm revoke "$APP_ID" android.permission.RECORD_AUDIO   # belt and braces: flow 62 denies after its launch
   flow "$DIR/flows/62-assistant-mic-refused.yaml"
   adb -s "$SERIAL" shell pm grant "$APP_ID" android.permission.RECORD_AUDIO
-  flow "$DIR/flows/63-assistant-double-tap-sends-once.yaml"
-  flow "$DIR/flows/64-assistant-kill-mid-answer.yaml"
+  # NO AI CALLS ON A SHARED KEY FROM DEV (owner rule via Hello, 2026-11-25):
+  # the dev .env holds the prod free-tier Gemini key. 63 sends one prompt, so
+  # it runs only against a server whose AI keys are emptied (AI_KEYLESS=1,
+  # checked by the caller): it then shows one question and an error, never a
+  # provider call. 64 needs a real answer to interrupt: NOT MEASURED until a
+  # dev-only key exists.
+  if [ "${AI_KEYLESS:-0}" = 1 ]; then flow "$DIR/flows/63-assistant-double-tap-sends-once.yaml"
+  else echo "63-assistant-double-tap-sends-once: NOT MEASURED (sends a prompt; set AI_KEYLESS=1 only for a server with no AI keys)" | tee -a "$OUT/verdicts.txt"; fi
+  echo "64-assistant-kill-mid-answer: NOT MEASURED (needs a real answer; no dev-only AI key)" | tee -a "$OUT/verdicts.txt"
   flow "$DIR/flows/65-assistant-memory-review-state.yaml"
   flow "$DIR/flows/66-chats-ask-the-assistant-from-a-thread.yaml"
   flow "$DIR/flows/67-chats-keyboard-draft-not-sent.yaml"
@@ -74,7 +85,8 @@ run() {
 shot() { # shot <label> <px> <density>
   adb -s "$SERIAL" shell wm size "$2"; adb -s "$SERIAL" shell wm density "$3"
   adb -s "$SERIAL" shell am force-stop "$APP_ID"   # RN caches the window size at startup
-  flow "$DIR/flows/60-assistant-shots.yaml" "SHOT=$1"; flow "$DIR/flows/68-chats-shots.yaml" "SHOT=$1"
+  [ "${SHOTFLOWS:-60 68}" = 68 ] || flow "$DIR/flows/60-assistant-shots.yaml" "SHOT=$1"
+  flow "$DIR/flows/68-chats-shots.yaml" "SHOT=$1"
 }
 
 shots() {
@@ -87,5 +99,10 @@ shots() {
 case "${1:-}" in
   smoke) prime; flow "$DIR/flows/00-smoke-signed-in.yaml"; echo "LOOK: $OUT/00-smoke-signed-in before the batch";;
   run) run;; shots) shots;;
+  shots68) SHOTFLOWS=68 shots;;
+  offline61) prime; flow "$DIR/flows/login.yaml"; adb -s "$SERIAL" shell svc wifi disable; adb -s "$SERIAL" shell svc data disable
+    flow "$DIR/flows/61-assistant-offline-says-so.yaml"; adb -s "$SERIAL" shell svc wifi enable; adb -s "$SERIAL" shell svc data enable;;
+  mic62) prime; flow "$DIR/flows/62-assistant-mic-refused.yaml";;
+  chats) prime; flow "$DIR/flows/66-chats-ask-the-assistant-from-a-thread.yaml"; flow "$DIR/flows/67-chats-keyboard-draft-not-sent.yaml";;
   *) sed -n 2,13p "$0"; exit 2;;
 esac

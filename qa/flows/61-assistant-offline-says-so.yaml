@@ -6,7 +6,21 @@
 appId: ${APP_ID}
 tags: [assistant, readiness, offline]
 ---
-- runFlow: login.yaml
+# NO login here: a relaunch with the network off leaves the dev client on its
+# launcher, unable to fetch the bundle (device, 2026-11-25). The driver signs
+# in ONLINE with login.yaml (it ends on the Assistant), then cuts the network.
+# Offline is decided by a FAILED request, not a network listener
+# (reachability.store.ts), so reopen the Assistant the way a person does: its
+# GET fails, and the composer says so.
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-ai"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-ai"
 - extendedWaitUntil:
     visible:
       id: "composer-offline"

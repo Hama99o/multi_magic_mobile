@@ -1,9 +1,13 @@
 /**
  * Is the SafeZone vault open? (`docs/design/safezone/SECURITY.md` §2–§4)
  *
- * MEMORY ONLY: no `persist`. A cold start asks for the PIN again. The token's
- * expiry is the server's `expires_in`, never extended here; `needsRefresh`
- * says when to ask the server to slide it. The lockout and the attempts left
+ * No zustand `persist`: the state lives in memory, and the ONE thing a cold
+ * start may bring back is the token and its expiry from the secure store
+ * (`restore`, `safezoneUnlockVault`, since 48de822: owner, 2026-11-15, "like
+ * the web"). Inside the server's window the vault reopens; after it, the PIN
+ * is asked again (device-checked 2026-11-25, flow 71). The token's expiry is
+ * the server's `expires_in`, never extended here; `needsRefresh` says when to
+ * ask the server to slide it. The lockout and the attempts left
  * are the server's numbers; this store counts nothing itself.
  *
  * `lock()` drops the token, increments `lockEpoch` (the item screen wipes its

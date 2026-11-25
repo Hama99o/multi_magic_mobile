@@ -1,0 +1,22 @@
+# SUBFLOW: signed in, then Home → SafeZone, NO assertion on its state (locked
+# or still open inside the unlock window). sz-open.yaml builds on it.
+# Was: signed in, then Home → SafeZone's lock screen, the way a person
+# arrives. The QA account's PIN is a made-up one set on the :3030 copy only
+# (Hello, 2026-11-24); it reaches a flow only as MAESTRO_SZ_* env digits.
+appId: ${APP_ID}
+---
+- runFlow: login.yaml
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-safezone"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-safezone"

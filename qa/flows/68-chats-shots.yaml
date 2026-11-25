@@ -30,4 +30,12 @@ tags: [chats, readiness, shots]
       - tapOn:
           id: "chat-row-.*"
           index: 0
+      # Wait for the thread itself: a shot straight after the tap caught the
+      # list (411, 800) or the push mid-animation (411 dark), 2026-11-25.
+      - extendedWaitUntil:
+          visible:
+            id: "people-composer-input"
+          timeout: 20000
+      - waitForAnimationToEnd:
+          timeout: 5000
       - takeScreenshot: reports/68-chats-thread-${SHOT}

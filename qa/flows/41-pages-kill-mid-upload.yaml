@@ -25,7 +25,7 @@ tags: [pages, parity, kill]
 - extendedWaitUntil:
     visible: "Uploading.*|Sending…"
     timeout: 120000
-- killApp
+- stopApp  # force-stop: Maestro's killApp left a FOREGROUND app alive (SafeZone kept renewing its token through a "dead" 150 s, 2026-11-25)
 - launchApp:
     stopApp: false
 - runFlow: pages-open-trip.yaml

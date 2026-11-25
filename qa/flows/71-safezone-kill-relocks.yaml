@@ -1,0 +1,38 @@
+# Readiness "Kill", SafeZone, against the OWNER'S RULE (48de822, 2026-11-15,
+# "like the web"): the unlock is a 2-minute server window, and a cold start
+# INSIDE it reopens the vault; a process dead LONGER than the window must ask
+# for the PIN again. (The first version of this flow asserted "a kill always
+# relocks", the rule before 48de822; the device showed the vault reopen.)
+#
+# COVERS: kill + relaunch at once -> still open; kill, 150 s dead, relaunch
+#   -> the PIN pad (the window has gone, nothing renewed it).
+# CANNOT TELL YOU: the exact second the window closes (server TTL, 120 s).
+appId: ${APP_ID}
+tags: [safezone, readiness, kill]
+---
+- runFlow: sz-open.yaml
+- runFlow: sz-pin-P.yaml
+- extendedWaitUntil:
+    visible:
+      id: "safezone-lock"
+    timeout: 30000
+- stopApp  # force-stop: Maestro's killApp left a FOREGROUND app alive (SafeZone kept renewing its token through a "dead" 150 s, 2026-11-25)
+- runFlow: sz-reach.yaml
+- extendedWaitUntil:
+    visible:
+      id: "safezone-lock"
+    timeout: 30000
+- stopApp  # force-stop: Maestro's killApp left a FOREGROUND app alive (SafeZone kept renewing its token through a "dead" 150 s, 2026-11-25)
+# A wait, not a check: nothing named this ever shows. 150 s with the app dead
+# outlives the server's 120 s window.
+- extendedWaitUntil:
+    visible: "sz71 sentinel never shown"
+    timeout: 150000
+    optional: true  # lint: optional-ok — a timed wait for the unlock window to pass; the PIN pad below is the proof
+- runFlow: sz-reach.yaml
+- extendedWaitUntil:
+    visible:
+      id: "safezone-unlock"
+    timeout: 30000
+- assertNotVisible:
+    id: "safezone-list"

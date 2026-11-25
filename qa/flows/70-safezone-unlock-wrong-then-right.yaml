@@ -1,0 +1,31 @@
+# Readiness "States", SafeZone: the lock, a WRONG PIN said as wrong (with the
+# attempts left), then the right PIN opens the vault, and Lock closes it again.
+# The QA account's made-up PIN on the :3030 copy (Hello, 2026-11-24).
+#
+# COVERS: locked, wrong, unlocked (list), locked again: asserted by testID.
+# CANNOT TELL YOU: anything by picture. FLAG_SECURE blacks out every SafeZone
+#   screenshot on Android by design (SECURITY.md §7); the shot here is kept as
+#   the proof that it does.
+appId: ${APP_ID}
+tags: [safezone, readiness]
+---
+- runFlow: sz-open.yaml
+- runFlow: sz-pin-W.yaml
+- extendedWaitUntil:
+    visible:
+      id: "safezone-wrong-pin"
+    timeout: 20000
+- runFlow: sz-pin-P.yaml
+- extendedWaitUntil:
+    visible:
+      id: "safezone-lock"
+    timeout: 30000
+- assertVisible:
+    id: "safezone-list"
+- takeScreenshot: reports/70-safezone-unlocked-flag-secure
+- tapOn:
+    id: "safezone-lock"
+- extendedWaitUntil:
+    visible:
+      id: "safezone-unlock"
+    timeout: 15000

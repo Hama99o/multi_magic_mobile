@@ -101,6 +101,37 @@ appId: ${APP_ID}
       - tapOn:
           id: "chat-close"
 
+# REOPENED ON A SAVED RECORD (2026-11-25). The last-place rule also re-opens
+# a saved record over its app's root (`app/index.tsx`, restoreSub): after a
+# Chats flow the next cold launch sat in the THREAD, whose header has no
+# `header-home`, so none of the states below matched and 67 failed on
+# `sign-in-email`. Back, the way a person leaves a record, until the app's
+# header shows. Guarded twice against the 11-07 trap (Back out of the app
+# during a slow cold start): only once a screen is drawn (`screen-root`,
+# ScreenContainer), and never on sign-in. `header-home` is on Home too
+# (disabled), so this never presses Back on Home.
+# lint: optional-ok — settles the cold start before deciding; nothing is
+# asserted here, the states below still decide.
+- extendedWaitUntil:
+    visible:
+      id: "screen-root"
+    timeout: 60000
+    optional: true
+- repeat:
+    while:
+      notVisible:
+        id: "header-home"
+    times: 3
+    commands:
+      - runFlow:
+          when:
+            visible:
+              id: "screen-root"
+            notVisible:
+              id: "sign-in-email"
+          commands:
+            - back
+
 # REOPENED INSIDE AN APP (2026-11-21). Since 80c2273 a signed-in launch
 # reopens the last app the person was in, never Home (the owner's rule,
 # `app/index.tsx`). Measured on qa_phone with the shared dev client: after

@@ -32,7 +32,7 @@ tags: [assistant, readiness, kill, writes]
 - inputText: "[qa-kill] name three colours"
 - tapOn:
     id: "composer-send"
-- killApp
+- stopApp  # force-stop: Maestro's killApp left a FOREGROUND app alive (SafeZone kept renewing its token through a "dead" 150 s, 2026-11-25)
 - launchApp:
     stopApp: false
 - runFlow: login.yaml

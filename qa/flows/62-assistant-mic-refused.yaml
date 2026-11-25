@@ -8,6 +8,41 @@ appId: ${APP_ID}
 tags: [assistant, readiness, permission]
 ---
 - runFlow: login.yaml
+# login.yaml's plain launchApp GRANTS every permission (Maestro's default), so
+# the driver's `pm revoke` was undone before the tap and the mic just listened
+# (device, 2026-11-25). And a permission change kills the app (setPermissions
+# left the launcher on screen). So: signed in first, then RELAUNCH with the mic
+# denied, reload the dev bundle, and come back to the Assistant.
+- launchApp:
+    appId: ${APP_ID}
+    permissions:
+      microphone: deny
+- openLink: ${DEEP_LINK}
+- extendedWaitUntil:
+    visible:
+      id: "screen-root"
+    timeout: 120000
+- runFlow:
+    when:
+      notVisible:
+        id: "composer-mic"
+    commands:
+      - repeat:
+          while:
+            notVisible:
+              id: "header-home"
+          times: 3
+          commands:
+            - back
+      - tapOn:
+          id: "header-home"
+      - scrollUntilVisible:
+          element:
+            id: "home-tile-ai"
+          direction: DOWN
+          timeout: 20000
+      - tapOn:
+          id: "home-tile-ai"
 - tapOn:
     id: "composer-mic"
 - runFlow:

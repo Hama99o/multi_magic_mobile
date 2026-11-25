@@ -1,0 +1,32 @@
+# Readiness Kill: a card's title typed in the quick add, then the app is
+# killed before it is added. Back in: the board draws, and that card does not
+# exist (the driver counts rows read-only; a half-typed card must not save).
+appId: ${APP_ID}
+tags: [flow, readiness, kill]
+---
+- runFlow: login.yaml
+- runFlow: flow-open.yaml
+- tapOn: "\\[qa-ff\\] Flow board.*"
+- extendedWaitUntil:
+    visible:
+      id: "flow-board-pager"
+    timeout: 60000
+- tapOn:
+    id: "flow-chip-1"
+- tapOn:
+    id: "flow-column-1-add"
+- tapOn:
+    id: "flow-quick-add-input"
+- inputText: "[qa-ff] killed card"
+- stopApp
+- runFlow: login.yaml
+- runFlow: flow-open.yaml
+- tapOn: "\\[qa-ff\\] Flow board.*"
+- extendedWaitUntil:
+    visible:
+      id: "flow-board-pager"
+    timeout: 60000
+- assertNotVisible: "\\[qa-ff\\] killed card.*"
+- assertVisible:
+    id: "flow-board-pager"
+- takeScreenshot: reports/143-flow-after-kill

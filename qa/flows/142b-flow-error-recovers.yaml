@@ -1,0 +1,14 @@
+# After 142, the fault cleared by the driver: Try again brings the projects.
+appId: ${APP_ID}
+tags: [flow, readiness, states]
+---
+- tapOn: "Try again|Réessayer"
+- extendedWaitUntil:
+    visible:
+      id: "flow-project-row"
+    timeout: 30000
+- assertNotVisible:
+    id: "flow-load-failed"
+- assertVisible:
+    id: "flow-tabs"
+- takeScreenshot: reports/142b-flow-recovered

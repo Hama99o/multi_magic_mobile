@@ -1,0 +1,11 @@
+# Readiness States (error): the driver makes /api/v1/flow_app answer 500.
+appId: ${APP_ID}
+tags: [flow, readiness, states]
+---
+- runFlow: login.yaml
+- runFlow: flow-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "flow-load-failed"
+    timeout: 30000
+- takeScreenshot: reports/142-flow-error

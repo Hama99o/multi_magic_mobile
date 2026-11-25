@@ -1,0 +1,27 @@
+# Cleanup: every [qa-ff] project made by 140 goes, through its options menu
+# and the confirm that names it.
+appId: ${APP_ID}
+tags: [flow, readiness, writes]
+---
+- runFlow: login.yaml
+- runFlow: flow-open.yaml
+- repeat:
+    while:
+      visible: "Options for \\[qa-ff\\].*"
+    times: 3
+    commands:
+      - tapOn: "Options for \\[qa-ff\\].*"
+      - tapOn: "Delete project"
+      - extendedWaitUntil:
+          visible: "Delete “\\[qa-ff\\].*”\\?"
+          timeout: 10000
+      # lint: regex-ok — the alert's button, either case (Android caps it).
+      - tapOn: "(Delete|DELETE)"
+      - extendedWaitUntil:
+          notVisible:
+            id: "flow-project-menu"
+          timeout: 20000
+- assertNotVisible: "Options for \\[qa-ff\\].*"
+- assertVisible:
+    id: "flow-tabs"
+- takeScreenshot: reports/144-flow-after-cleanup

@@ -1,0 +1,36 @@
+# Pictures at ${SHOT} (the driver sets slow, a font scale, or Persian titles):
+# the projects list, the [qa-ff] board, its card. PROJ / CARD are the regexes
+# of the two titles (Persian ones for RTL, renamed by the driver on :3030).
+appId: ${APP_ID}
+tags: [flow, readiness, shots]
+---
+- runFlow: login.yaml
+- runFlow: flow-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "flow-project-row"
+    timeout: 60000
+- assertVisible:
+    id: "flow-tabs"
+- takeScreenshot: reports/141-flow-projects-${SHOT}
+- tapOn: ${PROJ}
+- extendedWaitUntil:
+    visible:
+      id: "flow-board-pager"
+    timeout: 60000
+- tapOn:
+    id: "flow-chip-1"
+- extendedWaitUntil:
+    visible: ${CARD}
+    timeout: 30000
+- assertVisible:
+    id: "flow-board-pager"
+- takeScreenshot: reports/141-flow-board-${SHOT}
+- tapOn: ${CARD}
+- extendedWaitUntil:
+    visible:
+      id: "flow-card"
+    timeout: 30000
+- assertVisible:
+    id: "flow-card-title"
+- takeScreenshot: reports/141-flow-card-${SHOT}

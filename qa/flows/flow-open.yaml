@@ -1,0 +1,20 @@
+# Helper: Home → Flow's projects list, the way a user arrives (the Home tile).
+appId: ${APP_ID}
+---
+- runFlow: home-open.yaml
+- runFlow:
+    when:
+      notVisible:
+        id: "home-tile-flow"
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: "home-tile-flow"
+          direction: DOWN
+          timeout: 20000
+- tapOn:
+    id: "home-tile-flow"
+- extendedWaitUntil:
+    visible:
+      id: "flow-tabs"
+    timeout: 60000

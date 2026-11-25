@@ -1,0 +1,66 @@
+# Readiness Kbd + 2×tap (ff, 2026-11-25): a new project "[qa-ff] Flow board"
+# with Save DOUBLE-TAPPED (the driver's read-only count must be ONE), and a
+# card added with the quick add; the keyboard over each field photographed.
+# 144 deletes the project.
+#
+# COVERS: create project (keyboard, double tap), quick add (keyboard).
+# CANNOT TELL YOU: drag (maestro cannot hold a grip), members (an email
+#   would go out), a viewer's board (two-person).
+appId: ${APP_ID}
+tags: [flow, readiness, writes]
+---
+- runFlow: login.yaml
+- runFlow: flow-open.yaml
+- runFlow:
+    when:
+      visible:
+        id: "flow-empty-create"
+    commands:
+      - tapOn:
+          id: "flow-empty-create"
+- runFlow:
+    when:
+      notVisible:
+        id: "flow-project-sheet"
+    commands:
+      - tapOn:
+          id: "flow-new-project"
+- extendedWaitUntil:
+    visible:
+      id: "flow-project-sheet"
+    timeout: 10000
+- tapOn:
+    id: "flow-project-title"
+- inputText: "[qa-ff] Flow board"
+- assertVisible:
+    id: "flow-project-title"
+- takeScreenshot: reports/140-flow-project-keyboard
+- doubleTapOn:
+    id: "flow-project-save"
+- extendedWaitUntil:
+    visible:
+      id: "flow-board-pager"
+    timeout: 60000
+- tapOn:
+    id: "flow-chip-1"
+- tapOn:
+    id: "flow-column-1-add"
+- tapOn:
+    id: "flow-quick-add-input"
+- inputText: "[qa-ff] card"
+- assertVisible:
+    id: "flow-quick-add-input"
+- takeScreenshot: reports/140-flow-quick-add-keyboard
+- tapOn:
+    id: "flow-quick-add-submit"
+# The TILE, not the words: the field still holds the text when the add did nothing.
+- extendedWaitUntil:
+    visible:
+      id: "flow-card"
+      text: "\\[qa-ff\\] card.*"
+    timeout: 20000
+- tapOn:
+    id: "flow-quick-add-cancel"
+- assertVisible:
+    id: "flow-board-pager"
+- takeScreenshot: reports/140-flow-board-with-card

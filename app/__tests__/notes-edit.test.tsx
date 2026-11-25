@@ -1266,3 +1266,32 @@ describe("dictation (the web's SpeechButton; parity #36): the app's own recognis
     expect(screen.getByTestId("tb-dictate").props.accessibilityState).toMatchObject({ disabled: true });
   });
 });
+
+
+// Device, 2026-11-25 (flow 97 at 200 %): the editor's body ignored the system
+// font scale. The screen hands the engine a theme scaled by fontScale.
+it("the editor's text follows the system font scale", async () => {
+  jest.spyOn(require("react-native").Dimensions, "get").mockReturnValue({ width: 411, height: 900, scale: 2.625, fontScale: 2 });
+  open();
+  await waitFor(() => expect(mockEngine.props).not.toBeNull());
+  const theme = (mockEngine.props as { theme: { text: { fontSize: number } } }).theme;
+  expect(theme.text.fontSize).toBe(32);
+});
+
+
+// Device, 2026-11-25 (readiness Off, flow 92b): a note never opened in this
+// session, opened offline, said "Could not reach MultiMagic." and nothing
+// else. The sentence itself was tappable, which nobody can see and a screen
+// reader does not announce. A named Try again button, as on every list.
+it("a note that cannot load offers a Try again button that loads it", async () => {
+  // The suite's beforeEach answers this GET already, and the adapter takes
+  // the first handler that matches: start from none.
+  mock.resetHandlers();
+  mock.onGet("/api/v1/note_app/notes/7").networkErrorOnce();
+  mock.onGet("/api/v1/note_app/notes/7").reply(() => [200, { note: server }]);
+  open();
+  const retry = await screen.findByRole("button", { name: "Try again" });
+  fireEvent.press(retry);
+  await waitFor(() => expect(mockEngine.props).not.toBeNull());
+  expect(screen.queryByTestId("note-load-failed")).toBeNull();
+});

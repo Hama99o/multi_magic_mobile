@@ -10,7 +10,7 @@
  * phone (plan §11 condition 1). No web link anywhere (owner, 2026-11-13).
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, Share, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Linking, Modal, Pressable, ScrollView, Share, TextInput, View, useWindowDimensions } from "react-native";
 import { SheetFrame } from "@/components/SheetFrame";
 import { useNavigation } from "expo-router";
 import { useNav, useNavParams } from "@/lib/nav";
@@ -87,6 +87,8 @@ const toServer = (n: Note): ServerNote => ({ title: n.title, html: n.html, updat
 export default function NoteEditScreen() {
   const router = useNav();
   const colors = useColors();
+  // The engine sizes text in dp: the system font size is ours to apply (engineTheme).
+  const { fontScale } = useWindowDimensions();
   const metrics = useMetrics();
   const { t, i18n } = useTranslation();
   const queryClient = useQueryClient();
@@ -738,9 +740,17 @@ export default function NoteEditScreen() {
         {header}
         <View style={{ flex: 1, alignItems: "center", justifyContent: "center", gap: metrics.space.lg }}>
           {error ? (
-            <Text testID="note-load-failed" tone="muted" style={{ textAlign: "center" }} onPress={() => void refetch()}>
-              {failureMessage(error, t("notes.loadFailed"))}
-            </Text>
+            // A named Try again button: the sentence alone was the tap target,
+            // which nobody could see and a screen reader did not announce
+            // (device, 2026-11-25, flow 92b: a note opened offline).
+            <View testID="note-load-failed" style={{ alignItems: "center", gap: metrics.space.sm, paddingHorizontal: metrics.space.lg }}>
+              <Text tone="muted" style={{ textAlign: "center" }}>
+                {failureMessage(error, t("notes.loadFailed"))}
+              </Text>
+              <Pressable testID="note-load-retry" onPress={() => void refetch()} accessibilityRole="button" hitSlop={8} style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.md }}>
+                <Text variant="label" tone="accent">{t("common.tryAgain")}</Text>
+              </Pressable>
+            </View>
           ) : (
             <ActivityIndicator testID="note-loading" color={colors.inkMuted} />
           )}
@@ -877,7 +887,7 @@ export default function NoteEditScreen() {
             key={`body-${generation}-${readOnly ? "ro" : "rw"}`}
             documentHandle={engine.handle}
             atoms={notesEngineAtoms}
-            theme={engineTheme(colors, pageFill) as never}
+            theme={engineTheme(colors, pageFill, fontScale) as never}
             focusPreservingRefs={barRef}
             editable={!readOnly}
             onFocus={() => setFocused(true)}

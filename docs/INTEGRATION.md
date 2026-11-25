@@ -494,3 +494,25 @@ finding of 88's review of ff's (runs 10 and 12).
 | `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
 
 **Run 14: 0 failures** at 126dcae. **The device tree for tonight's MM slots.**
+
+## Run 15 — 2026-11-25, ee's readiness handoff and ff's four fixes (the RC tree)
+
+| Branch @ head | Owner | What is new | Merge |
+|---|---|---|---|
+| `ee/readiness-1124` @ c4bf515 | ee (12) | KeyboardPadding in window coords + Doc Done pinned (53b9793), a thread draft survives a kill (d7d2002), a comment in safezoneLock.store.ts (ca2d0ce); flows 69–79, readiness cells, 58 shots | fast-forward from f517fa8 |
+| `fix/chat-typing-echo` @ 50a5be0 | ff | 005aee1 no stray "typing…" (own echo; a restored draft announced typing), e0a36c2 a Chats row double tap opens once, c92a55c a seeded thread whose load fails says so, 339f8b0 Doc shows its own words for a 5xx; flows 80–88, Doc and Chats cells, 21 shots | fast-forward from c4bf515 |
+
+- No conflicts: both fast-forwards. The gates also ran on c4bf515 alone
+  (tsc 0, eslint 0, Jest 354 suites / 4214, export OK, 12 markers).
+- Each fix was red first for its stated reason, then green, then measured on
+  `qa_phone` against :3030 (`docs/RELEASE_READINESS.md`, "2026-11-25, ff").
+- Not in it, by design: `feat/workspace-w1` (G1).
+
+| Gate (guarded.sh, Jest 1 worker, node 22.19.0) | Result |
+|---|---|
+| tsc | 0 errors |
+| eslint, 425 changed files | **0** |
+| Jest, full | 356 suites passed; **4219 / 4219 tests passed, 0 failed** |
+| `expo export --platform android --clear` | built; all 12 app markers in the .hbc |
+
+**Run 15: 0 failures** at 50a5be0. Local only, nothing pushed.

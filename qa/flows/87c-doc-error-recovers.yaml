@@ -1,20 +1,16 @@
 # Follows 87b or 86 on the same screen (no launch), the fault cleared or the
-# network back (driver). The way out of a failed read is "Change file" (a
-# read failure offers no Retry: ErrorLine shows it for "busy" only).
-# COVERS: picking the file again reads the page and the error goes.
+# network back (driver). Since 2ddebe6 a failed read offers Retry (owner's
+# decision via Hello, 2026-11-25); "Change file" stays beside it.
+# COVERS: Retry reads the page and the error goes; Change file is still there.
+# CANNOT TELL YOU: Change file's own path (87c ran it on 2026-11-25, before
+#   Retry existed: PASS).
 appId: ${APP_ID}
 tags: [doc, readiness, states]
 ---
-- tapOn:
+- assertVisible:
     id: "doc-text-change"
 - tapOn:
-    id: "doc-intake-files"
-- extendedWaitUntil:
-    visible: "sdk_gphone.*"
-    timeout: 20000
-- tapOn: "sdk_gphone.*"
-- tapOn: "Download"
-- tapOn: "qa-doc.pdf"
+    id: "doc-error-retry"
 - extendedWaitUntil:
     visible:
       id: "doc-text-legend"

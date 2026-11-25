@@ -1,8 +1,8 @@
 # Readiness "Off", Doc: the driver signs in ONLINE (login.yaml), then turns
 # wifi and data off. A PDF picked offline must say why nothing comes.
 #
-# COVERS: the tool's error line, photographed. Its way out is "Change file"
-#   (ErrorLine offers Retry only for "busy", by design); 87c takes it.
+# COVERS: the tool's error line with both ways out, Retry (2ddebe6) and
+#   Change file, photographed; 87c takes Retry once the network is back.
 # CANNOT TELL YOU: a job cut off half-way (see 88).
 appId: ${APP_ID}
 tags: [doc, readiness, offline]
@@ -17,4 +17,6 @@ tags: [doc, readiness, offline]
     timeout: 60000
 - assertVisible:
     id: "doc-text-change"
+- assertVisible:
+    id: "doc-error-retry"
 - takeScreenshot: reports/86-doc-offline

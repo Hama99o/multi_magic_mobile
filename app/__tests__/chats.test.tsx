@@ -282,3 +282,17 @@ describe("search", () => {
     expect(await screen.findByText("Person 1")).toBeTruthy();
   });
 });
+
+/**
+ * Readiness 2×tap (device, 2026-11-25, flow 83): a double tap on a row pushed
+ * TWO threads, so Back landed on the same thread again. Raw adb taps 80 ms
+ * apart did it too, not only Maestro's doubleTapOn.
+ */
+it("opens a conversation once for a double tap on its row", async () => {
+  jest.spyOn(conversationsApi, "list").mockResolvedValue({ conversations: [conversation(1)], unreadConversations: 0, hasMore: false });
+  renderScreen();
+  const row = await screen.findByText("Person 1");
+  fireEvent.press(row);
+  fireEvent.press(row);
+  expect(router.push).toHaveBeenCalledTimes(1);
+});

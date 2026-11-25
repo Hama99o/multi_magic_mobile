@@ -26,7 +26,7 @@
  *
  * The shared header (`AppHeader`) carries Home, the other apps and Android's back.
  */
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ActivityIndicator, FlatList, Pressable, RefreshControl, TextInput, View } from "react-native";
 import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
@@ -48,6 +48,9 @@ import { NewConversationSheet } from "@/screens/people/NewConversationSheet";
 
 /** The web waits 350 ms (`Index.tsx`); so does this. */
 export const SEARCH_DEBOUNCE_MS = 350;
+
+/** A second tap on a row inside this window opens nothing (see `open`). */
+const OPEN_LATCH_MS = 800;
 
 export default function Chats() {
   const router = useNav();
@@ -114,7 +117,17 @@ export default function Chats() {
     [reload],
   );
 
+  /**
+   * One push per tap burst. A double tap on a row pushed TWO threads, so Back
+   * landed on the same thread again (device, 2026-11-25, flow 83; raw adb
+   * taps 80 ms apart did it too). A time latch rather than a focus one: it
+   * also holds inside a pane, where this screen never loses focus.
+   */
+  const lastOpen = useRef(0);
   const open = useCallback((conversation: Conversation) => {
+    const now = Date.now();
+    if (now - lastOpen.current < OPEN_LATCH_MS) return;
+    lastOpen.current = now;
     router.push({
       pathname: "/chat/[id]",
       params: {

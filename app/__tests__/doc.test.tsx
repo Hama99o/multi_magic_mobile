@@ -308,6 +308,38 @@ it("a busy server is said plainly and Retry runs the same compress again (Hello,
   await waitFor(() => expect(screen.queryByText("Server busy, try again in a moment.")).toBeNull());
 });
 
+// Owner's decision via Hello, 2026-11-25 (device, flows 86/87b): a failed READ
+// of the picked file (offline, a 5xx) offered no Retry, only "Change file".
+// Every tool that reads a PDF now offers Retry, as for busy; Change file stays.
+describe.each([
+  ["Pages", () => <PagesScreen />, "doc-pages-intake-add"],
+  ["Edit text", () => <TextEditorScreen />, "doc-text-intake-add"],
+  ["Sign", () => <SignScreen />, "doc-sign-intake-add"],
+  ["Convert", () => <ConvertScreen />, "doc-convert-intake-add"],
+])("%s: a failed read of the picked PDF", (_name, screenEl, add) => {
+  it("offers Retry, and Retry reads it again", async () => {
+    setWidth(360);
+    (DocumentPicker.getDocumentAsync as jest.Mock).mockResolvedValue({ canceled: false, assets: [{ uri: "file:///cache/Trip.pdf", name: "Trip.pdf", mimeType: "application/pdf", size: 1000 }] });
+    mock
+      .onPost("/api/v1/doc_app/pdf/inspect")
+      .replyOnce(500, { status: 500, error: "Internal Server Error" })
+      .onPost("/api/v1/doc_app/pdf/inspect")
+      .reply(200, { pdf: true, pages: 1, encrypted: false, reason: null, sizes: [{ width: 595, height: 842, rotation: 0 }] });
+    // What each tool reads next once the file is known, answered so the only
+    // failure on screen is the one under test.
+    mock.onPost("/api/v1/doc_app/pdf/thumbnails").reply(200, { page_count: 1, truncated: false, pages: [{ index: 0, width: 200, height: 259, data: "AAAA" }] });
+    mock.onPost("/api/v1/doc_app/pdf/text").reply(200, { runs: [], pages: [{ index: 0, width: 595, height: 842, rotation: 0 }], truncated: false, unreadable: 0, outlines: [] });
+    mock.onPost("/api/v1/doc_app/pdf/page").reply(200, new ArrayBuffer(8), { "content-type": "image/png" });
+    show(screenEl());
+    fireEvent.press(await screen.findByTestId(add));
+    fireEvent.press(await screen.findByTestId("doc-intake-files"));
+    expect(await screen.findByText("That did not work. Try again.", {}, { timeout: 3000 })).toBeTruthy();
+    fireEvent.press(screen.getByTestId("doc-error-retry"));
+    await waitFor(() => expect(mock.history.post.filter((r) => r.url?.endsWith("/pdf/inspect"))).toHaveLength(2));
+    await waitFor(() => expect(screen.queryByText("That did not work. Try again.")).toBeNull());
+  });
+});
+
 // DEVICE FAIL 2026-11-24 (qa_phone, flow 48): with the keyboard up the Edit
 // line sheet ends at the keyboard and the colour rows fill it; Done was the
 // last thing in the ScrollView, out of sight. Clear and Done sit OUTSIDE the

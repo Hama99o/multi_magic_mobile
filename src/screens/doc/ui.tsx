@@ -374,6 +374,14 @@ export function BusyCard({ task, label }: { task: TaskState & { cancel: () => vo
   );
 }
 
+/**
+ * The failures a second try can cure: the server busy, the phone offline, a
+ * 5xx or a rate limit. Retry is offered for these only; a locked, damaged or
+ * empty file stays as it is however often it is sent. Owner's decision via
+ * Hello, 2026-11-25: a failed READ offers Retry too, as busy did.
+ */
+const RETRYABLE: ReadonlySet<string> = new Set(["busy", "offline", "unknown", "rate_limited"]);
+
 /** A failure, said in place (not a toast that vanishes before it is read). */
 export function ErrorLine({ error, name, onDismiss, onRetry }: { error: DocError | null; name?: string; onDismiss?: () => void; onRetry?: () => void }) {
   const colors = useColors();
@@ -398,7 +406,7 @@ export function ErrorLine({ error, name, onDismiss, onRetry }: { error: DocError
       <Text tone="danger" style={{ flex: 1 }}>
         {text}
       </Text>
-      {onRetry && error.reason === "busy" ? (
+      {onRetry && RETRYABLE.has(error.reason) ? (
         <Pressable onPress={onRetry} disabled={wait > 0} accessibilityRole="button" accessibilityState={{ disabled: wait > 0 }} testID="doc-error-retry" style={{ minHeight: metrics.touch, justifyContent: "center", paddingHorizontal: metrics.space.sm }}>
           <Text variant="label" tone={wait > 0 ? "muted" : "accent"}>
             {wait > 0 ? t("doc.errors.retryIn", { seconds: wait }) : t("doc.errors.retry")}

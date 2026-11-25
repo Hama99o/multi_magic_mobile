@@ -133,7 +133,7 @@ export default function PagesScreen() {
                 </Pressable>
               }
             />
-            <ErrorLine error={problem} name={file.name} />
+            <ErrorLine error={problem} name={file.name} onRetry={() => { if (inspect.error) void inspect.refetch(); if (thumbs.error) void thumbs.refetch(); }} />
             {!problem && !thumbs.data ? <BusyCard task={{ busy: true, progress: null, step: null, error: null, cancel: () => setFile(null) }} label={t("doc.file.checking")} /> : null}
             {thumbs.data?.truncated ? (
               <Text tone="muted" variant="caption">

@@ -164,7 +164,7 @@ export default function SignScreen() {
                   </Pressable>
                 }
               />
-              <ErrorLine error={problem} name={file.name} />
+              <ErrorLine error={problem} name={file.name} onRetry={() => void inspect.refetch()} />
               {!problem && (kind === "image" || inspect.data) ? (
                 <>
                   <Text variant="caption" tone="muted" accessibilityLiveRegion="polite" testID="doc-sign-hint">

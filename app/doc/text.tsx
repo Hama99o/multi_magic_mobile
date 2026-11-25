@@ -183,7 +183,7 @@ export default function TextEditorScreen() {
                 </Pressable>
               }
             />
-            <ErrorLine error={problem} name={file.name} />
+            <ErrorLine error={problem} name={file.name} onRetry={() => { if (inspect.error) void inspect.refetch(); if (text.error) void text.refetch(); }} />
             {!problem && !doc ? <BusyCard task={{ busy: true, progress: null, step: null, error: null, cancel: () => setFile(null) }} label={t("doc.text.reading")} /> : null}
             {doc && geometry ? (
               <>

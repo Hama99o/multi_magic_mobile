@@ -78,7 +78,7 @@ export default function ConvertScreen() {
               note={kind === "pdf" ? (inspect.data ? t("doc.file.pages", { count: pages }) : t("doc.file.checking")) : needsServerPreview(file) ? t("doc.convert.serverPrepared") : null}
               onClear={() => setFile(null)}
             />
-            <ErrorLine error={problem} name={file.name} />
+            <ErrorLine error={problem} name={file.name} onRetry={() => void inspect.refetch()} />
             {!problem && (kind === "image" || inspect.data) ? (
               <>
                 <SectionLabel>{t("doc.convert.to")}</SectionLabel>

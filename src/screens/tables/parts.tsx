@@ -1,7 +1,7 @@
 /**
  * Small pieces the Tables screens share.
  */
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, View } from "react-native";
 import { Table2 } from "@/components/icons";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
@@ -22,7 +22,9 @@ export function SortChips<T extends string>({ value, options, onChange, testID }
   const colors = useColors();
   const metrics = useMetrics();
   return (
-    <ScrollView horizontal showsHorizontalScrollIndicator={false} testID={testID} accessibilityRole="tablist" contentContainerStyle={{ gap: metrics.space.xs }}>
+    // Wraps, like the filter sheet's chips: a sideways scroll with no indicator hid
+    // A–Z wholly off-screen at 360 dp and cut "Recently changed" at 200 % (device, 2026-11-25).
+    <View testID={testID} accessibilityRole="tablist" style={{ flexDirection: "row", flexWrap: "wrap", gap: metrics.space.xs }}>
       {options.map((o) => {
         const on = o.value === value;
         return (
@@ -41,6 +43,6 @@ export function SortChips<T extends string>({ value, options, onChange, testID }
           </Pressable>
         );
       })}
-    </ScrollView>
+    </View>
   );
 }

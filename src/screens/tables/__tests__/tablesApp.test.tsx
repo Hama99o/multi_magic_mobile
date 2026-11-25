@@ -147,6 +147,20 @@ describe("the bases (B1, B2)", () => {
     await waitFor(() => expect(mock.history.get.some((r) => (r.params as { sort?: string } | undefined)?.sort === "name_asc")).toBe(true));
   });
 
+  // Found on a device, 2026-11-25 (flow 150): the sort chips were a sideways
+  // ScrollView with no indicator. At 360 dp the third chip (A–Z) was wholly
+  // off-screen and at 200 % "Recently changed" was cut at the edge: a control
+  // nobody could see. The row now wraps, like the filter sheet's chips.
+  it("the sort chips wrap onto a second line rather than hide off-screen", async () => {
+    mock.onGet(`${B}/bases`).reply(200, { bases: [] });
+    renderScreen(<Bases />);
+    await screen.findByTestId("tables-empty");
+    const row = screen.getByTestId("tables-bases-sort");
+    expect(row.props.horizontal).toBeFalsy();
+    expect(StyleSheet.flatten(row.props.style)).toEqual(expect.objectContaining({ flexDirection: "row", flexWrap: "wrap" }));
+    for (const s of ["created_at_desc", "updated_at_desc", "name_asc"]) expect(within(row).getByTestId(`tables-bases-sort-${s}`)).toBeTruthy();
+  });
+
   it("search finds a base by one of its tables' names, accent-blind", async () => {
     mock.onGet(`${B}/bases`).reply(200, { bases: [base(3, "[qa] Shop", [{ id: 10, name: "Clients réguliers", position: 0 }]), base(4, "[qa] Other", [])] });
     renderScreen(<Bases />);

@@ -1,0 +1,33 @@
+# Readiness Kill: an amount and a name typed on a new expense, then the app is
+# killed before Save. Back in: Finance opens and that expense does not exist
+# (the driver counts rows, read-only).
+appId: ${APP_ID}
+tags: [finance, readiness, kill]
+---
+- runFlow: login.yaml
+- runFlow: finance-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "finance-expense-add"
+    timeout: 60000
+- tapOn:
+    id: "finance-expense-add"
+- extendedWaitUntil:
+    visible:
+      id: "finance-entry-pad"
+    timeout: 15000
+- tapOn:
+    id: "finance-entry-pad-9"
+- tapOn:
+    id: "finance-entry-name"
+- inputText: "[qa-ff] killed"
+- stopApp
+- runFlow: login.yaml
+- runFlow: finance-open.yaml
+- extendedWaitUntil:
+    visible: ".*\\[qa-ff\\] Lunch.*"
+    timeout: 60000
+- assertNotVisible: ".*\\[qa-ff\\] killed.*"
+- assertVisible:
+    id: "finance-expense-period"
+- takeScreenshot: reports/164-finance-after-kill

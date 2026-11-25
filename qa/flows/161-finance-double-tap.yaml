@@ -1,0 +1,39 @@
+# Readiness 2×tap + Kbd: a new expense "[qa-ff] double tap", 12, Save
+# DOUBLE-TAPPED: the driver's read-only count must be ONE. The keyboard over
+# the name field photographed with Save still on screen.
+appId: ${APP_ID}
+tags: [finance, readiness, writes]
+---
+- runFlow: login.yaml
+- runFlow: finance-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "finance-expense-add"
+    timeout: 60000
+- tapOn:
+    id: "finance-expense-add"
+- extendedWaitUntil:
+    visible:
+      id: "finance-entry-pad"
+    timeout: 15000
+- tapOn:
+    id: "finance-entry-pad-1"
+- tapOn:
+    id: "finance-entry-pad-2"
+- tapOn:
+    id: "finance-entry-name"
+- inputText: "[qa-ff] double tap"
+- assertVisible:
+    id: "finance-entry-save"
+- takeScreenshot: reports/161-finance-keyboard
+# The name was just typed, so the IME is up: this closes it and cannot reach
+# the app as Back.
+- hideKeyboard
+- doubleTapOn:
+    id: "finance-entry-save"
+- extendedWaitUntil:
+    visible: ".*\\[qa-ff\\] double tap.*"
+    timeout: 20000
+- assertVisible:
+    id: "finance-expense-period"
+- takeScreenshot: reports/161-finance-after-double-tap

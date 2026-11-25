@@ -1,0 +1,13 @@
+# After 162, the fault cleared by the driver: Try again brings the list.
+appId: ${APP_ID}
+tags: [finance, readiness, states]
+---
+- tapOn: "Try again|Réessayer"
+- extendedWaitUntil:
+    visible: ".*\\[qa-ff\\] Lunch.*"
+    timeout: 30000
+- assertNotVisible:
+    id: "finance-expense-load-failed"
+- assertVisible:
+    id: "finance-expense-period"
+- takeScreenshot: reports/162b-finance-recovered

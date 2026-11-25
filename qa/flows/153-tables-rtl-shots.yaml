@@ -1,0 +1,32 @@
+# Readiness RTL (ff, 2026-11-25): an invented Persian base on the :3030 copy,
+# made by the driver's fixture through the API ("[qa] پایگاه آزمایشی", table
+# "[qa] فروشندگان", Persian columns and rows, one long name) and deleted after.
+# Pictures at ${SHOT}: the bases list, the table, the long-named row.
+appId: ${APP_ID}
+tags: [tables, readiness, rtl, read-only]
+---
+- runFlow: login.yaml
+- runFlow: tables-open.yaml
+- extendedWaitUntil:
+    visible: "\\[qa\\] پایگاه آزمایشی"
+    timeout: 30000
+- assertVisible:
+    id: "tables-bases-sort"
+- takeScreenshot: reports/153-tables-rtl-bases-${SHOT}
+- tapOn: "\\[qa\\] پایگاه آزمایشی"
+- extendedWaitUntil:
+    visible:
+      id: "tables-view-switch"
+    timeout: 30000
+- extendedWaitUntil:
+    visible: ".*بلال با یک نام.*"
+    timeout: 30000
+- assertVisible:
+    id: "tables-view-switch"
+- takeScreenshot: reports/153-tables-rtl-table-${SHOT}
+- tapOn: ".*بلال با یک نام.*"
+- extendedWaitUntil:
+    visible:
+      id: "tables-record-title"
+    timeout: 30000
+- takeScreenshot: reports/153-tables-rtl-record-${SHOT}

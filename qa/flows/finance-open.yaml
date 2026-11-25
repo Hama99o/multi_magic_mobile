@@ -1,0 +1,22 @@
+# Helper: Home → Finance → the Expenses tab, by the Home tile.
+appId: ${APP_ID}
+---
+- runFlow: home-open.yaml
+- runFlow:
+    when:
+      notVisible:
+        id: "home-tile-finance"
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: "home-tile-finance"
+          direction: DOWN
+          timeout: 20000
+- tapOn:
+    id: "home-tile-finance"
+- extendedWaitUntil:
+    visible:
+      id: "finance-tab-button-expenses"
+    timeout: 60000
+- tapOn:
+    id: "finance-tab-button-expenses"

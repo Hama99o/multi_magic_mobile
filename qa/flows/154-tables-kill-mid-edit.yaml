@@ -1,0 +1,41 @@
+# Readiness Kill mid-WRITE (ff, 2026-11-25): on the fixture's "[qa] kill
+# target" row, the City field's editor is opened and text typed, then the app
+# is killed before Save. The driver reads the stored value afterwards
+# (read-only SQL): it must still be "before-kill", never a half-typed value.
+# FID = that field's id (the driver passes it from the fixture).
+appId: ${APP_ID}
+tags: [tables, readiness, kill, writes-fixture]
+---
+- runFlow: login.yaml
+- runFlow: tables-open.yaml
+- tapOn: "\\[qa\\] پایگاه آزمایشی"
+- extendedWaitUntil:
+    visible: "\\[qa\\] kill target.*"
+    timeout: 30000
+- tapOn: "\\[qa\\] kill target.*"
+- extendedWaitUntil:
+    visible:
+      id: "tables-record-title"
+    timeout: 30000
+- tapOn:
+    id: "tables-field-${FID}"
+- extendedWaitUntil:
+    visible:
+      id: "tables-field-${FID}-sheet-input"
+    timeout: 10000
+- tapOn:
+    id: "tables-field-${FID}-sheet-input"
+- inputText: " typed"
+- stopApp
+- runFlow: login.yaml
+- runFlow: tables-open.yaml
+- tapOn: "\\[qa\\] پایگاه آزمایشی"
+- extendedWaitUntil:
+    visible: "\\[qa\\] kill target.*"
+    timeout: 30000
+- tapOn: "\\[qa\\] kill target.*"
+- extendedWaitUntil:
+    visible:
+      id: "tables-record-title"
+    timeout: 30000
+- takeScreenshot: reports/154-tables-after-kill-mid-edit

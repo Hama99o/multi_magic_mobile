@@ -1,0 +1,20 @@
+# Readiness Off: the driver signed in, then cut wifi and data. Finance opens
+# and a refresh says it could not reach the server, keeping what it had.
+appId: ${APP_ID}
+tags: [finance, readiness, offline]
+---
+- runFlow: finance-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "finance-expense-period"
+    timeout: 30000
+# Pull to refresh from the middle of the list (the list container is not
+# reported visible to Maestro, measured 2026-11-25).
+- swipe:
+    start: "50%, 45%"
+    end: "50%, 85%"
+- extendedWaitUntil:
+    visible:
+      id: "finance-expense-load-failed"
+    timeout: 30000
+- takeScreenshot: reports/163-finance-offline

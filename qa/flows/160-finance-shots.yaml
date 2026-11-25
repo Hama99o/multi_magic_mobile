@@ -1,0 +1,41 @@
+# Pictures at ${SHOT} (the driver sets width, theme, font, slow): the
+# Expenses list with the fixture's invented rows (one Persian, one long), the
+# entry screen with its keypad (closed again, nothing saved), and a month
+# ahead with nothing in it (the empty state).
+appId: ${APP_ID}
+tags: [finance, readiness, shots]
+---
+- runFlow: login.yaml
+- runFlow: finance-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "finance-expense-period"
+    timeout: 60000
+- extendedWaitUntil:
+    visible: ".*\\[qa-ff\\] Lunch.*"
+    timeout: 30000
+- assertVisible:
+    id: "finance-expense-period"
+- takeScreenshot: reports/160-finance-list-${SHOT}
+- tapOn:
+    id: "finance-expense-add"
+- extendedWaitUntil:
+    visible:
+      id: "finance-entry-pad"
+    timeout: 15000
+- takeScreenshot: reports/160-finance-entry-${SHOT}
+- tapOn:
+    id: "finance-entry-close"
+- extendedWaitUntil:
+    visible:
+      id: "finance-expense-period-next"
+    timeout: 15000
+- tapOn:
+    id: "finance-expense-period-next"
+- tapOn:
+    id: "finance-expense-period-next"
+- extendedWaitUntil:
+    visible:
+      id: "finance-expense-empty"
+    timeout: 15000
+- takeScreenshot: reports/160-finance-empty-${SHOT}

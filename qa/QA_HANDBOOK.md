@@ -770,3 +770,18 @@ jank and 341 at 57% at load 24.7).
 **And do not soften a refusal into a warning.** A warning is read once and
 then scrolls past. A refusal (exit 3, NOT MEASURED) cannot be averaged into
 a result. Every guard above refuses on purpose.
+
+## PARKED, NOT FIXED — `TESTID` accepts any instantiation of a template — 2026-11-25
+
+`flow_lint.py`'s TESTID check resolves a selector against the app's testIDs,
+and a template such as `` `finance-${kind}-list` `` matches ANY text in place
+of `${kind}`. Flows 160–164 were written with `finance-expenses-list`, linted
+clean, and failed on the device: `kind` is `"expense"`, so the real ID is
+`finance-expense-list`. Two runs were lost before the screen's own view tree
+named the real IDs.
+
+The fix is to know a template variable's values where the code says them (a
+`kind: "expense" | "income"` prop, a `.map` over a constant array) and refuse
+a selector outside them. Parked by Hello's call: a follow-up, not part of the
+readiness pass. Until then, a NEW selector built on a template is checked
+against a device's view tree (`screen-hierarchy/*.json`) before it is trusted.

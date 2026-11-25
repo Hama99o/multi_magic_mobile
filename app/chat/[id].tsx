@@ -51,6 +51,7 @@ import { useMutation, useQuery, useQueryClient, type InfiniteData, type QueryCli
 import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
+import { useDraft } from "@/hooks/useDraft";
 import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { useConversation } from "@/hooks/useConversation";
 import { performOnChannel, subscribeToChannel } from "@/lib/cable";
@@ -292,7 +293,13 @@ export default function PersonThread() {
     seed,
   });
 
-  const [draft, setDraft] = useState("");
+  // The new message's draft SURVIVES the app being killed, like the
+  // assistant's (useDraft, AsyncStorage per user and conversation). Readiness
+  // Kill, flow 78 (device, 2026-11-25): it lived in useState and a force-stop
+  // lost it. An EDIT's text is kept apart and in memory only: it rewrites a
+  // message already sent, so a relaunch must never offer it as a new one.
+  const { draft, setDraft, clear: clearDraft } = useDraft(Number.isFinite(conversationId) ? conversationId : null);
+  const [editText, setEditText] = useState("");
   const [outbox, setOutbox] = useState<Outgoing[]>([]);
   const [sheetFor, setSheetFor] = useState<ChatMessage | null>(null);
   const [editing, setEditing] = useState<ChatMessage | null>(null);
@@ -401,7 +408,7 @@ export default function PersonThread() {
   const { mutateAsync: removeById } = useMutation({ mutationFn: (id: number) => threadApi.remove(conversationId, id) });
 
   const send = useCallback(async () => {
-    const body = draft.trim();
+    const body = (editing ? editText : draft).trim();
     if (!body || !Number.isFinite(conversationId)) return;
     setThreadError(null);
 
@@ -409,13 +416,13 @@ export default function PersonThread() {
     if (editing) {
       const target = editing;
       setEditing(null);
-      setDraft("");
+      setEditText("");
       try {
         mergeMessage(await editBody({ id: target.id, body }));
       } catch (e) {
         // Put it back in the composer rather than losing the words, AND say
         // so: the text silently reappearing read as the tap not working.
-        setDraft(body);
+        setEditText(body);
         setEditing(target);
         setThreadError(failureMessage(e, t("thread.editFailed")));
       }
@@ -423,7 +430,7 @@ export default function PersonThread() {
     }
 
     const key = `out-${Date.now()}`;
-    setDraft("");
+    clearDraft();
     setOutbox((current) => [...current, { key, body, failed: false }]);
 
     try {
@@ -444,7 +451,7 @@ export default function PersonThread() {
         ),
       );
     }
-  }, [draft, conversationId, editing, mergeMessage, queryClient, t, sendBody, editBody]);
+  }, [draft, editText, clearDraft, conversationId, editing, mergeMessage, queryClient, t, sendBody, editBody]);
 
   const retry = useCallback(
     async (item: Outgoing) => {
@@ -922,7 +929,7 @@ export default function PersonThread() {
         <Pressable
           onPress={() => {
             setEditing(null);
-            setDraft("");
+            setEditText("");
           }}
           accessibilityRole="button"
           style={{ paddingVertical: metrics.space.xs }}
@@ -941,8 +948,8 @@ export default function PersonThread() {
         </Text>
       ) : null}
       <PersonComposer
-        value={draft}
-        onChange={setDraft}
+        value={editing ? editText : draft}
+        onChange={editing ? setEditText : setDraft}
         onSend={() => void send()}
         onTyping={announceTyping}
         editing={Boolean(editing)}
@@ -958,7 +965,7 @@ export default function PersonThread() {
         }}
         onEdit={() => {
           setEditing(sheetFor);
-          setDraft(sheetFor?.body ?? "");
+          setEditText(sheetFor?.body ?? "");
           setSheetFor(null);
         }}
         onDelete={() => void removeMessage()}

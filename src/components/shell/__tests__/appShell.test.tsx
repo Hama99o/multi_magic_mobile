@@ -354,6 +354,49 @@ describe("back and Home (M7)", () => {
   });
 });
 
+// Found on a device, 2026-11-25 (qa_phone, font_scale 2.0, flow 120): the Apps
+// sheet's 4-column phone grid cut "SafeZo…", and "Doc To…Contac…Calend…" ran
+// into each other. The rule Home already follows (e842db8): never cut an
+// app's name. Jest measures no text, so this pins the two parts of the fix;
+// the device shot proves it.
+describe("the switcher at a large system font", () => {
+  const RN = require("react-native");
+  const at = (width: number, fontScale: number) =>
+    jest.spyOn(RN, "useWindowDimensions").mockReturnValue({ width, height: 900, scale: 2.6, fontScale });
+  const widthOf = (key: string) => (screen.getByTestId(`switcher-app-${key}`).props.style as { width: string }).width;
+  afterEach(() => jest.restoreAllMocks());
+
+  it("a phone keeps 4 columns at 100 %", async () => {
+    counts(0, 0);
+    at(411, 1);
+    open("todos");
+    fireEvent.press(await screen.findByTestId("header-apps"));
+    await screen.findByTestId("app-switcher");
+    expect(widthOf("safezone")).toBe("25%");
+  });
+
+  it("a phone takes 3 columns from 150 %, so a name has room", async () => {
+    counts(0, 0);
+    at(411, 2);
+    open("todos");
+    fireEvent.press(await screen.findByTestId("header-apps"));
+    await screen.findByTestId("app-switcher");
+    expect(widthOf("safezone")).toBe(`${100 / 3}%`);
+  });
+
+  it("a name is never ellipsized: one line that shrinks to fit, never under 60 %", async () => {
+    counts(0, 0);
+    at(411, 2);
+    open("todos");
+    fireEvent.press(await screen.findByTestId("header-apps"));
+    const sheet = await screen.findByTestId("app-switcher");
+    const name = within(sheet).getByText("SafeZone");
+    expect(name.props.numberOfLines).toBe(1);
+    expect(name.props.adjustsFontSizeToFit).toBe(true);
+    expect(name.props.minimumFontScale).toBeGreaterThanOrEqual(0.6);
+  });
+});
+
 describe("the switcher (M4, M10)", () => {
   it("lists every app, rings the current one, and shows the badges", async () => {
     counts(3, 12);

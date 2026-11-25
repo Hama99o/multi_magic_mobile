@@ -27,6 +27,9 @@ import { APP_REGISTRY, type AppEntry, type AppKey } from "@/apps/registry";
 import { AppMark } from "./AppMark";
 import { GradientFill } from "./GradientFill";
 
+/** The system font scale from which a phone's sheet takes 3 columns (Home: 2). */
+const LARGE_FONT = 1.5;
+
 /** Accents and case do not matter: "tâches" finds Tasks typed as "taches". */
 function fold(s: string): string {
   return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
@@ -78,7 +81,7 @@ export function AppSwitcher({
   const scheme = useScheme();
   const insets = useSafeAreaInsets();
   const { t } = useTranslation();
-  const { width } = useWindowDimensions();
+  const { width, fontScale } = useWindowDimensions();
   const [query, setQuery] = useState("");
   // One navigation per opening: a double tap on a tile must not push twice.
   const chosen = useRef(false);
@@ -94,7 +97,10 @@ export function AppSwitcher({
   if (!visible) return null;
 
   const tablet = width >= SPLIT_AT;
-  const columns = tablet ? 5 : 4;
+  // From a 150 % system font a phone's sheet takes 3 columns, as Home takes 2
+  // (e842db8): at 200 % a 4-column grid cut "SafeZo…" and ran "Doc To…Contac…"
+  // into its neighbour (device, 2026-11-25, flow 120).
+  const columns = tablet ? 5 : fontScale >= LARGE_FONT ? 3 : 4;
   const q = fold(query.trim());
   const matches = q ? APP_REGISTRY.filter((a) => fold(t(a.labelKey)).includes(q) || fold(t(a.lineKey)).includes(q)) : APP_REGISTRY;
   const badgeOf = (key: AppKey) => (key === "chats" ? badges.chats : key === "notifications" ? badges.notifications : null);
@@ -137,7 +143,8 @@ export function AppSwitcher({
           <AppMark app={a.key} size={52} />
           {badge ? <CountBadge value={badge} testID={`switcher-app-${a.key}-badge`} /> : null}
         </View>
-        <Text variant="caption" numberOfLines={1} style={{ fontWeight: "600", textAlign: "center" }}>
+        {/* One line, never "…": a name too wide for its tile shrinks to fit. */}
+        <Text variant="caption" numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.6} style={{ fontWeight: "600", textAlign: "center" }}>
           {label(a)}
         </Text>
       </Pressable>

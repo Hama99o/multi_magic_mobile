@@ -929,6 +929,22 @@ export default function PersonThread() {
         <ScrollToBottom visible={awayFromBottom} onPress={toBottom} />
       </View>
 
+      {/* A failed load with messages already drawn: the list's last message
+          seeds the thread (`lastKnownMessages`), so the list is never empty
+          and its empty-state failure never showed. Without this line one
+          message looked like the whole conversation (device, 2026-11-25,
+          flow 82; chat-thread.loadfail.test.tsx). */}
+      {status === "failed" && messages.length > 0 ? (
+        <View testID="thread-load-failed" accessibilityLiveRegion="polite" style={{ flexDirection: "row", alignItems: "center", gap: metrics.space.sm, paddingVertical: metrics.space.xs }}>
+          <Text variant="caption" tone="danger" style={{ flex: 1 }}>
+            {failureMessage(loadError, t("thread.loadFailed"))}
+          </Text>
+          <Pressable onPress={() => void resync()} accessibilityRole="button" hitSlop={8} style={{ minHeight: metrics.touch, justifyContent: "center" }}>
+            <Text variant="label" tone="accent">{t("common.tryAgain")}</Text>
+          </Pressable>
+        </View>
+      ) : null}
+
       {threadError ? (
         <Text variant="caption" tone="danger" testID="thread-error" accessibilityLiveRegion="polite">
           {threadError}

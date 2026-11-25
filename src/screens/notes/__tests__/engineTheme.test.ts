@@ -12,3 +12,19 @@ it("a table's header row and borders come from our tokens (dark: never B's light
   expect(theme.table?.headerBackgroundColor).toBe(dark.surface);
   expect(theme.table?.borderColor).toBe(dark.border);
 });
+
+// Device, 2026-11-25 (readiness 200 %, flow 97): at a 200 % system font the
+// note's title and dates doubled, its BODY stayed at 16. The native editor
+// sizes text in dp (Android EditorEditTextConfiguration: COMPLEX_UNIT_PX from
+// density, not scaledDensity; the iOS editor does not read Dynamic Type
+// either: only the library's viewer does), so the scale is ours to apply.
+it("text grows with the system font scale, line heights with it", () => {
+  type T = { text: { fontSize: number }; paragraph: { lineHeight: number }; h1: { fontSize: number; lineHeight: number }; h3: { fontSize: number; lineHeight: number } };
+  const one = engineTheme(dark) as unknown as T;
+  const two = engineTheme(dark, dark.ground, 2) as unknown as T;
+  expect(one.text.fontSize).toBe(16);
+  expect(two.text.fontSize).toBe(32);
+  expect(two.paragraph.lineHeight).toBe(48);
+  expect(two.h1).toMatchObject({ fontSize: 52, lineHeight: 64 });
+  expect(two.h3).toMatchObject({ fontSize: 36, lineHeight: 50 });
+});

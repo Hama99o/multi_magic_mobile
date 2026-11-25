@@ -15,7 +15,7 @@
  * A page over the size the phone can edit (EDIT_SIZE_LIMIT) is read-only.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { ActivityIndicator, Alert, View } from "react-native";
+import { ActivityIndicator, Alert, View, useWindowDimensions } from "react-native";
 import { useNavigation } from "expo-router";
 import { useNav, useNavParams } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
@@ -52,6 +52,8 @@ type SaveState = "saved" | "pending" | "saving" | "failed" | "invalid";
 export default function PageEditorScreen() {
   const router = useNav();
   const colors = useColors();
+  // The engine sizes text in dp: the system font size is ours to apply (engineTheme).
+  const { fontScale } = useWindowDimensions();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const client = useQueryClient();
@@ -399,7 +401,7 @@ export default function PageEditorScreen() {
               ref={editorRef}
               documentHandle={engine.handle}
               atoms={notesEngineAtoms}
-              theme={engineTheme(colors, colors.ground) as never}
+              theme={engineTheme(colors, colors.ground, fontScale) as never}
               focusPreservingRefs={barRef}
               editable
               showToolbar={false}

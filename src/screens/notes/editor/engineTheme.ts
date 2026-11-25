@@ -4,14 +4,24 @@
  */
 import type { EditorColors } from "./types";
 
-export function engineTheme(colors: EditorColors, page: string = colors.ground) {
+/**
+ * `fontScale` is the system font size (`useWindowDimensions().fontScale`).
+ * The native editor sizes text in dp and never reads it (Android
+ * `EditorEditTextConfiguration`: COMPLEX_UNIT_PX from `density`; the iOS editor
+ * does not read Dynamic Type: only the library's viewer does), so at 200 % a
+ * note's body stayed at 16 while everything around it doubled (device,
+ * 2026-11-25, flow 97). Sizes and line heights are scaled here.
+ */
+export function engineTheme(colors: EditorColors, page: string = colors.ground, fontScale = 1) {
+  const k = Number.isFinite(fontScale) && fontScale > 0 ? fontScale : 1;
+  const sz = (n: number) => Math.round(n * k);
   return {
     content: { backgroundColor: page },
-    text: { color: colors.ink, fontSize: 16 },
-    paragraph: { lineHeight: 24 },
-    h1: { fontSize: 26, lineHeight: 32, fontWeight: "700" as const },
-    h2: { fontSize: 21, lineHeight: 28, fontWeight: "700" as const },
-    h3: { fontSize: 18, lineHeight: 25, fontWeight: "600" as const },
+    text: { color: colors.ink, fontSize: sz(16) },
+    paragraph: { lineHeight: sz(24) },
+    h1: { fontSize: sz(26), lineHeight: sz(32), fontWeight: "700" as const },
+    h2: { fontSize: sz(21), lineHeight: sz(28), fontWeight: "700" as const },
+    h3: { fontSize: sz(18), lineHeight: sz(25), fontWeight: "600" as const },
     blockquote: { borderLeftWidth: 3, borderColor: colors.border, paddingLeft: 12, color: colors.inkMuted },
     listMarker: { color: colors.inkMuted },
     taskCheckbox: { borderColor: colors.inkMuted, checked: { backgroundColor: colors.accent, borderColor: colors.accent, checkColor: colors.onAccent } },

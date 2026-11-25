@@ -11,7 +11,7 @@
  * read-only with a code and nothing can be handed back.
  */
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Pressable, ScrollView, View, useWindowDimensions } from "react-native";
 import { useNav } from "@/lib/nav";
 import { useTranslation } from "react-i18next";
 import { RichTextEditor, createNativeEditorDocumentHandle } from "@apollohg/react-native-rich-text-editor";
@@ -31,6 +31,8 @@ type EngineRef = { getContentJson(): unknown; blur?(): void };
 export default function RichTextScreen() {
   const router = useNav();
   const colors = useColors();
+  // The engine sizes text in dp: the system font size is ours to apply (engineTheme).
+  const { fontScale } = useWindowDimensions();
   const metrics = useMetrics();
   const { t } = useTranslation();
   const session = useRichTextSession((s) => s.session);
@@ -130,7 +132,7 @@ export default function RichTextScreen() {
             ref={editorRef as never}
             documentHandle={engine.handle}
             atoms={notesEngineAtoms}
-            theme={engineTheme(colors, colors.surface) as never}
+            theme={engineTheme(colors, colors.surface, fontScale) as never}
             showToolbar
             placeholder={t("richText.placeholder")}
             style={{ flex: 1 }}

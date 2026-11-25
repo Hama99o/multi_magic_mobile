@@ -1,0 +1,11 @@
+# Readiness States (error): the driver makes /api/v1/table_app answer 500.
+appId: ${APP_ID}
+tags: [tables, readiness, states, read-only]
+---
+- runFlow: login.yaml
+- runFlow: tables-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "tables-load-failed"
+    timeout: 30000
+- takeScreenshot: reports/151-tables-error

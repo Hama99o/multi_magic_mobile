@@ -1,0 +1,35 @@
+# Readiness Kill, READ-ONLY: killed with a row's page open; back in, Tables
+# opens whole and the base still opens. (A kill mid-WRITE needs the fixture
+# base, 37's scope.)
+appId: ${APP_ID}
+tags: [tables, readiness, kill, read-only]
+---
+- runFlow: login.yaml
+- runFlow: tables-open.yaml
+- tapOn:
+    id: "tables-base-0"
+- extendedWaitUntil:
+    visible:
+      id: "tables-view-switch"
+    timeout: 30000
+- runFlow:
+    when:
+      visible:
+        id: "tables-card-0"
+    commands:
+      - tapOn:
+          id: "tables-card-0"
+- extendedWaitUntil:
+    visible:
+      id: "tables-record-title"
+    timeout: 30000
+- stopApp
+- runFlow: login.yaml
+- runFlow: tables-open.yaml
+- tapOn:
+    id: "tables-base-0"
+- extendedWaitUntil:
+    visible:
+      id: "tables-view-switch"
+    timeout: 30000
+- takeScreenshot: reports/152-tables-after-kill

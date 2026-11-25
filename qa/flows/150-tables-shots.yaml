@@ -1,0 +1,49 @@
+# Pictures at ${SHOT} (the driver sets width, theme, font, slow), READ-ONLY:
+# the bases list, the first base's table with its table-tab strip (b5dfdf9:
+# the pills were cut at the bottom at 200 %), its cards or, from 600 dp, its
+# grid and summary (b5dfdf9: the + covered the summary's last cell at 800),
+# and the first row's page. The :3030 QA account has two bases of two tables.
+#
+# COVERS: the strip at 200 %, the grid summary at 800, the record page.
+# CANNOT TELL YOU: any write (37 and the fixture cover the double tap and the
+#   exact-name delete), a viewer's base (two-person).
+appId: ${APP_ID}
+tags: [tables, readiness, shots, read-only]
+---
+- runFlow: login.yaml
+- runFlow: tables-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "tables-base-0"
+    timeout: 30000
+- assertVisible:
+    id: "tables-bases-sort"
+- takeScreenshot: reports/150-tables-bases-${SHOT}
+- tapOn:
+    id: "tables-base-0"
+- extendedWaitUntil:
+    visible:
+      id: "tables-view-switch"
+    timeout: 30000
+- assertVisible:
+    id: "tables-table-strip"
+- takeScreenshot: reports/150-tables-table-${SHOT}
+- runFlow:
+    when:
+      visible:
+        id: "tables-card-0"
+    commands:
+      - tapOn:
+          id: "tables-card-0"
+- runFlow:
+    when:
+      visible:
+        id: "tables-grid-row-0"
+    commands:
+      - tapOn:
+          id: "tables-grid-row-0"
+- extendedWaitUntil:
+    visible:
+      id: "tables-record-title"
+    timeout: 30000
+- takeScreenshot: reports/150-tables-record-${SHOT}

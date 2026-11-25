@@ -1,0 +1,20 @@
+# Helper: Home → Tables' bases list by the Home tile.
+appId: ${APP_ID}
+---
+- runFlow: home-open.yaml
+- runFlow:
+    when:
+      notVisible:
+        id: "home-tile-tables"
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: "home-tile-tables"
+          direction: DOWN
+          timeout: 20000
+- tapOn:
+    id: "home-tile-tables"
+- extendedWaitUntil:
+    visible:
+      id: "tables-bases-sort"
+    timeout: 60000

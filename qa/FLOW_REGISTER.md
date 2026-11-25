@@ -798,6 +798,11 @@ released, Metro stopped.
 | `143-flow-kill-mid-card.yaml` | **PASS (ff, 2026-11-25, qa_phone emulator-5580, :3030 copy via the fault proxy :3040, shots looked at).** Killed with a card half-typed in the quick add: the board comes back and 0 such cards (read-only SQL; the screen alone shows only one column). | A kill during the add request. |
 | `144-flow-cleanup.yaml` | **PASS (ff, 2026-11-25, qa_phone emulator-5580, :3030 copy via the fault proxy :3040, shots looked at).** Deletes every [qa-ff] project through its options menu and the confirm naming it: 0 projects, 0 cards left. | — |
 | `flow-open.yaml` | Helper: Home → Flow's projects list by the Home tile. | — |
+| `150-tables-shots.yaml` | **PASS (ff, 2026-11-25, qa_phone emulator-5580, :3030 copy via the fault proxy :3040, shots looked at)**, READ-ONLY, at 411, dark, 200 % (font_scale read back 2.0), 360, 800, 800 dark, slow: the bases list, the first base's table with its table-tab strip, the first row. b5dfdf9 re-checked: the pills whole at 200 %, the + below the grid summary at 800. | Any write (37 + its fixture); RTL (no Persian base on :3030); a viewer (two-person). |
+| `151-tables-error.yaml` | **PASS (ff, 2026-11-25, qa_phone emulator-5580, :3030 copy via the fault proxy :3040, shots looked at).** `/api/v1/table_app=500`: "Could not load your bases." + Try again. | — |
+| `151b-tables-error-recovers.yaml` | **PASS (ff, 2026-11-25, qa_phone emulator-5580, :3030 copy via the fault proxy :3040, shots looked at).** After 151, fault cleared: Try again brings the bases. | — |
+| `152-tables-kill-on-a-row.yaml` | **PASS (ff, 2026-11-25, qa_phone emulator-5580, :3030 copy via the fault proxy :3040, shots looked at)**, READ-ONLY: killed with a row open; Tables and the base reopen whole. | A kill mid-write. |
+| `tables-open.yaml` | Helper: Home → Tables' bases list by the Home tile. | — |
 | `notes-open.yaml` | Helper: Home → Notes; closes the Assistant, scrolls UP first when Home kept its scroll (200 %). | — |
 | `notes-open-ff-note.yaml` | Helper: opens the [qa-ff] note from the list (not from search, which is server-side and empty offline). | — |
 | `search-open.yaml` | Helper: Home → Search. | — |

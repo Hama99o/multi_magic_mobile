@@ -1,0 +1,14 @@
+# After 151, the fault cleared by the driver: Try again brings the bases.
+appId: ${APP_ID}
+tags: [tables, readiness, states, read-only]
+---
+- tapOn: "Try again|Réessayer"
+- extendedWaitUntil:
+    visible:
+      id: "tables-base-0"
+    timeout: 30000
+- assertNotVisible:
+    id: "tables-load-failed"
+- assertVisible:
+    id: "tables-bases-sort"
+- takeScreenshot: reports/151b-tables-recovered

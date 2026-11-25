@@ -17,5 +17,21 @@ appId: ${APP_ID}
           id: "header-home"
 - extendedWaitUntil:
     visible:
+      id: "home-tile-.*"
+    timeout: 30000
+# Home keeps its scroll position, so at 200 % the greeting can be ABOVE the
+# screen (measured 2026-11-25, flow 120 at 411 / 200 %): scroll up to it.
+- runFlow:
+    when:
+      notVisible:
+        id: "home-greeting"
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: "home-greeting"
+          direction: UP
+          timeout: 20000
+- extendedWaitUntil:
+    visible:
       id: "home-greeting"
     timeout: 30000

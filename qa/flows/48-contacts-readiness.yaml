@@ -24,8 +24,23 @@ tags:
   - contacts
   - readiness
 ---
-- launchApp
-- openLink: ${DEEP_LINK}
+# OFFLINE runs skip the relaunch: the driver signed in just before and then
+# cut the network, and a relaunched dev client cannot reach Metro offline
+# (measured 2026-11-25 on flow 47).
+- runFlow:
+    when:
+      true: ${NET != "offline"}
+    commands:
+      - launchApp
+      - openLink: ${DEEP_LINK}
+# login.yaml ends on the Assistant, which has no app header: close it.
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
 - extendedWaitUntil:
     visible:
       id: "app-header"
@@ -66,9 +81,15 @@ tags:
       - tapOn:
           id: "contacts-search"
       - inputText: "zqx-qa-none"
+      - assertVisible:
+          id: "contacts-search"
       - takeScreenshot: reports/48-${W}-${THEME}-f${FONT}-${NET}-no-match
       - tapOn:
           id: "contacts-search-clear"
+      # The search field keeps focus and its keyboard covers the + button
+      # (measured 2026-11-25): the IME is up here, so this closes it and
+      # cannot reach the app as Back.
+      - hideKeyboard
 
 - runFlow:
     when:
@@ -96,6 +117,8 @@ tags:
       - tapOn:
           id: "contact-form-firstname"
       - inputText: "[qa] Readiness"
+      - assertVisible:
+          id: "contact-form-firstname"
       - takeScreenshot: reports/48-${W}-${THEME}-f${FONT}-${NET}-keyboard
       - doubleTapOn:
           id: "contact-form-save"
@@ -109,6 +132,8 @@ tags:
       - extendedWaitUntil:
           visible: "\\[qa\\] Readiness.*"
           timeout: 20000
+      - assertVisible:
+          id: "contacts-more"
       - takeScreenshot: reports/48-${W}-${THEME}-f${FONT}-${NET}-list-with-row
       - tapOn: "\\[qa\\] Readiness.*"
       - extendedWaitUntil:

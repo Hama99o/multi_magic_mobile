@@ -24,6 +24,13 @@ appId: ${APP_ID}
     timeout: 30000
 # lint: anchored-ok — the seeded folder "Trip" is a whole row title in the space
 - tapOn: "Trip"
+# The folder's first seeded row before any scroll: under a slow network the
+# rows arrived while the scroll was already running and it carried the list
+# past a-notes.txt (Slow column, 2026-11-25).
+- extendedWaitUntil:
+    # lint: anchored-ok — the seeded folder "Day 1" is a whole row title
+    visible: "Day 1"
+    timeout: 60000
 # Scroll, not a visible-wait: leftovers from earlier flows push the seeded
 # files below the fold at 360 dp and 200 % font (device, 2026-11-24).
 - scrollUntilVisible:

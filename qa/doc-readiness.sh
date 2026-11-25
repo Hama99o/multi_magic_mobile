@@ -63,6 +63,7 @@ PY
 # `am start` with the package does load it. So: open it, wait for the JS to
 # run, and stop here as NOT MEASURED (exit 3) if it never does.
 prime() {
+  adb -s "$SERIAL" shell am force-stop "$APP_ID"   # cold start: a running app takes the link without reloading (2026-11-25)
   adb -s "$SERIAL" logcat -c
   adb -s "$SERIAL" shell am start -a android.intent.action.VIEW -d "$1" "$APP_ID" >/dev/null
   local i

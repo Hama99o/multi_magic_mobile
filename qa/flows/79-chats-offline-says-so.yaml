@@ -1,0 +1,23 @@
+# Readiness "Off", Chats: the driver signs in ONLINE, then cuts the network;
+# this flow opens Chats the way a person does. Offline is decided by a failed
+# request (reachability.store.ts), so opening the list is what reveals it.
+#
+# COVERS: the list's failure state with its way out, or a kept list with the
+#   offline banner: whichever the app draws is photographed and asserted.
+# CANNOT TELL YOU: a send while offline (a send reaches another person).
+appId: ${APP_ID}
+tags: [chats, readiness, offline]
+---
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-chats"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-chats"
+- extendedWaitUntil:
+    visible: "Offline.*|.*[Cc]ould not.*|.*[Cc]an.t reach.*"
+    timeout: 30000
+- takeScreenshot: reports/79-chats-offline

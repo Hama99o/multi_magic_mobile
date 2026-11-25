@@ -62,6 +62,8 @@ pw_ids() {
 
 restore() {
   adb -s "$SERIAL" shell svc wifi enable; adb -s "$SERIAL" shell svc data enable
+  adb -s "$SERIAL" shell pm grant "$APP_ID" android.permission.CAMERA 2>/dev/null
+  adb -s "$SERIAL" shell pm grant "$APP_ID" android.permission.RECORD_AUDIO 2>/dev/null
   adb -s "$SERIAL" shell cmd uimode night no >/dev/null; adb -s "$SERIAL" shell settings put system font_scale 1.0
   adb -s "$SERIAL" shell wm size reset; adb -s "$SERIAL" shell wm density reset
 }
@@ -103,6 +105,17 @@ layout() {
 
 case "${1:-}" in
   run) run;; layout) layout;;
+  # The cross-app readiness cells written 2026-11-25: 76 RTL content, 77 camera
+  # and mic refused, 78 a draft across a force-stop, 79 Chats offline.
+  extra) prime; flow "$DIR/flows/76-rtl-content-assistant-chats-safezone.yaml"; flow "$DIR/flows/77-perm-camera-and-mic-refused.yaml"
+    adb -s "$SERIAL" shell pm grant "$APP_ID" android.permission.CAMERA; adb -s "$SERIAL" shell pm grant "$APP_ID" android.permission.RECORD_AUDIO
+    flow "$DIR/flows/78-kill-keeps-the-draft.yaml"
+    flow "$DIR/flows/login.yaml"; adb -s "$SERIAL" shell svc wifi disable; adb -s "$SERIAL" shell svc data disable
+    flow "$DIR/flows/79-chats-offline-says-so.yaml"; adb -s "$SERIAL" shell svc wifi enable; adb -s "$SERIAL" shell svc data enable;;
+  permkill) prime; flow "$DIR/flows/77-perm-camera-and-mic-refused.yaml"
+    adb -s "$SERIAL" shell pm grant "$APP_ID" android.permission.CAMERA; adb -s "$SERIAL" shell pm grant "$APP_ID" android.permission.RECORD_AUDIO
+    flow "$DIR/flows/78-kill-keeps-the-draft.yaml";;
+  rtlperm) prime; flow "$DIR/flows/76-rtl-content-assistant-chats-safezone.yaml"; flow "$DIR/flows/77-perm-camera-and-mic-refused.yaml";;
   only) prime; shift; for n in "$@"; do flow "$(ls "$DIR"/flows/${n}-safezone-*.yaml | head -1)"; done;;
   dtap) prime; b=$(pw_ids); flow "$DIR/flows/74-safezone-double-tap-saves-once.yaml"; a=$(pw_ids)
     new=$(comm -13 <(tr ' ' '\n' <<<"$b" | sort) <(tr ' ' '\n' <<<"$a" | sort)); echo "74 double-tap: $(grep -c . <<<"$new") new password row(s) on :3030 (expect 1)" | tee -a "$OUT/verdicts.txt"

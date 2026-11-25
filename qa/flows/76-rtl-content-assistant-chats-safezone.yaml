@@ -1,0 +1,62 @@
+# Readiness "RTL": Persian in the USER'S content (the interface is English and
+# French only). Maestro cannot type Persian on Android, so the content is
+# seeded on the :3030 copy, invented and marked [qa]: a Persian question and
+# a hand-written (not AI) reply in the Assistant's current session, a Persian
+# chat message from the second QA account, a SafeZone password with a Persian
+# title.
+#
+# COVERS: the Assistant and Chats bubbles photographed with Persian; the
+#   SafeZone row present in the view tree (FLAG_SECURE: no picture).
+# CANNOT TELL YOU: Persian TYPED by a person (keyboard, cursor, mixed
+#   direction while editing); Doc (needs a Persian-text PDF).
+appId: ${APP_ID}
+tags: [readiness, rtl]
+---
+- runFlow: login.yaml
+# login.yaml ends on the Assistant: the current session holds the seed.
+- extendedWaitUntil:
+    visible: ".*سفر کابل.*"
+    timeout: 30000
+- takeScreenshot: reports/76-rtl-assistant
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-chats"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-chats"
+- extendedWaitUntil:
+    visible:
+      id: "chats-list"
+    timeout: 30000
+- takeScreenshot: reports/76-rtl-chats-list
+# lint: dbid-ok — the QA account has one thread; any row is the subject
+- tapOn:
+    id: "chat-row-.*"
+    index: 0
+- extendedWaitUntil:
+    visible: ".*پیام آزمایشی.*"
+    timeout: 20000
+- waitForAnimationToEnd:
+    timeout: 5000
+- takeScreenshot: reports/76-rtl-chats-thread
+- repeat:
+    while:
+      notVisible:
+        id: "header-home"
+    times: 3
+    commands:
+      - back
+- tapOn:
+    id: "header-home"
+- runFlow: sz-open.yaml
+- runFlow: sz-pin-P.yaml
+- extendedWaitUntil:
+    visible:
+      id: "safezone-list"
+    timeout: 30000
+- assertVisible: ".*ایمیل کاری.*"
+- tapOn:
+    id: "safezone-lock"

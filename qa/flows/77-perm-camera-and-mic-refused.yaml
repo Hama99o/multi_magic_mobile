@@ -1,0 +1,125 @@
+# Readiness "Perm": the camera and the microphone REFUSED, where Pages, Doc and
+# Chats ask for them. Relaunched with both denied (a plain launchApp grants
+# every permission, so login.yaml's launch cannot be the one that counts).
+# Nothing is taken, picked, recorded or sent.
+#
+# COVERS: Pages' "Take a photo" and Doc Convert's Camera say "No access" with
+#   the way out (addFiles.ts explainPick); Chats' mic says it is refused
+#   (PersonComposer people-composer-mic-refused).
+# CANNOT TELL YOU: "Don't ask again" (permanently denied) vs a plain denial;
+#   the photo library (Android's photo picker asks no permission).
+appId: ${APP_ID}
+tags: [readiness, permission]
+---
+- runFlow: login.yaml
+- launchApp:
+    appId: ${APP_ID}
+    permissions:
+      camera: deny
+      microphone: deny
+- openLink: ${DEEP_LINK}
+- extendedWaitUntil:
+    visible:
+      id: "screen-root"
+    timeout: 120000
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
+- repeat:
+    while:
+      notVisible:
+        id: "header-home"
+    times: 3
+    commands:
+      - back
+- tapOn:
+    id: "header-home"
+# 1. Pages: + → Take a photo.
+- scrollUntilVisible:
+    element:
+      id: "home-tile-pages"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-pages"
+- extendedWaitUntil:
+    visible:
+      id: "pages-add"
+    timeout: 30000
+- tapOn:
+    id: "pages-add"
+- tapOn:
+    id: "pages-new-camera"
+- runFlow:
+    when:
+      visible: "Don.t allow|DON.T ALLOW|Deny"
+    commands:
+      - tapOn: "Don.t allow|DON.T ALLOW|Deny"
+- extendedWaitUntil:
+    visible: "No access"
+    timeout: 15000
+- takeScreenshot: reports/77-pages-camera-refused
+- tapOn: "OK"
+# 2. Doc: Convert → Camera.
+- tapOn:
+    id: "header-home"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-doc"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-doc"
+- tapOn:
+    id: "doc-tool-convert"
+# The card's own button opens the sheet; a tap on the card does not (device, 2026-11-25).
+- tapOn: "Add a file"
+- tapOn:
+    id: "doc-intake-camera"
+- runFlow:
+    when:
+      visible: "Don.t allow|DON.T ALLOW|Deny"
+    commands:
+      - tapOn: "Don.t allow|DON.T ALLOW|Deny"
+- extendedWaitUntil:
+    visible: "No access"
+    timeout: 15000
+- takeScreenshot: reports/77-doc-camera-refused
+- tapOn: "OK"
+# 3. Chats: the thread's mic.
+- repeat:
+    while:
+      notVisible:
+        id: "header-home"
+    times: 3
+    commands:
+      - back
+- tapOn:
+    id: "header-home"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-chats"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-chats"
+# lint: dbid-ok — the QA account has one thread; any row is the subject
+- tapOn:
+    id: "chat-row-.*"
+    index: 0
+- tapOn:
+    id: "people-composer-mic"
+- runFlow:
+    when:
+      visible: "Don.t allow|DON.T ALLOW|Deny"
+    commands:
+      - tapOn: "Don.t allow|DON.T ALLOW|Deny"
+- extendedWaitUntil:
+    visible:
+      id: "people-composer-mic-refused"
+    timeout: 15000
+- takeScreenshot: reports/77-chats-mic-refused

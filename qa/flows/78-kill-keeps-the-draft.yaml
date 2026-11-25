@@ -1,0 +1,54 @@
+# Readiness "Kill" (mid-task = mid-sentence): a draft typed, the app
+# FORCE-STOPPED (stopApp; Maestro's killApp left a foreground app alive),
+# relaunched: is the draft still there? The Assistant's composer keeps it
+# (src/hooks/useDraft.ts, AsyncStorage); a person thread's composer holds it
+# in state (app/chat/[id].tsx). Nothing is sent: both drafts are erased.
+#
+# COVERS: the Assistant draft and the thread draft across a process death.
+# CANNOT TELL YOU: Android's own low-memory kill (same process death, other
+#   trigger) or a draft mid-dictation.
+appId: ${APP_ID}
+tags: [readiness, kill]
+---
+# 1. The Assistant (login.yaml ends on it).
+- runFlow: login.yaml
+- tapOn:
+    id: "composer-input"
+- inputText: "[qa] assistant draft kept"
+- stopApp
+- runFlow: login.yaml
+- extendedWaitUntil:
+    visible: "\\[qa\\] assistant draft kept"
+    timeout: 20000
+- takeScreenshot: reports/78-assistant-draft-after-kill
+- tapOn:
+    id: "composer-input"
+- eraseText: 40
+# 2. A person thread.
+- tapOn:
+    id: "chat-close"
+- scrollUntilVisible:
+    element:
+      id: "home-tile-chats"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-chats"
+# lint: dbid-ok — the QA account has one thread; any row is the subject
+- tapOn:
+    id: "chat-row-.*"
+    index: 0
+- tapOn:
+    id: "people-composer-input"
+- inputText: "[qa] thread draft kept"
+- stopApp
+# The last-place rule reopens the thread itself (app/index.tsx).
+- launchApp:
+    stopApp: false
+- openLink: ${DEEP_LINK}
+- extendedWaitUntil:
+    visible:
+      id: "people-composer-input"
+    timeout: 120000
+- takeScreenshot: reports/78-thread-after-kill
+- assertVisible: "\\[qa\\] thread draft kept"

@@ -146,7 +146,7 @@ export default function FinanceScreen() {
 /** A fade from the page's ground to clear over one edge of the tab row, over the peeking tab. */
 function EdgeFade({ side, color, testID }: { side: "start" | "end"; color: string; testID: string }) {
   const [h, setH] = useState(0);
-  const W = 32;
+  const W = 20;
   return (
     <View
       pointerEvents="none"
@@ -159,7 +159,7 @@ function EdgeFade({ side, color, testID }: { side: "start" | "end"; color: strin
           <Defs>
             <LinearGradient id={`${testID}-g`} x1={side === "start" ? "1" : "0"} y1="0" x2={side === "start" ? "0" : "1"} y2="0">
               <Stop offset="0" stopColor={color} stopOpacity={0} />
-              <Stop offset="1" stopColor={color} stopOpacity={0.95} />
+              <Stop offset="1" stopColor={color} stopOpacity={0.8} />
             </LinearGradient>
           </Defs>
           <Rect width={W} height={h} fill={`url(#${testID}-g)`} />

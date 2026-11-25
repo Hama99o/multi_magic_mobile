@@ -8,7 +8,7 @@
  */
 
 /** A tab's least width at a 100 % system font, in dp; it grows with the font, to 200 %. */
-const TAB_MIN = 96;
+const TAB_MIN = 80;
 
 export function tabLayout(rowWidth: number, count: number, fontScale: number): { width: number; scrolls: boolean } {
   const scale = Math.min(Math.max(Number.isFinite(fontScale) ? fontScale : 1, 1), 2);
@@ -19,9 +19,13 @@ export function tabLayout(rowWidth: number, count: number, fontScale: number): {
   return { width: rowWidth / (whole + 0.5), scrolls: true };
 }
 
-/** The offset that brings tab `index` into view, centred where it can be, never past either end. */
+/**
+ * The offset that shows tab `index` WHOLE with HALF of the next one beside it,
+ * never past either end. Centring it (the first cut) left a quarter of each
+ * neighbour at 200 %, hidden by the fade: no peek at all (RC gate, 2026-11-25).
+ */
 export function tabScrollX(index: number, width: number, rowWidth: number, count: number): number {
   const max = Math.max(0, count * width - rowWidth);
-  const centred = index * width - (rowWidth - width) / 2;
-  return Math.min(max, Math.max(0, centred));
+  const withPeek = (index + 1.5) * width - rowWidth;
+  return Math.min(max, index * width, Math.max(0, withPeek));
 }

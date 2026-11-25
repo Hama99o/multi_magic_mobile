@@ -48,6 +48,26 @@ describe("the tab row's arithmetic", () => {
     expect(tabLayout(720, 5, 1)).toEqual({ width: 144, scrolls: false });
   });
 
+  // Device, RC gate 2026-11-25: centring the selected tab at 200 % left a
+  // quarter of each neighbour, under the fade: no readable peek at all. The
+  // selected tab is shown WHOLE and the NEXT one peeks by half.
+  it("the selected tab is whole and the next one peeks by half, at 200 % too", () => {
+    for (const [row, scale] of [[255, 2], [255, 1], [300, 1]] as const) {
+      const { width } = tabLayout(row, 5, scale);
+      for (const index of [0, 1, 2, 3]) {
+        const x = tabScrollX(index, width, row, 5);
+        expect(index * width).toBeGreaterThanOrEqual(x - 0.001);
+        expect((index + 1) * width).toBeLessThanOrEqual(x + row + 0.001);
+        // The next tab: half of it on screen, or all of it when the row has room.
+        expect(x + row - (index + 1) * width).toBeGreaterThanOrEqual(width / 2 - 0.001);
+      }
+    }
+  });
+
+  it("at 411 dp (a 300 dp row) three and a half tabs show", () => {
+    expect(300 / tabLayout(300, 5, 1).width).toBeCloseTo(3.5, 5);
+  });
+
   it("the selected tab is scrolled into view, never past the end", () => {
     const { width } = tabLayout(340, 5, 1);
     expect(tabScrollX(0, width, 340, 5)).toBe(0);

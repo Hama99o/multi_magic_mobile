@@ -52,6 +52,7 @@ import { Screen } from "@/components/ScreenContainer";
 import { Text } from "@/components/reusables/text";
 import { useColors, useMetrics } from "@/hooks/useColors";
 import { useDraft } from "@/hooks/useDraft";
+import { useMe } from "@/hooks/useMe";
 import { UnreadableNotice } from "@/components/UnreadableNotice";
 import { useConversation } from "@/hooks/useConversation";
 import { performOnChannel, subscribeToChannel } from "@/lib/cable";
@@ -306,6 +307,10 @@ export default function PersonThread() {
   /** A failed edit or delete, said once above the composer until the next try. */
   const [threadError, setThreadError] = useState<string | null>(null);
   const [typingName, setTypingName] = useState<string | null>(null);
+  /** Read by the channel's handler, which must not resubscribe when the profile loads. */
+  const me = useMe();
+  const myId = useRef<number | null>(me?.id ?? null);
+  myId.current = me?.id ?? null;
   const [searching, setSearching] = useState(false);
   /** The search result being loaded back to, and the one last jumped to. */
   const [revealing, setRevealing] = useState<number | null>(null);
@@ -364,6 +369,10 @@ export default function PersonThread() {
       {
         onData: (event) => {
           if (event?.typing) {
+            // The broadcast reaches everyone subscribed, the sender included
+            // (`Messaging::Broadcast.typing`); being told that *I* am typing
+            // is nonsense. The web drops it the same way (`useChat.ts`).
+            if (event.user?.id != null && event.user.id === myId.current) return;
             setTypingName(event.user?.fullname ?? t("thread.someone"));
             if (timer) clearTimeout(timer);
             timer = setTimeout(() => setTypingName(null), TYPING_LINGER_MS);

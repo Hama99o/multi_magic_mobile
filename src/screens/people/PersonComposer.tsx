@@ -33,7 +33,7 @@
  * moved sending onto HTTP (`conversation_channel.rb:6-10`) and why `onSend`
  * below is an HTTP call.
  */
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
 import { Pressable, TextInput, View } from "react-native";
 import { ArrowUp, Mic, Square, X } from "@/components/icons";
 import { useTranslation } from "react-i18next";
@@ -72,13 +72,20 @@ export function PersonComposer({
     onChange(value ? `${value.trim()} ${final}` : final);
   });
 
-  useEffect(() => {
-    if (!value || !onTyping) return;
+  /**
+   * "Typing" is announced from a KEY PRESSED, never from the value changing.
+   * An effect on `value` also fired for a draft restored at launch, so the
+   * other person was told I was typing when I had only opened the thread
+   * (device, 2026-11-25, flow 78; chat-thread.typing.test.tsx).
+   */
+  const typed = (next: string) => {
+    onChange(next);
+    if (!next || !onTyping) return;
     const now = Date.now();
     if (now - lastTyping.current < TYPING_THROTTLE_MS) return;
     lastTyping.current = now;
     onTyping();
-  }, [value, onTyping]);
+  };
 
   const canSend = value.trim().length > 0 && !disabled && !isTooLong(value);
 
@@ -163,7 +170,7 @@ export function PersonComposer({
         <TextInput
           testID="people-composer-input"
           value={value}
-          onChangeText={onChange}
+          onChangeText={typed}
           placeholder={editing ? t("thread.editMessage") : t("thread.message")}
           placeholderTextColor={colors.inkMuted}
           multiline

@@ -230,7 +230,12 @@ export function docError(error: unknown): DocError {
     }
   }
   const record = (typeof body === "object" && body !== null ? body : {}) as { reason?: unknown; message?: unknown; error?: unknown };
-  const message = typeof record.message === "string" ? record.message : typeof record.error === "string" ? record.error : null;
+  // A 5xx says nothing a person can act on: Rails' generic body is
+  // {"error":"Internal Server Error"}, English on a French phone (device,
+  // 2026-11-25, flow 87b). Only a 4xx carries the server's own sentence.
+  const message = response.status !== undefined && response.status >= 500
+    ? null
+    : typeof record.message === "string" ? record.message : typeof record.error === "string" ? record.error : null;
   const reason = REASONS.find((r) => r === record.reason) ?? (response.status === 413 ? "too_large" : "unknown");
   return new DocError(reason, message);
 }

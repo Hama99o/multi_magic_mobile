@@ -175,6 +175,17 @@ describe("refusals", () => {
     expect(e.reason).toBe("invalid");
     expect(docError({ response: { status: 500, data: "<html>" } }).reason).toBe("unknown");
   });
+
+  // Device, 2026-11-25 (readiness States, flow 87b): a 500 showed Rails'
+  // generic body, "Internal Server Error", as the sentence: English on a
+  // French phone, and jargon on either. A 5xx says nothing a person can act
+  // on, so it carries no server sentence and the app's own words are used.
+  it("a 5xx never carries the server's body as the sentence", () => {
+    const e = docError({ response: { status: 500, data: { status: 500, error: "Internal Server Error" } } });
+    expect(e.reason).toBe("unknown");
+    expect(e.serverMessage).toBeNull();
+    expect(docError({ response: { status: 502, data: { message: "Bad Gateway" } } }).serverMessage).toBeNull();
+  });
 });
 
 describe("JSON tools", () => {

@@ -1,0 +1,31 @@
+# Readiness "RTL", Search: a Persian QUERY in the field, with its answer.
+# Maestro cannot type Persian on Android, so the query arrives the way the
+# Apps sheet hands one over: Search reads `q` from its route (app/search.tsx,
+# `params.q`). The link is opened after a normal sign-in, so the app is warm.
+# Persian words searched for are in the seeded, invented :3030 content
+# ("[qa] سلام، این یک …", a chat message from the second QA account).
+#
+# COVERS: the field drawn with Persian text, the answer's rows for it.
+# CANNOT TELL YOU: typing Persian with a keyboard (IME, cursor, mixed
+#   direction while editing). That needs a real phone.
+appId: ${APP_ID}
+tags: [search, readiness, rtl]
+---
+- runFlow: login.yaml
+- openLink: "multimagic://search?q=%D8%B3%D9%84%D8%A7%D9%85"
+- extendedWaitUntil:
+    visible:
+      id: "search-input"
+    timeout: 30000
+- assertVisible:
+    id: "search-input"
+    text: "سلام"
+- extendedWaitUntil:
+    visible:
+      id: "search-section-.*"
+    timeout: 60000
+# The answer holds the seeded Persian chat message (a whole-node match).
+- assertVisible: ".*سلام.*این یک.*"
+- assertVisible:
+    id: "search-input"
+- takeScreenshot: reports/106-search-persian-${SHOT}

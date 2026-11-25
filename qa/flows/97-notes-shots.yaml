@@ -1,0 +1,18 @@
+# Pictures for 200 % (and any ${SHOT} the driver sets): the Notes list and
+# the "[qa-ff] readiness" note. Asserts no behaviour.
+appId: ${APP_ID}
+tags: [notes, readiness, shots]
+---
+- runFlow: login.yaml
+- runFlow: notes-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 30000
+- takeScreenshot: reports/97-notes-list-${SHOT}
+- runFlow: notes-open-ff-note.yaml
+- assertVisible:
+    id: "note-edit-body"
+- takeScreenshot: reports/97-notes-note-${SHOT}
+- tapOn:
+    id: "note-edit-back"

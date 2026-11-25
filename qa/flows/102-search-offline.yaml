@@ -1,0 +1,17 @@
+# Readiness "Off", Search. Driver: signed in online, then wifi and data off.
+# COVERS: a query offline says why nothing came (and the phone-side app hits
+#   still show), photographed.
+appId: ${APP_ID}
+tags: [search, readiness, offline]
+---
+- runFlow: search-open.yaml
+- tapOn:
+    id: "search-input"
+- inputText: "notes"
+- extendedWaitUntil:
+    visible:
+      id: "search-failed"
+    timeout: 30000
+- assertVisible:
+    id: "search-app-notes"
+- takeScreenshot: reports/102-search-offline

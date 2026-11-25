@@ -1,0 +1,19 @@
+# Follows 92b on the same screen, the network back (driver). COVERS: the
+# offline edit is saved once online, and is there after the note reopens.
+appId: ${APP_ID}
+tags: [notes, readiness, offline]
+---
+- extendedWaitUntil:
+    visible: "Saved|Enregistré"
+    timeout: 60000
+- assertVisible:
+    id: "note-edit-body"
+- takeScreenshot: reports/92c-notes-back-online
+- tapOn:
+    id: "note-edit-back"
+- tapOn: "\\[qa-ff\\] readiness"
+- extendedWaitUntil:
+    visible: ".*kept text offline.*"
+    timeout: 30000
+- tapOn:
+    id: "note-edit-back"

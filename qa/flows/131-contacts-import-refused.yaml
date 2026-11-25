@@ -1,0 +1,40 @@
+# Readiness "Perm", Contacts: the phone-book permission denied (launchApp
+# permissions, then "Don't allow" if asked); Import from this phone.
+# COVERS: the refusal is said, with a way to Settings. Nothing is imported.
+appId: ${APP_ID}
+tags: [contacts, readiness, permission]
+---
+- runFlow: login.yaml
+- launchApp:
+    appId: ${APP_ID}
+    permissions:
+      contacts: deny
+- openLink: ${DEEP_LINK}
+- extendedWaitUntil:
+    visible:
+      id: "screen-root"
+    timeout: 120000
+- runFlow: contacts-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "contacts-more"
+    timeout: 30000
+- tapOn:
+    id: "contacts-more"
+- tapOn:
+    id: "contacts-menu-import"
+- tapOn:
+    id: "contacts-import-phone"
+- runFlow:
+    when:
+      visible: "Don.t allow|DON.T ALLOW|Deny"
+    commands:
+      - tapOn: "Don.t allow|DON.T ALLOW|Deny"
+- extendedWaitUntil:
+    visible:
+      id: "contacts-import-note"
+    timeout: 15000
+- assertVisible:
+    id: "contacts-import-settings"
+- takeScreenshot: reports/131-contacts-import-refused
+- back

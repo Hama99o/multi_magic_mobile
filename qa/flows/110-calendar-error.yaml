@@ -1,0 +1,13 @@
+# Readiness "States" (error), Calendar. Driver: /api/v1/calendar_app=500,
+# cold start. 110b taps Try again after the driver clears it.
+# COVERS: the failure sentence and its way out, photographed.
+appId: ${APP_ID}
+tags: [calendar, readiness, states]
+---
+- runFlow: login.yaml
+- runFlow: calendar-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "calendar-load-failed"
+    timeout: 30000
+- takeScreenshot: reports/110-calendar-error

@@ -1,0 +1,12 @@
+# Follows 110 on the same screen, the fault cleared. COVERS: Try again loads.
+appId: ${APP_ID}
+tags: [calendar, readiness, states]
+---
+- tapOn: "Try again|Réessayer"
+- extendedWaitUntil:
+    notVisible:
+      id: "calendar-load-failed"
+    timeout: 30000
+- assertVisible:
+    id: "calendar-view-toggle"
+- takeScreenshot: reports/110b-calendar-recovered

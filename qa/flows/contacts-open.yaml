@@ -1,0 +1,22 @@
+# Helper: from a signed-in app, open Contacts by the Home tile.
+appId: ${APP_ID}
+---
+- runFlow: home-open.yaml
+- runFlow:
+    when:
+      notVisible:
+        id: "home-tile-contacts"
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: "home-tile-contacts"
+          direction: UP
+          timeout: 10000
+          optional: true  # lint: optional-ok — the tile may be below instead; the DOWN scroll after this is the check
+- scrollUntilVisible:
+    element:
+      id: "home-tile-contacts"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-contacts"

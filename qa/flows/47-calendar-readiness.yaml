@@ -35,8 +35,23 @@ tags:
   - readiness
 ---
 # The app reopens in its last place: Back until the Home button shows.
-- launchApp
-- openLink: ${DEEP_LINK}
+# OFFLINE runs skip the relaunch: the driver signed in just before and then
+# cut the network, and a relaunched dev client cannot reach Metro offline
+# (measured 2026-11-25: it stopped on the dev launcher, nothing measured).
+- runFlow:
+    when:
+      true: ${NET != "offline"}
+    commands:
+      - launchApp
+      - openLink: ${DEEP_LINK}
+# login.yaml ends on the Assistant, which has no app header: close it.
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
 - extendedWaitUntil:
     visible:
       id: "app-header"
@@ -67,6 +82,8 @@ tags:
 - takeScreenshot: reports/47-${W}-${THEME}-f${FONT}-${NET}-open
 - tapOn:
     id: "calendar-view-toggle"
+- assertVisible:
+    id: "calendar-view-toggle"
 - takeScreenshot: reports/47-${W}-${THEME}-f${FONT}-${NET}-other-view
 - tapOn:
     id: "calendar-view-toggle"
@@ -84,6 +101,8 @@ tags:
       - tapOn:
           id: "event-form-title"
       - inputText: "[qa] DST weekly"
+      - assertVisible:
+          id: "event-form-title"
       - takeScreenshot: reports/47-${W}-${THEME}-f${FONT}-${NET}-keyboard
       # Enter, not hideKeyboard: in this modal form hideKeyboard can act as
       # Back and close it (flow_lint HIDEKEY). The title is one line.
@@ -98,33 +117,70 @@ tags:
           notVisible:
             id: "event-form"
           timeout: 30000
-      # The list holds both occurrences, either side of 28 March 2027.
+      # Both occurrences, either side of 28 March 2027, in the MONTH grid:
+      # "What's next" covers 7 (+30) days only, so March 2027 is never in it
+      # (measured 2026-11-25: the first run scrolled it for 60 s and failed).
+      # The grid's occurrences come from the server (the code under test,
+      # 1a145681); the event screen recomputes times on the phone.
       - runFlow:
           when:
             notVisible:
-              id: "calendar-list"
+              id: "calendar-month"
           commands:
             - tapOn:
                 id: "calendar-view-toggle"
+      - repeat:
+          while:
+            notVisible:
+              id: "calendar-month-day-2027-03-25"
+          times: 18
+          commands:
+            - tapOn:
+                id: "calendar-month-next"
+      - tapOn:
+          id: "calendar-month-day-2027-03-25"
       - scrollUntilVisible:
           element: "\\[qa\\] DST weekly.*"
-          timeout: 60000
-      - takeScreenshot: reports/47-${W}-${THEME}-f${FONT}-${NET}-dst-occurrences
-      # Cleanup: the series, whole.
-      - tapOn: "\\[qa\\] DST weekly.*"
-      - extendedWaitUntil:
-          visible:
-            id: "event-detail"
           timeout: 20000
-      - takeScreenshot: reports/47-${W}-${THEME}-f${FONT}-${NET}-detail
+      - assertVisible:
+          id: "calendar-month"
+      - takeScreenshot: reports/47-${W}-${THEME}-f${FONT}-${NET}-dst-0325
+      - scrollUntilVisible:
+          direction: UP
+          element:
+            id: "calendar-month-next"
+          timeout: 20000
       - tapOn:
-          id: "event-delete"
-      - extendedWaitUntil:
-          visible: "Delete “\\[qa\\] DST weekly”\\?"
-          timeout: 10000
-      # lint: regex-ok — the alert's button, either case (Android caps it).
-      - tapOn: "(Delete|DELETE)"
-      - extendedWaitUntil:
-          notVisible:
-            id: "event-detail"
+          id: "calendar-month-next"
+      - tapOn:
+          id: "calendar-month-day-2027-04-01"
+      - scrollUntilVisible:
+          element: "\\[qa\\] DST weekly.*"
           timeout: 20000
+      - assertVisible:
+          id: "calendar-month"
+      - takeScreenshot: reports/47-${W}-${THEME}-f${FONT}-${NET}-dst-0401
+      # Cleanup: the series, whole; every copy on that day, since an earlier
+      # failed run (2026-11-25) left one behind.
+      - repeat:
+          while:
+            visible: "\\[qa\\] DST weekly.*"
+          times: 4
+          commands:
+          - tapOn: "\\[qa\\] DST weekly.*"
+          - extendedWaitUntil:
+              visible:
+                id: "event-detail"
+              timeout: 20000
+          - takeScreenshot: reports/47-${W}-${THEME}-f${FONT}-${NET}-detail
+          - tapOn:
+              id: "event-delete"
+          - extendedWaitUntil:
+              visible: "Delete “\\[qa\\] DST weekly”\\?"
+              timeout: 10000
+          # lint: regex-ok — the alert's button, either case (Android caps it).
+          - tapOn: "(Delete|DELETE)"
+          - extendedWaitUntil:
+              notVisible:
+                id: "event-detail"
+              timeout: 20000

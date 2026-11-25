@@ -1,0 +1,10 @@
+# Setup for 92b: opens "[qa-ff] readiness" ONLINE once, so this session holds
+# it, then goes back. (A note never opened in the session cannot open offline:
+# 92d is that case.)
+appId: ${APP_ID}
+tags: [notes, readiness, offline]
+---
+- runFlow: login.yaml
+- runFlow: notes-open-ff-note.yaml
+- tapOn:
+    id: "note-edit-back"

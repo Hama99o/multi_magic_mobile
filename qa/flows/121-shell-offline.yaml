@@ -1,0 +1,18 @@
+# Readiness "Off", Shell. Driver: signed in online, then wifi and data off.
+# COVERS: Home and the Apps sheet draw offline (both are on the phone), the
+#   offline notice shows once a request fails, photographed.
+appId: ${APP_ID}
+tags: [shell, readiness, offline]
+---
+- runFlow: home-open.yaml
+- assertVisible:
+    id: "home-greeting"
+- takeScreenshot: reports/121-home-offline
+- tapOn:
+    id: "header-apps"
+- extendedWaitUntil:
+    visible:
+      id: "switcher-search"
+    timeout: 15000
+- takeScreenshot: reports/121-apps-sheet-offline
+- back

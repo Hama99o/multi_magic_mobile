@@ -1,0 +1,12 @@
+# Readiness "States" (error), Contacts. Driver: /api/v1/contact_app=500, cold
+# start. 130b takes Try again after the driver clears it.
+appId: ${APP_ID}
+tags: [contacts, readiness, states]
+---
+- runFlow: login.yaml
+- runFlow: contacts-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "contacts-load-failed"
+    timeout: 30000
+- takeScreenshot: reports/130-contacts-error

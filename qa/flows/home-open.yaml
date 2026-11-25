@@ -1,0 +1,21 @@
+# Helper: from a signed-in app, Home by the header button.
+appId: ${APP_ID}
+---
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
+- runFlow:
+    when:
+      visible:
+        id: "header-home"
+    commands:
+      - tapOn:
+          id: "header-home"
+- extendedWaitUntil:
+    visible:
+      id: "home-greeting"
+    timeout: 30000

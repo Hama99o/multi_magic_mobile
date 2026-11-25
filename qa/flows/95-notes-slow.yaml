@@ -1,0 +1,22 @@
+# Readiness "Slow", Notes. Driver: /api/v1=slow:1500 (every request).
+# COVERS: the list, a note and a save still work and say what they are doing
+#   ("Saving…" then "Saved"), photographed.
+appId: ${APP_ID}
+tags: [notes, readiness, slow]
+---
+- runFlow: login.yaml
+- runFlow: notes-open-ff-note.yaml
+- assertVisible:
+    id: "note-edit-body"
+- takeScreenshot: reports/95-notes-slow-open
+- tapOn:
+    id: "note-edit-body"
+- inputText: " slow"
+- extendedWaitUntil:
+    visible: "Saved|Enregistré"
+    timeout: 60000
+- assertVisible:
+    id: "note-edit-body"
+- takeScreenshot: reports/95-notes-slow-saved
+- tapOn:
+    id: "note-edit-back"

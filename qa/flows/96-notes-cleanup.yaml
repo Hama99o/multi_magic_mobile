@@ -1,0 +1,34 @@
+# Cleanup for 92-95: "[qa-ff] readiness" moved to the trash, then deleted
+# for ever from the trash. Destructive on purpose, on the invented note only.
+appId: ${APP_ID}
+tags: [notes, readiness, writes, cleanup]
+---
+- runFlow: login.yaml
+- runFlow: notes-open-ff-note.yaml
+- tapOn:
+    id: "tb-more"
+- tapOn:
+    id: "note-more-delete"
+- tapOn:
+    id: "note-more-delete-confirm"
+- extendedWaitUntil:
+    visible:
+      id: "notes-menu"
+    timeout: 20000
+- tapOn:
+    id: "notes-menu"
+- tapOn:
+    id: "drawer-trash"
+- extendedWaitUntil:
+    visible: "\\[qa-ff\\] readiness"
+    timeout: 30000
+- tapOn: "\\[qa-ff\\] readiness"
+- tapOn:
+    id: "note-forever"
+- tapOn: "Delete forever|DELETE FOREVER|Supprimer définitivement|SUPPRIMER DÉFINITIVEMENT"
+- extendedWaitUntil:
+    notVisible: "\\[qa-ff\\] readiness"
+    timeout: 20000
+- assertVisible:
+    id: "notes-view-title"
+- takeScreenshot: reports/96-notes-trash-after-cleanup

@@ -1,0 +1,23 @@
+# Readiness "Kill", Notes: words typed, the app FORCE-STOPPED at once
+# (stopApp), relaunched, the note reopened.
+# COVERS: the words typed just before the kill are in the note after it.
+# CANNOT TELL YOU: Android's own low-memory kill (same death, other trigger).
+appId: ${APP_ID}
+tags: [notes, readiness, kill]
+---
+- runFlow: login.yaml
+- runFlow: notes-open-ff-note.yaml
+- tapOn:
+    id: "note-edit-body"
+- inputText: " killed"
+- stopApp
+- runFlow: login.yaml
+- runFlow: notes-open-ff-note.yaml
+- extendedWaitUntil:
+    visible: ".*killed.*"
+    timeout: 30000
+- assertVisible:
+    id: "note-edit-body"
+- takeScreenshot: reports/93-notes-after-kill
+- tapOn:
+    id: "note-edit-back"

@@ -1,0 +1,34 @@
+# Readiness "Kill", Calendar: a new event's title typed, the app FORCE-STOPPED
+# before Save (stopApp), relaunched. Nothing half-made may appear: no event
+# with that title in the list, and Calendar opens normally.
+# COVERS: a kill mid-form leaves no partial event. CANNOT TELL YOU: whether a
+#   half-typed form should come back (it does not; no draft is kept here).
+appId: ${APP_ID}
+tags: [calendar, readiness, kill]
+---
+- runFlow: login.yaml
+- runFlow: calendar-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "calendar-new"
+    timeout: 30000
+- tapOn:
+    id: "calendar-new"
+- extendedWaitUntil:
+    visible:
+      id: "event-form-title"
+    timeout: 20000
+- tapOn:
+    id: "event-form-title"
+- inputText: "[qa-ff] killed before save"
+- stopApp
+- runFlow: login.yaml
+- runFlow: calendar-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "calendar-view-toggle"
+    timeout: 60000
+- assertNotVisible: "\\[qa-ff\\] killed before save.*"
+- assertVisible:
+    id: "calendar-view-toggle"
+- takeScreenshot: reports/111-calendar-after-kill

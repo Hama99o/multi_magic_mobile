@@ -1,0 +1,16 @@
+# Readiness "Off", Notes. Driver: signed in ONLINE, then wifi and data off.
+# COVERS: an edit made offline says it is kept on the phone
+#   ("On this phone only"), photographed. 92c checks it reaches the server.
+appId: ${APP_ID}
+tags: [notes, readiness, offline]
+---
+- runFlow: notes-open-ff-note.yaml
+- tapOn:
+    id: "note-edit-body"
+- inputText: " offline"
+- extendedWaitUntil:
+    visible: "On this phone only|Sur ce téléphone seulement"
+    timeout: 30000
+- assertVisible:
+    id: "note-edit-body"
+- takeScreenshot: reports/92b-notes-offline-edit

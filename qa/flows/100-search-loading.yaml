@@ -1,0 +1,23 @@
+# Readiness "States" (loading), Search. Driver: /api/v1/search=slow:8000.
+# COVERS: the searching indicator while the answer is on its way, the
+#   phone-side hits (apps) already shown, photographed; then the answer.
+appId: ${APP_ID}
+tags: [search, readiness, states]
+---
+- runFlow: login.yaml
+- runFlow: search-open.yaml
+- tapOn:
+    id: "search-input"
+- inputText: "qa"
+- extendedWaitUntil:
+    visible:
+      id: "search-searching"
+    timeout: 5000
+- takeScreenshot: reports/100-search-loading
+- extendedWaitUntil:
+    notVisible:
+      id: "search-searching"
+    timeout: 30000
+- assertVisible:
+    id: "search-input"
+- takeScreenshot: reports/100-search-loaded

@@ -1,0 +1,28 @@
+# Setup for 92-96 (WRITES on the :3030 copy, invented): a note titled
+# "[qa-ff] readiness" with one line, saved. 96 deletes it for ever.
+appId: ${APP_ID}
+tags: [notes, readiness, writes]
+---
+- runFlow: login.yaml
+- runFlow: notes-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "notes-new"
+    timeout: 30000
+- tapOn:
+    id: "notes-new"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-title"
+    timeout: 30000
+- tapOn:
+    id: "note-edit-title"
+- inputText: "[qa-ff] readiness"
+- tapOn:
+    id: "note-edit-body"
+- inputText: "kept text"
+- extendedWaitUntil:
+    visible: "Saved|Enregistré"
+    timeout: 20000
+- tapOn:
+    id: "note-edit-back"

@@ -1,0 +1,19 @@
+# Follows 92d on the same screen, the network back (driver). The note may
+# already have loaded by itself; if not, Try again loads it.
+appId: ${APP_ID}
+tags: [notes, readiness, offline, states]
+---
+- runFlow:
+    when:
+      visible:
+        id: "note-load-retry"
+    commands:
+      - tapOn:
+          id: "note-load-retry"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-body"
+    timeout: 60000
+- takeScreenshot: reports/92e-notes-uncached-recovered
+- tapOn:
+    id: "note-edit-back"

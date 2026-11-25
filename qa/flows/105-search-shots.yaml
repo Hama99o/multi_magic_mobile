@@ -1,0 +1,25 @@
+# Pictures at ${SHOT} (the driver sets slow or a font scale): Search with a
+# query's answer. Asserts that an answer came.
+appId: ${APP_ID}
+tags: [search, readiness, shots]
+---
+- runFlow: login.yaml
+- runFlow: search-open.yaml
+- tapOn:
+    id: "search-input"
+- inputText: "qa"
+- extendedWaitUntil:
+    visible:
+      id: "search-section-.*"
+    timeout: 60000
+# The IME is up: the field was typed into just above and nothing closed it,
+# so this Back closes the keyboard and cannot pop the Search screen.
+- hideKeyboard
+# hideKeyboard falls back to Back when no docked IME is up (Gboard floating,
+# measured 2026-11-25), and Back pops Search to Home: the dark and 800 shots
+# then photographed Home and still PASSED. Still on Search, or fail.
+- assertVisible:
+    id: "search-input"
+- assertVisible:
+    id: "search-section-.*"
+- takeScreenshot: reports/105-search-${SHOT}

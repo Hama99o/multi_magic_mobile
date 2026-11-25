@@ -1,0 +1,23 @@
+# Helper: from a signed-in app, Home's search field, then the Search screen.
+appId: ${APP_ID}
+---
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
+- repeat:
+    while:
+      notVisible:
+        id: "home-search"
+    times: 3
+    commands:
+      - back
+- tapOn:
+    id: "home-search"
+- extendedWaitUntil:
+    visible:
+      id: "search-input"
+    timeout: 20000

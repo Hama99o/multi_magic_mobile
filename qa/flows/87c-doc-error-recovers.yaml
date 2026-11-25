@@ -9,12 +9,21 @@ tags: [doc, readiness, states]
 ---
 - assertVisible:
     id: "doc-text-change"
-- tapOn:
-    id: "doc-error-retry"
+# With the network back the read may already have run again by itself
+# (2026-11-25, after 86: the page was there, no error left to retry).
+- runFlow:
+    when:
+      visible:
+        id: "doc-error-retry"
+    commands:
+      - tapOn:
+          id: "doc-error-retry"
 - extendedWaitUntil:
     visible:
       id: "doc-text-legend"
     timeout: 60000
 - assertNotVisible:
     id: "doc-error"
+- assertVisible:
+    id: "doc-text-legend"
 - takeScreenshot: reports/87c-doc-recovered

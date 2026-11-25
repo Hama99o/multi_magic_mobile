@@ -1,0 +1,12 @@
+# Follows 130 on the same screen, the fault cleared. COVERS: Try again loads.
+appId: ${APP_ID}
+tags: [contacts, readiness, states]
+---
+- tapOn: "Try again|Réessayer"
+- extendedWaitUntil:
+    notVisible:
+      id: "contacts-load-failed"
+    timeout: 30000
+- assertVisible:
+    id: "contacts-list"
+- takeScreenshot: reports/130b-contacts-recovered

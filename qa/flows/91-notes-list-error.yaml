@@ -1,0 +1,13 @@
+# Readiness "States" (error), Notes. Driver: /api/v1/note_app/notes=500, cold start.
+# COVERS: the list's failure sentence and Try again, photographed. 91b taps
+#   Try again after the driver clears the fault.
+appId: ${APP_ID}
+tags: [notes, readiness, states]
+---
+- runFlow: login.yaml
+- runFlow: notes-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "notes-load-failed"
+    timeout: 30000
+- takeScreenshot: reports/91-notes-list-error

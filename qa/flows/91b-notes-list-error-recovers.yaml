@@ -1,0 +1,14 @@
+# Follows 91 on the same screen, the fault cleared. COVERS: Try again loads.
+appId: ${APP_ID}
+tags: [notes, readiness, states]
+---
+- tapOn: "Try again|Réessayer"
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 30000
+- assertNotVisible:
+    id: "notes-load-failed"
+- assertVisible:
+    id: "notes-list"
+- takeScreenshot: reports/91b-notes-list-recovered

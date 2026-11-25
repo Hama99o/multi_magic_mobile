@@ -1,0 +1,19 @@
+# Readiness "States" (loading), Notes. Driver: /api/v1/note_app/notes=slow:8000 at the
+# fault proxy, cold start.
+# COVERS: what the list draws while it loads (a spinner, or the list kept
+#   from the last session), photographed, then the list.
+# CANNOT TELL YOU: the editor's own loading (a note opens from the list).
+appId: ${APP_ID}
+tags: [notes, readiness, states]
+---
+- runFlow: login.yaml
+- runFlow: notes-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "notes-loading|notes-list"
+    timeout: 5000
+- takeScreenshot: reports/90-notes-loading
+- extendedWaitUntil:
+    visible:
+      id: "notes-list"
+    timeout: 30000

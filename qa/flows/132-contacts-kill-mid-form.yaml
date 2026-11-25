@@ -1,0 +1,37 @@
+# Readiness "Kill", Contacts: a new contact's first name typed, the app
+# FORCE-STOPPED before Save, relaunched. No half-made contact (the driver
+# counts rows with that name, read-only: must be 0) and Contacts opens.
+appId: ${APP_ID}
+tags: [contacts, readiness, kill]
+---
+- runFlow: login.yaml
+- runFlow: contacts-open.yaml
+- runFlow:
+    when:
+      visible:
+        id: "contacts-empty-new"
+    commands:
+      - tapOn:
+          id: "contacts-empty-new"
+- runFlow:
+    when:
+      visible:
+        id: "contacts-new"
+    commands:
+      - tapOn:
+          id: "contacts-new"
+- extendedWaitUntil:
+    visible:
+      id: "contact-form-firstname"
+    timeout: 20000
+- tapOn:
+    id: "contact-form-firstname"
+- inputText: "[qa-ff] killed"
+- stopApp
+- runFlow: login.yaml
+- runFlow: contacts-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "contacts-more"
+    timeout: 30000
+- takeScreenshot: reports/132-contacts-after-kill

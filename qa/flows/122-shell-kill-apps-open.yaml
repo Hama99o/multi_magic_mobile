@@ -1,0 +1,27 @@
+# Readiness "Kill", Shell: the Apps sheet open, the app FORCE-STOPPED
+# (stopApp), relaunched. Nothing may be left half-drawn: no sheet or scrim
+# over Home, and the header answers.
+appId: ${APP_ID}
+tags: [shell, readiness, kill]
+---
+- runFlow: login.yaml
+- runFlow: home-open.yaml
+- tapOn:
+    id: "header-apps"
+- extendedWaitUntil:
+    visible:
+      id: "switcher-search"
+    timeout: 15000
+- stopApp
+- runFlow: login.yaml
+- runFlow: home-open.yaml
+- assertNotVisible:
+    id: "switcher-scrim"
+- tapOn:
+    id: "header-apps"
+- extendedWaitUntil:
+    visible:
+      id: "switcher-search"
+    timeout: 15000
+- takeScreenshot: reports/122-apps-after-kill
+- back

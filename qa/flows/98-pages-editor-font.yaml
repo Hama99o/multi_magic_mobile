@@ -1,0 +1,104 @@
+# Readiness 200 % (and 360 at 200 %), Pages edit, after 857b6b2 (the editor's
+# text follows the system font size). The driver sets the font scale and the
+# width (${SHOT}). WRITES on the :3030 copy: a page "[qa-ff] font" in
+# QA Parity / Trip, moved to the trash at the end.
+# COVERS: the body text at the system size, the longest line wrapping, the
+#   toolbar still on screen, photographed.
+# CANNOT TELL YOU: iOS Dynamic Type (the same theme path; no iOS device here).
+appId: ${APP_ID}
+tags: [pages, readiness, shots, writes]
+---
+- runFlow: login.yaml
+- runFlow:
+    when:
+      visible:
+        id: "chat-close"
+    commands:
+      - tapOn:
+          id: "chat-close"
+- runFlow:
+    when:
+      visible:
+        id: "header-home"
+    commands:
+      - tapOn:
+          id: "header-home"
+# Home keeps its scroll position, so at 200 % the tile can be ABOVE the
+# screen (measured 2026-11-25, 360/200 %): up first if it is not on screen.
+- runFlow:
+    when:
+      notVisible:
+        id: "home-tile-pages"
+    commands:
+      - scrollUntilVisible:
+          element:
+            id: "home-tile-pages"
+          direction: UP
+          timeout: 10000
+          optional: true  # lint: optional-ok — the tile may be below instead; the DOWN scroll after this is the check
+- scrollUntilVisible:
+    element:
+      id: "home-tile-pages"
+    direction: DOWN
+    timeout: 20000
+- tapOn:
+    id: "home-tile-pages"
+- extendedWaitUntil:
+    visible:
+      id: "pages-home-list"
+    timeout: 30000
+- tapOn:
+    id: "pages-tab-files"
+- scrollUntilVisible:
+    element: "QA Parity"
+    direction: DOWN
+    timeout: 30000
+- tapOn: "QA Parity"
+- extendedWaitUntil:
+    # lint: anchored-ok — the seeded folder "Trip" is a whole row title in the space
+    visible: "Trip"
+    timeout: 30000
+# lint: anchored-ok — the seeded folder "Trip" is a whole row title in the space
+- tapOn: "Trip"
+- extendedWaitUntil:
+    visible:
+      id: "pages-add"
+    timeout: 60000
+- tapOn:
+    id: "pages-add"
+- tapOn:
+    id: "pages-new-page"
+- tapOn:
+    id: "pages-name-input"
+- inputText: "[qa-ff] font"
+- tapOn:
+    id: "pages-name-confirm"
+- extendedWaitUntil:
+    visible:
+      id: "note-toolbar"
+    timeout: 30000
+- tapOn: "Write here"
+- inputText: "The longest line on this page has to wrap inside the page at the system font size"
+- extendedWaitUntil:
+    visible: "Saved|Enregistré"
+    timeout: 20000
+- assertVisible:
+    id: "note-toolbar"
+- takeScreenshot: reports/98-pages-editor-${SHOT}
+- back
+- runFlow:
+    when:
+      visible:
+        id: "note-toolbar"
+    commands:
+      - back
+- scrollUntilVisible:
+    element: "More actions for \\[qa-ff\\] font"
+    direction: DOWN
+    timeout: 30000
+- tapOn: "More actions for \\[qa-ff\\] font"
+- tapOn:
+    id: "pages-action-trash"
+- extendedWaitUntil:
+    notVisible: "\\[qa-ff\\] font"
+    timeout: 20000

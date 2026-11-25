@@ -1,0 +1,23 @@
+# Pictures for the Shell row at ${SHOT} (the driver sets width, theme, network
+# or a fault): Home's top, then the Apps sheet open from the header. Asserts
+# the sheet's search is reachable and the sheet closes.
+appId: ${APP_ID}
+tags: [shell, readiness, shots]
+---
+- runFlow: login.yaml
+- runFlow: home-open.yaml
+- assertVisible:
+    id: "home-greeting"
+- takeScreenshot: reports/120-home-${SHOT}
+- tapOn:
+    id: "header-apps"
+- extendedWaitUntil:
+    visible:
+      id: "switcher-search"
+    timeout: 15000
+- takeScreenshot: reports/120-apps-sheet-${SHOT}
+- back
+- extendedWaitUntil:
+    notVisible:
+      id: "switcher-search"
+    timeout: 10000

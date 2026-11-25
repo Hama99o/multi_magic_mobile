@@ -1,0 +1,21 @@
+# Readiness "Kbd", Search: the keyboard up with a query; the field, Clear and
+# Cancel stay on screen above it, photographed.
+appId: ${APP_ID}
+tags: [search, readiness, keyboard]
+---
+- runFlow: login.yaml
+- runFlow: search-open.yaml
+- tapOn:
+    id: "search-input"
+- inputText: "qa"
+- extendedWaitUntil:
+    notVisible:
+      id: "search-searching"
+    timeout: 30000
+- assertVisible:
+    id: "search-input"
+- assertVisible:
+    id: "search-clear"
+- assertVisible:
+    id: "search-cancel"
+- takeScreenshot: reports/103-search-keyboard

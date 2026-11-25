@@ -1,0 +1,35 @@
+# Readiness "Perm", Notes: the microphone denied (launchApp permissions,
+# then "Don't allow" if asked); dictation from the editor's toolbar.
+# COVERS: the refusal is said in the editor, and typing still works.
+appId: ${APP_ID}
+tags: [notes, readiness, permission]
+---
+- runFlow: login.yaml
+- launchApp:
+    appId: ${APP_ID}
+    permissions:
+      microphone: deny
+- openLink: ${DEEP_LINK}
+- extendedWaitUntil:
+    visible:
+      id: "screen-root"
+    timeout: 120000
+- runFlow: notes-open-ff-note.yaml
+- tapOn:
+    id: "note-edit-body"
+- tapOn:
+    id: "tb-dictate"
+- runFlow:
+    when:
+      visible: "Don.t allow|DON.T ALLOW|Deny"
+    commands:
+      - tapOn: "Don.t allow|DON.T ALLOW|Deny"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-mic-problem"
+    timeout: 15000
+- takeScreenshot: reports/94-notes-mic-refused
+- inputText: " typed"
+- assertVisible: ".*typed.*"
+- tapOn:
+    id: "note-edit-back"

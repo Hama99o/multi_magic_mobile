@@ -1,0 +1,15 @@
+# Readiness "States" (error), Search. Driver: /api/v1/search=500; 101b after
+# the driver clears it. COVERS: the failure sentence and Try again.
+appId: ${APP_ID}
+tags: [search, readiness, states]
+---
+- runFlow: login.yaml
+- runFlow: search-open.yaml
+- tapOn:
+    id: "search-input"
+- inputText: "qa"
+- extendedWaitUntil:
+    visible:
+      id: "search-failed"
+    timeout: 30000
+- takeScreenshot: reports/101-search-error

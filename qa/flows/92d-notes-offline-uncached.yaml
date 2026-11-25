@@ -1,0 +1,20 @@
+# Readiness "Off" / "States", Notes: a note this session never loaded, opened
+# offline (driver: signed in online, then wifi and data off). It cannot open;
+# it must say why AND offer Try again (2026-11-25: the sentence alone was the
+# tap target). 92e takes Try again once the network is back.
+appId: ${APP_ID}
+tags: [notes, readiness, offline, states]
+---
+- runFlow: notes-open.yaml
+- scrollUntilVisible:
+    element: "\\[qa-ff\\] readiness"
+    direction: DOWN
+    timeout: 30000
+- tapOn: "\\[qa-ff\\] readiness"
+- extendedWaitUntil:
+    visible:
+      id: "note-load-failed"
+    timeout: 30000
+- assertVisible:
+    id: "note-load-retry"
+- takeScreenshot: reports/92d-notes-offline-uncached

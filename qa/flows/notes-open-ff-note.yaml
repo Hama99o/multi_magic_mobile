@@ -1,0 +1,15 @@
+# Helper: Notes open, "[qa-ff] readiness" opened from the LIST (newest first,
+# so it is near the top). Not by search: search asks the server, and offline
+# it finds nothing (2026-11-25, flow 92b).
+appId: ${APP_ID}
+---
+- runFlow: notes-open.yaml
+- scrollUntilVisible:
+    element: "\\[qa-ff\\] readiness"
+    direction: DOWN
+    timeout: 30000
+- tapOn: "\\[qa-ff\\] readiness"
+- extendedWaitUntil:
+    visible:
+      id: "note-edit-body"
+    timeout: 30000

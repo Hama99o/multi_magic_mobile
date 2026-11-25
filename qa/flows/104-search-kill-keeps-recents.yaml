@@ -1,0 +1,29 @@
+# Readiness "Kill", Search: an app opened from Search is remembered as a
+# recent; the app FORCE-STOPPED (stopApp) and relaunched; the recent is still
+# listed when Search opens again. Then the recents are cleared.
+# COVERS: recents survive a process death. CANNOT TELL YOU: a half-typed
+#   query (not kept, by design).
+appId: ${APP_ID}
+tags: [search, readiness, kill]
+---
+- runFlow: login.yaml
+- runFlow: search-open.yaml
+- tapOn:
+    id: "search-input"
+- inputText: "notes"
+- tapOn:
+    id: "search-app-notes"
+- extendedWaitUntil:
+    visible:
+      id: "notes-search"
+    timeout: 30000
+- stopApp
+- runFlow: login.yaml
+- runFlow: search-open.yaml
+- extendedWaitUntil:
+    visible:
+      id: "search-recent-app:notes"
+    timeout: 20000
+- takeScreenshot: reports/104-search-recents-after-kill
+- tapOn:
+    id: "search-recents-clear"
